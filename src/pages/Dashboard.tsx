@@ -10,15 +10,9 @@ import { toast } from "@/components/ui/use-toast";
 import { PlusCircle, FileText, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { Tables } from "@/integrations/supabase/types";
 
-interface TestNote {
-  id: string;
-  title: string;
-  content: string;
-  user_id: string;
-  organization_id: string;
-  created_at: string;
-}
+type TestNote = Tables<"test_notes">;
 
 const Dashboard = () => {
   const { user } = useUser();
@@ -65,14 +59,17 @@ const Dashboard = () => {
         throw new Error("Titel och innehåll krävs");
       }
 
-      const { data, error } = await supabase.from("test_notes").insert([
-        {
-          title,
-          content,
-          user_id: user?.id,
-          organization_id: organization?.id,
-        },
-      ]).select();
+      const { data, error } = await supabase
+        .from("test_notes")
+        .insert([
+          {
+            title,
+            content,
+            user_id: user?.id || "",
+            organization_id: organization?.id,
+          },
+        ])
+        .select();
 
       if (error) {
         throw error;

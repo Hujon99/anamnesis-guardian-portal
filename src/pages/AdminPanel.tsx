@@ -9,15 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { Tables } from "@/integrations/supabase/types";
 
-interface OrgUser {
-  id: string;
-  clerk_user_id: string;
-  organization_id: string;
-  role: string;
+type OrgUser = Tables<"users"> & {
   email?: string;
   name?: string;
-}
+};
 
 const AdminPanel = () => {
   const { user } = useUser();

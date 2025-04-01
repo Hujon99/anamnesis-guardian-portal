@@ -9,6 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 import { PlusCircle } from "lucide-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useOrganization } from "@clerk/clerk-react";
+import { useSyncOrganizationStore } from "@/hooks/useSyncOrganizationStore";
 
 export const NoteForm = () => {
   const [title, setTitle] = useState("");
@@ -34,7 +35,7 @@ export const NoteForm = () => {
           {
             title,
             content,
-            user_id: organization?.membershipRole || "",
+            user_id: organization?.membership?.role || "",
             organization_id: organization?.id,
           },
         ])

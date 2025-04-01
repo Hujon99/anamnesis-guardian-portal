@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useOrganization, useUser } from "@clerk/clerk-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,7 +24,21 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export type AnamnesesEntry = Tables<"anamnes_entries">;
+export type AnamnesesEntry = {
+  id: string;
+  organization_id: string;
+  form_id: string;
+  status: string;
+  internal_notes: string | null;
+  access_token: string | null;
+  answers: any | null;
+  created_at: string | null;
+  expires_at: string | null;
+  patient_email: string | null;
+  sent_at: string | null;
+  created_by: string | null;
+  updated_at: string | null;
+};
 
 const OpticianView = () => {
   const { organization } = useOrganization();

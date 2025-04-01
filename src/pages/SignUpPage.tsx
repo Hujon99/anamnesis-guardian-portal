@@ -24,9 +24,7 @@ const SignUpPage = () => {
               formButtonPrimary: "bg-primary hover:bg-primary/90",
             }
           }}
-        >
-          <SignUp.OrganizationStep />
-        </SignUp>
+        />
       </div>
     </div>
   );

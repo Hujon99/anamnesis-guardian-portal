@@ -35,7 +35,7 @@ export const NoteForm = () => {
           {
             title,
             content,
-            user_id: organization?.membership?.role || "",
+            user_id: organization?.membershipRole || "",
             organization_id: organization?.id,
           },
         ])

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useOrganization } from "@clerk/clerk-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,7 +39,6 @@ const OpticianView = () => {
   const [generatedLink, setGeneratedLink] = useState("");
   const queryClient = useQueryClient();
 
-  // Reset selected entry when changing tabs
   useEffect(() => {
     setSelectedEntry(null);
   }, [activeTab]);
@@ -51,6 +49,8 @@ const OpticianView = () => {
         throw new Error("Organisation saknas");
       }
 
+      const formId = crypto.randomUUID();
+
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
@@ -58,6 +58,7 @@ const OpticianView = () => {
           access_token: crypto.randomUUID(),
           status: "pending",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+          form_id: formId,
         })
         .select()
         .single();
@@ -66,7 +67,6 @@ const OpticianView = () => {
       return data;
     },
     onSuccess: (data) => {
-      // Generate a link using the window.location to get the base URL
       const baseUrl = window.location.origin;
       const link = `${baseUrl}/patient-form?token=${data.access_token}`;
       setGeneratedLink(link);

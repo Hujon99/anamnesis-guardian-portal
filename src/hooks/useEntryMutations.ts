@@ -8,14 +8,21 @@ import { useAnamnesis } from "@/contexts/AnamnesisContext";
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const { supabase, refreshClient } = useSupabaseClient();
   const queryClient = useQueryClient();
-  const { refreshData } = useAnamnesis();
+  const { refreshData, forceRefresh } = useAnamnesis();
   
   // Helper function to ensure authentication before making requests
-  const ensureAuthenticated = async () => {
+  const ensureAuthenticated = async (force = false) => {
     try {
-      await refreshClient();
+      console.log(`Ensuring authentication for mutation (force=${force})`);
+      await refreshClient(force);
+      return true;
     } catch (error) {
       console.error("Authentication refresh failed:", error);
+      toast({
+        title: "Autentiseringsfel",
+        description: "Det gick inte att autentisera förfrågan. Försök igen.",
+        variant: "destructive",
+      });
       throw new Error("Autentiseringsfel. Vänligen logga in igen.");
     }
   };
@@ -31,6 +38,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       if (notes !== undefined) updates.internal_notes = notes;
       if (email !== undefined) updates.patient_email = email;
       
+      console.log(`Updating entry ${entryId} with:`, updates);
+      
       const { data, error } = await supabase
         .from("anamnes_entries")
         .update(updates)
@@ -44,10 +53,32 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       }
       return data;
     },
-    onSuccess: () => {
-      // Use a small delay to prevent race conditions
+    onSuccess: (data) => {
+      console.log("Entry updated successfully:", data);
+      
+      // Update status in the cache immediately
+      queryClient.setQueryData(
+        ["anamnes-entries"],
+        (oldData: AnamnesesEntry[] | undefined) => {
+          if (!oldData) return undefined;
+          
+          return oldData.map(entry => 
+            entry.id === entryId ? { ...entry, ...data } : entry
+          );
+        }
+      );
+      
+      // Invalidate and refetch all status queries
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
+        // First refresh the data in context
+        refreshData();
+        
+        // Then refetch specific status queries
+        ["sent", "pending", "ready"].forEach(status => {
+          queryClient.invalidateQueries({ 
+            queryKey: ["anamnes-entries", undefined, status] 
+          });
+        });
       }, 100);
       
       toast({
@@ -66,9 +97,9 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         variant: "destructive",
       });
       
-      // Try to recover from auth issues
+      // Try to recover from auth issues with a forced refresh
       if (error.message?.includes("auth") || error.code === "PGRST301") {
-        refreshClient();
+        refreshClient(true);
       }
     },
     retry: (failureCount, error) => {
@@ -83,12 +114,14 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
 
   const sendLinkMutation = useMutation({
     mutationFn: async (patientEmail: string) => {
-      // Ensure we have a valid authentication token
-      await ensureAuthenticated();
+      // Ensure we have a valid authentication token with forced refresh
+      await ensureAuthenticated(true);
       
       if (!patientEmail) {
         throw new Error("E-post är obligatoriskt för att skicka länk");
       }
+      
+      console.log(`Sending link for entry ${entryId} to ${patientEmail}`);
       
       const { data, error } = await supabase
         .from("anamnes_entries")
@@ -107,10 +140,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       }
       return data;
     },
-    onSuccess: () => {
-      // Use a small delay to prevent race conditions
+    onSuccess: (data) => {
+      console.log("Link sent successfully:", data);
+      
+      // Force a complete refresh of all data
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
+        forceRefresh();
       }, 100);
       
       toast({
@@ -131,7 +166,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       
       // Try to recover from auth issues
       if (error.message?.includes("auth") || error.code === "PGRST301") {
-        refreshClient();
+        refreshClient(true);
       }
     },
     retry: (failureCount, error) => {
@@ -160,7 +195,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       sendLinkMutation.mutate(patientEmail);
     },
     refreshData: () => {
-      refreshData();
+      forceRefresh(); // Use force refresh here to ensure we always get fresh data
     }
   };
 };

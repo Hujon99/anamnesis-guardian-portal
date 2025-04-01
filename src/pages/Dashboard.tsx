@@ -56,12 +56,14 @@ const Dashboard = () => {
     enabled: !!user && !!organization && !supabaseLoading && isSynced,
     retry: 3,
     retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000),
-    onError: (error: any) => {
-      toast({
-        title: "Fel vid hämtning av anteckningar",
-        description: error.message,
-        variant: "destructive",
-      });
+    meta: {
+      errorHandler: (error: any) => {
+        toast({
+          title: "Fel vid hämtning av anteckningar",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   });
 

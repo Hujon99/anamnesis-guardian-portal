@@ -1,179 +1,21 @@
-import { useEffect, useState } from "react";
-import { useOrganization, useUser } from "@clerk/clerk-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import { useState } from "react";
+import { useOrganization } from "@clerk/clerk-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSyncOrganization } from "@/hooks/useSyncOrganization";
-import { EntriesList } from "@/components/Optician/EntriesList";
-import { EntryDetails } from "@/components/Optician/EntryDetails";
 import { OpticianHeader } from "@/components/Optician/OpticianHeader";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Plus, Copy, Send } from "lucide-react";
-import { Tables } from "@/integrations/supabase/types";
-import { Button } from "@/components/ui/button";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-export type AnamnesesEntry = {
-  id: string;
-  organization_id: string;
-  form_id: string;
-  status: string;
-  internal_notes: string | null;
-  access_token: string | null;
-  answers: any | null;
-  created_at: string | null;
-  expires_at: string | null;
-  patient_email: string | null;
-  sent_at: string | null;
-  created_by: string | null;
-  updated_at: string | null;
-};
+import { LinkGenerator } from "@/components/Optician/LinkGenerator";
+import { TabsContainer } from "@/components/Optician/TabsContainer";
+import { ContentContainer } from "@/components/Optician/ContentContainer";
+import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 
 const OpticianView = () => {
   const { organization } = useOrganization();
-  const { user } = useUser();
   const { supabase, isLoading: supabaseLoading } = useSupabaseClient();
   const { isSyncing, isSynced } = useSyncOrganization();
-  const [activeTab, setActiveTab] = useState("draft");
-  const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
   const [error, setError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [patientEmail, setPatientEmail] = useState("");
-  const [generatedLink, setGeneratedLink] = useState("");
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    setSelectedEntry(null);
-  }, [activeTab]);
-
-  const createAnamnesisEntry = useMutation({
-    mutationFn: async (email: string) => {
-      if (!organization?.id) {
-        throw new Error("Organisation saknas");
-      }
-
-      const formId = crypto.randomUUID();
-      console.log("Creating entry with organization ID:", organization.id);
-      console.log("Current user ID:", user?.id || null);
-
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .insert({
-          organization_id: organization.id,
-          access_token: crypto.randomUUID(),
-          status: "draft",
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-          form_id: formId,
-          patient_email: email.trim() || null,
-          created_by: user?.id || null
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error creating entry:", error);
-        throw error;
-      }
-      return data;
-    },
-    onSuccess: (data) => {
-      const baseUrl = window.location.origin;
-      const link = `${baseUrl}/patient-form?token=${data.access_token}`;
-      setGeneratedLink(link);
-      
-      queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
-      
-      toast({
-        title: "Länk skapad",
-        description: "Du kan nu kopiera länken och skicka till patienten",
-      });
-    },
-    onError: (error: any) => {
-      console.error("Mutation error:", error);
-      toast({
-        title: "Fel vid skapande av länk",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  });
-
-  const sendLinkMutation = useMutation({
-    mutationFn: async ({ entryId, email }: { entryId: string, email: string }) => {
-      if (!email || !entryId) {
-        throw new Error("E-post och ID krävs");
-      }
-
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .update({
-          status: "sent",
-          patient_email: email,
-          sent_at: new Date().toISOString()
-        })
-        .eq("id", entryId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error sending link:", error);
-        throw error;
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
-      setGeneratedLink("");
-      setPatientEmail("");
-      setIsDialogOpen(false);
-      
-      toast({
-        title: "Länk skickad!",
-        description: "Patienten har fått en länk till anamnesen",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fel vid skickande av länk",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  });
-
-  const handleCreateLink = () => {
-    createAnamnesisEntry.mutate(patientEmail);
-  };
-
-  const handleSendLink = () => {
-    if (!generatedLink || !selectedEntry) return;
-    
-    sendLinkMutation.mutate({ 
-      entryId: selectedEntry.id,
-      email: patientEmail 
-    });
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedLink);
-    toast({
-      title: "Kopierad!",
-      description: "Länken har kopierats till urklipp",
-    });
-  };
 
   const isReady = !supabaseLoading && !isSyncing && isSynced;
 
@@ -199,161 +41,24 @@ const OpticianView = () => {
   }
 
   return (
-    <div className="container max-w-7xl mx-auto">
-      <div className="flex justify-between items-start mb-6">
-        <OpticianHeader />
-        
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Skapa patientlänk
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Skapa ny patientlänk</DialogTitle>
-              <DialogDescription>
-                Skapa en unik länk som du kan skicka till patienten via SMS eller e-post.
-                Länken kommer att vara giltig i 7 dagar.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="patientEmail">Patientens e-post</Label>
-                <Input
-                  id="patientEmail"
-                  placeholder="patient@exempel.se"
-                  value={patientEmail}
-                  onChange={(e) => setPatientEmail(e.target.value)}
-                />
-              </div>
-              
-              {generatedLink && (
-                <div className="grid gap-2">
-                  <Label htmlFor="link">Patientlänk</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="link"
-                      value={generatedLink}
-                      readOnly
-                      className="flex-1"
-                    />
-                    <Button onClick={copyToClipboard}>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Kopiera
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <DialogFooter>
-              {!generatedLink ? (
-                <Button 
-                  onClick={handleCreateLink}
-                  disabled={createAnamnesisEntry.isPending}
-                >
-                  {createAnamnesisEntry.isPending && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
-                  Generera länk
-                </Button>
-              ) : (
-                <div className="flex gap-2 w-full">
-                  {patientEmail && (
-                    <Button 
-                      onClick={handleSendLink}
-                      disabled={sendLinkMutation.isPending}
-                      variant="default"
-                      className="flex-1"
-                    >
-                      {sendLinkMutation.isPending && (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      )}
-                      <Send className="h-4 w-4 mr-2" />
-                      Skicka länk
-                    </Button>
-                  )}
-                  <Button 
-                    onClick={() => {
-                      setIsDialogOpen(false);
-                      setGeneratedLink("");
-                      setPatientEmail("");
-                    }}
-                    variant="outline"
-                    className={patientEmail ? "" : "flex-1"}
-                  >
-                    Stäng
-                  </Button>
-                </div>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-      
-      <div className="grid md:grid-cols-12 gap-6 mt-6">
-        <div className="md:col-span-5 lg:col-span-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="draft">Utkast</TabsTrigger>
-              <TabsTrigger value="sent">Skickade</TabsTrigger>
-              <TabsTrigger value="pending">Att granska</TabsTrigger>
-              <TabsTrigger value="ready">Klara</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="draft" className="mt-4">
-              <EntriesList 
-                status="draft" 
-                selectedEntry={selectedEntry}
-                onSelectEntry={setSelectedEntry}
-              />
-            </TabsContent>
-
-            <TabsContent value="sent" className="mt-4">
-              <EntriesList 
-                status="sent" 
-                selectedEntry={selectedEntry}
-                onSelectEntry={setSelectedEntry}
-              />
-            </TabsContent>
-            
-            <TabsContent value="pending" className="mt-4">
-              <EntriesList 
-                status="pending" 
-                selectedEntry={selectedEntry}
-                onSelectEntry={setSelectedEntry}
-              />
-            </TabsContent>
-            
-            <TabsContent value="ready" className="mt-4">
-              <EntriesList 
-                status="ready" 
-                selectedEntry={selectedEntry}
-                onSelectEntry={setSelectedEntry}
-              />
-            </TabsContent>
-          </Tabs>
+    <AnamnesisProvider>
+      <div className="container max-w-7xl mx-auto">
+        <div className="flex justify-between items-start mb-6">
+          <OpticianHeader />
+          <LinkGenerator />
         </div>
         
-        <div className="md:col-span-7 lg:col-span-8">
-          {selectedEntry ? (
-            <EntryDetails 
-              entry={selectedEntry} 
-              onEntryUpdated={() => setSelectedEntry(null)} 
-            />
-          ) : (
-            <div className="border rounded-lg p-6 text-center h-full flex items-center justify-center">
-              <p className="text-muted-foreground">
-                Välj en anamnes från listan för att se detaljer
-              </p>
-            </div>
-          )}
+        <div className="grid md:grid-cols-12 gap-6 mt-6">
+          <div className="md:col-span-5 lg:col-span-4">
+            <TabsContainer />
+          </div>
+          
+          <div className="md:col-span-7 lg:col-span-8">
+            <ContentContainer />
+          </div>
         </div>
       </div>
-    </div>
+    </AnamnesisProvider>
   );
 };
 

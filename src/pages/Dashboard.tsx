@@ -1,25 +1,12 @@
 
-import { useState } from "react";
-import { useUser, useOrganization } from "@clerk/clerk-react";
-import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useSyncOrganization } from "@/hooks/useSyncOrganization";
-import { NoteForm } from "@/components/Dashboard/NoteForm";
-import { NotesList } from "@/components/Dashboard/NotesList";
-import { DashboardHeader } from "@/components/Dashboard/DashboardHeader";
-import { ErrorAlert } from "@/components/Dashboard/ErrorAlert";
-import { FileText } from "lucide-react";
+import { useOrganization } from "@clerk/clerk-react";
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ClipboardList, FileText, Settings } from "lucide-react";
 
 const Dashboard = () => {
-  const { user } = useUser();
   const { organization } = useOrganization();
-  const [retryCount, setRetryCount] = useState(0);
-  const { supabase, isLoading: supabaseLoading, error: supabaseError } = useSupabaseClient();
-  const { isSyncing, isSynced, error: syncError } = useSyncOrganization();
-  const [notesError, setNotesError] = useState<Error | null>(null);
-
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1);
-  };
 
   if (!organization) {
     return (
@@ -32,36 +19,61 @@ const Dashboard = () => {
     );
   }
 
-  const showRetryButton = (supabaseError || syncError || notesError) && !isSyncing;
-
   return (
-    <div className="max-w-6xl mx-auto">
-      <DashboardHeader 
-        showRetryButton={showRetryButton} 
-        onRetry={handleRetry} 
-      />
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold">Välkommen, {organization.name}</h1>
+        <p className="text-muted-foreground mt-2">Här är en översikt över dina aktiviteter</p>
+      </div>
 
-      <ErrorAlert 
-        supabaseError={supabaseError}
-        syncError={syncError}
-        notesError={notesError}
-        isSyncing={isSyncing}
-      />
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Anamneslista
+            </CardTitle>
+            <CardDescription>Granska och hantera anamneser</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">Här kan du se alla anamneser och markera dem som klara för undersökning.</p>
+            <Button asChild className="w-full">
+              <Link to="/anamnes">Gå till anamneslista</Link>
+            </Button>
+          </CardContent>
+        </Card>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        <NoteForm />
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Anteckningar
+            </CardTitle>
+            <CardDescription>Hantera dina anteckningar</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">Skapa och hantera anteckningar för ditt arbete.</p>
+            <Button asChild variant="secondary" className="w-full">
+              <Link to="/notes">Gå till anteckningar</Link>
+            </Button>
+          </CardContent>
+        </Card>
 
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Dina anteckningar
-          </h2>
-          
-          <NotesList 
-            retryCount={retryCount} 
-            onRetry={handleRetry} 
-          />
-        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Inställningar
+            </CardTitle>
+            <CardDescription>Hantera kontoinställningar</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">Uppdatera dina personliga inställningar och preferenser.</p>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/admin">Gå till inställningar</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

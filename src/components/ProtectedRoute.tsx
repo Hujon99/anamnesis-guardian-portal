@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requireRole?: string;
+  requireRole?: string | string[]; // Modified to accept array of roles
 }
 
 const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
@@ -27,10 +27,16 @@ const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
         return;
       }
 
-      // Check if user has the required role
+      // Check if user has any of the required roles
       if (requireRole && organization) {
-        const hasRole = has({ role: requireRole });
-        setIsAuthorized(hasRole);
+        // Handle both string and array of strings
+        if (Array.isArray(requireRole)) {
+          const hasAnyRole = requireRole.some(role => has({ role }));
+          setIsAuthorized(hasAnyRole);
+        } else {
+          const hasRole = has({ role: requireRole });
+          setIsAuthorized(hasRole);
+        }
       } else if (requireRole) {
         setIsAuthorized(false);
       } else {

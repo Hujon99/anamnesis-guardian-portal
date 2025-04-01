@@ -13,6 +13,7 @@ import SignUpPage from "./pages/SignUpPage";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import OpticianView from "./pages/OpticianView";
+import NotesPage from "./pages/NotesPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -58,14 +59,28 @@ const App = () => (
           }
         />
         
-        {/* Add new Optician View route */}
+        {/* Anamnes List Route (formerly Optician View) */}
         <Route 
-          path="/optician" 
+          path="/anamnes" 
           element={
             <SignedIn>
               <Layout>
-                <ProtectedRoute requireRole="org:member">
+                <ProtectedRoute requireRole={["org:admin", "org:member"]}>
                   <OpticianView />
+                </ProtectedRoute>
+              </Layout>
+            </SignedIn>
+          }
+        />
+        
+        {/* Notes Page */}
+        <Route 
+          path="/notes" 
+          element={
+            <SignedIn>
+              <Layout>
+                <ProtectedRoute>
+                  <NotesPage />
                 </ProtectedRoute>
               </Layout>
             </SignedIn>
@@ -85,6 +100,12 @@ const App = () => (
           }
         />
 
+        {/* Redirect path for backward compatibility */}
+        <Route
+          path="/optician"
+          element={<Navigate to="/anamnes" replace />}
+        />
+
         {/* Catch unauthorized access to protected routes */}
         <Route
           path="/dashboard/*"
@@ -96,7 +117,16 @@ const App = () => (
         />
         
         <Route
-          path="/optician/*"
+          path="/anamnes/*"
+          element={
+            <SignedOut>
+              <RedirectToSignIn />
+            </SignedOut>
+          }
+        />
+        
+        <Route
+          path="/notes/*"
           element={
             <SignedOut>
               <RedirectToSignIn />

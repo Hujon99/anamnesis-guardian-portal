@@ -51,7 +51,7 @@ const OpticianView = () => {
   }
 
   return (
-    <div className="container max-w-7xl mx-auto py-6">
+    <div className="container max-w-7xl mx-auto">
       <OpticianHeader />
       
       <div className="grid md:grid-cols-12 gap-6 mt-6">

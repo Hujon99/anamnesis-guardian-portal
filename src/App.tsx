@@ -28,38 +28,66 @@ const App = () => (
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
 
-        {/* Protected routes */}
+        {/* Home route with authentication check */}
         <Route 
           path="/" 
           element={
-            <SignedIn>
-              <Navigate to="/dashboard" replace />
-            </SignedIn>
+            <>
+              <SignedIn>
+                <Navigate to="/dashboard" replace />
+              </SignedIn>
+              <SignedOut>
+                <HomePage />
+              </SignedOut>
+            </>
           } 
         />
 
-        <Route element={<Layout />}>
-          <Route
-            path="/dashboard"
-            element={
-              <SignedIn>
+        {/* Protected routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <SignedIn>
+              <Layout>
                 <ProtectedRoute>
                   <Dashboard />
                 </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <SignedIn>
+              </Layout>
+            </SignedIn>
+          }
+        />
+        
+        <Route 
+          path="/admin" 
+          element={
+            <SignedIn>
+              <Layout>
                 <ProtectedRoute requireRole="org:admin">
                   <AdminPanel />
                 </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-        </Route>
+              </Layout>
+            </SignedIn>
+          }
+        />
+
+        {/* Catch unauthorized access to protected routes */}
+        <Route
+          path="/dashboard/*"
+          element={
+            <SignedOut>
+              <RedirectToSignIn />
+            </SignedOut>
+          }
+        />
+        
+        <Route
+          path="/admin/*"
+          element={
+            <SignedOut>
+              <RedirectToSignIn />
+            </SignedOut>
+          }
+        />
 
         {/* Catch-all and Not Found */}
         <Route path="*" element={<NotFound />} />

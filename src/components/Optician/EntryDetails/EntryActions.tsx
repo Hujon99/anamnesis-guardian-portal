@@ -24,20 +24,6 @@ export const EntryActions = ({
 }: EntryActionsProps) => {
   return (
     <CardFooter className="border-t pt-4 flex justify-between gap-2 flex-wrap">
-      {status === "draft" && (
-        <Button 
-          onClick={sendLink}
-          disabled={!patientEmail || isSendingLink}
-          className="w-full"
-        >
-          {isSendingLink && (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          )}
-          <Send className="h-4 w-4 mr-2" />
-          Skicka till patient
-        </Button>
-      )}
-      
       {status === "pending" && (
         <Button 
           onClick={() => updateStatus("ready")}

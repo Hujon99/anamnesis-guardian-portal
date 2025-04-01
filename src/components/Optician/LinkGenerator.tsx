@@ -34,11 +34,12 @@ export function LinkGenerator() {
         .insert({
           organization_id: organization.id,
           access_token: crypto.randomUUID(),
-          status: "draft",
+          status: "sent",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
           form_id: formId,
           patient_email: email.trim() || null,
-          created_by: user?.id || null
+          created_by: user?.id || null,
+          sent_at: new Date().toISOString()
         })
         .select()
         .single();
@@ -58,57 +59,13 @@ export function LinkGenerator() {
       
       toast({
         title: "Länk skapad",
-        description: "Du kan nu kopiera länken och skicka till patienten",
+        description: "Länken har skapats och skickats till patienten",
       });
     },
     onError: (error: any) => {
       console.error("Mutation error:", error);
       toast({
         title: "Fel vid skapande av länk",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  });
-
-  const sendLinkMutation = useMutation({
-    mutationFn: async ({ entryId, email }: { entryId: string, email: string }) => {
-      if (!email || !entryId) {
-        throw new Error("E-post och ID krävs");
-      }
-
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .update({
-          status: "sent",
-          patient_email: email,
-          sent_at: new Date().toISOString()
-        })
-        .eq("id", entryId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error sending link:", error);
-        throw error;
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
-      setGeneratedLink("");
-      setPatientEmail("");
-      setIsDialogOpen(false);
-      
-      toast({
-        title: "Länk skickad!",
-        description: "Patienten har fått en länk till anamnesen",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fel vid skickande av länk",
         description: error.message,
         variant: "destructive",
       });
@@ -183,44 +140,21 @@ export function LinkGenerator() {
               {createAnamnesisEntry.isPending && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
-              Generera länk
+              <Send className="h-4 w-4 mr-2" />
+              Skapa och skicka länk
             </Button>
           ) : (
-            <div className="flex gap-2 w-full">
-              {patientEmail && (
-                <Button 
-                  onClick={() => {
-                    const entryData = createAnamnesisEntry.data;
-                    if (entryData && entryData.id) {
-                      sendLinkMutation.mutate({ 
-                        entryId: entryData.id,
-                        email: patientEmail 
-                      });
-                    }
-                  }}
-                  disabled={sendLinkMutation.isPending}
-                  variant="default"
-                  className="flex-1"
-                >
-                  {sendLinkMutation.isPending && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
-                  <Send className="h-4 w-4 mr-2" />
-                  Skicka länk
-                </Button>
-              )}
-              <Button 
-                onClick={() => {
-                  setIsDialogOpen(false);
-                  setGeneratedLink("");
-                  setPatientEmail("");
-                }}
-                variant="outline"
-                className={patientEmail ? "" : "flex-1"}
-              >
-                Stäng
-              </Button>
-            </div>
+            <Button 
+              onClick={() => {
+                setIsDialogOpen(false);
+                setGeneratedLink("");
+                setPatientEmail("");
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              Stäng
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

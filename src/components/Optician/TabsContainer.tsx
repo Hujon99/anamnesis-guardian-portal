@@ -8,26 +8,21 @@ export function TabsContainer() {
   const { activeTab, setActiveTab, selectedEntry, setSelectedEntry } = useAnamnesis();
 
   useEffect(() => {
+    // If activeTab is 'draft', redirect to 'sent' since draft no longer exists
+    if (activeTab === 'draft') {
+      setActiveTab('sent');
+    }
     setSelectedEntry(null);
-  }, [activeTab, setSelectedEntry]);
+  }, [activeTab, setActiveTab, setSelectedEntry]);
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="draft">Utkast</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="sent">Skickade</TabsTrigger>
         <TabsTrigger value="pending">Att granska</TabsTrigger>
         <TabsTrigger value="ready">Klara</TabsTrigger>
       </TabsList>
       
-      <TabsContent value="draft" className="mt-4">
-        <EntriesList 
-          status="draft" 
-          selectedEntry={selectedEntry}
-          onSelectEntry={setSelectedEntry}
-        />
-      </TabsContent>
-
       <TabsContent value="sent" className="mt-4">
         <EntriesList 
           status="sent" 

@@ -12,14 +12,14 @@ export const EntryStatusBadge = ({ status, isExpired }: EntryStatusBadgeProps) =
   }
   
   switch (status) {
-    case "draft":
-      return <Badge variant="outline">Utkast</Badge>;
     case "sent":
       return <Badge variant="secondary">Skickad</Badge>;
     case "pending":
       return <Badge variant="warning">Väntar på granskning</Badge>;
     case "ready":
       return <Badge variant="success">Klar för undersökning</Badge>;
+    case "reviewed":
+      return <Badge className="bg-purple-500 text-white">Granskad</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }

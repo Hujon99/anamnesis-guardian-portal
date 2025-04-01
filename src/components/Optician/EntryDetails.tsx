@@ -91,7 +91,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
       <CardContent className="flex-grow overflow-hidden">
         <ScrollArea className="h-[400px] pr-4">
           <div className="space-y-6">
-            {(entry.status === "draft" || !entry.patient_email) && (
+            {!entry.patient_email && (
               <PatientInfo 
                 patientEmail={patientEmail}
                 isEditing={isEditing}

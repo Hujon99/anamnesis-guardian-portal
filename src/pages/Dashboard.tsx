@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
-import { PlusCircle, FileText, AlertTriangle } from "lucide-react";
+import { PlusCircle, FileText, AlertTriangle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { useSyncOrganization } from "@/hooks/useSyncOrganization";
 import { Tables } from "@/integrations/supabase/types";
 
 type TestNote = Tables<"test_notes">;
@@ -21,6 +22,7 @@ const Dashboard = () => {
   const [content, setContent] = useState("");
   const queryClient = useQueryClient();
   const { supabase, isLoading: supabaseLoading, error: supabaseError } = useSupabaseClient();
+  const { isSyncing, isSynced, error: syncError } = useSyncOrganization();
 
   // Query to fetch test notes
   const { data: notes = [], isLoading, error: notesError } = useQuery({
@@ -45,7 +47,7 @@ const Dashboard = () => {
 
       return data as TestNote[];
     },
-    enabled: !!user && !!organization && !supabaseLoading,
+    enabled: !!user && !!organization && !supabaseLoading && isSynced,
   });
 
   // Mutation to create a new test note
@@ -59,6 +61,8 @@ const Dashboard = () => {
         throw new Error("Titel och innehåll krävs");
       }
 
+      console.log("Creating note with org id:", organization.id);
+      
       const { data, error } = await supabase
         .from("test_notes")
         .insert([
@@ -72,6 +76,7 @@ const Dashboard = () => {
         .select();
 
       if (error) {
+        console.error("Error creating note:", error);
         throw error;
       }
 
@@ -122,12 +127,22 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {supabaseError && (
+      {(supabaseError || syncError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Fel vid anslutning till Supabase</AlertTitle>
+          <AlertTitle>Fel vid anslutning till databasen</AlertTitle>
           <AlertDescription>
-            {supabaseError.message}
+            {supabaseError?.message || syncError?.message}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isSyncing && (
+        <Alert className="mb-6">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertTitle>Synkroniserar organisation</AlertTitle>
+          <AlertDescription>
+            Väntar på synkronisering med databasen...
           </AlertDescription>
         </Alert>
       )}
@@ -155,7 +170,7 @@ const Dashboard = () => {
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Anteckningens titel"
                   required
-                  disabled={supabaseLoading}
+                  disabled={supabaseLoading || isSyncing || createNoteMutation.isPending}
                 />
               </div>
               <div className="space-y-2">
@@ -169,14 +184,14 @@ const Dashboard = () => {
                   placeholder="Skriv innehållet här..."
                   rows={5}
                   required
-                  disabled={supabaseLoading}
+                  disabled={supabaseLoading || isSyncing || createNoteMutation.isPending}
                 />
               </div>
             </CardContent>
             <CardFooter>
               <Button 
                 type="submit" 
-                disabled={createNoteMutation.isPending || supabaseLoading}
+                disabled={createNoteMutation.isPending || supabaseLoading || isSyncing || !isSynced}
               >
                 {createNoteMutation.isPending ? "Sparar..." : "Spara anteckning"}
               </Button>
@@ -190,7 +205,7 @@ const Dashboard = () => {
             Dina anteckningar
           </h2>
           
-          {supabaseLoading ? (
+          {(supabaseLoading || isSyncing) ? (
             <div className="text-center py-8">Laddar anteckningar...</div>
           ) : isLoading ? (
             <div className="text-center py-8">Laddar anteckningar...</div>

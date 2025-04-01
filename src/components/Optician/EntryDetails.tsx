@@ -9,7 +9,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, ClipboardList, Loader2, Send, FileText, ArrowLeft, Clock, Calendar } from "lucide-react";
+import { 
+  CheckCircle, 
+  ClipboardList, 
+  Loader2, 
+  Send, 
+  FileText, 
+  ArrowLeft, 
+  Clock, 
+  Calendar, 
+  Printer, 
+  Download, 
+  Eye, 
+  Edit,
+  Save,
+  Star
+} from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -22,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface EntryDetailsProps {
   entry: AnamnesesEntry;
@@ -34,6 +50,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
   const [notes, setNotes] = useState(entry.internal_notes || "");
   const [patientEmail, setPatientEmail] = useState(entry.patient_email || "");
   const [isEditing, setIsEditing] = useState(false);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   const updateEntryMutation = useMutation({
     mutationFn: async ({ status, notes, email }: { status?: string; notes?: string; email?: string }) => {
@@ -136,18 +153,43 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
       case "ready":
         return <Badge variant="success">Klar för undersökning</Badge>;
       case "reviewed":
-        return <Badge className="bg-purple-500">Granskad</Badge>;
+        return <Badge className="bg-purple-500 text-white">Granskad</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const printForm = () => {
+    setShowPrintPreview(true);
+    setTimeout(() => {
+      window.print();
+      setShowPrintPreview(false);
+    }, 100);
+  };
+
+  const exportToPDF = () => {
+    toast({
+      title: "Exporterar till PDF",
+      description: "Funktionen är under utveckling och kommer snart.",
+    });
   };
 
   const isExpired = entry.expires_at && new Date(entry.expires_at) < new Date();
   const answers = entry.answers as Record<string, string> || {};
   const hasAnswers = entry.answers && Object.keys(answers).length > 0;
 
+  // Build summary of patient answers
+  const getSummary = () => {
+    if (!hasAnswers) return "Ingen information från patienten ännu.";
+    
+    const problemText = answers.problem || "";
+    const symptomText = answers.symptom || "";
+    
+    return `${problemText.substring(0, 60)}${problemText.length > 60 ? '...' : ''} ${symptomText ? '• ' + symptomText.substring(0, 60) + (symptomText.length > 60 ? '...' : '') : ''}`;
+  };
+
   return (
-    <Card className="h-full flex flex-col">
+    <Card className={`h-full flex flex-col ${showPrintPreview ? 'print-view' : ''}`}>
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
@@ -176,8 +218,45 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
               )}
             </CardDescription>
           </div>
-          {getStatusBadge(entry.status || "")}
+          <div className="flex flex-col gap-2 items-end">
+            {getStatusBadge(entry.status || "")}
+            
+            {hasAnswers && (
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex gap-1" 
+                  onClick={printForm}
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Skriv ut</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex gap-1" 
+                  onClick={exportToPDF}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Exportera</span>
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
+        
+        {hasAnswers && (
+          <div className="mt-4">
+            <Alert>
+              <FileText className="h-4 w-4" />
+              <AlertTitle>Sammanfattning</AlertTitle>
+              <AlertDescription>
+                {getSummary()}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden">
         <ScrollArea className="h-[400px] pr-4">
@@ -192,6 +271,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
                       size="sm" 
                       onClick={() => setIsEditing(true)}
                     >
+                      <Edit className="h-3.5 w-3.5 mr-1" />
                       Redigera
                     </Button>
                   ) : (
@@ -218,7 +298,10 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
                         onChange={(e) => setPatientEmail(e.target.value)}
                         placeholder="patient@exempel.se"
                       />
-                      <Button onClick={savePatientEmail}>Spara</Button>
+                      <Button onClick={savePatientEmail}>
+                        <Save className="h-4 w-4 mr-1" />
+                        Spara
+                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -244,11 +327,18 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(answers).map(([question, answer]) => (
-                      <TableRow key={question}>
-                        <TableCell className="font-medium">{question}</TableCell>
-                        <TableCell>{answer}</TableCell>
-                      </TableRow>
+                    {Object.entries(answers)
+                      .filter(([key]) => key !== 'formMetadata')
+                      .map(([question, answer]) => (
+                        <TableRow key={question}>
+                          <TableCell className="font-medium">
+                            {question === 'problem' ? 'Synproblem' : 
+                             question === 'symptom' ? 'Symptom/Huvudvärk' : 
+                             question === 'current_use' ? 'Nuvarande synhjälpmedel' : 
+                             question}
+                          </TableCell>
+                          <TableCell className="whitespace-pre-wrap break-words">{answer}</TableCell>
+                        </TableRow>
                     ))}
                   </TableBody>
                 </Table>
@@ -283,6 +373,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
                 {updateEntryMutation.isPending && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
+                <Save className="h-4 w-4 mr-1" />
                 Spara anteckningar
               </Button>
             </div>
@@ -290,7 +381,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
         </ScrollArea>
       </CardContent>
       
-      <CardFooter className="border-t pt-4 flex justify-between">
+      <CardFooter className="border-t pt-4 flex justify-between gap-2 flex-wrap">
         {entry.status === "draft" && (
           <Button 
             onClick={sendLink}
@@ -309,7 +400,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
           <Button 
             onClick={() => updateStatus("ready")}
             disabled={updateEntryMutation.isPending}
-            className="w-full"
+            className="w-full sm:w-auto flex-1"
           >
             <CheckCircle className="h-4 w-4 mr-2" />
             Markera som klar för undersökning
@@ -317,14 +408,37 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
         )}
         
         {entry.status === "ready" && (
+          <>
+            <Button 
+              onClick={() => updateStatus("reviewed")}
+              disabled={updateEntryMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              <Star className="h-4 w-4 mr-2" />
+              Markera som granskad
+            </Button>
+            
+            <Button 
+              onClick={() => updateStatus("pending")}
+              variant="outline"
+              disabled={updateEntryMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Markera som ej granskad
+            </Button>
+          </>
+        )}
+        
+        {entry.status === "reviewed" && (
           <Button 
-            onClick={() => updateStatus("pending")}
+            onClick={() => updateStatus("ready")}
             variant="outline"
             disabled={updateEntryMutation.isPending}
-            className="w-full"
+            className="w-full sm:w-auto"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Markera som ej granskad
+            Återställ till "Klar för undersökning"
           </Button>
         )}
         
@@ -349,6 +463,35 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
           </Button>
         )}
       </CardFooter>
+      
+      {/* Print Preview Styles - only applied when printing */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-view, .print-view * {
+            visibility: visible;
+          }
+          .print-view {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          .print-view button, 
+          .print-view .ScrollArea, 
+          .print-view [data-radix-scroll-area-viewport] {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+          }
+          /* Hide elements not needed in print */
+          .print-view button {
+            display: none !important;
+          }
+        }
+      `}</style>
     </Card>
   );
 };

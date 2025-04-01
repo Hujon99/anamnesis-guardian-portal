@@ -57,9 +57,49 @@ serve(async (req) => {
     // Check if the entry is expired
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
       return new Response(
-        JSON.stringify({ error: 'Länken har gått ut' }),
+        JSON.stringify({ 
+          error: 'Länken har gått ut',
+          status: 'expired'
+        }),
         { 
           status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Check if the status is not 'sent' - patient can only fill forms in 'sent' status
+    if (data.status !== 'sent') {
+      let message = 'Formuläret kan inte fyllas i för tillfället';
+      let statusCode = 403;
+      
+      if (data.status === 'pending' || data.status === 'ready' || data.status === 'reviewed') {
+        message = 'Formuläret har redan fyllts i';
+        statusCode = 400;
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: message,
+          status: data.status
+        }),
+        { 
+          status: statusCode,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Make sure organization_id exists
+    if (!data.organization_id) {
+      console.error('Missing organization_id for entry:', data.id);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid form configuration',
+          details: 'Missing organization data'
+        }),
+        { 
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );

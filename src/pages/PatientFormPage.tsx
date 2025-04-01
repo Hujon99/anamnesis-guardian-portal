@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, AlertCircle, CheckCircle, FileQuestion, AlertTriangle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, FileQuestion, AlertTriangle, ArrowRight } from "lucide-react";
 
 // Define the form schema
 const formSchema = z.object({
@@ -31,6 +31,8 @@ const PatientFormPage = () => {
   const [expired, setExpired] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [entryData, setEntryData] = useState<any>(null);
+  const [formStep, setFormStep] = useState<number>(0);
+  const [submitLoading, setSubmitLoading] = useState(false);
 
   // Initialize form
   const form = useForm<FormValues>({
@@ -56,10 +58,15 @@ const PatientFormPage = () => {
         });
 
         if (response.error) {
-          if (response.error.message.includes('gått ut')) {
+          if (response.error.message?.includes('gått ut') || response.data?.status === 'expired') {
             setExpired(true);
+          } else if (response.data?.status === 'pending' || 
+                     response.data?.status === 'ready' || 
+                     response.data?.status === 'reviewed') {
+            setSubmitted(true);
+          } else {
+            setError(response.error.message || "Ogiltig eller utgången token.");
           }
-          setError(response.error.message || "Ogiltig eller utgången token.");
           setLoading(false);
           return;
         }
@@ -68,7 +75,9 @@ const PatientFormPage = () => {
           setEntryData(response.data.entry);
           
           // If this form has already been filled, show submitted state
-          if (response.data.entry.status === 'pending' || response.data.entry.status === 'ready') {
+          if (response.data.entry.status === 'pending' || 
+              response.data.entry.status === 'ready' || 
+              response.data.entry.status === 'reviewed') {
             setSubmitted(true);
           }
         } else {
@@ -86,34 +95,155 @@ const PatientFormPage = () => {
     verifyToken();
   }, [token]);
 
+  const nextStep = () => {
+    const { problem, symptom } = form.getValues();
+    
+    // Validate current step
+    if (formStep === 0 && !form.getFieldState('problem').isDirty) {
+      form.setError('problem', { message: 'Du måste fylla i detta fält' });
+      return;
+    }
+    
+    if (formStep === 1 && !form.getFieldState('symptom').isDirty) {
+      form.setError('symptom', { message: 'Du måste fylla i detta fält' });
+      return;
+    }
+    
+    setFormStep(prev => prev + 1);
+  };
+
+  const prevStep = () => {
+    setFormStep(prev => prev - 1);
+  };
+
   const onSubmit = async (values: FormValues) => {
     if (!token) return;
     
     try {
-      setLoading(true);
+      setSubmitLoading(true);
+      const formMetadata = {
+        submittedAt: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        screenSize: `${window.innerWidth}x${window.innerHeight}`
+      };
+      
       const response = await supabase.functions.invoke('submit-form', {
         body: { 
           token,
-          answers: values
+          answers: values,
+          formData: formMetadata
         }
       });
 
       if (response.error) {
-        if (response.error.message.includes('gått ut')) {
+        if (response.error.message.includes('gått ut') || response.data?.status === 'expired') {
           setExpired(true);
+        } else {
+          setError(response.error.message || "Det gick inte att skicka formuläret.");
         }
-        setError(response.error.message || "Det gick inte att skicka formuläret.");
-        setLoading(false);
+        setSubmitLoading(false);
         return;
       }
 
       setSubmitted(true);
-      setLoading(false);
+      setSubmitLoading(false);
     } catch (err) {
       console.error("Error submitting form:", err);
       setError("Ett tekniskt fel uppstod vid inskickning. Försök igen senare.");
-      setLoading(false);
+      setSubmitLoading(false);
     }
+  };
+
+  const renderFormStep = () => {
+    switch (formStep) {
+      case 0:
+        return (
+          <FormField
+            control={form.control}
+            name="problem"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Vad har du för synproblem?</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Beskriv dina synproblem..." 
+                    {...field} 
+                    rows={3}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Beskriv dina synproblem eller anledning till besöket.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+      case 1:
+        return (
+          <FormField
+            control={form.control}
+            name="symptom"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Har du huvudvärk eller ögontrötthet?</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Beskriv dina symptom..." 
+                    {...field} 
+                    rows={3}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Beskriv eventuella symptom som huvudvärk, trötta ögon, etc.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+      case 2:
+        return (
+          <FormField
+            control={form.control}
+            name="current_use"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Använder du glasögon eller linser idag?</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="T.ex. glasögon, linser eller ingenting" 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormDescription>
+                  Beskriv dina nuvarande synhjälpmedel.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderFormProgress = () => {
+    return (
+      <div className="w-full mb-6">
+        <div className="flex justify-between mb-2">
+          <span className="text-xs">Steg {formStep + 1} av 3</span>
+          <span className="text-xs">{Math.round(((formStep + 1) / 3) * 100)}% klart</span>
+        </div>
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-primary transition-all duration-300 ease-in-out" 
+            style={{ width: `${((formStep + 1) / 3) * 100}%` }}
+          ></div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -208,7 +338,14 @@ const PatientFormPage = () => {
               Din optiker kommer att använda denna information för att förbereda din undersökning.
             </p>
           </CardContent>
-          <CardFooter className="flex justify-center">
+          <CardFooter className="flex justify-center flex-col gap-4">
+            <Alert variant="success">
+              <CheckCircle className="h-4 w-4" />
+              <AlertTitle>Nästa steg</AlertTitle>
+              <AlertDescription>
+                Din optiker kommer att gå igenom dina svar. Du behöver inte göra något mer just nu.
+              </AlertDescription>
+            </Alert>
             <p className="text-sm text-muted-foreground text-center">
               Du kan nu stänga denna sida.
             </p>
@@ -219,7 +356,7 @@ const PatientFormPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
@@ -230,80 +367,43 @@ const PatientFormPage = () => {
             <CardDescription className="text-center">
               Vänligen fyll i formuläret nedan för att hjälpa din optiker förbereda din undersökning.
             </CardDescription>
+            {renderFormProgress()}
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="problem"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vad har du för synproblem?</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Beskriv dina synproblem..." 
-                          {...field} 
-                          rows={3}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Beskriv dina synproblem eller anledning till besöket.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {renderFormStep()}
                 
-                <FormField
-                  control={form.control}
-                  name="symptom"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Har du huvudvärk eller ögontrötthet?</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Beskriv dina symptom..." 
-                          {...field} 
-                          rows={3}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Beskriv eventuella symptom som huvudvärk, trötta ögon, etc.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                <div className="flex justify-between mt-8">
+                  {formStep > 0 && (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={prevStep}
+                    >
+                      Föregående
+                    </Button>
                   )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="current_use"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Använder du glasögon eller linser idag?</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="T.ex. glasögon, linser eller ingenting" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Beskriv dina nuvarande synhjälpmedel.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                  
+                  {formStep < 2 ? (
+                    <Button 
+                      type="button" 
+                      className={`${formStep === 0 ? 'ml-auto' : ''}`}
+                      onClick={nextStep}
+                    >
+                      Nästa
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button 
+                      type="submit" 
+                      disabled={submitLoading}
+                    >
+                      {submitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Skicka svar
+                    </Button>
                   )}
-                />
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={loading}
-                >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Skicka svar
-                </Button>
+                </div>
               </form>
             </Form>
           </CardContent>

@@ -18,7 +18,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk';
     
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { token, answers } = await req.json();
+    const { token, answers, formData } = await req.json();
     
     if (!token || !answers) {
       return new Response(
@@ -56,7 +56,10 @@ serve(async (req) => {
     // Check if the entry is expired
     if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
       return new Response(
-        JSON.stringify({ error: 'Länken har gått ut' }),
+        JSON.stringify({ 
+          error: 'Länken har gått ut',
+          status: 'expired'
+        }),
         { 
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -64,11 +67,52 @@ serve(async (req) => {
       );
     }
     
+    // Verify entry status is 'sent'
+    if (entry.status !== 'sent') {
+      let message = 'Formuläret kan inte fyllas i för tillfället';
+      
+      if (entry.status === 'pending' || entry.status === 'ready' || entry.status === 'reviewed') {
+        message = 'Formuläret har redan fyllts i';
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: message,
+          status: entry.status
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Ensure organization_id is preserved
+    if (!entry.organization_id) {
+      console.error('Missing organization_id for entry:', entry.id);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid form configuration',
+          details: 'Missing organization data'
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Prepare the answers data with additional metadata if provided
+    const answersData = {
+      ...answers,
+      ...(formData ? { formMetadata: formData } : {})
+    };
+    
     // Now that we've set the token, let's update the entry
     const { data, error } = await supabase
       .from('anamnes_entries')
       .update({ 
-        answers: answers,
+        answers: answersData,
         status: 'pending',
         updated_at: new Date().toISOString()
       })

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useOrganization } from "@clerk/clerk-react";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
+import { useSyncOrganizationStore } from "./useSyncOrganizationStore";
 
 /**
  * A hook that ensures the current Clerk organization exists in Supabase
@@ -10,26 +11,36 @@ import { toast } from "@/components/ui/use-toast";
 export const useSyncOrganization = () => {
   const { organization, isLoaded: isOrgLoaded } = useOrganization();
   const { supabase, isLoading: isSupabaseLoading } = useSupabaseClient();
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isSynced, setIsSynced] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const syncAttempts = useRef(0);
   const maxRetries = 3;
   const syncedOrgId = useRef<string | null>(null);
+  
+  // Get and set sync state from the store
+  const { setSynced, setSyncing } = useSyncOrganizationStore();
+  const isSynced = useSyncOrganizationStore(state => 
+    state.syncedOrgs[organization?.id || ""] || false
+  );
+  const isSyncing = useSyncOrganizationStore(state => 
+    state.syncingOrgs[organization?.id || ""] || false
+  );
 
   useEffect(() => {
     const syncOrganization = async () => {
-      // Reset sync status when organization changes
-      if (organization?.id && organization.id !== syncedOrgId.current) {
-        setIsSynced(false);
-        syncAttempts.current = 0;
-        syncedOrgId.current = null;
+      // Skip if no organization, auth not loaded, or supabase is loading
+      if (!isOrgLoaded || !organization?.id || isSupabaseLoading) {
+        return;
       }
       
-      // Skip if no organization, auth not loaded, supabase is loading, or already synced this org
-      if (!isOrgLoaded || !organization || isSupabaseLoading || 
-          (isSynced && syncedOrgId.current === organization.id)) {
+      // Skip if already synced this org
+      if (isSynced && syncedOrgId.current === organization.id) {
         return;
+      }
+
+      // Reset sync status when organization changes
+      if (organization.id !== syncedOrgId.current) {
+        syncAttempts.current = 0;
+        syncedOrgId.current = null;
       }
 
       // Prevent excessive retries
@@ -39,7 +50,7 @@ export const useSyncOrganization = () => {
       }
 
       try {
-        setIsSyncing(true);
+        setSyncing(organization.id, true);
         syncAttempts.current += 1;
         
         console.log(`Attempt ${syncAttempts.current}: Syncing organization ${organization.id}`);
@@ -77,7 +88,7 @@ export const useSyncOrganization = () => {
         }
         
         // Mark this org as successfully synced
-        setIsSynced(true);
+        setSynced(organization.id, true);
         syncedOrgId.current = organization.id;
         setError(null);
       } catch (err) {
@@ -98,17 +109,17 @@ export const useSyncOrganization = () => {
           setTimeout(() => {
             // Only reset if we're still on the same org
             if (organization?.id === syncedOrgId.current) {
-              setIsSynced(false); // Trigger another sync attempt
+              setSynced(organization.id, false); // Trigger another sync attempt
             }
           }, retryDelay);
         }
       } finally {
-        setIsSyncing(false);
+        setSyncing(organization.id, false);
       }
     };
 
     syncOrganization();
-  }, [organization, isOrgLoaded, supabase, isSupabaseLoading, isSynced]);
+  }, [organization, isOrgLoaded, supabase, isSupabaseLoading, isSynced, setSynced, setSyncing]);
 
   return { isSyncing, isSynced, error };
 };

@@ -1,130 +1,24 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useUser, useOrganization } from "@clerk/clerk-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/components/ui/use-toast";
-import { PlusCircle, FileText, AlertTriangle, Loader2 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSyncOrganization } from "@/hooks/useSyncOrganization";
-import { Tables } from "@/integrations/supabase/types";
-
-type TestNote = Tables<"test_notes">;
+import { NoteForm } from "@/components/Dashboard/NoteForm";
+import { NotesList } from "@/components/Dashboard/NotesList";
+import { DashboardHeader } from "@/components/Dashboard/DashboardHeader";
+import { ErrorAlert } from "@/components/Dashboard/ErrorAlert";
+import { FileText } from "lucide-react";
 
 const Dashboard = () => {
   const { user } = useUser();
   const { organization } = useOrganization();
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const queryClient = useQueryClient();
+  const [retryCount, setRetryCount] = useState(0);
   const { supabase, isLoading: supabaseLoading, error: supabaseError } = useSupabaseClient();
   const { isSyncing, isSynced, error: syncError } = useSyncOrganization();
-  const [retryCount, setRetryCount] = useState(0);
+  const [notesError, setNotesError] = useState<Error | null>(null);
 
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
-    queryClient.invalidateQueries({ queryKey: ["testNotes"] });
-  };
-
-  const { data: notes = [], isLoading, error: notesError, refetch } = useQuery({
-    queryKey: ["testNotes", organization?.id, isSynced, retryCount],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      
-      if (!isSynced) {
-        console.log("Organization not synced yet, delaying notes fetch");
-        return [];
-      }
-      
-      console.log("Fetching notes for organization:", organization.id);
-      
-      const { data, error } = await supabase
-        .from("test_notes")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching notes:", error);
-        throw error;
-      }
-
-      return data as TestNote[];
-    },
-    enabled: !!user && !!organization && !supabaseLoading && isSynced,
-    retry: 3,
-    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000),
-    meta: {
-      errorHandler: (error: any) => {
-        toast({
-          title: "Fel vid hämtning av anteckningar",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    }
-  });
-
-  useEffect(() => {
-    if (isSynced && organization?.id) {
-      refetch();
-    }
-  }, [isSynced, organization?.id, refetch]);
-
-  const createNoteMutation = useMutation({
-    mutationFn: async () => {
-      if (!organization?.id) {
-        throw new Error("Ingen organisation vald");
-      }
-      
-      if (!title.trim() || !content.trim()) {
-        throw new Error("Titel och innehåll krävs");
-      }
-
-      console.log("Creating note with org id:", organization.id);
-      
-      const { data, error } = await supabase
-        .from("test_notes")
-        .insert([
-          {
-            title,
-            content,
-            user_id: user?.id || "",
-            organization_id: organization?.id,
-          },
-        ])
-        .select();
-
-      if (error) {
-        console.error("Error creating note:", error);
-        throw error;
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Anteckning skapad",
-        description: "Din anteckning har sparats.",
-      });
-      setTitle("");
-      setContent("");
-      queryClient.invalidateQueries({ queryKey: ["testNotes"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fel vid skapande av anteckning",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createNoteMutation.mutate();
   };
 
   if (!organization) {
@@ -138,98 +32,24 @@ const Dashboard = () => {
     );
   }
 
-  const showRetryButton = (supabaseError || syncError || notesError) && !isSyncing && !isLoading;
+  const showRetryButton = (supabaseError || syncError || notesError) && !isSyncing;
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-gray-600">
-            Organisation: {organization?.name}
-          </p>
-        </div>
-        
-        {showRetryButton && (
-          <Button variant="outline" onClick={handleRetry}>
-            <Loader2 className="mr-2 h-4 w-4" />
-            Försök igen
-          </Button>
-        )}
-      </div>
+      <DashboardHeader 
+        showRetryButton={showRetryButton} 
+        onRetry={handleRetry} 
+      />
 
-      {(supabaseError || syncError || notesError) && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Ett fel har uppstått</AlertTitle>
-          <AlertDescription>
-            {supabaseError?.message || syncError?.message || (notesError as Error)?.message || 
-              "Det uppstod ett problem med anslutningen till databasen. Försök igen senare."}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {isSyncing && (
-        <Alert className="mb-6">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <AlertTitle>Synkroniserar organisation</AlertTitle>
-          <AlertDescription>
-            Väntar på synkronisering med databasen...
-          </AlertDescription>
-        </Alert>
-      )}
+      <ErrorAlert 
+        supabaseError={supabaseError}
+        syncError={syncError}
+        notesError={notesError}
+        isSyncing={isSyncing}
+      />
 
       <div className="grid md:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PlusCircle className="h-5 w-5" />
-              Skapa ny anteckning
-            </CardTitle>
-            <CardDescription>
-              Lägg till en ny testanteckning för din organisation
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="title" className="text-sm font-medium">
-                  Titel
-                </label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Anteckningens titel"
-                  required
-                  disabled={supabaseLoading || isSyncing || createNoteMutation.isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="content" className="text-sm font-medium">
-                  Innehåll
-                </label>
-                <Textarea
-                  id="content"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="Skriv innehållet här..."
-                  rows={5}
-                  required
-                  disabled={supabaseLoading || isSyncing || createNoteMutation.isPending}
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                type="submit" 
-                disabled={createNoteMutation.isPending || supabaseLoading || isSyncing || !isSynced}
-              >
-                {createNoteMutation.isPending ? "Sparar..." : "Spara anteckning"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+        <NoteForm />
 
         <div className="space-y-6">
           <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -237,39 +57,10 @@ const Dashboard = () => {
             Dina anteckningar
           </h2>
           
-          {(supabaseLoading || isSyncing) ? (
-            <div className="text-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              <p>Laddar anteckningar...</p>
-            </div>
-          ) : isLoading ? (
-            <div className="text-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              <p>Laddar anteckningar...</p>
-            </div>
-          ) : notes.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <p className="text-gray-500">Du har inga anteckningar än</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {notes.map((note) => (
-                <Card key={note.id}>
-                  <CardHeader>
-                    <CardTitle>{note.title}</CardTitle>
-                    <CardDescription>
-                      Skapad: {new Date(note.created_at).toLocaleDateString('sv-SE')}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="whitespace-pre-wrap">{note.content}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <NotesList 
+            retryCount={retryCount} 
+            onRetry={handleRetry} 
+          />
         </div>
       </div>
     </div>

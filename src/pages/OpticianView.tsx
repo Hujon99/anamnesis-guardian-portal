@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useOrganization } from "@clerk/clerk-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +8,7 @@ import { EntriesList } from "@/components/Optician/EntriesList";
 import { EntryDetails } from "@/components/Optician/EntryDetails";
 import { OpticianHeader } from "@/components/Optician/OpticianHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Plus } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Copy } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { 
@@ -50,6 +51,7 @@ const OpticianView = () => {
       }
 
       const formId = crypto.randomUUID();
+      console.log("Creating entry with organization ID:", organization.id);
 
       const { data, error } = await supabase
         .from("anamnes_entries")
@@ -63,7 +65,10 @@ const OpticianView = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error creating entry:", error);
+        throw error;
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -79,6 +84,7 @@ const OpticianView = () => {
       });
     },
     onError: (error: any) => {
+      console.error("Mutation error:", error);
       toast({
         title: "Fel vid skapande av länk",
         description: error.message,
@@ -164,7 +170,10 @@ const OpticianView = () => {
                       readOnly
                       className="flex-1"
                     />
-                    <Button onClick={copyToClipboard}>Kopiera</Button>
+                    <Button onClick={copyToClipboard}>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Kopiera
+                    </Button>
                   </div>
                 </div>
               )}

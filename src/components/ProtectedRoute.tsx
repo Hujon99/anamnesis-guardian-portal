@@ -1,5 +1,5 @@
 
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useOrganization, RedirectToSignIn } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -9,37 +9,56 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
-  const { isLoaded, userId, has } = useAuth();
+  const { isLoaded: isAuthLoaded, userId, has } = useAuth();
+  const { isLoaded: isOrgLoaded, organization } = useOrganization();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (isLoaded) {
+    if (isAuthLoaded && isOrgLoaded) {
+      // Check if user is logged in
       if (!userId) {
         setIsAuthorized(false);
         return;
       }
 
-      if (!requireRole) {
+      // If no organization is required, just check user authentication
+      if (!requireRole && organization) {
         setIsAuthorized(true);
         return;
       }
 
       // Check if user has the required role
-      if (requireRole) {
+      if (requireRole && organization) {
         const hasRole = has({ role: requireRole });
         setIsAuthorized(hasRole);
-      } else {
+      } else if (requireRole) {
         setIsAuthorized(false);
+      } else {
+        setIsAuthorized(true);
       }
     }
-  }, [isLoaded, userId, requireRole, has]);
+  }, [isAuthLoaded, isOrgLoaded, userId, organization, requireRole, has]);
 
-  if (!isLoaded || isAuthorized === null) {
+  // Show loading state
+  if (!isAuthLoaded || !isOrgLoaded || isAuthorized === null) {
     return <div className="flex items-center justify-center min-h-screen">Laddar...</div>;
   }
 
+  // Redirect to sign-in if not authorized
   if (!isAuthorized) {
-    return <Navigate to="/sign-in" replace />;
+    return <RedirectToSignIn />;
+  }
+
+  // If no organization, show a message
+  if (isAuthorized && !organization) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <h2 className="text-2xl font-bold mb-4">Organisation krävs</h2>
+        <p className="text-gray-600 mb-6 text-center">
+          Du måste skapa eller tillhöra en organisation för att använda Anamnesportalen.
+        </p>
+      </div>
+    );
   }
 
   return <>{children}</>;

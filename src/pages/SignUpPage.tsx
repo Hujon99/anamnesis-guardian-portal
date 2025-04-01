@@ -14,6 +14,7 @@ const SignUpPage = () => {
           path="/sign-up"
           routing="path"
           signInUrl="/sign-in"
+          afterSignUpUrl="/dashboard"
           appearance={{
             elements: {
               rootBox: "mx-auto",
@@ -23,7 +24,9 @@ const SignUpPage = () => {
               formButtonPrimary: "bg-primary hover:bg-primary/90",
             }
           }}
-        />
+        >
+          <SignUp.OrganizationStep />
+        </SignUp>
       </div>
     </div>
   );

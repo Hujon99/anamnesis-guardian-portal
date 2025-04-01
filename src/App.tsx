@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 
 // Pages
@@ -24,30 +24,44 @@ const App = () => (
       <Toaster />
       <Sonner />
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        {/* Public routes */}
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
-        
-        {/* Protected Routes */}
+
+        {/* Protected routes */}
+        <Route 
+          path="/" 
+          element={
+            <SignedIn>
+              <Navigate to="/dashboard" replace />
+            </SignedIn>
+          } 
+        />
+
         <Route element={<Layout />}>
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
+              <SignedIn>
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              </SignedIn>
             }
           />
           <Route
             path="/admin"
             element={
-              <ProtectedRoute requireRole="org:admin">
-                <AdminPanel />
-              </ProtectedRoute>
+              <SignedIn>
+                <ProtectedRoute requireRole="org:admin">
+                  <AdminPanel />
+                </ProtectedRoute>
+              </SignedIn>
             }
           />
         </Route>
-        
+
+        {/* Catch-all and Not Found */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </TooltipProvider>

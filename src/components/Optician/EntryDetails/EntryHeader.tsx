@@ -1,4 +1,3 @@
-
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatDate } from "@/lib/date-utils";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +40,6 @@ export const EntryHeader = ({
 }: EntryHeaderProps) => {
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "draft":
-        return <Badge variant="outline">Utkast</Badge>;
       case "sent":
         return <Badge variant="secondary">Skickad till patient</Badge>;
       case "pending":

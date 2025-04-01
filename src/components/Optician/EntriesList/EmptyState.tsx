@@ -8,8 +8,6 @@ interface EmptyStateProps {
 export const EmptyState = ({ status }: EmptyStateProps) => {
   const getMessage = () => {
     switch (status) {
-      case "draft":
-        return "Inga utkast";
       case "sent":
         return "Inga skickade anamneser";
       case "pending":

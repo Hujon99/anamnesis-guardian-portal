@@ -17,6 +17,7 @@ import NotesPage from "./pages/NotesPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PatientFormPage from "./pages/PatientFormPage";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,9 @@ const App = () => (
         {/* Public routes */}
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
+        
+        {/* Public patient form route - accessible without authentication */}
+        <Route path="/fylli" element={<PatientFormPage />} />
 
         {/* Home route with authentication check */}
         <Route 

@@ -32,7 +32,9 @@ const App = () => (
         <Route path="/sign-up/*" element={<SignUpPage />} />
         
         {/* Public patient form route - accessible without authentication */}
-        <Route path="/fylli" element={<PatientFormPage />} />
+        <Route path="/patient-form" element={<PatientFormPage />} />
+        {/* Backward compatibility for old links */}
+        <Route path="/fylli" element={<Navigate to="/patient-form" replace />} />
 
         {/* Home route with authentication check */}
         <Route 

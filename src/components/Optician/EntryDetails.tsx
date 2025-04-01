@@ -109,7 +109,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
               </h3>
               
               <div className="space-y-4">
-                {Object.entries(mockAnswers).map(([question, answer]) => (
+                {Object.entries(mockAnswers as Record<string, string>).map(([question, answer]) => (
                   <div key={question} className="border-b pb-3">
                     <p className="font-medium">{question}</p>
                     <p className="text-muted-foreground">{answer}</p>

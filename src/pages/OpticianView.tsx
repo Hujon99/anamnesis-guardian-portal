@@ -1,31 +1,97 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOrganization } from "@clerk/clerk-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSyncOrganization } from "@/hooks/useSyncOrganization";
 import { OpticianHeader } from "@/components/Optician/OpticianHeader";
 import { LinkGenerator } from "@/components/Optician/LinkGenerator";
 import { TabsContainer } from "@/components/Optician/TabsContainer";
 import { ContentContainer } from "@/components/Optician/ContentContainer";
-import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
+import { AnamnesisProvider, useAnamnesis } from "@/contexts/AnamnesisContext";
+import { QueryErrorResetBoundary } from "@tanstack/react-query";
+import { ErrorBoundary } from "react-error-boundary";
 
-const OpticianView = () => {
+// Error fallback component
+const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
+  const { refreshClient } = useSupabaseClient();
+  
+  const handleReset = async () => {
+    // First refresh auth, then reset error boundary
+    await refreshClient();
+    resetErrorBoundary();
+  };
+
+  return (
+    <Alert variant="destructive" className="mb-6">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Ett fel uppstod</AlertTitle>
+      <AlertDescription className="space-y-4">
+        <p>{error.message || "Ett oväntat fel uppstod. Försök ladda om sidan."}</p>
+        <Button onClick={handleReset} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Försök igen
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+};
+
+// Main content component (wrapped with error boundary)
+const OpticianContent = () => {
   const { organization } = useOrganization();
-  const { supabase, isLoading: supabaseLoading } = useSupabaseClient();
-  const { isSyncing, isSynced } = useSyncOrganization();
+  const { supabase, isLoading: supabaseLoading, error: supabaseError, refreshClient } = useSupabaseClient();
+  const { isSyncing, isSynced, error: syncError } = useSyncOrganization();
+  const { error: contextError, clearError, refreshData } = useAnamnesis();
   const [error, setError] = useState<Error | null>(null);
 
   const isReady = !supabaseLoading && !isSyncing && isSynced;
+  const combinedError = error || supabaseError || syncError || contextError;
 
-  if (error) {
+  // Effect to handle reset when critical dependencies change
+  useEffect(() => {
+    if (organization?.id && !isReady && !combinedError) {
+      const initializeData = async () => {
+        try {
+          await refreshClient();
+          setTimeout(() => {
+            refreshData();
+          }, 100);
+        } catch (err) {
+          console.error("Error initializing data:", err);
+          setError(err instanceof Error ? err : new Error(String(err)));
+        }
+      };
+      
+      initializeData();
+    }
+    
+    // Clear local error when context error changes
+    return () => {
+      setError(null);
+    };
+  }, [organization?.id, isReady, combinedError, refreshClient, refreshData]);
+
+  const handleRetry = async () => {
+    setError(null);
+    clearError();
+    await refreshClient();
+    refreshData();
+  };
+
+  if (combinedError) {
     return (
       <Alert variant="destructive" className="mb-6">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Fel</AlertTitle>
-        <AlertDescription>
-          {error.message}
+        <AlertDescription className="space-y-4">
+          <p>{combinedError.message}</p>
+          <Button onClick={handleRetry} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Försök igen
+          </Button>
         </AlertDescription>
       </Alert>
     );
@@ -41,24 +107,37 @@ const OpticianView = () => {
   }
 
   return (
-    <AnamnesisProvider>
-      <div className="container max-w-7xl mx-auto">
-        <div className="flex justify-between items-start mb-6">
-          <OpticianHeader />
-          <LinkGenerator />
+    <div className="container max-w-7xl mx-auto">
+      <div className="flex justify-between items-start mb-6">
+        <OpticianHeader />
+        <LinkGenerator />
+      </div>
+      
+      <div className="grid md:grid-cols-12 gap-6 mt-6">
+        <div className="md:col-span-5 lg:col-span-4">
+          <TabsContainer />
         </div>
         
-        <div className="grid md:grid-cols-12 gap-6 mt-6">
-          <div className="md:col-span-5 lg:col-span-4">
-            <TabsContainer />
-          </div>
-          
-          <div className="md:col-span-7 lg:col-span-8">
-            <ContentContainer />
-          </div>
+        <div className="md:col-span-7 lg:col-span-8">
+          <ContentContainer />
         </div>
       </div>
-    </AnamnesisProvider>
+    </div>
+  );
+};
+
+// Main component with provider and error boundary
+const OpticianView = () => {
+  return (
+    <QueryErrorResetBoundary>
+      {({ reset }) => (
+        <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
+          <AnamnesisProvider>
+            <OpticianContent />
+          </AnamnesisProvider>
+        </ErrorBoundary>
+      )}
+    </QueryErrorResetBoundary>
   );
 };
 

@@ -66,6 +66,7 @@ const OpticianView = () => {
 
       const formId = crypto.randomUUID();
       console.log("Creating entry with organization ID:", organization.id);
+      console.log("Current user ID:", user?.id || null);
 
       const { data, error } = await supabase
         .from("anamnes_entries")

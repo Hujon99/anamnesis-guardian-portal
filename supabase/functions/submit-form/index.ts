@@ -30,15 +30,47 @@ serve(async (req) => {
       );
     }
 
-    // Call the function to set the token in the current transaction
+    // First verify the token and get the current entry
     await supabase.rpc('set_access_token', { token });
+    
+    const { data: entry, error: entryError } = await supabase
+      .from('anamnes_entries')
+      .select('*')
+      .eq('access_token', token)
+      .single();
+      
+    if (entryError) {
+      console.error('Error fetching entry with token:', entryError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid token',
+          details: entryError.message
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Check if the entry is expired
+    if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
+      return new Response(
+        JSON.stringify({ error: 'Länken har gått ut' }),
+        { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     // Now that we've set the token, let's update the entry
     const { data, error } = await supabase
       .from('anamnes_entries')
       .update({ 
         answers: answers,
-        status: 'ready'
+        status: 'pending',
+        updated_at: new Date().toISOString()
       })
       .eq('access_token', token)
       .select()

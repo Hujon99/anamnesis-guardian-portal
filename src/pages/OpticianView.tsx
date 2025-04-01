@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useOrganization } from "@clerk/clerk-react";
+import { useOrganization, useUser } from "@clerk/clerk-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSyncOrganization } from "@/hooks/useSyncOrganization";
@@ -8,7 +8,7 @@ import { EntriesList } from "@/components/Optician/EntriesList";
 import { EntryDetails } from "@/components/Optician/EntryDetails";
 import { OpticianHeader } from "@/components/Optician/OpticianHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Plus, Copy } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Copy, Send } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { 
@@ -29,9 +29,10 @@ export type AnamnesesEntry = Tables<"anamnes_entries">;
 
 const OpticianView = () => {
   const { organization } = useOrganization();
+  const { user } = useUser();
   const { supabase, isLoading: supabaseLoading } = useSupabaseClient();
   const { isSyncing, isSynced } = useSyncOrganization();
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState("draft");
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,9 +59,11 @@ const OpticianView = () => {
         .insert({
           organization_id: organization.id,
           access_token: crypto.randomUUID(),
-          status: "pending",
+          status: "draft",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
           form_id: formId,
+          patient_email: email.trim() || null,
+          created_by: user?.id || null
         })
         .select()
         .single();
@@ -93,8 +96,61 @@ const OpticianView = () => {
     }
   });
 
+  const sendLinkMutation = useMutation({
+    mutationFn: async ({ entryId, email }: { entryId: string, email: string }) => {
+      if (!email || !entryId) {
+        throw new Error("E-post och ID krävs");
+      }
+
+      const { data, error } = await supabase
+        .from("anamnes_entries")
+        .update({
+          status: "sent",
+          patient_email: email,
+          sent_at: new Date().toISOString()
+        })
+        .eq("id", entryId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error sending link:", error);
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
+      setGeneratedLink("");
+      setPatientEmail("");
+      setIsDialogOpen(false);
+      
+      toast({
+        title: "Länk skickad!",
+        description: "Patienten har fått en länk till anamnesen",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fel vid skickande av länk",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleCreateLink = () => {
     createAnamnesisEntry.mutate(patientEmail);
+  };
+
+  const handleSendLink = () => {
+    if (!generatedLink || !selectedEntry) return;
+    
+    sendLinkMutation.mutate({ 
+      entryId: selectedEntry.id,
+      email: patientEmail 
+    });
   };
 
   const copyToClipboard = () => {
@@ -151,7 +207,7 @@ const OpticianView = () => {
             
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="patientEmail">Patientens e-post (valfritt)</Label>
+                <Label htmlFor="patientEmail">Patientens e-post</Label>
                 <Input
                   id="patientEmail"
                   placeholder="patient@exempel.se"
@@ -191,13 +247,33 @@ const OpticianView = () => {
                   Generera länk
                 </Button>
               ) : (
-                <Button onClick={() => {
-                  setIsDialogOpen(false);
-                  setGeneratedLink("");
-                  setPatientEmail("");
-                }}>
-                  Stäng
-                </Button>
+                <div className="flex gap-2 w-full">
+                  {patientEmail && (
+                    <Button 
+                      onClick={handleSendLink}
+                      disabled={sendLinkMutation.isPending}
+                      variant="default"
+                      className="flex-1"
+                    >
+                      {sendLinkMutation.isPending && (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      )}
+                      <Send className="h-4 w-4 mr-2" />
+                      Skicka länk
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      setGeneratedLink("");
+                      setPatientEmail("");
+                    }}
+                    variant="outline"
+                    className={patientEmail ? "" : "flex-1"}
+                  >
+                    Stäng
+                  </Button>
+                </div>
               )}
             </DialogFooter>
           </DialogContent>
@@ -207,10 +283,28 @@ const OpticianView = () => {
       <div className="grid md:grid-cols-12 gap-6 mt-6">
         <div className="md:col-span-5 lg:col-span-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="draft">Utkast</TabsTrigger>
+              <TabsTrigger value="sent">Skickade</TabsTrigger>
               <TabsTrigger value="pending">Att granska</TabsTrigger>
               <TabsTrigger value="ready">Klara</TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="draft" className="mt-4">
+              <EntriesList 
+                status="draft" 
+                selectedEntry={selectedEntry}
+                onSelectEntry={setSelectedEntry}
+              />
+            </TabsContent>
+
+            <TabsContent value="sent" className="mt-4">
+              <EntriesList 
+                status="sent" 
+                selectedEntry={selectedEntry}
+                onSelectEntry={setSelectedEntry}
+              />
+            </TabsContent>
             
             <TabsContent value="pending" className="mt-4">
               <EntriesList 

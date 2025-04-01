@@ -14,34 +14,46 @@ export type Database = {
           access_token: string | null
           answers: Json | null
           created_at: string | null
+          created_by: string | null
           expires_at: string | null
           form_id: string
           id: string
           internal_notes: string | null
           organization_id: string
+          patient_email: string | null
+          sent_at: string | null
           status: string | null
+          updated_at: string | null
         }
         Insert: {
           access_token?: string | null
           answers?: Json | null
           created_at?: string | null
+          created_by?: string | null
           expires_at?: string | null
           form_id: string
           id?: string
           internal_notes?: string | null
           organization_id: string
+          patient_email?: string | null
+          sent_at?: string | null
           status?: string | null
+          updated_at?: string | null
         }
         Update: {
           access_token?: string | null
           answers?: Json | null
           created_at?: string | null
+          created_by?: string | null
           expires_at?: string | null
           form_id?: string
           id?: string
           internal_notes?: string | null
           organization_id?: string
+          patient_email?: string | null
+          sent_at?: string | null
           status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }

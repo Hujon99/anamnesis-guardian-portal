@@ -57,7 +57,7 @@ serve(async (req) => {
     // Check if the entry is expired
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
       return new Response(
-        JSON.stringify({ error: 'Token has expired' }),
+        JSON.stringify({ error: 'Länken har gått ut' }),
         { 
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

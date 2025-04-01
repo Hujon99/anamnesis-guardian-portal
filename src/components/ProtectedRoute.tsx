@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
-  const { isLoaded, userId, orgId, has } = useAuth();
+  const { isLoaded, userId, has } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -25,14 +25,14 @@ const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
       }
 
       // Check if user has the required role
-      if (orgId && requireRole) {
-        const hasRole = has({ role: requireRole, orgId });
+      if (requireRole) {
+        const hasRole = has({ role: requireRole });
         setIsAuthorized(hasRole);
       } else {
         setIsAuthorized(false);
       }
     }
-  }, [isLoaded, userId, orgId, requireRole, has]);
+  }, [isLoaded, userId, requireRole, has]);
 
   if (!isLoaded || isAuthorized === null) {
     return <div className="flex items-center justify-center min-h-screen">Laddar...</div>;

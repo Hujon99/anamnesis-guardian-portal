@@ -5,8 +5,8 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-// You'll need to add your Clerk publishable key in your project
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+// Your Clerk publishable key
+const PUBLISHABLE_KEY = "pk_test_dG9nZXRoZXItbGFkeWJ1Zy05NC5jbGVyay5hY2NvdW50cy5kZXYk";
 
 if (!PUBLISHABLE_KEY) {
   throw new Error('Missing Clerk Publishable Key');

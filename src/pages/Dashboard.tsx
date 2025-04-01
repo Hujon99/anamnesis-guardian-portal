@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@supabase/supabase-js";
 import { toast } from "@/components/ui/use-toast";
-import { PlusCircle, FileText } from "lucide-react";
+import { PlusCircle, FileText, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialize Supabase client only if environment variables are present
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseConfigured = supabaseUrl && supabaseAnonKey;
+const supabase = supabaseConfigured ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 interface TestNote {
   id: number;
@@ -34,6 +36,10 @@ const Dashboard = () => {
 
   // Function to get Supabase client with Clerk JWT
   const getSupabaseWithAuth = async () => {
+    if (!supabaseConfigured) {
+      throw new Error('Supabase configuration is missing');
+    }
+    
     const token = await getToken({ template: "supabase" });
     return createClient(supabaseUrl, supabaseAnonKey, {
       global: {
@@ -45,9 +51,13 @@ const Dashboard = () => {
   };
 
   // Query to fetch test notes
-  const { data: notes = [], isLoading } = useQuery({
+  const { data: notes = [], isLoading, error: notesError } = useQuery({
     queryKey: ["testNotes"],
     queryFn: async () => {
+      if (!supabaseConfigured) {
+        return [];
+      }
+      
       const supabaseWithAuth = await getSupabaseWithAuth();
       const { data, error } = await supabaseWithAuth
         .from("test_notes")
@@ -66,12 +76,16 @@ const Dashboard = () => {
 
       return data as TestNote[];
     },
-    enabled: !!user && !!organization,
+    enabled: !!user && !!organization && supabaseConfigured,
   });
 
   // Mutation to create a new test note
   const createNoteMutation = useMutation({
     mutationFn: async () => {
+      if (!supabaseConfigured) {
+        throw new Error('Supabase configuration is missing');
+      }
+      
       if (!title.trim() || !content.trim()) {
         throw new Error("Titel och innehåll krävs");
       }
@@ -137,6 +151,16 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {!supabaseConfigured && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Supabase-konfiguration saknas</AlertTitle>
+          <AlertDescription>
+            För att kunna använda anteckningsfunktionen behöver du konfigurera Supabase-miljövariabler (VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY).
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid md:grid-cols-2 gap-8">
         <Card>
           <CardHeader>
@@ -160,6 +184,7 @@ const Dashboard = () => {
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Anteckningens titel"
                   required
+                  disabled={!supabaseConfigured}
                 />
               </div>
               <div className="space-y-2">
@@ -173,13 +198,14 @@ const Dashboard = () => {
                   placeholder="Skriv innehållet här..."
                   rows={5}
                   required
+                  disabled={!supabaseConfigured}
                 />
               </div>
             </CardContent>
             <CardFooter>
               <Button 
                 type="submit" 
-                disabled={createNoteMutation.isPending}
+                disabled={createNoteMutation.isPending || !supabaseConfigured}
               >
                 {createNoteMutation.isPending ? "Sparar..." : "Spara anteckning"}
               </Button>
@@ -193,7 +219,13 @@ const Dashboard = () => {
             Dina anteckningar
           </h2>
           
-          {isLoading ? (
+          {!supabaseConfigured ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-gray-500">Supabase-konfiguration saknas</p>
+              </CardContent>
+            </Card>
+          ) : isLoading ? (
             <div className="text-center py-8">Laddar anteckningar...</div>
           ) : notes.length === 0 ? (
             <Card>

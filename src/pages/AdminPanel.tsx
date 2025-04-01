@@ -5,14 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@supabase/supabase-js";
 import { toast } from "@/components/ui/use-toast";
-import { User, Users } from "lucide-react";
+import { User, Users, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialize Supabase client only if environment variables are present
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseConfigured = supabaseUrl && supabaseAnonKey;
+const supabase = supabaseConfigured ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 interface OrgUser {
   id: string;
@@ -31,6 +33,10 @@ const AdminPanel = () => {
 
   // Function to get Supabase client with Clerk JWT
   const getSupabaseWithAuth = async () => {
+    if (!supabaseConfigured) {
+      throw new Error('Supabase configuration is missing');
+    }
+    
     const token = await getToken({ template: "supabase" });
     return createClient(supabaseUrl, supabaseAnonKey, {
       global: {
@@ -45,6 +51,10 @@ const AdminPanel = () => {
   const { data: orgUsers = [], isLoading } = useQuery({
     queryKey: ["orgUsers"],
     queryFn: async () => {
+      if (!supabaseConfigured) {
+        return [];
+      }
+      
       const supabaseWithAuth = await getSupabaseWithAuth();
       const { data, error } = await supabaseWithAuth
         .from("users")
@@ -69,7 +79,7 @@ const AdminPanel = () => {
         name: `User ${user.id.substring(0, 4)}`,
       })) as OrgUser[];
     },
-    enabled: !!user && !!organization,
+    enabled: !!user && !!organization && supabaseConfigured,
   });
 
   if (!organization) {
@@ -93,6 +103,16 @@ const AdminPanel = () => {
           </p>
         </div>
       </div>
+
+      {!supabaseConfigured && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Supabase-konfiguration saknas</AlertTitle>
+          <AlertDescription>
+            För att kunna använda admin-funktionerna behöver du konfigurera Supabase-miljövariabler (VITE_SUPABASE_URL och VITE_SUPABASE_ANON_KEY).
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs defaultValue="users" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
@@ -118,7 +138,11 @@ const AdminPanel = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {!supabaseConfigured ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Supabase-konfiguration saknas</p>
+                </div>
+              ) : isLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="flex items-center space-x-4">

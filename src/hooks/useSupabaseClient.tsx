@@ -19,6 +19,8 @@ export const useSupabaseClient = () => {
   const initialized = useRef(false);
   // Store the last known token to detect changes
   const lastTokenRef = useRef<string | null>(null);
+  // Track the token refresh interval
+  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Creating a function to cleanly handle the async code
@@ -73,16 +75,25 @@ export const useSupabaseClient = () => {
 
     setupClient();
     
-    // Set up an interval to refresh the token periodically
-    const intervalId = setInterval(() => {
-      if (session) {
-        initialized.current = false; // Force recreation on next check
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Set up an interval to refresh the token periodically only if we have a session
+    if (session) {
+      intervalRef.current = window.setInterval(() => {
+        console.log("Token refresh check");
         setupClient();
-      }
-    }, 5 * 60 * 1000); // Check every 5 minutes
+      }, 4 * 60 * 1000); // Check every 4 minutes (JWTs typically expire after 5 minutes)
+    }
     
     return () => {
-      clearInterval(intervalId);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [isAuthLoaded, userId, session]);
 

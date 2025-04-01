@@ -15,16 +15,20 @@ export const useSyncOrganization = () => {
   const [error, setError] = useState<Error | null>(null);
   const syncAttempts = useRef(0);
   const maxRetries = 3;
+  const syncedOrgId = useRef<string | null>(null);
 
   useEffect(() => {
     const syncOrganization = async () => {
       // Reset sync status when organization changes
-      if (organization?.id !== undefined) {
+      if (organization?.id && organization.id !== syncedOrgId.current) {
         setIsSynced(false);
         syncAttempts.current = 0;
+        syncedOrgId.current = null;
       }
       
-      if (!isOrgLoaded || !organization || isSupabaseLoading || isSynced) {
+      // Skip if no organization, auth not loaded, supabase is loading, or already synced this org
+      if (!isOrgLoaded || !organization || isSupabaseLoading || 
+          (isSynced && syncedOrgId.current === organization.id)) {
         return;
       }
 
@@ -72,7 +76,9 @@ export const useSyncOrganization = () => {
           console.log("Organization already exists in Supabase");
         }
         
+        // Mark this org as successfully synced
         setIsSynced(true);
+        syncedOrgId.current = organization.id;
         setError(null);
       } catch (err) {
         console.error("Error syncing organization with Supabase:", err);
@@ -90,7 +96,10 @@ export const useSyncOrganization = () => {
           const retryDelay = Math.min(1000 * Math.pow(2, syncAttempts.current - 1), 10000);
           console.log(`Scheduling retry in ${retryDelay}ms`);
           setTimeout(() => {
-            setIsSynced(false); // Trigger another sync attempt
+            // Only reset if we're still on the same org
+            if (organization?.id === syncedOrgId.current) {
+              setIsSynced(false); // Trigger another sync attempt
+            }
           }, retryDelay);
         }
       } finally {

@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      anamnes_entries: {
+        Row: {
+          access_token: string | null
+          answers: Json | null
+          created_at: string | null
+          expires_at: string | null
+          form_id: string
+          id: string
+          internal_notes: string | null
+          organization_id: string
+          status: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          answers?: Json | null
+          created_at?: string | null
+          expires_at?: string | null
+          form_id: string
+          id?: string
+          internal_notes?: string | null
+          organization_id: string
+          status?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          answers?: Json | null
+          created_at?: string | null
+          expires_at?: string | null
+          form_id?: string
+          id?: string
+          internal_notes?: string | null
+          organization_id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           id: string

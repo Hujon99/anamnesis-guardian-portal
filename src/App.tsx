@@ -12,6 +12,7 @@ import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
+import OpticianView from "./pages/OpticianView";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -57,6 +58,20 @@ const App = () => (
           }
         />
         
+        {/* Add new Optician View route */}
+        <Route 
+          path="/optician" 
+          element={
+            <SignedIn>
+              <Layout>
+                <ProtectedRoute requireRole="org:member">
+                  <OpticianView />
+                </ProtectedRoute>
+              </Layout>
+            </SignedIn>
+          }
+        />
+        
         <Route 
           path="/admin" 
           element={
@@ -73,6 +88,15 @@ const App = () => (
         {/* Catch unauthorized access to protected routes */}
         <Route
           path="/dashboard/*"
+          element={
+            <SignedOut>
+              <RedirectToSignIn />
+            </SignedOut>
+          }
+        />
+        
+        <Route
+          path="/optician/*"
           element={
             <SignedOut>
               <RedirectToSignIn />

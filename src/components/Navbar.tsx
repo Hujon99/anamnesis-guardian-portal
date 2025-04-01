@@ -7,7 +7,8 @@ const Navbar = () => {
   const { has } = useAuth();
   const { organization, isLoaded } = useOrganization();
 
-  const isAdmin = organization?.id ? has({ role: "org:admin", orgId: organization.id }) : false;
+  // Use orgId instead of organization.id in the has method
+  const isAdmin = organization?.id ? has({ role: "org:admin", org_id: organization.id }) : false;
 
   return (
     <header className="border-b">

@@ -8,13 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { PlusCircle } from "lucide-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useOrganization } from "@clerk/clerk-react";
+import { useOrganization, useUser } from "@clerk/clerk-react";
 import { useSyncOrganizationStore } from "@/hooks/useSyncOrganizationStore";
 
 export const NoteForm = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const { organization } = useOrganization();
+  const { user } = useUser();
   const queryClient = useQueryClient();
   const { supabase, isLoading: supabaseLoading } = useSupabaseClient();
   const { isSyncing, isSynced } = useSyncStatus();
@@ -29,14 +30,18 @@ export const NoteForm = () => {
         throw new Error("Titel och innehåll krävs");
       }
       
+      if (!user?.id) {
+        throw new Error("Användar-ID saknas");
+      }
+      
       const { data, error } = await supabase
         .from("test_notes")
         .insert([
           {
             title,
             content,
-            user_id: organization?.membershipRole || "",
-            organization_id: organization?.id,
+            user_id: user.id,
+            organization_id: organization.id,
           },
         ])
         .select();

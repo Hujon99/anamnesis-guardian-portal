@@ -1,6 +1,4 @@
-
 import { useState } from "react";
-import { useOrganization } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnamnesesEntry } from "@/pages/OpticianView";
@@ -178,7 +176,6 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
   const answers = entry.answers as Record<string, string> || {};
   const hasAnswers = entry.answers && Object.keys(answers).length > 0;
 
-  // Build summary of patient answers
   const getSummary = () => {
     if (!hasAnswers) return "Ingen information från patienten ännu.";
     
@@ -464,8 +461,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
         )}
       </CardFooter>
       
-      {/* Print Preview Styles - only applied when printing */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           body * {
             visibility: hidden;
@@ -491,7 +487,7 @@ export const EntryDetails = ({ entry, onEntryUpdated }: EntryDetailsProps) => {
             display: none !important;
           }
         }
-      `}</style>
+      `}} />
     </Card>
   );
 };

@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useOrganization } from "@clerk/clerk-react";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
@@ -13,15 +13,32 @@ export const useSyncOrganization = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const syncAttempts = useRef(0);
+  const maxRetries = 3;
 
   useEffect(() => {
     const syncOrganization = async () => {
+      // Reset sync status when organization changes
+      if (organization?.id !== undefined) {
+        setIsSynced(false);
+        syncAttempts.current = 0;
+      }
+      
       if (!isOrgLoaded || !organization || isSupabaseLoading || isSynced) {
+        return;
+      }
+
+      // Prevent excessive retries
+      if (syncAttempts.current >= maxRetries) {
+        console.log(`Max sync attempts (${maxRetries}) reached for org: ${organization.id}`);
         return;
       }
 
       try {
         setIsSyncing(true);
+        syncAttempts.current += 1;
+        
+        console.log(`Attempt ${syncAttempts.current}: Syncing organization ${organization.id}`);
         
         // Check if organization exists in Supabase
         const { data: existingOrg, error: fetchError } = await supabase
@@ -31,6 +48,7 @@ export const useSyncOrganization = () => {
           .maybeSingle();
           
         if (fetchError) {
+          console.error("Error fetching organization:", fetchError);
           throw fetchError;
         }
         
@@ -45,6 +63,7 @@ export const useSyncOrganization = () => {
             });
             
           if (insertError) {
+            console.error("Error inserting organization:", insertError);
             throw insertError;
           }
           
@@ -54,14 +73,26 @@ export const useSyncOrganization = () => {
         }
         
         setIsSynced(true);
+        setError(null);
       } catch (err) {
         console.error("Error syncing organization with Supabase:", err);
         setError(err instanceof Error ? err : new Error(String(err)));
-        toast({
-          title: "Synkroniseringsfel",
-          description: "Det gick inte att synkronisera organisation med databasen.",
-          variant: "destructive",
-        });
+        
+        // Only show toast on final attempt
+        if (syncAttempts.current >= maxRetries) {
+          toast({
+            title: "Synkroniseringsfel",
+            description: "Det gick inte att synkronisera organisation med databasen. Försök igen senare.",
+            variant: "destructive",
+          });
+        } else {
+          // Schedule a retry with exponential backoff
+          const retryDelay = Math.min(1000 * Math.pow(2, syncAttempts.current - 1), 10000);
+          console.log(`Scheduling retry in ${retryDelay}ms`);
+          setTimeout(() => {
+            setIsSynced(false); // Trigger another sync attempt
+          }, retryDelay);
+        }
       } finally {
         setIsSyncing(false);
       }

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth, useClerk } from "@clerk/clerk-react";
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
@@ -14,13 +14,20 @@ export const useSupabaseClient = () => {
   const [authenticatedClient, setAuthenticatedClient] = useState(supabaseClient);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  
+  // Use a ref to track if we've initialized the client to prevent duplicate setups
+  const initialized = useRef(false);
 
   useEffect(() => {
+    // Creating a function to cleanly handle the async code
     const setupClient = async () => {
+      // Skip if already initialized or auth not loaded
+      if (initialized.current || !isAuthLoaded) return;
+      
       try {
         setIsLoading(true);
         
-        if (!isAuthLoaded || !userId || !session) {
+        if (!userId || !session) {
           // Return the unauthenticated client if no user is logged in
           setAuthenticatedClient(supabaseClient);
           return;
@@ -39,9 +46,14 @@ export const useSupabaseClient = () => {
                   Authorization: `Bearer ${token}`,
                 },
               },
+              auth: {
+                autoRefreshToken: false,
+                persistSession: false
+              }
             }
           );
           setAuthenticatedClient(client);
+          initialized.current = true;
         }
       } catch (err) {
         console.error("Error setting up Supabase client with Clerk session token:", err);
@@ -52,6 +64,24 @@ export const useSupabaseClient = () => {
     };
 
     setupClient();
+
+    // Create a listener for Clerk session changes
+    const handleSessionChange = () => {
+      // Reset the initialization flag so we regenerate on next render
+      initialized.current = false;
+      setupClient();
+    };
+
+    // Listen for session token changes
+    if (session) {
+      session.listen(handleSessionChange);
+    }
+
+    return () => {
+      if (session) {
+        session.unlisten(handleSessionChange);
+      }
+    };
   }, [isAuthLoaded, userId, session]);
 
   return { supabase: authenticatedClient, isLoading, error };

@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser, useOrganization } from "@clerk/clerk-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,12 +22,24 @@ const Dashboard = () => {
   const queryClient = useQueryClient();
   const { supabase, isLoading: supabaseLoading, error: supabaseError } = useSupabaseClient();
   const { isSyncing, isSynced, error: syncError } = useSyncOrganization();
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Query to fetch test notes
-  const { data: notes = [], isLoading, error: notesError } = useQuery({
-    queryKey: ["testNotes"],
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    queryClient.invalidateQueries({ queryKey: ["testNotes"] });
+  };
+
+  const { data: notes = [], isLoading, error: notesError, refetch } = useQuery({
+    queryKey: ["testNotes", organization?.id, isSynced, retryCount],
     queryFn: async () => {
       if (!organization?.id) return [];
+      
+      if (!isSynced) {
+        console.log("Organization not synced yet, delaying notes fetch");
+        return [];
+      }
+      
+      console.log("Fetching notes for organization:", organization.id);
       
       const { data, error } = await supabase
         .from("test_notes")
@@ -37,20 +48,29 @@ const Dashboard = () => {
 
       if (error) {
         console.error("Error fetching notes:", error);
-        toast({
-          title: "Fel vid hämtning av anteckningar",
-          description: error.message,
-          variant: "destructive",
-        });
-        return [];
+        throw error;
       }
 
       return data as TestNote[];
     },
     enabled: !!user && !!organization && !supabaseLoading && isSynced,
+    retry: 3,
+    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000),
+    onError: (error: any) => {
+      toast({
+        title: "Fel vid hämtning av anteckningar",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   });
 
-  // Mutation to create a new test note
+  useEffect(() => {
+    if (isSynced && organization?.id) {
+      refetch();
+    }
+  }, [isSynced, organization?.id, refetch]);
+
   const createNoteMutation = useMutation({
     mutationFn: async () => {
       if (!organization?.id) {
@@ -116,6 +136,8 @@ const Dashboard = () => {
     );
   }
 
+  const showRetryButton = (supabaseError || syncError || notesError) && !isSyncing && !isLoading;
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
@@ -125,14 +147,22 @@ const Dashboard = () => {
             Organisation: {organization?.name}
           </p>
         </div>
+        
+        {showRetryButton && (
+          <Button variant="outline" onClick={handleRetry}>
+            <Loader2 className="mr-2 h-4 w-4" />
+            Försök igen
+          </Button>
+        )}
       </div>
 
-      {(supabaseError || syncError) && (
+      {(supabaseError || syncError || notesError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Fel vid anslutning till databasen</AlertTitle>
+          <AlertTitle>Ett fel har uppstått</AlertTitle>
           <AlertDescription>
-            {supabaseError?.message || syncError?.message}
+            {supabaseError?.message || syncError?.message || (notesError as Error)?.message || 
+              "Det uppstod ett problem med anslutningen till databasen. Försök igen senare."}
           </AlertDescription>
         </Alert>
       )}
@@ -206,9 +236,15 @@ const Dashboard = () => {
           </h2>
           
           {(supabaseLoading || isSyncing) ? (
-            <div className="text-center py-8">Laddar anteckningar...</div>
+            <div className="text-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              <p>Laddar anteckningar...</p>
+            </div>
           ) : isLoading ? (
-            <div className="text-center py-8">Laddar anteckningar...</div>
+            <div className="text-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              <p>Laddar anteckningar...</p>
+            </div>
           ) : notes.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">

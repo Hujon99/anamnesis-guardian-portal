@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, Loader2, RefreshCw, Clock, CheckCircle, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { AnamnesesEntry } from "@/pages/OpticianView";
+import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatDate } from "@/lib/date-utils";
 import { Badge } from "@/components/ui/badge";
 

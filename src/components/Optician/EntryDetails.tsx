@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AnamnesesEntry } from "@/pages/OpticianView";
+import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatDate } from "@/lib/date-utils";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";

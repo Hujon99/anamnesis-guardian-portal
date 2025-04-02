@@ -20,7 +20,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting submit-form function - v3');
+    console.log('Starting submit-form function - v4');
     console.log('Request URL:', req.url);
     console.log('Request method:', req.method);
     

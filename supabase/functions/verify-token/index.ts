@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting verify-token function - v5');
+    console.log('Starting verify-token function - v6');
     console.log('Request URL:', req.url);
     console.log('Request method:', req.method);
     

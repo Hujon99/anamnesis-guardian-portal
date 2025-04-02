@@ -1,4 +1,3 @@
-
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission.
@@ -20,15 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle, FileQuestion, AlertTriangle, ArrowRight } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { FormQuestion, FormTemplate } from "@/hooks/useFormTemplate";
-
-// Interface for the anamnes_forms table that isn't in the generated types yet
-interface AnamnesForm {
-  id: string;
-  organization_id: string | null;
-  title: string;
-  schema: FormTemplate;
-  created_at: string | null;
-}
+import { AnamnesForm } from "@/types/anamnesis";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -36,6 +27,7 @@ const PatientFormPage = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [entryData, setEntryData] = useState<any>(null);
@@ -100,56 +92,80 @@ const PatientFormPage = () => {
       }
 
       try {
+        console.log(`Verifying token: ${token}`);
         const response = await supabase.functions.invoke('verify-token', {
           body: { token }
         });
 
+        console.log('Token verification response:', response);
+
         if (response.error) {
-          if (response.error.message?.includes('gått ut') || response.data?.status === 'expired') {
+          console.error("Token verification failed:", response.error);
+          console.error("Response data:", response.data);
+          
+          // Handle different error cases based on error code
+          if (response.data?.code === 'expired' || response.data?.status === 'expired') {
             setExpired(true);
-          } else if (response.data?.status === 'pending' || 
-                     response.data?.status === 'ready' || 
-                     response.data?.status === 'reviewed') {
+          } else if (
+            response.data?.code === 'already_submitted' || 
+            response.data?.status === 'pending' || 
+            response.data?.status === 'ready' || 
+            response.data?.status === 'reviewed'
+          ) {
             setSubmitted(true);
           } else {
-            setError(response.error.message || "Ogiltig eller utgången token.");
+            // Set both the error message and error code
+            setError(response.error.message || response.data?.error || "Ogiltig eller utgången token.");
+            setErrorCode(response.data?.code || "unknown_error");
           }
+          
           setLoading(false);
           return;
         }
 
         if (response.data?.success) {
           const entryData = response.data.entry;
+          console.log("Entry data received:", entryData);
           setEntryData(entryData);
           
           // Fetch form schema
-          const { data: formData, error: formError } = await supabase
-            .from('anamnes_forms' as any)
-            .select("*")
-            .or(`organization_id.eq.${entryData.organization_id},organization_id.is.null`)
-            .order("organization_id", { ascending: false })
-            .limit(1)
-            .single();
+          try {
+            console.log(`Fetching form schema for organization: ${entryData.organization_id}`);
+            const { data: formData, error: formError } = await supabase
+              .from('anamnes_forms' as any)
+              .select("*")
+              .or(`organization_id.eq.${entryData.organization_id},organization_id.is.null`)
+              .order("organization_id", { ascending: false })
+              .limit(1)
+              .single();
+              
+            if (formError) {
+              console.error("Error fetching form template:", formError);
+              setError("Kunde inte ladda formuläret. Vänligen försök igen senare.");
+              setLoading(false);
+              return;
+            }
             
-          if (formError) {
-            console.error("Error fetching form template:", formError);
-            setError("Kunde inte ladda formuläret. Vänligen försök igen senare.");
-            setLoading(false);
-            return;
-          }
-          
-          if (formData) {
-            // Type assertion to handle the schema property
-            const typedFormData = formData as unknown as AnamnesForm;
-            setFormSchema(typedFormData.schema);
-            
-            // Initialize form with default values
-            const defaultValues: Record<string, string> = {};
-            typedFormData.schema.questions.forEach((q: FormQuestion) => {
-              defaultValues[q.id] = "";
-            });
-            
-            form.reset(defaultValues);
+            if (formData) {
+              console.log("Form template loaded:", formData);
+              // Type assertion to handle the schema property
+              const typedFormData = formData as unknown as AnamnesForm;
+              setFormSchema(typedFormData.schema);
+              
+              // Initialize form with default values
+              const defaultValues: Record<string, string> = {};
+              typedFormData.schema.questions.forEach((q: FormQuestion) => {
+                defaultValues[q.id] = "";
+              });
+              
+              form.reset(defaultValues);
+            } else {
+              console.error("No form template found");
+              setError("Inget formulär hittades för denna organisation.");
+            }
+          } catch (formErr) {
+            console.error("Error in form schema fetching:", formErr);
+            setError("Kunde inte ladda formuläret. Ett tekniskt fel uppstod.");
           }
           
           // If this form has already been filled, show submitted state
@@ -159,6 +175,7 @@ const PatientFormPage = () => {
             setSubmitted(true);
           }
         } else {
+          console.error("Invalid response structure:", response);
           setError("Kunde inte verifiera åtkomst. Kontakta din optiker.");
         }
 
@@ -401,7 +418,9 @@ const PatientFormPage = () => {
             </div>
             <CardTitle className="text-center text-destructive">Åtkomst nekad</CardTitle>
             <CardDescription className="text-center">
-              Vi kunde inte verifiera din åtkomst till formuläret.
+              {errorCode === 'server_error' 
+                ? 'Ett tekniskt problem uppstod när vi försökte verifiera din åtkomst.' 
+                : 'Vi kunde inte verifiera din åtkomst till formuläret.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -410,11 +429,16 @@ const PatientFormPage = () => {
               <AlertTitle>Fel</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+            {errorCode && (
+              <div className="mt-4 text-sm text-muted-foreground">
+                <p>Felkod: {errorCode}</p>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground text-center">
               Om du fick länken via SMS, kontrollera att du kopierat hela länken. 
-              Vid fortsatta problem, kontakta din optiker.
+              Vid fortsatta problem, kontakta din optiker och nämn felkoden ovan.
             </p>
           </CardFooter>
         </Card>

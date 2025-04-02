@@ -1,4 +1,10 @@
 
+/**
+ * This edge function verifies patient access tokens for anamnes forms.
+ * It handles token validation, checks expiration, and verifies form status
+ * before allowing patients to access and complete their forms.
+ */
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
@@ -18,11 +24,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk';
     
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { token } = await req.json();
+    const requestData = await req.json().catch(() => ({}));
+    const { token } = requestData;
     
     if (!token) {
+      console.error('Token missing in request');
       return new Response(
-        JSON.stringify({ error: 'Token is required' }),
+        JSON.stringify({ error: 'Token är obligatorisk' }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -30,10 +38,9 @@ serve(async (req) => {
       );
     }
 
-    // Call the function to set the token in the current transaction
-    await supabase.rpc('set_access_token', { token });
+    console.log(`Verifying token: ${token.substring(0, 6)}...`);
     
-    // Now that we've set the token, let's try to get the entry
+    // Direct database query for the entry with this token - more reliable than RPC
     const { data, error } = await supabase
       .from('anamnes_entries')
       .select('*')
@@ -44,8 +51,9 @@ serve(async (req) => {
       console.error('Error fetching entry with token:', error);
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid or expired token',
-          details: error.message
+          error: 'Ogiltig eller utgången länk',
+          details: error.message,
+          code: 'invalid_token'
         }),
         { 
           status: 404,
@@ -54,12 +62,32 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Found entry with ID: ${data.id}, status: ${data.status}`);
+    
+    // Check if the entry has an organization ID
+    if (!data.organization_id) {
+      console.error('Missing organization_id for entry:', data.id);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Formulärkonfigurationen är ogiltig',
+          details: 'Saknar organisationsdata',
+          code: 'missing_org'
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
     // Check if the entry is expired
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      console.log(`Token expired at ${data.expires_at}`);
       return new Response(
         JSON.stringify({ 
           error: 'Länken har gått ut',
-          status: 'expired'
+          status: 'expired',
+          code: 'expired'
         }),
         { 
           status: 403,
@@ -72,16 +100,20 @@ serve(async (req) => {
     if (data.status !== 'sent') {
       let message = 'Formuläret kan inte fyllas i för tillfället';
       let statusCode = 403;
+      let errorCode = 'invalid_status';
       
       if (data.status === 'pending' || data.status === 'ready' || data.status === 'reviewed') {
         message = 'Formuläret har redan fyllts i';
         statusCode = 400;
+        errorCode = 'already_submitted';
       }
       
+      console.log(`Invalid status for form submission: ${data.status}`);
       return new Response(
         JSON.stringify({ 
           error: message,
-          status: data.status
+          status: data.status,
+          code: errorCode
         }),
         { 
           status: statusCode,
@@ -90,21 +122,7 @@ serve(async (req) => {
       );
     }
     
-    // Make sure organization_id exists
-    if (!data.organization_id) {
-      console.error('Missing organization_id for entry:', data.id);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid form configuration',
-          details: 'Missing organization data'
-        }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-    
+    console.log('Token verification successful');
     return new Response(
       JSON.stringify({ 
         success: true,
@@ -116,9 +134,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in verify-token function:', error);
+    console.error('Unexpected error in verify-token function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: 'Ett oväntat fel uppstod', 
+        details: error.message,
+        code: 'server_error'
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

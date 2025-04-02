@@ -57,6 +57,30 @@ export type Database = {
         }
         Relationships: []
       }
+      anamnes_forms: {
+        Row: {
+          created_at: string | null
+          id: string
+          organization_id: string | null
+          schema: Json
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+          schema: Json
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+          schema?: Json
+          title?: string
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           id: string

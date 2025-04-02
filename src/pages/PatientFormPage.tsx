@@ -1,4 +1,10 @@
 
+/**
+ * This page renders the patient form based on a dynamic form template.
+ * It handles token verification, form rendering, validation, and submission.
+ * The form template is fetched from the anamnes_forms table.
+ */
+
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
@@ -12,15 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle, FileQuestion, AlertTriangle, ArrowRight } from "lucide-react";
-
-// Define the form schema
-const formSchema = z.object({
-  problem: z.string().min(5, { message: "Beskriv dina synproblem (minst 5 tecken)" }),
-  symptom: z.string().min(5, { message: "Beskriv dina symptom (minst 5 tecken)" }),
-  current_use: z.string().min(3, { message: "Beskriv vad du använder idag (minst 3 tecken)" })
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { FormQuestion } from "@/hooks/useFormTemplate";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -31,18 +30,57 @@ const PatientFormPage = () => {
   const [expired, setExpired] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [entryData, setEntryData] = useState<any>(null);
+  const [formSchema, setFormSchema] = useState<any>(null);
   const [formStep, setFormStep] = useState<number>(0);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [formQuestions, setFormQuestions] = useState<FormQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+
+  // Dynamically create the form validation schema based on the form template
+  const createDynamicSchema = (questions: FormQuestion[]) => {
+    const schemaFields: Record<string, any> = {};
+    
+    questions.forEach(question => {
+      // Skip questions that have conditions
+      if (!question.show_if) {
+        schemaFields[question.id] = z.string().min(1, { 
+          message: `${question.label} måste besvaras` 
+        });
+      }
+    });
+    
+    return z.object(schemaFields);
+  };
 
   // Initialize form
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      problem: "",
-      symptom: "",
-      current_use: ""
-    }
+  const [zodSchema, setZodSchema] = useState(z.object({}));
+  const form = useForm<any>({
+    resolver: zodResolver(zodSchema),
+    defaultValues: {}
   });
+
+  // Watch all form values to handle conditional questions
+  const formValues = form.watch();
+  
+  // Update the visible questions based on form values
+  useEffect(() => {
+    if (formSchema?.questions) {
+      const visibleQuestions = formSchema.questions.filter((question: FormQuestion) => {
+        // If question has a condition, check if it should be visible
+        if (question.show_if) {
+          const conditionQuestion = question.show_if.question;
+          const conditionValue = question.show_if.equals;
+          return formValues[conditionQuestion] === conditionValue;
+        }
+        return true;
+      });
+      
+      setFormQuestions(visibleQuestions);
+      
+      // Update validation schema for visible questions
+      setZodSchema(createDynamicSchema(visibleQuestions));
+    }
+  }, [formSchema, formValues]);
 
   useEffect(() => {
     const verifyToken = async () => {
@@ -72,12 +110,41 @@ const PatientFormPage = () => {
         }
 
         if (response.data?.success) {
-          setEntryData(response.data.entry);
+          const entryData = response.data.entry;
+          setEntryData(entryData);
+          
+          // Fetch form schema
+          const { data: formData, error: formError } = await supabase
+            .from("anamnes_forms")
+            .select("*")
+            .or(`organization_id.eq.${entryData.organization_id},organization_id.is.null`)
+            .order("organization_id", { ascending: false })
+            .limit(1)
+            .single();
+            
+          if (formError) {
+            console.error("Error fetching form template:", formError);
+            setError("Kunde inte ladda formuläret. Vänligen försök igen senare.");
+            setLoading(false);
+            return;
+          }
+          
+          if (formData) {
+            setFormSchema(formData.schema);
+            
+            // Initialize form with default values
+            const defaultValues: Record<string, string> = {};
+            formData.schema.questions.forEach((q: FormQuestion) => {
+              defaultValues[q.id] = "";
+            });
+            
+            form.reset(defaultValues);
+          }
           
           // If this form has already been filled, show submitted state
-          if (response.data.entry.status === 'pending' || 
-              response.data.entry.status === 'ready' || 
-              response.data.entry.status === 'reviewed') {
+          if (entryData.status === 'pending' || 
+              entryData.status === 'ready' || 
+              entryData.status === 'reviewed') {
             setSubmitted(true);
           }
         } else {
@@ -93,22 +160,29 @@ const PatientFormPage = () => {
     };
 
     verifyToken();
-  }, [token]);
+  }, [token, form]);
 
   const nextStep = () => {
-    const { problem, symptom } = form.getValues();
+    // Get visible questions for current step
+    const currentStepQuestions = getCurrentStepQuestions();
     
-    // Validate current step
-    if (formStep === 0 && !form.getFieldState('problem').isDirty) {
-      form.setError('problem', { message: 'Du måste fylla i detta fält' });
-      return;
-    }
+    // Check if all fields in current step are valid
+    let isValid = true;
     
-    if (formStep === 1 && !form.getFieldState('symptom').isDirty) {
-      form.setError('symptom', { message: 'Du måste fylla i detta fält' });
-      return;
-    }
+    currentStepQuestions.forEach(question => {
+      const fieldState = form.getFieldState(question.id);
+      
+      if (!fieldState.isDirty) {
+        form.setError(question.id, { message: 'Du måste fylla i detta fält' });
+        isValid = false;
+      } else if (fieldState.error) {
+        isValid = false;
+      }
+    });
     
+    if (!isValid) return;
+    
+    // Move to next step
     setFormStep(prev => prev + 1);
   };
 
@@ -116,7 +190,16 @@ const PatientFormPage = () => {
     setFormStep(prev => prev - 1);
   };
 
-  const onSubmit = async (values: FormValues) => {
+  // Get questions for current step
+  const getCurrentStepQuestions = () => {
+    if (!formQuestions.length) return [];
+    
+    const questionsPerStep = 1;
+    const startIdx = formStep * questionsPerStep;
+    return formQuestions.slice(startIdx, startIdx + questionsPerStep);
+  };
+
+  const onSubmit = async (values: any) => {
     if (!token) return;
     
     try {
@@ -154,92 +237,100 @@ const PatientFormPage = () => {
     }
   };
 
-  const renderFormStep = () => {
-    switch (formStep) {
-      case 0:
+  const renderFormField = (question: FormQuestion) => {
+    switch (question.type) {
+      case "text":
         return (
           <FormField
+            key={question.id}
             control={form.control}
-            name="problem"
+            name={question.id}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Vad har du för synproblem?</FormLabel>
+                <FormLabel>{question.label}</FormLabel>
                 <FormControl>
                   <Textarea 
-                    placeholder="Beskriv dina synproblem..." 
+                    placeholder={`Skriv ditt svar här...`} 
                     {...field} 
                     rows={3}
                   />
                 </FormControl>
                 <FormDescription>
-                  Beskriv dina synproblem eller anledning till besöket.
+                  Var så detaljerad som möjligt i ditt svar.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         );
-      case 1:
+        
+      case "radio":
         return (
           <FormField
+            key={question.id}
             control={form.control}
-            name="symptom"
+            name={question.id}
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Har du huvudvärk eller ögontrötthet?</FormLabel>
+              <FormItem className="space-y-3">
+                <FormLabel>{question.label}</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="Beskriv dina symptom..." 
-                    {...field} 
-                    rows={3}
-                  />
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-col space-y-1"
+                  >
+                    {question.options?.map(option => (
+                      <FormItem key={option} className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <RadioGroupItem value={option} />
+                        </FormControl>
+                        <FormLabel className="font-normal">{option}</FormLabel>
+                      </FormItem>
+                    ))}
+                  </RadioGroup>
                 </FormControl>
-                <FormDescription>
-                  Beskriv eventuella symptom som huvudvärk, trötta ögon, etc.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         );
-      case 2:
-        return (
-          <FormField
-            control={form.control}
-            name="current_use"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Använder du glasögon eller linser idag?</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="T.ex. glasögon, linser eller ingenting" 
-                    {...field} 
-                  />
-                </FormControl>
-                <FormDescription>
-                  Beskriv dina nuvarande synhjälpmedel.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
+        
       default:
-        return null;
+        return (
+          <FormField
+            key={question.id}
+            control={form.control}
+            name={question.id}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{question.label}</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
     }
   };
 
   const renderFormProgress = () => {
+    if (!formQuestions.length) return null;
+    
+    const progress = (formStep + 1) / formQuestions.length;
+    const percentage = Math.min(Math.round(progress * 100), 100);
+    
     return (
       <div className="w-full mb-6">
         <div className="flex justify-between mb-2">
-          <span className="text-xs">Steg {formStep + 1} av 3</span>
-          <span className="text-xs">{Math.round(((formStep + 1) / 3) * 100)}% klart</span>
+          <span className="text-xs">Steg {formStep + 1} av {formQuestions.length}</span>
+          <span className="text-xs">{percentage}% klart</span>
         </div>
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div 
             className="h-full bg-primary transition-all duration-300 ease-in-out" 
-            style={{ width: `${((formStep + 1) / 3) * 100}%` }}
+            style={{ width: `${percentage}%` }}
           ></div>
         </div>
       </div>
@@ -355,6 +446,9 @@ const PatientFormPage = () => {
     );
   }
 
+  const currentStepQuestions = getCurrentStepQuestions();
+  const isLastStep = formStep === formQuestions.length - 1;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
@@ -363,49 +457,59 @@ const PatientFormPage = () => {
             <div className="flex justify-center mb-4">
               <FileQuestion className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-center">Synundersökning: Anamnesformulär</CardTitle>
+            <CardTitle className="text-center">
+              {formSchema?.title || "Synundersökning: Anamnesformulär"}
+            </CardTitle>
             <CardDescription className="text-center">
               Vänligen fyll i formuläret nedan för att hjälpa din optiker förbereda din undersökning.
             </CardDescription>
             {renderFormProgress()}
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {renderFormStep()}
-                
-                <div className="flex justify-between mt-8">
-                  {formStep > 0 && (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={prevStep}
-                    >
-                      Föregående
-                    </Button>
-                  )}
+            {formQuestions.length === 0 ? (
+              <div className="py-4 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                <p className="text-muted-foreground">Laddar formulärfrågor...</p>
+              </div>
+            ) : (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  {currentStepQuestions.map(question => renderFormField(question))}
                   
-                  {formStep < 2 ? (
-                    <Button 
-                      type="button" 
-                      className={`${formStep === 0 ? 'ml-auto' : ''}`}
-                      onClick={nextStep}
-                    >
-                      Nästa
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button 
-                      type="submit" 
-                      disabled={submitLoading}
-                    >
-                      {submitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Skicka svar
-                    </Button>
-                  )}
-                </div>
-              </form>
-            </Form>
+                  <div className="flex justify-between mt-8">
+                    {formStep > 0 && (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={prevStep}
+                      >
+                        Föregående
+                      </Button>
+                    )}
+                    
+                    {!isLastStep ? (
+                      <Button 
+                        type="button" 
+                        className={`${formStep === 0 ? 'ml-auto' : ''}`}
+                        onClick={nextStep}
+                      >
+                        Nästa
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button 
+                        type="submit" 
+                        disabled={submitLoading}
+                        className={`${formStep === 0 ? 'ml-auto' : ''}`}
+                      >
+                        {submitLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Skicka svar
+                      </Button>
+                    )}
+                  </div>
+                </form>
+              </Form>
+            )}
           </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground text-center">

@@ -1,4 +1,10 @@
 
+/**
+ * This component displays the answers provided by the patient in the anamnesis form.
+ * It renders the answers in a table format, showing the question and corresponding answer.
+ * It also handles the case when no answers are available yet.
+ */
+
 import { FileText } from "lucide-react";
 import {
   Table,
@@ -14,6 +20,15 @@ interface EntryAnswersProps {
   hasAnswers: boolean;
   status: string;
 }
+
+// Map of question IDs to human-readable labels
+const questionLabels: Record<string, string> = {
+  vision_problem: "Synproblem",
+  symptom: "Huvudvärk eller ögontrötthet",
+  eye_pain: "Var gör det ont",
+  problem: "Synproblem",
+  current_use: "Nuvarande synhjälpmedel"
+};
 
 export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps) => {
   if (!hasAnswers) {
@@ -48,13 +63,10 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
         <TableBody>
           {Object.entries(answers)
             .filter(([key]) => key !== 'formMetadata')
-            .map(([question, answer]) => (
-              <TableRow key={question}>
+            .map(([questionId, answer]) => (
+              <TableRow key={questionId}>
                 <TableCell className="font-medium">
-                  {question === 'problem' ? 'Synproblem' : 
-                   question === 'symptom' ? 'Symptom/Huvudvärk' : 
-                   question === 'current_use' ? 'Nuvarande synhjälpmedel' : 
-                   question}
+                  {questionLabels[questionId] || questionId}
                 </TableCell>
                 <TableCell className="whitespace-pre-wrap break-words">{answer}</TableCell>
               </TableRow>

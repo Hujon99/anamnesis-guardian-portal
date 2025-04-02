@@ -83,13 +83,13 @@ redirect_uri = ""
 # or any other third-party OIDC providers.
 url = ""
 
-# Port configuration for functions should be a section, not a direct assignment
+# Functions configuration
 [functions]
-# Port to use for Functions API URL.
+# Port to use for the Functions API URL
 port = 54325
 
 [functions.verify-token]
-# Uncomment to enable JWT verification for this function.
+# Function for verifying patient tokens
 verify_jwt = false
 
 [functions.submit-form]

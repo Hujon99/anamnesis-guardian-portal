@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting verify-token function - v3');
+    console.log('Starting verify-token function - v4');
     console.log('Request URL:', req.url);
     console.log('Request method:', req.method);
     
@@ -85,12 +85,12 @@ serve(async (req) => {
 
     console.log(`Verifying token: ${token.substring(0, 6)}...`);
     
-    // Direct database query for the entry with this token - more reliable than RPC
+    // Direct database query for the entry with this token
     const { data: entryData, error: entryError } = await supabase
       .from('anamnes_entries')
       .select('*')
       .eq('access_token', token)
-      .single();
+      .maybeSingle(); // Changed from single() to maybeSingle() to handle no results
     
     if (entryError) {
       console.error('Error fetching entry with token:', entryError);
@@ -98,6 +98,22 @@ serve(async (req) => {
         JSON.stringify({ 
           error: 'Ogiltig eller utgången länk',
           details: entryError.message,
+          code: 'invalid_token'
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Check if entry exists
+    if (!entryData) {
+      console.error('No entry found with token:', token.substring(0, 6) + '...');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Ogiltig länk',
+          details: 'Ingen anamnes hittades med denna token',
           code: 'invalid_token'
         }),
         { 
@@ -167,7 +183,7 @@ serve(async (req) => {
       );
     }
     
-    // Fetch form template - NEW CODE HERE
+    // Fetch form template
     console.log(`Fetching form template for organization: ${entryData.organization_id}`);
     const { data: formData, error: formError } = await supabase
       .from('anamnes_forms')
@@ -175,7 +191,7 @@ serve(async (req) => {
       .or(`organization_id.eq.${entryData.organization_id},organization_id.is.null`)
       .order("organization_id", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle(); // Changed from single() to maybeSingle() to handle no results
       
     if (formError) {
       console.error("Error fetching form template:", formError);

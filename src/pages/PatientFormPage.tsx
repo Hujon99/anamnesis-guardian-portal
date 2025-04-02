@@ -1,4 +1,3 @@
-
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission.
@@ -111,13 +110,10 @@ const PatientFormPage = () => {
         console.log('Using Anon Key:', SUPABASE_PUBLISHABLE_KEY);
         console.log("Testing in print even works");
         
-        // Call the verify-token edge function with Authorization header
-
+        // Call the verify-token edge function without Authorization header
+        // since we've configured it to not require JWT verification
         const response = await supabase.functions.invoke('verify-token', {
-          body: { token },
-          headers: {
-            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
-          }
+          body: { token }
         });
 
         console.log('Token verification response:', response);
@@ -253,14 +249,12 @@ const PatientFormPage = () => {
         screenSize: `${window.innerWidth}x${window.innerHeight}`
       };
       
+      // Also update the submit-form function call to not use the Authorization header
       const response = await supabase.functions.invoke('submit-form', {
         body: { 
           token,
           answers: values,
           formData: formMetadata
-        },
-        headers: {
-          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
         }
       });
 

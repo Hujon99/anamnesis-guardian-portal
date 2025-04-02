@@ -3,6 +3,8 @@
  * This edge function verifies patient access tokens for anamnes forms.
  * It handles token validation, checks expiration, and verifies form status
  * before allowing patients to access and complete their forms.
+ * It also returns the form template along with the entry data to simplify
+ * the patient form page implementation.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
@@ -21,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting verify-token function - v2');
+    console.log('Starting verify-token function - v3');
     console.log('Request URL:', req.url);
     console.log('Request method:', req.method);
     
@@ -84,18 +86,18 @@ serve(async (req) => {
     console.log(`Verifying token: ${token.substring(0, 6)}...`);
     
     // Direct database query for the entry with this token - more reliable than RPC
-    const { data, error } = await supabase
+    const { data: entryData, error: entryError } = await supabase
       .from('anamnes_entries')
       .select('*')
       .eq('access_token', token)
       .single();
     
-    if (error) {
-      console.error('Error fetching entry with token:', error);
+    if (entryError) {
+      console.error('Error fetching entry with token:', entryError);
       return new Response(
         JSON.stringify({ 
           error: 'Ogiltig eller utgången länk',
-          details: error.message,
+          details: entryError.message,
           code: 'invalid_token'
         }),
         { 
@@ -105,11 +107,11 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Found entry with ID: ${data.id}, status: ${data.status}`);
+    console.log(`Found entry with ID: ${entryData.id}, status: ${entryData.status}`);
     
     // Check if the entry has an organization ID
-    if (!data.organization_id) {
-      console.error('Missing organization_id for entry:', data.id);
+    if (!entryData.organization_id) {
+      console.error('Missing organization_id for entry:', entryData.id);
       return new Response(
         JSON.stringify({ 
           error: 'Formulärkonfigurationen är ogiltig',
@@ -124,8 +126,8 @@ serve(async (req) => {
     }
     
     // Check if the entry is expired
-    if (data.expires_at && new Date(data.expires_at) < new Date()) {
-      console.log(`Token expired at ${data.expires_at}`);
+    if (entryData.expires_at && new Date(entryData.expires_at) < new Date()) {
+      console.log(`Token expired at ${entryData.expires_at}`);
       return new Response(
         JSON.stringify({ 
           error: 'Länken har gått ut',
@@ -140,22 +142,22 @@ serve(async (req) => {
     }
     
     // Check if the status is not 'sent' - patient can only fill forms in 'sent' status
-    if (data.status !== 'sent') {
+    if (entryData.status !== 'sent') {
       let message = 'Formuläret kan inte fyllas i för tillfället';
       let statusCode = 403;
       let errorCode = 'invalid_status';
       
-      if (data.status === 'pending' || data.status === 'ready' || data.status === 'reviewed') {
+      if (entryData.status === 'pending' || entryData.status === 'ready' || entryData.status === 'reviewed') {
         message = 'Formuläret har redan fyllts i';
         statusCode = 400;
         errorCode = 'already_submitted';
       }
       
-      console.log(`Invalid status for form submission: ${data.status}`);
+      console.log(`Invalid status for form submission: ${entryData.status}`);
       return new Response(
         JSON.stringify({ 
           error: message,
-          status: data.status,
+          status: entryData.status,
           code: errorCode
         }),
         { 
@@ -165,11 +167,53 @@ serve(async (req) => {
       );
     }
     
+    // Fetch form template - NEW CODE HERE
+    console.log(`Fetching form template for organization: ${entryData.organization_id}`);
+    const { data: formData, error: formError } = await supabase
+      .from('anamnes_forms')
+      .select("*")
+      .or(`organization_id.eq.${entryData.organization_id},organization_id.is.null`)
+      .order("organization_id", { ascending: false })
+      .limit(1)
+      .single();
+      
+    if (formError) {
+      console.error("Error fetching form template:", formError);
+      return new Response(
+        JSON.stringify({ 
+          error: "Kunde inte ladda formuläret. Vänligen försök igen senare.",
+          details: formError.message,
+          code: 'form_error'
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    if (!formData) {
+      console.error("No form template found for organization:", entryData.organization_id);
+      return new Response(
+        JSON.stringify({ 
+          error: "Inget formulär hittades för denna organisation.",
+          code: 'missing_form'
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    console.log('Form template found:', formData.title);
+    
     console.log('Token verification successful');
     return new Response(
       JSON.stringify({ 
         success: true,
-        entry: data
+        entry: entryData,
+        formTemplate: formData
       }),
       { 
         status: 200,

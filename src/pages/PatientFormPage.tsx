@@ -1,7 +1,8 @@
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission.
- * The form template is fetched from the anamnes_forms table.
+ * The form template is fetched from the anamnes_forms table via the verify-token
+ * edge function to avoid RLS issues.
  */
 
 import { useEffect, useState } from "react";
@@ -101,9 +102,7 @@ const PatientFormPage = () => {
       }
 
       try {
-        const baseUrl = window.location.origin;
         console.log(`Verifying token (attempt ${retryCount + 1}): ${token.substring(0, 6)}...`);
-        console.log(`Current base URL: ${baseUrl}`);
         console.log(`Using Supabase function endpoint`);
         
         // Call the verify-token edge function
@@ -147,48 +146,30 @@ const PatientFormPage = () => {
         }
 
         if (response.data?.success) {
+          // Get entry data from response
           const entryData = response.data.entry;
           console.log("Entry data received:", entryData);
           setEntryData(entryData);
           
-          // Fetch form schema
-          try {
-            console.log(`Fetching form schema for organization: ${entryData.organization_id}`);
-            const { data: formData, error: formError } = await supabase
-              .from('anamnes_forms' as any)
-              .select("*")
-              .or(`organization_id.eq.${entryData.organization_id},organization_id.is.null`)
-              .order("organization_id", { ascending: false })
-              .limit(1)
-              .single();
-              
-            if (formError) {
-              console.error("Error fetching form template:", formError);
-              setError("Kunde inte ladda formuläret. Vänligen försök igen senare.");
-              setLoading(false);
-              return;
-            }
+          // Get form template data from response
+          const formTemplateData = response.data.formTemplate;
+          console.log("Form template received:", formTemplateData);
+          
+          if (formTemplateData) {
+            // Type assertion to handle the schema property
+            const typedFormData = formTemplateData as unknown as AnamnesForm;
+            setFormSchema(typedFormData.schema);
             
-            if (formData) {
-              console.log("Form template loaded:", formData);
-              // Type assertion to handle the schema property
-              const typedFormData = formData as unknown as AnamnesForm;
-              setFormSchema(typedFormData.schema);
-              
-              // Initialize form with default values
-              const defaultValues: Record<string, string> = {};
-              typedFormData.schema.questions.forEach((q: FormQuestion) => {
-                defaultValues[q.id] = "";
-              });
-              
-              form.reset(defaultValues);
-            } else {
-              console.error("No form template found");
-              setError("Inget formulär hittades för denna organisation.");
-            }
-          } catch (formErr) {
-            console.error("Error in form schema fetching:", formErr);
-            setError("Kunde inte ladda formuläret. Ett tekniskt fel uppstod.");
+            // Initialize form with default values
+            const defaultValues: Record<string, string> = {};
+            typedFormData.schema.questions.forEach((q: FormQuestion) => {
+              defaultValues[q.id] = "";
+            });
+            
+            form.reset(defaultValues);
+          } else {
+            console.error("No form template found in response");
+            setError("Inget formulär hittades för denna organisation.");
           }
           
           // If this form has already been filled, show submitted state

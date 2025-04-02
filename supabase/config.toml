@@ -1,7 +1,3 @@
 
 # Project ID for the Supabase instance
 project_id = "jawtwwwelxaaprzsqfyp"
-
-# Functions configuration 
-[functions]
-port = 54321

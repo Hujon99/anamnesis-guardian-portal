@@ -56,9 +56,9 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     onSuccess: (data) => {
       console.log("Entry updated successfully:", data);
       
-      // Update status in the cache immediately
+      // Update status in the cache immediately in a more selective way
       queryClient.setQueryData(
-        ["anamnes-entries"],
+        ["anamnes-entries", undefined, data.status],
         (oldData: AnamnesesEntry[] | undefined) => {
           if (!oldData) return undefined;
           
@@ -68,17 +68,14 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         }
       );
       
-      // Invalidate and refetch all status queries
+      // Only invalidate the specific status query that was affected
       setTimeout(() => {
-        // First refresh the data in context
-        refreshData();
-        
-        // Then refetch specific status queries
-        ["sent", "pending", "ready"].forEach(status => {
-          queryClient.invalidateQueries({ 
-            queryKey: ["anamnes-entries", undefined, status] 
-          });
+        // Only invalidate the relevant status
+        queryClient.invalidateQueries({ 
+          queryKey: ["anamnes-entries", undefined, data.status] 
         });
+        
+        // Don't call refreshData() or forceRefresh() for minor updates
       }, 100);
       
       toast({
@@ -105,7 +102,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     retry: (failureCount, error) => {
       // Only retry specific errors that might be temporary
       if (error?.message?.includes("network") || error?.code === "PGRST301") {
-        return failureCount < 3; // Retry up to 3 times for network issues
+        return failureCount < 2; // Reduced from 3 to 2 retries for network issues
       }
       return false; // Don't retry other errors
     },
@@ -143,9 +140,13 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     onSuccess: (data) => {
       console.log("Link sent successfully:", data);
       
-      // Force a complete refresh of all data
+      // For significant status changes, we still need a more complete refresh
+      // But we make it more targeted - only refresh the sent tab
       setTimeout(() => {
-        forceRefresh();
+        // Only invalidate the "sent" status since that's where the entry is now
+        queryClient.invalidateQueries({ 
+          queryKey: ["anamnes-entries", undefined, "sent"] 
+        });
       }, 100);
       
       toast({
@@ -172,7 +173,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     retry: (failureCount, error) => {
       // Only retry specific errors that might be temporary
       if (error?.message?.includes("network") || error?.code === "PGRST301") {
-        return failureCount < 3; // Retry up to 3 times for network issues
+        return failureCount < 2; // Reduced from 3 to 2 retries
       }
       return false; // Don't retry other errors
     },
@@ -195,7 +196,10 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       sendLinkMutation.mutate(patientEmail);
     },
     refreshData: () => {
-      forceRefresh(); // Use force refresh here to ensure we always get fresh data
+      // Provide a more selective refresh that only refreshes the current view
+      queryClient.invalidateQueries({
+        queryKey: ["anamnes-entries"]
+      });
     }
   };
 };

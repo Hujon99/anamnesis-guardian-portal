@@ -35,7 +35,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
   // Track consecutive errors to implement circuit breaker
   const consecutiveErrorsRef = useState<number>(0);
   const lastRefreshAttemptRef = useState<number>(0);
-  const MIN_REFRESH_INTERVAL = 2000; // 2 seconds between refresh attempts
+  const MIN_REFRESH_INTERVAL = 3000; // Increased from 2000 to 3000 ms
   const CIRCUIT_BREAKER_THRESHOLD = 5; // Break after 5 consecutive errors
   const CIRCUIT_BREAKER_RESET_TIME = 30000; // 30 seconds before resetting circuit breaker
 
@@ -83,9 +83,11 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
       // Refresh authentication with normal priority (use cache if available)
       refreshClient(false)
         .then(() => {
-          // Then invalidate queries to refresh data
+          // Only invalidate the current tab's data
           setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
+            queryClient.invalidateQueries({ 
+              queryKey: ["anamnes-entries", undefined, activeTab] 
+            });
             consecutiveErrorsRef[0] = 0;
             setDataLastUpdated(new Date());
             setIsLoading(false);
@@ -115,7 +117,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [queryClient, refreshClient, consecutiveErrorsRef, lastRefreshAttemptRef]);
+  }, [queryClient, refreshClient, consecutiveErrorsRef, lastRefreshAttemptRef, activeTab]);
 
   // Force refresh that bypasses all caches
   const forceRefresh = useCallback(() => {
@@ -125,10 +127,14 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
       // Force refresh authentication (bypass cache)
       refreshClient(true)
         .then(() => {
-          // Then invalidate and refetch all queries
+          // Then invalidate and refetch only the active tab's queries
           setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
-            queryClient.refetchQueries({ queryKey: ["anamnes-entries"] });
+            queryClient.invalidateQueries({ 
+              queryKey: ["anamnes-entries", undefined, activeTab] 
+            });
+            queryClient.refetchQueries({ 
+              queryKey: ["anamnes-entries", undefined, activeTab] 
+            });
             consecutiveErrorsRef[0] = 0;
             setDataLastUpdated(new Date());
             
@@ -164,14 +170,10 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [queryClient, refreshClient, consecutiveErrorsRef]);
+  }, [queryClient, refreshClient, consecutiveErrorsRef, activeTab]);
 
-  // Automatically refresh data when tab changes
-  useEffect(() => {
-    if (isInitialized) {
-      refreshData();
-    }
-  }, [activeTab, isInitialized, refreshData]);
+  // Do NOT automatically refresh data when tab changes - let the TabsContainer handle that
+  // This removes a major source of circular refreshing
 
   return (
     <AnamnesisContext.Provider value={{ 

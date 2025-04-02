@@ -1,6 +1,6 @@
 
 /**
- * Verify Token Edge Function (v7)
+ * Verify Token Edge Function (v8)
  * 
  * This edge function verifies patient access tokens for anamnes forms.
  * It handles token validation, checks expiration, and verifies form status
@@ -33,7 +33,7 @@ import {
 } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v7";
+const FUNCTION_VERSION = "v8";
 const FUNCTION_NAME = "verify-token";
 
 serve(async (req: Request) => {
@@ -42,12 +42,16 @@ serve(async (req: Request) => {
   if (corsResponse) return corsResponse;
 
   try {
-    // Log function start
+    // Log function start with more details
     logFunctionStart(FUNCTION_NAME, FUNCTION_VERSION, req);
+    console.log(`Request headers:`, Object.fromEntries([...req.headers.entries()]));
     
     // Validate request and extract token
+    console.log(`Extracting and validating token from request...`);
     const { token, isValid, error: validationError } = await validateRequestAndExtractToken(req);
+    
     if (!isValid) {
+      console.error(`Token validation failed:`, validationError);
       return createErrorResponse(
         validationError!.message,
         validationError!.code as any,
@@ -56,9 +60,13 @@ serve(async (req: Request) => {
       );
     }
     
+    console.log(`Token validation successful: ${token!.substring(0, 6)}...`);
+    
     // Create Supabase client
+    console.log(`Creating Supabase client...`);
     const supabase = createSupabaseClient();
     if (!supabase) {
+      console.error(`Failed to create Supabase client: Missing environment variables`);
       return createErrorResponse(
         'Konfigurationsfel',
         'config_error',
@@ -67,11 +75,25 @@ serve(async (req: Request) => {
       );
     }
     
+    console.log(`Supabase client created successfully`);
+    
+    // Set access token for RLS policies
+    console.log(`Setting access token for RLS policies...`);
+    try {
+      await supabase.rpc('set_access_token', { token });
+      console.log(`Access token set successfully for RLS policies`);
+    } catch (rpcError) {
+      console.error(`Failed to set access token for RLS:`, rpcError);
+      // Continue execution, as this might not be critical depending on RLS setup
+    }
+    
     // Fetch entry by token
+    console.log(`Fetching entry with token: ${token!.substring(0, 6)}...`);
     const { entry, error: entryError, notFound } = await fetchEntryByToken(supabase, token!);
     
     // Handle entry fetch errors
     if (entryError) {
+      console.error(`Error fetching entry:`, entryError);
       return createErrorResponse(
         'Ogiltig eller utgången länk',
         'invalid_token',
@@ -81,6 +103,7 @@ serve(async (req: Request) => {
     }
     
     if (notFound) {
+      console.error(`No entry found with token: ${token!.substring(0, 6)}...`);
       return createErrorResponse(
         'Ogiltig länk',
         'invalid_token',
@@ -89,8 +112,11 @@ serve(async (req: Request) => {
       );
     }
     
+    console.log(`Entry found successfully: ID=${entry.id}, Status=${entry.status}`);
+    
     // Check if the entry has an organization ID
     if (!entry.organization_id) {
+      console.error(`Entry is missing organization_id: ${entry.id}`);
       return createErrorResponse(
         'Formulärkonfigurationen är ogiltig',
         'missing_org',
@@ -98,6 +124,8 @@ serve(async (req: Request) => {
         'Saknar organisationsdata'
       );
     }
+    
+    console.log(`Entry has valid organization_id: ${entry.organization_id}`);
     
     // Check if the entry is expired
     if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
@@ -133,12 +161,16 @@ serve(async (req: Request) => {
       );
     }
     
+    console.log(`Entry status is valid: ${entry.status}`);
+    
     // Fetch form template
+    console.log(`Fetching form template for organization: ${entry.organization_id}`);
     const { formTemplate, error: formError, notFound: formNotFound } = 
       await fetchFormTemplate(supabase, entry.organization_id);
     
     // Handle form template fetch errors
     if (formError) {
+      console.error(`Error fetching form template:`, formError);
       return createErrorResponse(
         "Kunde inte ladda formuläret. Vänligen försök igen senare.",
         'form_error',
@@ -148,6 +180,7 @@ serve(async (req: Request) => {
     }
     
     if (formNotFound) {
+      console.error(`No form template found for organization: ${entry.organization_id}`);
       return createErrorResponse(
         "Inget formulär hittades för denna organisation.",
         'missing_form',
@@ -155,8 +188,10 @@ serve(async (req: Request) => {
       );
     }
     
+    console.log(`Form template found successfully: ${formTemplate.title}`);
+    
     // Return successful response with entry and form template
-    console.log('Token verification successful');
+    console.log('Token verification successful, returning data');
     return createSuccessResponse({ 
       entry, 
       formTemplate 

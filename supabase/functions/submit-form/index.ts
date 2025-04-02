@@ -1,6 +1,6 @@
 
 /**
- * Submit Form Edge Function (v5)
+ * Submit Form Edge Function (v6)
  * 
  * This edge function handles the submission of patient form data.
  * It validates the token, checks form status, and stores patient answers.
@@ -27,7 +27,7 @@ import { validateToken } from "../utils/validationUtils.ts";
 import { createSupabaseClient } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v5";
+const FUNCTION_VERSION = "v6";
 const FUNCTION_NAME = "submit-form";
 
 serve(async (req) => {
@@ -36,12 +36,15 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   try {
-    // Log function start
+    // Log function start with more details
     logFunctionStart(FUNCTION_NAME, FUNCTION_VERSION, req);
+    console.log(`Request headers:`, Object.fromEntries([...req.headers.entries()]));
     
     // Create Supabase client
+    console.log(`Creating Supabase client...`);
     const supabase = createSupabaseClient();
     if (!supabase) {
+      console.error(`Failed to create Supabase client: Missing environment variables`);
       return createErrorResponse(
         'Konfigurationsfel',
         'config_error',
@@ -50,14 +53,20 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Supabase client created successfully`);
+    
     // Parse request data
     let token, answers, formData;
     try {
+      console.log(`Parsing request data...`);
       const requestData = await req.json();
       token = requestData.token;
       answers = requestData.answers;
       formData = requestData.formData;
-      console.log(`Request data parsed, token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
+      console.log(`Request data parsed successfully`);
+      console.log(`Token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
+      console.log(`Answers keys: ${answers ? Object.keys(answers).join(', ') : 'missing'}`);
+      console.log(`Form metadata received: ${formData ? 'yes' : 'no'}`);
     } catch (parseError) {
       console.error('Error parsing request JSON:', parseError);
       return createErrorResponse(
@@ -69,8 +78,10 @@ serve(async (req) => {
     }
     
     // Validate token
+    console.log(`Validating token...`);
     const tokenValidation = validateToken(token);
     if (!tokenValidation.isValid) {
+      console.error(`Token validation failed:`, tokenValidation.error);
       return createErrorResponse(
         tokenValidation.error!.message,
         tokenValidation.error!.code as any,
@@ -78,8 +89,11 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Token validation successful`);
+    
     // Validate answers
     if (!answers) {
+      console.error(`Missing answers in request`);
       return createErrorResponse(
         'Svar är obligatoriska',
         'invalid_request',
@@ -88,9 +102,17 @@ serve(async (req) => {
     }
     
     // Set access token for RLS policies
-    await supabase.rpc('set_access_token', { token });
+    console.log(`Setting access token for RLS policies...`);
+    try {
+      await supabase.rpc('set_access_token', { token });
+      console.log(`Access token set successfully for RLS policies`);
+    } catch (rpcError) {
+      console.error(`Failed to set access token for RLS:`, rpcError);
+      // Continue execution, as this might not be critical depending on RLS setup
+    }
     
     // Fetch the entry data
+    console.log(`Fetching entry with token: ${token.substring(0, 6)}...`);
     const { data: entry, error: entryError } = await supabase
       .from('anamnes_entries')
       .select('*')
@@ -110,7 +132,7 @@ serve(async (req) => {
     
     // Check if entry exists
     if (!entry) {
-      console.error('No entry found with token:', token.substring(0, 6) + '...');
+      console.error(`No entry found with token: ${token.substring(0, 6)}...`);
       return createErrorResponse(
         'Ogiltig länk',
         'invalid_token',
@@ -119,8 +141,11 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Entry found successfully: ID=${entry.id}, Status=${entry.status}`);
+    
     // Check if the entry is expired
     if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
+      console.log(`Token expired at ${entry.expires_at}`);
       return createErrorResponse(
         'Länken har gått ut',
         'expired',
@@ -138,6 +163,7 @@ serve(async (req) => {
         message = 'Formuläret har redan fyllts i';
       }
       
+      console.log(`Invalid status for form submission: ${entry.status}`);
       return createErrorResponse(
         message,
         'invalid_status',
@@ -147,9 +173,11 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Entry status is valid: ${entry.status}`);
+    
     // Ensure organization_id is preserved
     if (!entry.organization_id) {
-      console.error('Missing organization_id for entry:', entry.id);
+      console.error(`Missing organization_id for entry: ${entry.id}`);
       return createErrorResponse(
         'Invalid form configuration',
         'missing_org',
@@ -159,12 +187,14 @@ serve(async (req) => {
     }
     
     // Prepare the answers data with additional metadata if provided
+    console.log(`Preparing answers data for submission...`);
     const answersData = {
       ...answers,
       ...(formData ? { formMetadata: formData } : {})
     };
     
     // Update the entry with answers
+    console.log(`Updating entry ${entry.id} with answers and setting status to 'pending'...`);
     const { data, error } = await supabase
       .from('anamnes_entries')
       .update({ 
@@ -187,8 +217,10 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Entry ${entry.id} successfully updated with answers`);
+    
     // Return successful response
-    console.log('Form submission successful');
+    console.log('Form submission successful, returning updated entry data');
     return createSuccessResponse({ entry: data });
   } catch (error) {
     // Handle unexpected errors

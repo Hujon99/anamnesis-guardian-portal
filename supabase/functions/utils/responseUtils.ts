@@ -45,6 +45,7 @@ export interface ApiSuccessResponse<T> {
  * @returns Response object with standardized structure
  */
 export function createSuccessResponse<T>(data: T, status = 200): Response {
+  console.log(`Creating success response with status ${status}`);
   return new Response(
     JSON.stringify({ 
       success: true, 
@@ -73,6 +74,9 @@ export function createErrorResponse(
   details?: string,
   metadata?: Record<string, any>
 ): Response {
+  console.log(`Creating error response: ${code}, status: ${status}, message: ${message}`);
+  if (details) console.log(`Error details: ${details}`);
+  
   return new Response(
     JSON.stringify({ 
       error: message, 
@@ -94,7 +98,7 @@ export function createErrorResponse(
  */
 export function handleCors(request: Request): Response | null {
   if (request.method === 'OPTIONS') {
-    console.log('Handling OPTIONS request');
+    console.log('Handling OPTIONS request - CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
   return null;
@@ -107,9 +111,16 @@ export function handleCors(request: Request): Response | null {
  * @param request Request object
  */
 export function logFunctionStart(functionName: string, version: string, request: Request): void {
-  console.log(`Starting ${functionName} function - ${version}`);
-  console.log('Request URL:', request.url);
-  console.log('Request method:', request.method);
+  const timestamp = new Date().toISOString();
+  const separator = '='.repeat(50);
+  
+  console.log(separator);
+  console.log(`${timestamp} - Starting ${functionName} function - ${version}`);
+  console.log(`Request URL: ${request.url}`);
+  console.log(`Request method: ${request.method}`);
+  console.log(`Content-Type: ${request.headers.get('content-type')}`);
+  console.log(`User-Agent: ${request.headers.get('user-agent')}`);
+  console.log(separator);
 }
 
 /**
@@ -119,9 +130,16 @@ export function logFunctionStart(functionName: string, version: string, request:
  * @returns Standardized error response
  */
 export function handleUnexpectedError(error: Error, context?: string): Response {
-  const errorMessage = `Unexpected error${context ? ` in ${context}` : ''}: ${error.message}`;
-  console.error(errorMessage);
+  const timestamp = new Date().toISOString();
+  const separator = '='.repeat(50);
+  
+  console.error(separator);
+  console.error(`${timestamp} - UNEXPECTED ERROR ${context ? `in ${context}` : ''}`);
+  console.error(`Error message: ${error.message}`);
+  console.error(`Error name: ${error.name}`);
+  console.error(`Stack trace:`);
   console.error(error.stack);
+  console.error(separator);
   
   return createErrorResponse(
     'Ett oväntat fel uppstod', 

@@ -108,9 +108,11 @@ const PatientFormPage = () => {
       try {
         console.log(`Verifying token (attempt ${retryCount + 1}): ${token.substring(0, 6)}...`);
         console.log(`Using Supabase function endpoint`);
+        console.log('Using Anon Key:', SUPABASE_PUBLISHABLE_KEY);
+        console.log("Testing in print even works");
         
         // Call the verify-token edge function with Authorization header
-        console.log('Using Anon Key:', SUPABASE_PUBLISHABLE_KEY);
+
         const response = await supabase.functions.invoke('verify-token', {
           body: { token },
           headers: {

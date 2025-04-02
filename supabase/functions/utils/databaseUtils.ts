@@ -37,8 +37,20 @@ export async function fetchEntryByToken(supabase: SupabaseClient, token: string)
   error?: any;
   notFound?: boolean;
 }> {
-  console.log(`Fetching entry with token: ${token.substring(0, 6)}...`);
+  // Log token information (safely) for debugging
+  const tokenLength = token.length;
+  const tokenPrefix = token.substring(0, 6);
+  const tokenSuffix = token.substring(tokenLength - 6);
   
+  console.log(`Fetching entry with token: ${tokenPrefix}... (length: ${tokenLength})`);
+  
+  // Check if token contains any URL-unsafe characters
+  const containsUrlUnsafeChars = /[^a-zA-Z0-9\-_]/g.test(token);
+  if (containsUrlUnsafeChars) {
+    console.warn('Token contains URL-unsafe characters that might need encoding');
+  }
+  
+  // Perform the database query
   const { data: entry, error } = await supabase
     .from('anamnes_entries')
     .select('*')
@@ -51,7 +63,35 @@ export async function fetchEntryByToken(supabase: SupabaseClient, token: string)
   }
   
   if (!entry) {
-    console.error('No entry found with token:', token.substring(0, 6) + '...');
+    console.error(`No entry found with token: ${tokenPrefix}... (length: ${tokenLength})`);
+    console.log(`Token suffix for verification: ...${tokenSuffix}`);
+    
+    // Additional diagnostics - try fetching directly
+    try {
+      const { count } = await supabase
+        .from('anamnes_entries')
+        .select('*', { count: 'exact', head: true });
+      
+      console.log(`Total entries in database: ${count}`);
+      
+      // Fetch a sample entry to verify database connectivity
+      const { data: sampleEntry } = await supabase
+        .from('anamnes_entries')
+        .select('access_token')
+        .limit(1)
+        .single();
+      
+      if (sampleEntry?.access_token) {
+        const sampleTokenLength = sampleEntry.access_token.length;
+        const samplePrefix = sampleEntry.access_token.substring(0, 3);
+        console.log(`Sample entry token found with length ${sampleTokenLength}, prefix: ${samplePrefix}...`);
+      } else {
+        console.log('No sample entries found in database');
+      }
+    } catch (diagError) {
+      console.error('Diagnostics error:', diagError);
+    }
+    
     return { notFound: true };
   }
   

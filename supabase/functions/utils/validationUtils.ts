@@ -15,6 +15,7 @@ export function validateToken(token: unknown): {
 } {
   // Check if token exists
   if (!token) {
+    console.error('Token validation failed: Token is missing');
     return { 
       isValid: false, 
       error: { 
@@ -26,6 +27,7 @@ export function validateToken(token: unknown): {
   
   // Check if token is a string
   if (typeof token !== 'string') {
+    console.error(`Token validation failed: Token is not a string but ${typeof token}`);
     return { 
       isValid: false, 
       error: { 
@@ -37,6 +39,7 @@ export function validateToken(token: unknown): {
   
   // Check if token has valid length (minimum 6 characters)
   if (token.length < 6) {
+    console.error(`Token validation failed: Token length is only ${token.length} characters`);
     return { 
       isValid: false, 
       error: { 
@@ -45,6 +48,12 @@ export function validateToken(token: unknown): {
       } 
     };
   }
+
+  // Log token length and first/last few characters for debugging
+  const tokenLength = token.length;
+  const tokenPrefix = token.substring(0, 6);
+  const tokenSuffix = token.substring(tokenLength - 6);
+  console.log(`Token validation passed: Length: ${tokenLength}, Prefix: ${tokenPrefix}..., Suffix: ...${tokenSuffix}`);
   
   // Token passes all validation
   return { isValid: true };
@@ -61,9 +70,22 @@ export async function validateRequestAndExtractToken(request: Request): Promise<
   error?: { message: string; code: string; details?: string } 
 }> {
   try {
+    // Log request method and content type
+    console.log(`Request validation: Method: ${request.method}, Content-Type: ${request.headers.get('content-type')}`);
+    
     // Parse request body as JSON
     const requestData = await request.json();
+    console.log('Request data received:', Object.keys(requestData).join(', '));
+    
     const token = requestData.token;
+    
+    // Log token information (safely)
+    if (token) {
+      const tokenLength = typeof token === 'string' ? token.length : 'not a string';
+      console.log(`Extracted token from request: Length: ${tokenLength}`);
+    } else {
+      console.error('No token found in request data');
+    }
     
     // Validate token
     const tokenValidation = validateToken(token);
@@ -81,6 +103,7 @@ export async function validateRequestAndExtractToken(request: Request): Promise<
     };
   } catch (error) {
     // Handle JSON parsing errors
+    console.error('Error parsing request:', error instanceof Error ? error.message : 'Unknown error');
     return { 
       isValid: false, 
       error: { 

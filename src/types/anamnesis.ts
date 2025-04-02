@@ -14,3 +14,23 @@ export type AnamnesesEntry = {
   created_by: string | null;
   updated_at: string | null;
 };
+
+export type AnamnesForm = {
+  id: string;
+  organization_id: string | null;
+  title: string;
+  schema: {
+    title: string;
+    questions: Array<{
+      id: string;
+      label: string;
+      type: "text" | "radio" | "select" | "checkbox";
+      options?: string[];
+      show_if?: {
+        question: string;
+        equals: string;
+      };
+    }>;
+  };
+  created_at: string | null;
+};

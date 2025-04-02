@@ -26,6 +26,15 @@ export interface FormTemplate {
   questions: FormQuestion[];
 }
 
+// Interface for the anamnes_forms table that isn't in the generated types yet
+interface AnamnesForm {
+  id: string;
+  organization_id: string | null;
+  title: string;
+  schema: FormTemplate;
+  created_at: string | null;
+}
+
 export const useFormTemplate = () => {
   const { organization } = useOrganization();
   const { supabase } = useSupabaseClient();
@@ -35,8 +44,9 @@ export const useFormTemplate = () => {
     queryFn: async (): Promise<FormTemplate | null> => {
       try {
         // Get organization-specific template or fall back to global template
+        // Using type assertion since 'anamnes_forms' isn't in the generated types yet
         const { data, error } = await supabase
-          .from("anamnes_forms")
+          .from('anamnes_forms' as any)
           .select("*")
           .or(`organization_id.eq.${organization?.id},organization_id.is.null`)
           .order("organization_id", { ascending: false })
@@ -52,7 +62,9 @@ export const useFormTemplate = () => {
           return null;
         }
         
-        return data.schema as FormTemplate;
+        // Type assertion to handle the schema property
+        const formData = data as unknown as AnamnesForm;
+        return formData.schema as FormTemplate;
       } catch (err) {
         console.error("Error in useFormTemplate:", err);
         toast({

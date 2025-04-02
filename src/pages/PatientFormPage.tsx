@@ -19,7 +19,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle, FileQuestion, AlertTriangle, ArrowRight } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { FormQuestion } from "@/hooks/useFormTemplate";
+import { FormQuestion, FormTemplate } from "@/hooks/useFormTemplate";
+
+// Interface for the anamnes_forms table that isn't in the generated types yet
+interface AnamnesForm {
+  id: string;
+  organization_id: string | null;
+  title: string;
+  schema: FormTemplate;
+  created_at: string | null;
+}
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -30,7 +39,7 @@ const PatientFormPage = () => {
   const [expired, setExpired] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [entryData, setEntryData] = useState<any>(null);
-  const [formSchema, setFormSchema] = useState<any>(null);
+  const [formSchema, setFormSchema] = useState<FormTemplate | null>(null);
   const [formStep, setFormStep] = useState<number>(0);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [formQuestions, setFormQuestions] = useState<FormQuestion[]>([]);
@@ -115,7 +124,7 @@ const PatientFormPage = () => {
           
           // Fetch form schema
           const { data: formData, error: formError } = await supabase
-            .from("anamnes_forms")
+            .from('anamnes_forms' as any)
             .select("*")
             .or(`organization_id.eq.${entryData.organization_id},organization_id.is.null`)
             .order("organization_id", { ascending: false })
@@ -130,11 +139,13 @@ const PatientFormPage = () => {
           }
           
           if (formData) {
-            setFormSchema(formData.schema);
+            // Type assertion to handle the schema property
+            const typedFormData = formData as unknown as AnamnesForm;
+            setFormSchema(typedFormData.schema);
             
             // Initialize form with default values
             const defaultValues: Record<string, string> = {};
-            formData.schema.questions.forEach((q: FormQuestion) => {
+            typedFormData.schema.questions.forEach((q: FormQuestion) => {
               defaultValues[q.id] = "";
             });
             

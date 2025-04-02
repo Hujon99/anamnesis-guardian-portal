@@ -1,3 +1,4 @@
+
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission.
@@ -21,6 +22,9 @@ import { Loader2, AlertCircle, CheckCircle, FileQuestion, AlertTriangle, ArrowRi
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { FormQuestion, FormTemplate } from "@/hooks/useFormTemplate";
 import { AnamnesForm } from "@/types/anamnesis";
+
+// Import the Supabase anon key from the client
+import { SUPABASE_PUBLISHABLE_KEY } from "@/integrations/supabase/client";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -105,9 +109,12 @@ const PatientFormPage = () => {
         console.log(`Verifying token (attempt ${retryCount + 1}): ${token.substring(0, 6)}...`);
         console.log(`Using Supabase function endpoint`);
         
-        // Call the verify-token edge function
+        // Call the verify-token edge function with Authorization header
         const response = await supabase.functions.invoke('verify-token', {
-          body: { token }
+          body: { token },
+          headers: {
+            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+          }
         });
 
         console.log('Token verification response:', response);
@@ -248,6 +255,9 @@ const PatientFormPage = () => {
           token,
           answers: values,
           formData: formMetadata
+        },
+        headers: {
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
         }
       });
 

@@ -14,7 +14,6 @@ export function TabsContainer() {
     selectedEntry, 
     setSelectedEntry,
     isLoading,
-    forceRefresh,
     dataLastUpdated
   } = useAnamnesis();
   const [lastTabChange, setLastTabChange] = useState<Date | null>(null);
@@ -31,14 +30,14 @@ export function TabsContainer() {
     // Record when we last changed tabs
     setLastTabChange(new Date());
     
-    // Force refresh when switching tabs
-    if (activeTab) {
-      forceRefresh();
-    }
-  }, [activeTab, setActiveTab, setSelectedEntry, forceRefresh]);
+    // REMOVED: forceRefresh() call here - this was causing a circular refresh
+  }, [activeTab, setActiveTab, setSelectedEntry]);
 
   const handleTabChange = (value: string) => {
-    // Show a toast to indicate refreshing
+    // Prevent repeated clicks on the same tab
+    if (value === activeTab) return;
+    
+    // Show a toast to indicate switching tabs
     toast({
       title: `Byter till ${getTabLabel(value)}`,
       description: "Uppdaterar data...",

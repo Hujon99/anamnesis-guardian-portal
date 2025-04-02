@@ -7,10 +7,10 @@ import { supabase as supabaseClient } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
 // Configuration
-const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes - reduced frequency
-const TOKEN_COOLDOWN_PERIOD = 5000; // 5 seconds cooldown between token requests
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 1000; // 1 second
+const TOKEN_REFRESH_INTERVAL = 20 * 60 * 1000; // 20 minutes - reduced frequency
+const TOKEN_COOLDOWN_PERIOD = 10000; // 10 seconds cooldown between token requests (increased)
+const MAX_RETRIES = 2; // Reduced max retries
+const INITIAL_RETRY_DELAY = 2000; // 2 seconds initial delay (increased)
 
 /**
  * A hook that provides a Supabase client authenticated with the current Clerk session
@@ -32,23 +32,24 @@ export const useSupabaseClient = () => {
   const pendingRefreshRef = useRef(false);
   const tokenCacheRef = useRef<{ token: string; expiresAt: number } | null>(null);
 
-  // New token cache implementation
+  // Token cache implementation
   const getTokenFromCache = useCallback(() => {
     if (!tokenCacheRef.current) return null;
     
     const now = Date.now();
-    // Token is valid if it expires more than 2 minutes from now
-    if (tokenCacheRef.current.expiresAt > now + 2 * 60 * 1000) {
+    // Token is valid if it expires more than 5 minutes from now (increased from 2 min)
+    if (tokenCacheRef.current.expiresAt > now + 5 * 60 * 1000) {
+      console.log("Using cached token");
       return tokenCacheRef.current.token;
     }
     return null;
   }, []);
 
   const saveTokenToCache = useCallback((token: string) => {
-    // Cache token with 30 min expiry (shorter than the actual token lifetime)
+    // Cache token with 45 min expiry (longer than before)
     tokenCacheRef.current = {
       token,
-      expiresAt: Date.now() + 30 * 60 * 1000
+      expiresAt: Date.now() + 45 * 60 * 1000
     };
   }, []);
 
@@ -70,7 +71,6 @@ export const useSupabaseClient = () => {
     if (!force) {
       const cachedToken = getTokenFromCache();
       if (cachedToken) {
-        console.log("Using cached token");
         return cachedToken;
       }
     }
@@ -137,7 +137,6 @@ export const useSupabaseClient = () => {
     
     setAuthenticatedClient(client);
     initialized.current = true;
-    
   }, []);
 
   // Setup authenticated client
@@ -193,13 +192,13 @@ export const useSupabaseClient = () => {
       setIsLoading(false);
       isRefreshingRef.current = false;
       
-      // If there's a pending refresh request, process it after a delay
+      // If there's a pending refresh request, process it after a longer delay
       if (pendingRefreshRef.current) {
         setTimeout(() => {
           if (pendingRefreshRef.current) {
             setupClient();
           }
-        }, TOKEN_COOLDOWN_PERIOD);
+        }, TOKEN_COOLDOWN_PERIOD * 2); // Use a longer delay for pending refreshes
       }
     }
   }, [isAuthLoaded, userId, session, getTokenWithRetry, createAuthenticatedClient]);

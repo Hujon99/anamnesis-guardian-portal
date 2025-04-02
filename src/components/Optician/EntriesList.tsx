@@ -27,7 +27,7 @@ export const EntriesList = ({ status, selectedEntry, onSelectEntry }: EntriesLis
 
   // Optimize query with better staleTime, cacheTime, and retry configuration
   const { data: entries = [], isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ["anamnes-entries", organization?.id, status, dataLastUpdated],
+    queryKey: ["anamnes-entries", organization?.id, status],
     queryFn: async () => {
       if (!organization?.id) return [];
 
@@ -65,23 +65,26 @@ export const EntriesList = ({ status, selectedEntry, onSelectEntry }: EntriesLis
         throw fetchError;
       }
     },
-    staleTime: 30000, // 30 seconds - increasing from default to reduce refetches
-    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache longer
+    staleTime: 3 * 60 * 1000, // 3 minutes - much longer stale time to reduce refetches
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache longer
     enabled: !!organization?.id,
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff with max 30s
+    retry: 1, // Reduced retries
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff with max 10s
+    refetchOnWindowFocus: false, // Disable automatic refetch on window focus
+    refetchOnReconnect: false, // Disable automatic refetch on reconnect
   });
 
-  // Refetch when organization changes
+  // Refetch only when organization or dataLastUpdated changes
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && dataLastUpdated) {
       refetch();
     }
-  }, [organization?.id, refetch]);
+  }, [organization?.id, dataLastUpdated, refetch]);
 
   const handleRetry = async () => {
-    // Force refresh the client and data
-    forceRefresh();
+    // Manual refresh with user interaction
+    await refreshClient(false); // Don't force refresh - use cache if available
+    refetch();
   };
 
   // Show loading state when context is loading or query is loading for the first time
@@ -100,8 +103,8 @@ export const EntriesList = ({ status, selectedEntry, onSelectEntry }: EntriesLis
       <div className="space-y-4">
         <EmptyState status={status} />
         <div className="flex justify-center">
-          <Button variant="outline" size="sm" onClick={handleRetry} className="mt-2">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={handleRetry} className="mt-2" disabled={isFetching}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
             Uppdatera listan
           </Button>
         </div>

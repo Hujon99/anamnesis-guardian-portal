@@ -9,7 +9,7 @@ export const LoadingState = () => {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-muted-foreground text-center">Hämtar anamneser...</p>
         <p className="text-xs text-muted-foreground text-center">
-          Detta kan ta en stund om du nyligen loggade in
+          Om detta tar lång tid, försök byta flik eller uppdatera sidan
         </p>
       </CardContent>
     </Card>

@@ -1,4 +1,9 @@
 
+/**
+ * This component renders the header for the optician view.
+ * It displays the organization name and the optician icon.
+ */
+
 import { useOrganization } from "@clerk/clerk-react";
 import { Eye } from "lucide-react";
 
@@ -12,7 +17,7 @@ export const OpticianHeader = () => {
         <h1 className="text-3xl font-bold tracking-tight">Optikervy</h1>
       </div>
       <p className="text-muted-foreground">
-        Organisation: {organization?.name}
+        Organisation: {organization?.name || "Laddar..."}
       </p>
     </div>
   );

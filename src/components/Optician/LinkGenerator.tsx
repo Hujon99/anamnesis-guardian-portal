@@ -1,4 +1,10 @@
 
+/**
+ * This component provides functionality for generating patient links.
+ * It allows opticians to create new links, enter patient emails, and copy 
+ * generated links to the clipboard for sharing with patients.
+ */
+
 import { useState } from "react";
 import { useOrganization, useUser } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
@@ -25,7 +31,6 @@ export function LinkGenerator() {
         throw new Error("Organisation saknas");
       }
 
-      const formId = crypto.randomUUID();
       console.log("Creating entry with organization ID:", organization.id);
       console.log("Current user ID:", user?.id || null);
 
@@ -36,7 +41,7 @@ export function LinkGenerator() {
           access_token: crypto.randomUUID(),
           status: "sent",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-          form_id: formId,
+          form_id: crypto.randomUUID(),
           patient_email: email.trim() || null,
           created_by: user?.id || null,
           sent_at: new Date().toISOString()
@@ -77,11 +82,21 @@ export function LinkGenerator() {
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedLink);
-    toast({
-      title: "Kopierad!",
-      description: "Länken har kopierats till urklipp",
-    });
+    navigator.clipboard.writeText(generatedLink)
+      .then(() => {
+        toast({
+          title: "Kopierad!",
+          description: "Länken har kopierats till urklipp",
+        });
+      })
+      .catch((error) => {
+        console.error("Error copying link:", error);
+        toast({
+          title: "Kunde inte kopiera",
+          description: "Det gick inte att kopiera länken. Försök igen.",
+          variant: "destructive",
+        });
+      });
   };
 
   return (

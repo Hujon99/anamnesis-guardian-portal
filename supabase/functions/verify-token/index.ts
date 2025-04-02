@@ -16,16 +16,38 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('Starting verify-token function');
+    
+    // Using direct environment variables for simplicity and reliability
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://jawtwwwelxaaprzsqfyp.supabase.co';
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk';
     
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const requestData = await req.json().catch(() => ({}));
-    const { token } = requestData;
+    
+    let token;
+    try {
+      const requestData = await req.json();
+      token = requestData.token;
+      console.log(`Request data parsed, token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
+    } catch (parseError) {
+      console.error('Error parsing request JSON:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Ogiltig förfrågan, token saknas',
+          details: 'JSON parse error',
+          code: 'invalid_request'
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     if (!token) {
       console.error('Token missing in request');

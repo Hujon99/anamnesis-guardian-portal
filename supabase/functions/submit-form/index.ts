@@ -1,4 +1,9 @@
 
+/**
+ * This edge function handles the submission of patient form data.
+ * It validates the token, checks form status, and stores patient answers.
+ */
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4"
 
@@ -10,15 +15,60 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://jawtwwwelxaaprzsqfyp.supabase.co';
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk';
+    console.log('Starting submit-form function - v2');
+    console.log('Request URL:', req.url);
+    console.log('Request method:', req.method);
     
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase credentials:', { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseKey 
+      });
+      return new Response(
+        JSON.stringify({ 
+          error: 'Konfigurationsfel',
+          details: 'Saknar Supabase-konfiguration',
+          code: 'config_error'
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    console.log('Creating Supabase client with URL:', supabaseUrl.substring(0, 15) + '...');
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { token, answers, formData } = await req.json();
+    
+    let token, answers, formData;
+    try {
+      const requestData = await req.json();
+      token = requestData.token;
+      answers = requestData.answers;
+      formData = requestData.formData;
+      console.log(`Request data parsed, token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
+    } catch (parseError) {
+      console.error('Error parsing request JSON:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Ogiltig förfrågan',
+          details: 'JSON parse error',
+          code: 'invalid_request'
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     if (!token || !answers) {
       return new Response(
@@ -134,6 +184,7 @@ serve(async (req) => {
       );
     }
     
+    console.log('Form submission successful');
     return new Response(
       JSON.stringify({ 
         success: true,
@@ -145,9 +196,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in submit-form function:', error);
+    console.error('Unexpected error in submit-form function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: 'Ett oväntat fel uppstod', 
+        details: error.message,
+        code: 'server_error'
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

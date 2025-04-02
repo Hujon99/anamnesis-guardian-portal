@@ -21,12 +21,33 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting verify-token function');
+    console.log('Starting verify-token function - v2');
+    console.log('Request URL:', req.url);
+    console.log('Request method:', req.method);
     
     // Using direct environment variables for simplicity and reliability
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://jawtwwwelxaaprzsqfyp.supabase.co';
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase credentials:', { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseKey 
+      });
+      return new Response(
+        JSON.stringify({ 
+          error: 'Konfigurationsfel',
+          details: 'Saknar Supabase-konfiguration',
+          code: 'config_error'
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    console.log('Creating Supabase client with URL:', supabaseUrl.substring(0, 15) + '...');
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     let token;

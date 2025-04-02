@@ -130,53 +130,56 @@ export const EntryHeader = ({
         </div>
         <div className="flex flex-col gap-2 items-end">
           {getStatusBadge(entry.status || "")}
-          
-          <div className="flex gap-2">
-            {entry.access_token && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex gap-1" 
-                      onClick={copyPatientLink}
-                    >
-                      <Link className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Kopiera länk</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Kopiera patientlänk</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            
-            {hasAnswers && (
-              <>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex gap-1" 
-                  onClick={printForm}
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Skriv ut</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex gap-1" 
-                  onClick={exportToPDF}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Exportera</span>
-                </Button>
-              </>
-            )}
-          </div>
         </div>
+      </div>
+      
+      {/* Patient link section - now always visible */}
+      <div className="mt-4 border p-3 rounded-md bg-gray-50">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <Link className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Patientlänk</span>
+          </div>
+          <Button 
+            onClick={copyPatientLink}
+            variant="default"
+            size="sm"
+            className="flex gap-1"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            <span>Kopiera länk</span>
+          </Button>
+        </div>
+        {entry.access_token && (
+          <div className="mt-2 text-xs text-muted-foreground truncate">
+            {window.location.origin}/patient-form?token={entry.access_token}
+          </div>
+        )}
+      </div>
+      
+      <div className="mt-4 flex justify-end space-x-2">
+        {hasAnswers && (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex gap-1" 
+              onClick={printForm}
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Skriv ut</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex gap-1" 
+              onClick={exportToPDF}
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Exportera</span>
+            </Button>
+          </>
+        )}
       </div>
       
       {hasAnswers && (

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, AlertCircle, CheckCircle, FileQuestion, AlertTriangle, ArrowRight } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, FileQuestion, AlertTriangle, ArrowRight, RefreshCw } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { FormQuestion, FormTemplate } from "@/hooks/useFormTemplate";
 import { AnamnesForm } from "@/types/anamnesis";
@@ -28,6 +28,7 @@ const PatientFormPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [entryData, setEntryData] = useState<any>(null);
@@ -35,7 +36,7 @@ const PatientFormPage = () => {
   const [formStep, setFormStep] = useState<number>(0);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [formQuestions, setFormQuestions] = useState<FormQuestion[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [retryCount, setRetryCount] = useState(0);
 
   // Dynamically create the form validation schema based on the form template
   const createDynamicSchema = (questions: FormQuestion[]) => {
@@ -83,6 +84,14 @@ const PatientFormPage = () => {
     }
   }, [formSchema, formValues]);
 
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    setErrorCode(null);
+    setDiagnosticInfo(null);
+    setRetryCount(prev => prev + 1);
+  };
+
   useEffect(() => {
     const verifyToken = async () => {
       if (!token) {
@@ -92,7 +101,12 @@ const PatientFormPage = () => {
       }
 
       try {
-        console.log(`Verifying token: ${token}`);
+        const baseUrl = window.location.origin;
+        console.log(`Verifying token (attempt ${retryCount + 1}): ${token.substring(0, 6)}...`);
+        console.log(`Current base URL: ${baseUrl}`);
+        console.log(`Supabase URL: ${supabase.supabaseUrl}`);
+        
+        // Call the verify-token edge function
         const response = await supabase.functions.invoke('verify-token', {
           body: { token }
         });
@@ -101,7 +115,16 @@ const PatientFormPage = () => {
 
         if (response.error) {
           console.error("Token verification failed:", response.error);
-          console.error("Response data:", response.data);
+          
+          // Collect diagnostic information
+          let diagnostic = `Status: ${response.error?.status || 'Unknown'}\n`;
+          diagnostic += `Message: ${response.error?.message || 'No message'}\n`;
+          
+          if (response.data) {
+            diagnostic += `Data: ${JSON.stringify(response.data, null, 2)}\n`;
+          }
+          
+          setDiagnosticInfo(diagnostic);
           
           // Handle different error cases based on error code
           if (response.data?.code === 'expired' || response.data?.status === 'expired') {
@@ -183,12 +206,13 @@ const PatientFormPage = () => {
       } catch (err) {
         console.error("Error verifying token:", err);
         setError("Ett tekniskt fel uppstod. Försök igen senare.");
+        setDiagnosticInfo(`Technical error: ${err instanceof Error ? err.message : String(err)}`);
         setLoading(false);
       }
     };
 
     verifyToken();
-  }, [token, form]);
+  }, [token, form, retryCount]);
 
   const nextStep = () => {
     // Get visible questions for current step
@@ -429,11 +453,25 @@ const PatientFormPage = () => {
               <AlertTitle>Fel</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
+            
             {errorCode && (
               <div className="mt-4 text-sm text-muted-foreground">
                 <p>Felkod: {errorCode}</p>
               </div>
             )}
+            
+            {diagnosticInfo && (
+              <div className="mt-4 p-2 bg-gray-100 rounded text-xs font-mono text-gray-600 overflow-auto max-h-32">
+                <pre>{diagnosticInfo}</pre>
+              </div>
+            )}
+            
+            <div className="mt-6">
+              <Button onClick={handleRetry} className="w-full">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Försök igen
+              </Button>
+            </div>
           </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground text-center">

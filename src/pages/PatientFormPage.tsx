@@ -104,7 +104,7 @@ const PatientFormPage = () => {
         const baseUrl = window.location.origin;
         console.log(`Verifying token (attempt ${retryCount + 1}): ${token.substring(0, 6)}...`);
         console.log(`Current base URL: ${baseUrl}`);
-        console.log(`Supabase URL: ${supabase.supabaseUrl}`);
+        console.log(`Using Supabase function endpoint`);
         
         // Call the verify-token edge function
         const response = await supabase.functions.invoke('verify-token', {
@@ -289,7 +289,29 @@ const PatientFormPage = () => {
     }
   };
 
-  const renderFormField = (question: FormQuestion) => {
+  function renderFormProgress() {
+    if (!formQuestions.length) return null;
+    
+    const progress = (formStep + 1) / formQuestions.length;
+    const percentage = Math.min(Math.round(progress * 100), 100);
+    
+    return (
+      <div className="w-full mb-6">
+        <div className="flex justify-between mb-2">
+          <span className="text-xs">Steg {formStep + 1} av {formQuestions.length}</span>
+          <span className="text-xs">{percentage}% klart</span>
+        </div>
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-primary transition-all duration-300 ease-in-out" 
+            style={{ width: `${percentage}%` }}
+          ></div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderFormField(question: FormQuestion) {
     switch (question.type) {
       case "text":
         return (
@@ -365,29 +387,7 @@ const PatientFormPage = () => {
           />
         );
     }
-  };
-
-  const renderFormProgress = () => {
-    if (!formQuestions.length) return null;
-    
-    const progress = (formStep + 1) / formQuestions.length;
-    const percentage = Math.min(Math.round(progress * 100), 100);
-    
-    return (
-      <div className="w-full mb-6">
-        <div className="flex justify-between mb-2">
-          <span className="text-xs">Steg {formStep + 1} av {formQuestions.length}</span>
-          <span className="text-xs">{percentage}% klart</span>
-        </div>
-        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-primary transition-all duration-300 ease-in-out" 
-            style={{ width: `${percentage}%` }}
-          ></div>
-        </div>
-      </div>
-    );
-  };
+  }
 
   if (loading) {
     return (

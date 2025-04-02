@@ -71,8 +71,8 @@ double_confirm_changes = true
 enable_confirmations = false
 
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
-# `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin`, `notion`, `twitch`,
-# `twitter`, `slack`, `spotify`, `workos`, `zoom`.
+# discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin`, `notion`, `twitch`,
+# twitter`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.apple]
 enabled = false
 client_id = ""
@@ -83,10 +83,15 @@ redirect_uri = ""
 # or any other third-party OIDC providers.
 url = ""
 
+# Port configuration for functions should be a section, not a direct assignment
 [functions]
 # Port to use for Functions API URL.
 port = 54325
 
 [functions.verify-token]
 # Uncomment to enable JWT verification for this function.
+verify_jwt = false
+
+[functions.submit-form]
+# Function for submitting patient form data
 verify_jwt = false

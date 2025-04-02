@@ -1,9 +1,16 @@
 
+/**
+ * This hook provides mutation functions for anamnesis entries,
+ * handling authentication, optimistic updates, and error recovery.
+ * It includes mutations for updating entries and sending links to patients.
+ */
+
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/components/ui/use-toast";
 import { useAnamnesis } from "@/contexts/AnamnesisContext";
+import { handleSupabaseError } from "@/utils/supabaseClientUtils";
 
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const { supabase, refreshClient } = useSupabaseClient();
@@ -49,7 +56,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
 
       if (error) {
         console.error("Error updating entry:", error);
-        throw error;
+        throw handleSupabaseError(error);
       }
       return data;
     },
@@ -133,7 +140,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
 
       if (error) {
         console.error("Error sending link:", error);
-        throw error;
+        throw handleSupabaseError(error);
       }
       return data;
     },

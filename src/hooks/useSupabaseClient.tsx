@@ -1,10 +1,19 @@
 
+/**
+ * This hook provides a Supabase client authenticated with the current Clerk session.
+ * It handles token management, client creation, and authentication state synchronization.
+ * The hook implements caching, debouncing, and retry mechanisms to optimize performance
+ * and reduce unnecessary API calls.
+ */
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth, useClerk } from "@clerk/clerk-react";
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { useTokenManager } from "./useTokenManager";
+import { createSupabaseClient } from "@/utils/supabaseClientUtils";
 
 // Configuration
 const TOKEN_REFRESH_INTERVAL = 20 * 60 * 1000; // 20 minutes - reduced frequency
@@ -30,28 +39,13 @@ export const useSupabaseClient = () => {
   const retryCountRef = useRef(0);
   const isRefreshingRef = useRef(false);
   const pendingRefreshRef = useRef(false);
-  const tokenCacheRef = useRef<{ token: string; expiresAt: number } | null>(null);
-
-  // Token cache implementation
-  const getTokenFromCache = useCallback(() => {
-    if (!tokenCacheRef.current) return null;
-    
-    const now = Date.now();
-    // Token is valid if it expires more than 5 minutes from now (increased from 2 min)
-    if (tokenCacheRef.current.expiresAt > now + 5 * 60 * 1000) {
-      console.log("Using cached token");
-      return tokenCacheRef.current.token;
-    }
-    return null;
-  }, []);
-
-  const saveTokenToCache = useCallback((token: string) => {
-    // Cache token with 45 min expiry (longer than before)
-    tokenCacheRef.current = {
-      token,
-      expiresAt: Date.now() + 45 * 60 * 1000
-    };
-  }, []);
+  
+  // Get token management utilities
+  const { 
+    getTokenFromCache, 
+    saveTokenToCache, 
+    tokenCacheRef 
+  } = useTokenManager();
 
   // Get token with debouncing, caching and retry logic
   const getTokenWithRetry = useCallback(async (force = false): Promise<string | null> => {
@@ -119,22 +113,7 @@ export const useSupabaseClient = () => {
     console.log("Creating new Supabase client with updated token");
     lastTokenRef.current = token;
     
-    const client = createClient<Database>(
-      import.meta.env.VITE_SUPABASE_URL || "https://jawtwwwelxaaprzsqfyp.supabase.co",
-      import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk",
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-    
+    const client = createSupabaseClient(token);
     setAuthenticatedClient(client);
     initialized.current = true;
   }, []);

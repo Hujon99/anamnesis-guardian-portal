@@ -20,7 +20,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting submit-form function - v2');
+    console.log('Starting submit-form function - v3');
     console.log('Request URL:', req.url);
     console.log('Request method:', req.method);
     
@@ -87,7 +87,7 @@ serve(async (req) => {
       .from('anamnes_entries')
       .select('*')
       .eq('access_token', token)
-      .single();
+      .maybeSingle(); // Using maybeSingle() instead of single() to handle no results better
       
     if (entryError) {
       console.error('Error fetching entry with token:', entryError);
@@ -98,6 +98,22 @@ serve(async (req) => {
         }),
         { 
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Check if entry exists
+    if (!entry) {
+      console.error('No entry found with token:', token.substring(0, 6) + '...');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Ogiltig länk',
+          details: 'Ingen anamnes hittades med denna token',
+          code: 'invalid_token'
+        }),
+        { 
+          status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
@@ -168,7 +184,7 @@ serve(async (req) => {
       })
       .eq('access_token', token)
       .select()
-      .single();
+      .maybeSingle(); // Using maybeSingle() for consistency
     
     if (error) {
       console.error('Error updating entry with token:', error);

@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting verify-token function - v4');
+    console.log('Starting verify-token function - v5');
     console.log('Request URL:', req.url);
     console.log('Request method:', req.method);
     
@@ -90,7 +90,7 @@ serve(async (req) => {
       .from('anamnes_entries')
       .select('*')
       .eq('access_token', token)
-      .maybeSingle(); // Changed from single() to maybeSingle() to handle no results
+      .maybeSingle(); // Using maybeSingle() instead of single() to handle no results
     
     if (entryError) {
       console.error('Error fetching entry with token:', entryError);
@@ -191,7 +191,7 @@ serve(async (req) => {
       .or(`organization_id.eq.${entryData.organization_id},organization_id.is.null`)
       .order("organization_id", { ascending: false })
       .limit(1)
-      .maybeSingle(); // Changed from single() to maybeSingle() to handle no results
+      .maybeSingle(); // Using maybeSingle() instead of single() to handle no results
       
     if (formError) {
       console.error("Error fetching form template:", formError);

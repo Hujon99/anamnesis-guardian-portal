@@ -1,4 +1,3 @@
-
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that all relevant answers from dynamic forms are saved in a 
@@ -42,27 +41,106 @@ export const processFormAnswers = (
     answeredSections: []
   };
 
-  // Function to evaluate show_if conditions
-  const evaluateCondition = (
-    condition: { question: string; equals: string | string[] } | undefined
-  ): boolean => {
-    if (!condition) return true;
-
-    const { question, equals } = condition;
-    const dependentValue = userInputs[question];
-
-    if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
+  // Create a map to track which questions should be included based on conditional logic
+  const visibleQuestionIds = new Set<string>();
+  
+  // First pass: identify all questions that should be visible based on conditional logic
+  const identifyVisibleQuestions = () => {
+    // Helper function to evaluate show_if conditions
+    const evaluateCondition = (
+      condition: { question: string; equals: string | string[] } | undefined,
+      inputs: Record<string, any>
+    ): boolean => {
+      if (!condition) return true;
+  
+      const { question, equals } = condition;
+      const dependentValue = inputs[question];
+  
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
+      }
+  
+      return dependentValue === equals;
+    };
+    
+    // Process all sections and their questions recursively to account for nested conditions
+    const processQuestionsRecursively = () => {
+      let hasChanges = false;
+      
+      formTemplate.sections.forEach(section => {
+        // Check if section should be shown
+        const sectionShouldBeShown = evaluateCondition(section.show_if, userInputs);
+        
+        if (sectionShouldBeShown) {
+          section.questions.forEach(question => {
+            // If this question is already marked as visible, skip processing
+            if (visibleQuestionIds.has(question.id)) {
+              return;
+            }
+            
+            // Check if question should be shown based on its condition
+            const questionShouldBeShown = evaluateCondition(question.show_if, userInputs);
+            
+            if (questionShouldBeShown) {
+              visibleQuestionIds.add(question.id);
+              hasChanges = true;
+              
+              // Also check for special cases like "Other" fields
+              if (
+                (question.type === 'radio' || question.type === 'dropdown') &&
+                question.options
+              ) {
+                const value = userInputs[question.id];
+                if (value === 'Övrigt' || value === 'Annat' || value === 'Other') {
+                  const suffixes = ['_other', '_övrigt', '_annat'];
+                  suffixes.forEach(suffix => {
+                    const otherFieldId = `${question.id}${suffix}`;
+                    if (otherFieldId in userInputs) {
+                      visibleQuestionIds.add(otherFieldId);
+                    }
+                  });
+                }
+              }
+            }
+          });
+        }
+      });
+      
+      return hasChanges;
+    };
+    
+    // Keep processing until no new visible questions are found
+    // This handles dependencies between conditional questions
+    let iterations = 0;
+    let maxIterations = 10; // Prevent infinite loops, adjust if needed
+    
+    while (processQuestionsRecursively() && iterations < maxIterations) {
+      iterations++;
     }
-
-    return dependentValue === equals;
+    
+    console.log(`Identified ${visibleQuestionIds.size} visible questions after ${iterations} iterations`);
   };
-
-  // Process each section in the template
+  
+  // Call the function to identify all visible questions
+  identifyVisibleQuestions();
+  
+  // Second pass: build the formatted answer structure
   formTemplate.sections.forEach(section => {
     // Skip sections that shouldn't be shown based on conditions
-    if (!evaluateCondition(section.show_if)) {
-      return;
+    if (section.show_if) {
+      const { question, equals } = section.show_if;
+      const dependentValue = userInputs[question];
+      
+      let sectionShouldBeShown = false;
+      if (Array.isArray(equals)) {
+        sectionShouldBeShown = equals.includes(dependentValue);
+      } else {
+        sectionShouldBeShown = dependentValue === equals;
+      }
+      
+      if (!sectionShouldBeShown) {
+        return;
+      }
     }
 
     // Create a new section for the formatted answer
@@ -71,12 +149,10 @@ export const processFormAnswers = (
       responses: []
     };
 
-    // Process each question in the section
+    // Process each question in the section, but only include those we identified as visible
     section.questions.forEach(question => {
-      // Check if this question should be shown based on its own condition
-      const questionShouldBeShown = evaluateCondition(question.show_if);
-      
-      if (!questionShouldBeShown) {
+      // Only include questions that were determined to be visible
+      if (!visibleQuestionIds.has(question.id)) {
         return;
       }
 
@@ -98,7 +174,7 @@ export const processFormAnswers = (
         answer: userAnswer
       });
 
-      // Handle "Other" option for radio buttons and dropdowns
+      // Add any associated "Other" field answers
       if (
         (question.type === 'radio' || question.type === 'dropdown') &&
         question.options && 
@@ -108,13 +184,12 @@ export const processFormAnswers = (
           (question.options.includes('Other') && userAnswer === 'Other')
         )
       ) {
-        // Look for the associated "other" text input 
         const possibleOtherFieldSuffixes = ['_other', '_övrigt', '_annat'];
         const baseId = question.id;
         
         for (const suffix of possibleOtherFieldSuffixes) {
           const otherFieldId = `${baseId}${suffix}`;
-          if (otherFieldId in userInputs && userInputs[otherFieldId]) {
+          if (visibleQuestionIds.has(otherFieldId) && otherFieldId in userInputs && userInputs[otherFieldId]) {
             formattedSection.responses.push({
               id: otherFieldId,
               answer: userInputs[otherFieldId]
@@ -131,6 +206,10 @@ export const processFormAnswers = (
     }
   });
 
+  // Log the complete set of answers for debugging
+  console.log(`Final form has ${formattedAnswer.answeredSections.length} sections with answers`);
+  console.log(`Total answered questions: ${formattedAnswer.answeredSections.reduce((sum, section) => sum + section.responses.length, 0)}`);
+  
   return formattedAnswer;
 };
 

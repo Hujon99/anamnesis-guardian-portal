@@ -2,13 +2,14 @@
 /**
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
- * to send the processed form data.
+ * to send the processed form data to the submit-form edge function.
  */
 
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { prepareFormSubmission } from "@/utils/formSubmissionUtils";
 import { FormTemplate } from "@/types/anamnesis";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useFormSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,27 +26,20 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, values)
         : { answers: values }; // Fallback for backward compatibility
 
-      // Call the submit-form edge function
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-form`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            token,
-            answers: submissionData,
-          }),
+      console.log("Submitting form with data:", JSON.stringify(submissionData, null, 2));
+      
+      // Submit the form using the edge function
+      const response = await supabase.functions.invoke('submit-form', {
+        body: { 
+          token,
+          answers: submissionData
         }
-      );
+      });
 
       // Process the response
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (response.error) {
         throw new Error(
-          errorData.message || `Ett fel uppstod (${response.status})`
+          response.error.message || `Ett fel uppstod (${response.status || 'unknown'})`
         );
       }
 

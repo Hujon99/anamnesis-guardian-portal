@@ -34,14 +34,14 @@ export function AnamnesisFilters({
   return (
     <div className="flex flex-wrap gap-3 items-center" aria-label="Filtrera anamneser">
       <Select
-        value={statusFilter || ""}
-        onValueChange={(value) => onStatusFilterChange(value || null)}
+        value={statusFilter || "all"}
+        onValueChange={(value) => onStatusFilterChange(value === "all" ? null : value)}
       >
         <SelectTrigger className="w-[130px]">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Alla statusar</SelectItem>
+          <SelectItem value="all">Alla statusar</SelectItem>
           <SelectItem value="sent">Skickade</SelectItem>
           <SelectItem value="pending">Att granska</SelectItem>
           <SelectItem value="ready">Klara</SelectItem>
@@ -49,14 +49,14 @@ export function AnamnesisFilters({
       </Select>
       
       <Select
-        value={timeFilter || ""}
-        onValueChange={(value) => onTimeFilterChange(value || null)}
+        value={timeFilter || "all"}
+        onValueChange={(value) => onTimeFilterChange(value === "all" ? null : value)}
       >
         <SelectTrigger className="w-[130px]">
           <SelectValue placeholder="Tidsperiod" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Alla tidsperioder</SelectItem>
+          <SelectItem value="all">Alla tidsperioder</SelectItem>
           <SelectItem value="today">Idag</SelectItem>
           <SelectItem value="week">Senaste veckan</SelectItem>
           <SelectItem value="month">Senaste månaden</SelectItem>

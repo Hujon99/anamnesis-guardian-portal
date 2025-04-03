@@ -50,6 +50,7 @@ export function useMultiStepForm({ totalSteps, initialStep = 0 }: UseMultiStepFo
   
   return {
     currentStep,
+    setCurrentStep, // Expose setCurrentStep function
     nextStep,
     previousStep,
     goToStep,

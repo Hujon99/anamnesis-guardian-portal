@@ -1,3 +1,9 @@
+
+/**
+ * This component provides a checkbox control built on top of Radix UI Checkbox primitive.
+ * It includes accessibility and styling based on the shadcn/ui design system.
+ */
+
 import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
 import { Check } from "lucide-react"

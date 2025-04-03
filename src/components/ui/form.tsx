@@ -1,3 +1,10 @@
+
+/**
+ * This component provides a form system built on top of React Hook Form.
+ * It includes accessible form controls, validation, and error handling.
+ * Based on the shadcn/ui form component.
+ */
+
 import * as React from "react"
 import * as LabelPrimitive from "@radix-ui/react-label"
 import { Slot } from "@radix-ui/react-slot"

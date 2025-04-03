@@ -1,3 +1,9 @@
+
+/**
+ * This component provides a styled textarea element built on top of the native textarea element.
+ * It includes accessibility and styling based on the shadcn/ui design system.
+ */
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

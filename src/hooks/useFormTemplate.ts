@@ -9,31 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { useOrganization } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
-
-export interface FormQuestion {
-  id: string;
-  label: string;
-  type: "text" | "radio" | "select" | "checkbox";
-  options?: string[];
-  show_if?: {
-    question: string;
-    equals: string;
-  };
-}
-
-export interface FormTemplate {
-  title: string;
-  questions: FormQuestion[];
-}
-
-// Interface for the anamnes_forms table that isn't in the generated types yet
-interface AnamnesForm {
-  id: string;
-  organization_id: string | null;
-  title: string;
-  schema: FormTemplate;
-  created_at: string | null;
-}
+import { AnamnesForm, FormTemplate } from "@/types/anamnesis";
 
 export const useFormTemplate = () => {
   const { organization } = useOrganization();
@@ -64,7 +40,7 @@ export const useFormTemplate = () => {
         
         // Type assertion to handle the schema property
         const formData = data as unknown as AnamnesForm;
-        return formData.schema as FormTemplate;
+        return formData.schema;
       } catch (err) {
         console.error("Error in useFormTemplate:", err);
         toast({

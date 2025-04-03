@@ -1,4 +1,9 @@
 
+/**
+ * This file contains types for the anamnesis forms and entries in the system.
+ * These types define the structure of form templates and the patient data entries.
+ */
+
 export type AnamnesesEntry = {
   id: string;
   organization_id: string;
@@ -15,22 +20,36 @@ export type AnamnesesEntry = {
   updated_at: string | null;
 };
 
+export type FormQuestion = {
+  id: string;
+  label: string;
+  type: "text" | "radio" | "select" | "checkbox" | "dropdown" | "number";
+  options?: string[];
+  required?: boolean;
+  show_if?: {
+    question: string;
+    equals: string | string[];
+  };
+};
+
+export type FormSection = {
+  section_title: string;
+  questions: FormQuestion[];
+  show_if?: {
+    question: string;
+    equals: string | string[];
+  };
+};
+
+export type FormTemplate = {
+  title: string;
+  sections: FormSection[];
+};
+
 export type AnamnesForm = {
   id: string;
   organization_id: string | null;
   title: string;
-  schema: {
-    title: string;
-    questions: Array<{
-      id: string;
-      label: string;
-      type: "text" | "radio" | "select" | "checkbox";
-      options?: string[];
-      show_if?: {
-        question: string;
-        equals: string;
-      };
-    }>;
-  };
+  schema: FormTemplate;
   created_at: string | null;
 };

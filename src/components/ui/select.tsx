@@ -1,3 +1,9 @@
+
+/**
+ * This component provides a select control built on top of Radix UI Select primitive.
+ * It includes accessibility and styling based on the shadcn/ui design system.
+ */
+
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"

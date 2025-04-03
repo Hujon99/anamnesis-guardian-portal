@@ -1,3 +1,9 @@
+
+/**
+ * This component provides a radio group control built on top of Radix UI RadioGroup primitive.
+ * It includes accessibility and styling based on the shadcn/ui design system.
+ */
+
 import * as React from "react"
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
 import { Circle } from "lucide-react"

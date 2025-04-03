@@ -2,13 +2,14 @@
 /**
  * This component provides filter controls for the anamnesis list view,
  * allowing users to filter by status, time period, and other criteria.
+ * It orchestrates various smaller filter components to create a unified filtering experience.
  */
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { ArrowDownAZ, ArrowUpAZ, Filter } from "lucide-react";
+import { StatusFilter } from "./Filters/StatusFilter";
+import { TimeFilter } from "./Filters/TimeFilter";
+import { UnansweredFilter } from "./Filters/UnansweredFilter";
+import { SortDirectionToggle } from "./Filters/SortDirectionToggle";
+import { ResetFiltersButton } from "./Filters/ResetFiltersButton";
 
 interface AnamnesisFiltersProps {
   statusFilter: string | null;
@@ -35,65 +36,27 @@ export function AnamnesisFilters({
 }: AnamnesisFiltersProps) {
   return (
     <div className="flex flex-wrap gap-3 items-center" aria-label="Filtrera anamneser">
-      <Select
-        value={statusFilter || "all"}
-        onValueChange={(value) => onStatusFilterChange(value === "all" ? null : value)}
-      >
-        <SelectTrigger className="w-[130px]">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Alla statusar</SelectItem>
-          <SelectItem value="sent">Skickade</SelectItem>
-          <SelectItem value="pending">Att granska</SelectItem>
-          <SelectItem value="ready">Klara</SelectItem>
-          <SelectItem value="reviewed">Granskade</SelectItem>
-        </SelectContent>
-      </Select>
+      <StatusFilter 
+        statusFilter={statusFilter} 
+        onStatusFilterChange={onStatusFilterChange} 
+      />
       
-      <Select
-        value={timeFilter || "all"}
-        onValueChange={(value) => onTimeFilterChange(value === "all" ? null : value)}
-      >
-        <SelectTrigger className="w-[130px]">
-          <SelectValue placeholder="Tidsperiod" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Alla tidsperioder</SelectItem>
-          <SelectItem value="today">Idag</SelectItem>
-          <SelectItem value="week">Senaste veckan</SelectItem>
-          <SelectItem value="month">Senaste månaden</SelectItem>
-        </SelectContent>
-      </Select>
+      <TimeFilter 
+        timeFilter={timeFilter} 
+        onTimeFilterChange={onTimeFilterChange} 
+      />
       
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="unanswered-mode"
-          checked={showOnlyUnanswered}
-          onCheckedChange={onUnansweredFilterChange}
-        />
-        <Label htmlFor="unanswered-mode">Endast obesvarade</Label>
-      </div>
+      <UnansweredFilter 
+        showOnlyUnanswered={showOnlyUnanswered} 
+        onUnansweredFilterChange={onUnansweredFilterChange} 
+      />
       
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => onSortDirectionChange(!sortDescending)}
-        aria-label={sortDescending ? "Sortera stigande" : "Sortera fallande"}
-        title={sortDescending ? "Sortera stigande" : "Sortera fallande"}
-      >
-        {sortDescending ? <ArrowDownAZ className="h-4 w-4" /> : <ArrowUpAZ className="h-4 w-4" />}
-      </Button>
+      <SortDirectionToggle 
+        sortDescending={sortDescending} 
+        onSortDirectionChange={onSortDirectionChange} 
+      />
       
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onResetFilters}
-        className="ml-auto"
-      >
-        <Filter className="h-4 w-4 mr-2" />
-        Rensa filter
-      </Button>
+      <ResetFiltersButton onResetFilters={onResetFilters} />
     </div>
   );
 }

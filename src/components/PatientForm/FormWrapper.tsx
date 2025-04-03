@@ -1,10 +1,11 @@
 
 /**
  * This component wraps the patient form, handling the state management,
- * validation, and submission logic.
+ * validation, and submission logic. It provides dynamic form generation
+ * based on a template with conditional sections and questions.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -127,24 +128,24 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
   };
   
   const defaultValues = generateDefaultValues(formTemplate);
-  const form = useForm({
-    defaultValues,
-    resolver: zodResolver(z.object({})) // Initial empty schema, will be updated dynamically
-  });
+  const formValues = useForm();
   
-  const { watch, handleSubmit, formState, trigger, setError } = form;
-  const formValues = watch();
+  // Get the watched values for conditional display
+  const watchedValues = formValues.watch();
   
   // Update the validation schema when form values change to handle conditional logic
-  useEffect(() => {
-    const schema = createValidationSchema(formTemplate, formValues);
-    form.clearErrors();
-    
-    // We need to set a new resolver with the updated schema
-    form.setOptions({
-      resolver: zodResolver(schema)
-    });
-  }, [formValues, formTemplate]);
+  const validationSchema = useMemo(() => 
+    createValidationSchema(formTemplate, watchedValues),
+  [formTemplate, watchedValues]);
+  
+  // Create a new form instance when validation schema changes
+  const form = useForm({
+    defaultValues,
+    resolver: zodResolver(validationSchema)
+  });
+  
+  const { handleSubmit, formState, trigger, watch } = form;
+  const currentValues = watch();
   
   // Group sections into logical steps (e.g., 1-2 sections per step)
   useEffect(() => {
@@ -152,7 +153,7 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
       if (!section.show_if) return true;
       
       const { question, equals } = section.show_if;
-      const dependentValue = formValues[question];
+      const dependentValue = currentValues[question];
       
       if (Array.isArray(equals)) {
         return equals.includes(dependentValue);
@@ -163,7 +164,7 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
     
     // Simple approach: each section is its own step
     setFormSections(visibleSections.map(section => [section]));
-  }, [formTemplate, formValues]);
+  }, [formTemplate, currentValues]);
   
   // Handle next step logic
   const goToNextStep = async () => {
@@ -178,7 +179,7 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
         // Skip questions that shouldn't be shown
         if (question.show_if) {
           const { question: dependentQuestionId, equals } = question.show_if;
-          const dependentValue = formValues[dependentQuestionId];
+          const dependentValue = currentValues[dependentQuestionId];
           
           let shouldShow = false;
           if (Array.isArray(equals)) {
@@ -263,7 +264,7 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
                   <FormSection 
                     key={`${section.section_title}-${idx}`} 
                     section={section}
-                    currentValues={formValues}
+                    currentValues={currentValues}
                   />
                 ))}
               </div>

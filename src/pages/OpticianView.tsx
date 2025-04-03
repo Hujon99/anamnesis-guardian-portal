@@ -1,4 +1,12 @@
 
+/**
+ * This page represents the main view for opticians managing patient anamnesis entries.
+ * It provides a unified list view of all entries with filtering capabilities and detailed
+ * information accessible through a modal dialog.
+ * 
+ * The view handles error states, authentication, and synchronization with the organization data.
+ */
+
 import { useState, useEffect } from "react";
 import { useOrganization } from "@clerk/clerk-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -8,8 +16,7 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSyncOrganization } from "@/hooks/useSyncOrganization";
 import { OpticianHeader } from "@/components/Optician/OpticianHeader";
 import { LinkGenerator } from "@/components/Optician/LinkGenerator";
-import { TabsContainer } from "@/components/Optician/TabsContainer";
-import { ContentContainer } from "@/components/Optician/ContentContainer";
+import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { AnamnesisProvider, useAnamnesis } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
@@ -113,14 +120,8 @@ const OpticianContent = () => {
         <LinkGenerator />
       </div>
       
-      <div className="grid md:grid-cols-12 gap-6 mt-6">
-        <div className="md:col-span-5 lg:col-span-4">
-          <TabsContainer />
-        </div>
-        
-        <div className="md:col-span-7 lg:col-span-8">
-          <ContentContainer />
-        </div>
+      <div className="mt-6">
+        <AnamnesisListView />
       </div>
     </div>
   );

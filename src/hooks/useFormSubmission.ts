@@ -39,7 +39,7 @@ export const useFormSubmission = () => {
       // Process the response
       if (response.error) {
         throw new Error(
-          response.error.message || `Ett fel uppstod (${response.status || 'unknown'})`
+          response.error.message || "Ett fel uppstod vid formulärinskickning"
         );
       }
 

@@ -38,7 +38,7 @@ export const useFormSubmission = () => {
         );
         console.log("Total questions in template:", totalQuestions);
         
-        // Log formatted answers stats
+        // Log formatted answers stats with detailed info
         if (submissionData.formattedAnswers) {
           console.log(
             "Formatted sections:", 
@@ -48,6 +48,14 @@ export const useFormSubmission = () => {
             (sum, section) => sum + section.responses.length, 0
           );
           console.log("Total formatted answers:", totalAnswers);
+          
+          // Log each section and its answers for better debugging
+          submissionData.formattedAnswers.answeredSections.forEach(section => {
+            console.log(`Section "${section.section_title}" has ${section.responses.length} answers:`);
+            section.responses.forEach(response => {
+              console.log(`  - ${response.id}: ${response.answer}`);
+            });
+          });
         }
       }
       

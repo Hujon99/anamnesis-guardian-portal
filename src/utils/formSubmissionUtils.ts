@@ -1,4 +1,3 @@
-
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that all relevant answers from dynamic forms are saved in a 
@@ -45,7 +44,7 @@ export const processFormAnswers = (
   // Create a map to track which questions should be included based on conditional logic
   const visibleQuestionIds = new Set<string>();
   
-  // First pass: identify all questions that should be visible based on conditional logic
+  // Step 1: identify all questions that should be visible based on conditional logic
   const identifyVisibleQuestions = () => {
     // Helper function to evaluate show_if conditions
     const evaluateCondition = (
@@ -185,103 +184,85 @@ export const processFormAnswers = (
   // Call the function to identify all visible questions
   identifyVisibleQuestions();
   
-  // Second pass: build the formatted answer structure based on visible questions
+  // Step 2: build the formatted answer structure based on ONLY visible questions and valid answers
+  // This revised implementation doesn't double-check section visibility in this stage
+  console.log("--- Building formatted answer structure ---");
+  
   formTemplate.sections.forEach((section, sectionIndex) => {
-    // Skip sections that shouldn't be shown based on conditions
-    if (section.show_if) {
-      const { question, equals } = section.show_if;
-      const dependentValue = userInputs[question];
-      
-      let sectionShouldBeShown = false;
-      if (Array.isArray(equals)) {
-        sectionShouldBeShown = equals.includes(dependentValue);
-      } else {
-        sectionShouldBeShown = dependentValue === equals;
-      }
-      
-      if (!sectionShouldBeShown) {
-        console.log(`Skipping section "${section.section_title}" in formatted answer because it doesn't meet conditions`);
-        return;
-      }
-    }
-
-    // Create a new section for the formatted answer
-    const formattedSection = {
-      section_title: section.section_title,
-      responses: []
-    };
-
-    // Track how many questions we process from this section
-    let processedQuestions = 0;
-    let includedAnswers = 0;
-
-    // Process each question in the section, but only include those we identified as visible
+    console.log(`Processing section "${section.section_title}" for final result`);
+    
+    // Temporary list to collect responses for this section
+    const currentSectionResponses: { id: string; answer: any }[] = [];
+    
+    // Process each question in the section
     section.questions.forEach((question, questionIndex) => {
-      processedQuestions++;
+      // ONLY check if the question is in the visibleQuestionIds set from Step 1
+      const isQuestionVisible = visibleQuestionIds.has(question.id);
       
-      // Only include questions that were determined to be visible
-      if (!visibleQuestionIds.has(question.id)) {
-        console.log(`Skipping question "${question.label}" (id: ${question.id}) because it's not in the visible set`);
-        return;
-      }
-
-      const userAnswer = userInputs[question.id];
-
-      // Skip if question wasn't answered (undefined, null, or empty string)
-      // Note: we include false and 0 as valid answers
-      if (
-        userAnswer === undefined || 
-        userAnswer === null || 
-        (typeof userAnswer === 'string' && userAnswer.trim() === '')
-      ) {
-        console.log(`Skipping question "${question.label}" (id: ${question.id}) because it has no answer`);
-        return;
-      }
-
-      // Add the answer to the formatted section
-      console.log(`Adding answer for question "${question.label}" (id: ${question.id}): ${userAnswer}`);
-      formattedSection.responses.push({
-        id: question.id,
-        answer: userAnswer
-      });
-      includedAnswers++;
-
-      // Add any associated "Other" field answers
-      if (
-        (question.type === 'radio' || question.type === 'dropdown') &&
-        question.options && 
-        (
-          (question.options.includes('Övrigt') && userAnswer === 'Övrigt') ||
-          (question.options.includes('Annat') && userAnswer === 'Annat') ||
-          (question.options.includes('Other') && userAnswer === 'Other')
-        )
-      ) {
-        const possibleOtherFieldSuffixes = ['_other', '_övrigt', '_annat'];
-        const baseId = question.id;
+      if (isQuestionVisible) {
+        const userAnswer = userInputs[question.id];
         
-        for (const suffix of possibleOtherFieldSuffixes) {
-          const otherFieldId = `${baseId}${suffix}`;
-          if (visibleQuestionIds.has(otherFieldId) && otherFieldId in userInputs && userInputs[otherFieldId]) {
-            console.log(`Adding "Other" field answer for question "${question.label}": ${otherFieldId}=${userInputs[otherFieldId]}`);
-            formattedSection.responses.push({
-              id: otherFieldId,
-              answer: userInputs[otherFieldId]
-            });
-            includedAnswers++;
-            break; // Found and added the "other" field, no need to check further
+        // Skip if question wasn't answered (undefined, null, or empty string)
+        // Note: we include false and 0 as valid answers
+        const hasValidAnswer = !(
+          userAnswer === undefined || 
+          userAnswer === null || 
+          (typeof userAnswer === 'string' && userAnswer.trim() === '')
+        );
+        
+        if (hasValidAnswer) {
+          // Add the answer to the temporary responses list
+          console.log(`Adding answer for question "${question.label}" (id: ${question.id}): ${userAnswer}`);
+          currentSectionResponses.push({
+            id: question.id,
+            answer: userAnswer
+          });
+          
+          // Check for additional "Other" fields if applicable
+          if (
+            (question.type === 'radio' || question.type === 'dropdown') &&
+            question.options
+          ) {
+            const otherOptions = ['Övrigt', 'Annat', 'Other'];
+            
+            if (otherOptions.includes(userAnswer)) {
+              const suffixes = ['_other', '_övrigt', '_annat'];
+              
+              for (const suffix of suffixes) {
+                const otherFieldId = `${question.id}${suffix}`;
+                
+                if (
+                  visibleQuestionIds.has(otherFieldId) && 
+                  otherFieldId in userInputs && 
+                  userInputs[otherFieldId]
+                ) {
+                  console.log(`Adding "Other" field answer: ${otherFieldId}=${userInputs[otherFieldId]}`);
+                  currentSectionResponses.push({
+                    id: otherFieldId,
+                    answer: userInputs[otherFieldId]
+                  });
+                  break; // Found and added one "other" field, no need to check more
+                }
+              }
+            }
           }
+        } else {
+          console.log(`Skipping question "${question.label}" (id: ${question.id}) because it has no valid answer`);
         }
+      } else {
+        console.log(`Skipping question "${question.label}" (id: ${question.id}) because it's not in the visible set`);
       }
     });
-
-    console.log(`Section "${section.section_title}": processed ${processedQuestions} questions, included ${includedAnswers} answers`);
-
-    // Only include sections that have responses
-    if (formattedSection.responses.length > 0) {
-      formattedAnswer.answeredSections.push(formattedSection);
-      console.log(`Added section "${section.section_title}" with ${formattedSection.responses.length} responses to the formatted answer`);
+    
+    // Only include the section if it has at least one response
+    if (currentSectionResponses.length > 0) {
+      console.log(`Adding section "${section.section_title}" with ${currentSectionResponses.length} responses to final result`);
+      formattedAnswer.answeredSections.push({
+        section_title: section.section_title,
+        responses: currentSectionResponses
+      });
     } else {
-      console.log(`Skipping section "${section.section_title}" because it has no responses`);
+      console.log(`Skipping section "${section.section_title}" because it has no valid responses`);
     }
   });
 

@@ -58,7 +58,7 @@ export function useConditionalFields(formTemplate: FormTemplate, currentValues: 
       shouldShow = dependentValue === equals;
     }
     
-    // Log conditional question visibility
+    // Add to debug console with full details
     if (question.show_if) {
       console.log(`Question "${question.label}" (${question.id}) condition:`, 
         shouldShow ? "VISIBLE" : "HIDDEN", 

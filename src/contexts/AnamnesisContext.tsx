@@ -1,4 +1,11 @@
 
+/**
+ * This context provides state management for the anamnesis list and detail views.
+ * It handles data fetching, refresh logic, error state management, and selected entry tracking.
+ * The context implements a circuit breaker pattern to prevent excessive refresh attempts
+ * when errors occur.
+ */
+
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnamnesesEntry } from "@/types/anamnesis";
@@ -9,8 +16,6 @@ import { useOrganization } from "@clerk/clerk-react";
 interface AnamnesisContextType {
   selectedEntry: AnamnesesEntry | null;
   setSelectedEntry: (entry: AnamnesesEntry | null) => void;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
   isLoading: boolean;
   error: Error | null;
   clearError: () => void;
@@ -23,7 +28,6 @@ const AnamnesisContext = createContext<AnamnesisContextType | undefined>(undefin
 
 export function AnamnesisProvider({ children }: { children: ReactNode }) {
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
-  const [activeTab, setActiveTab] = useState("sent");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [dataLastUpdated, setDataLastUpdated] = useState<Date | null>(null);
@@ -35,7 +39,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
   // Track consecutive errors to implement circuit breaker
   const consecutiveErrorsRef = useState<number>(0);
   const lastRefreshAttemptRef = useState<number>(0);
-  const MIN_REFRESH_INTERVAL = 3000; // Increased from 2000 to 3000 ms
+  const MIN_REFRESH_INTERVAL = 3000; // Minimum time between refresh attempts (3000ms)
   const CIRCUIT_BREAKER_THRESHOLD = 5; // Break after 5 consecutive errors
   const CIRCUIT_BREAKER_RESET_TIME = 30000; // 30 seconds before resetting circuit breaker
 
@@ -83,10 +87,10 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
       // Refresh authentication with normal priority (use cache if available)
       refreshClient(false)
         .then(() => {
-          // Only invalidate the current tab's data
+          // Invalidate all anamnesis entries queries
           setTimeout(() => {
             queryClient.invalidateQueries({ 
-              queryKey: ["anamnes-entries", undefined, activeTab] 
+              queryKey: ["anamnes-entries-all"] 
             });
             consecutiveErrorsRef[0] = 0;
             setDataLastUpdated(new Date());
@@ -117,7 +121,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [queryClient, refreshClient, consecutiveErrorsRef, lastRefreshAttemptRef, activeTab]);
+  }, [queryClient, refreshClient, consecutiveErrorsRef, lastRefreshAttemptRef]);
 
   // Force refresh that bypasses all caches
   const forceRefresh = useCallback(() => {
@@ -127,13 +131,13 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
       // Force refresh authentication (bypass cache)
       refreshClient(true)
         .then(() => {
-          // Then invalidate and refetch only the active tab's queries
+          // Invalidate and refetch all queries
           setTimeout(() => {
             queryClient.invalidateQueries({ 
-              queryKey: ["anamnes-entries", undefined, activeTab] 
+              queryKey: ["anamnes-entries-all"] 
             });
             queryClient.refetchQueries({ 
-              queryKey: ["anamnes-entries", undefined, activeTab] 
+              queryKey: ["anamnes-entries-all"] 
             });
             consecutiveErrorsRef[0] = 0;
             setDataLastUpdated(new Date());
@@ -170,17 +174,12 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [queryClient, refreshClient, consecutiveErrorsRef, activeTab]);
-
-  // Do NOT automatically refresh data when tab changes - let the TabsContainer handle that
-  // This removes a major source of circular refreshing
+  }, [queryClient, refreshClient, consecutiveErrorsRef]);
 
   return (
     <AnamnesisContext.Provider value={{ 
       selectedEntry, 
-      setSelectedEntry, 
-      activeTab, 
-      setActiveTab,
+      setSelectedEntry,
       isLoading,
       error,
       clearError,

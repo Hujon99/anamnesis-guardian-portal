@@ -1,8 +1,9 @@
 
 /**
  * This utility file contains functions to process and format form submissions.
- * It ensures that only relevant answers from dynamic forms are saved in a 
- * consistent structure based on the form template that was used.
+ * It ensures that all relevant answers from dynamic forms are saved in a 
+ * consistent structure based on the form template that was used, including
+ * conditional and follow-up questions.
  */
 
 import { FormTemplate, FormSection, FormQuestion } from "@/types/anamnesis";
@@ -24,7 +25,7 @@ export interface FormattedAnswer {
 
 /**
  * Processes form answers based on the template structure and user inputs
- * Only includes sections and questions that were shown to the user and answered
+ * Includes all relevant questions that were shown to the user based on conditional logic
  * 
  * @param formTemplate - The JSON template that defines the form structure
  * @param userInputs - The user's answers mapped to question IDs
@@ -72,8 +73,10 @@ export const processFormAnswers = (
 
     // Process each question in the section
     section.questions.forEach(question => {
-      // Skip questions that shouldn't be shown based on conditions
-      if (!evaluateCondition(question.show_if)) {
+      // Check if this question should be shown based on its own condition
+      const questionShouldBeShown = evaluateCondition(question.show_if);
+      
+      if (!questionShouldBeShown) {
         return;
       }
 
@@ -99,20 +102,25 @@ export const processFormAnswers = (
       if (
         (question.type === 'radio' || question.type === 'dropdown') &&
         question.options && 
-        question.options.includes('Övrigt') &&
-        userAnswer === 'Övrigt'
+        (
+          (question.options.includes('Övrigt') && userAnswer === 'Övrigt') ||
+          (question.options.includes('Annat') && userAnswer === 'Annat') ||
+          (question.options.includes('Other') && userAnswer === 'Other')
+        )
       ) {
-        // Look for the associated "other" text input (usually has _other or _övrigt suffix)
-        const otherFieldId = `${question.id}_other`;
-        const alternativeOtherFieldId = `${question.id}_övrigt`;
+        // Look for the associated "other" text input 
+        const possibleOtherFieldSuffixes = ['_other', '_övrigt', '_annat'];
+        const baseId = question.id;
         
-        const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
-        
-        if (otherAnswer) {
-          formattedSection.responses.push({
-            id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
-            answer: otherAnswer
-          });
+        for (const suffix of possibleOtherFieldSuffixes) {
+          const otherFieldId = `${baseId}${suffix}`;
+          if (otherFieldId in userInputs && userInputs[otherFieldId]) {
+            formattedSection.responses.push({
+              id: otherFieldId,
+              answer: userInputs[otherFieldId]
+            });
+            break; // Found and added the "other" field, no need to check further
+          }
         }
       }
     });

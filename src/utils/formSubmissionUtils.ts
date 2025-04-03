@@ -5,7 +5,7 @@
  * consistent structure based on the form template that was used.
  */
 
-import { FormTemplate, FormSection, FormQuestion } from "@/types/anamnesis";
+import { FormTemplate } from "@/types/anamnesis";
 
 /**
  * Interface for the structured answer format
@@ -23,12 +23,61 @@ export interface FormattedAnswer {
 }
 
 /**
- * Processes form answers based on the template structure and user inputs
- * Only includes sections and questions that were shown to the user and answered
+ * Prepares form answers for submission to the API.
+ * This combines the user inputs with additional metadata.
  * 
- * @param formTemplate - The JSON template that defines the form structure
- * @param userInputs - The user's answers mapped to question IDs
- * @returns A formatted answer object containing only relevant answered questions
+ * @param formTemplate - The form template used for the submission
+ * @param userInputs - The raw user inputs
+ * @param formattedAnswers - Pre-processed formatted answers from useFormSubmissionState
+ * @returns An object ready for API submission
+ */
+export const prepareFormSubmission = (
+  formTemplate: FormTemplate,
+  userInputs: Record<string, any>,
+  formattedAnswers?: any
+): Record<string, any> => {
+  // If formattedAnswers is provided, use it directly (new approach)
+  if (formattedAnswers) {
+    console.log("[FormSubmission] Using pre-processed formattedAnswers");
+    
+    // Return an object structure suitable for API submission
+    return {
+      // Include the formatted answers
+      formattedAnswers,
+      
+      // Also include the raw answers for backward compatibility
+      rawAnswers: { ...userInputs },
+      
+      // Add metadata
+      metadata: {
+        formTemplateId: formTemplate.title,
+        submittedAt: formattedAnswers.formattedAnswers?.submissionTimestamp || new Date().toISOString(),
+        version: "2.0"
+      }
+    };
+  } else {
+    // Fallback to legacy approach (should not be used anymore)
+    console.warn("[FormSubmission] WARNING: Using legacy processFormAnswers approach");
+    return {
+      // Include the formatted answers 
+      formattedAnswers: processFormAnswers(formTemplate, userInputs),
+      
+      // Also include the raw answers for backward compatibility
+      rawAnswers: { ...userInputs },
+      
+      // Add metadata
+      metadata: {
+        formTemplateId: formTemplate.title,
+        submittedAt: new Date().toISOString(),
+        version: "1.0"
+      }
+    };
+  }
+};
+
+/**
+ * @deprecated Use the useFormSubmissionState hook instead
+ * This function is kept for backward compatibility.
  */
 export const processFormAnswers = (
   formTemplate: FormTemplate,
@@ -59,11 +108,6 @@ export const processFormAnswers = (
 
   // Process each section in the template
   formTemplate.sections.forEach(section => {
-    // Skip sections that shouldn't be shown based on conditions
-    if (!evaluateCondition(section.show_if)) {
-      return;
-    }
-
     // Create a new section for the formatted answer
     const formattedSection = {
       section_title: section.section_title,
@@ -124,36 +168,4 @@ export const processFormAnswers = (
   });
 
   return formattedAnswer;
-};
-
-/**
- * Prepares form answers for submission to the API
- * This combines the user inputs with additional metadata
- * 
- * @param formTemplate - The form template used for the submission
- * @param userInputs - The raw user inputs
- * @returns An object ready for API submission
- */
-export const prepareFormSubmission = (
-  formTemplate: FormTemplate,
-  userInputs: Record<string, any>
-): Record<string, any> => {
-  // Process the answers into the structured format
-  const formattedAnswers = processFormAnswers(formTemplate, userInputs);
-  
-  // Return an object structure suitable for API submission
-  return {
-    // Include the formatted answers 
-    formattedAnswers,
-    
-    // Also include the raw answers for backward compatibility
-    rawAnswers: { ...userInputs },
-    
-    // Add metadata
-    metadata: {
-      formTemplateId: formTemplate.title,
-      submittedAt: formattedAnswers.submissionTimestamp,
-      version: "1.0"
-    }
-  };
 };

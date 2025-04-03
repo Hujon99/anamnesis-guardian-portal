@@ -16,14 +16,19 @@ export const useFormSubmission = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const submitForm = async (token: string, values: Record<string, any>, formTemplate?: FormTemplate) => {
+  const submitForm = async (
+    token: string, 
+    values: Record<string, any>, 
+    formTemplate?: FormTemplate,
+    preProcessedFormattedAnswers?: any
+  ) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // Prepare the submission data
+      // Prepare the submission data, using the pre-processed data if available
       const submissionData = formTemplate 
-        ? prepareFormSubmission(formTemplate, values)
+        ? prepareFormSubmission(formTemplate, values, preProcessedFormattedAnswers)
         : { answers: values }; // Fallback for backward compatibility
 
       console.log("Submitting form with data:", JSON.stringify(submissionData, null, 2));

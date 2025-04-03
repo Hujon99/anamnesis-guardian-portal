@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 
 interface FormContainerProps {
   formTemplate: FormTemplate | null;
-  onSubmit: (values: any) => Promise<void>;
+  onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
   isSubmitting: boolean;
 }
 

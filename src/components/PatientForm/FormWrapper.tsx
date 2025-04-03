@@ -5,7 +5,7 @@
  * based on a template with conditional sections and questions.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormTemplate } from "@/types/anamnesis";
@@ -68,10 +68,13 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
   });
   
   const { watch, handleSubmit, trigger, formState } = form;
-  const currentValues = watch();
+  const watchedValues = watch();
+  
+  // Use ref to compare current values with previous values to avoid unnecessary processing
+  const previousValuesRef = useRef<string>(JSON.stringify(watchedValues));
   
   // Initialize our hooks for form state
-  const { visibleSections, totalSections } = useConditionalFields(formTemplate, currentValues);
+  const { visibleSections, totalSections } = useConditionalFields(formTemplate, watchedValues);
   const { 
     currentStep, 
     nextStep, 
@@ -84,9 +87,9 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
   
   // Initialize the form submission state hook
   const { 
-    processSection, 
-    finalizeSubmissionData,
-    setCurrentStep: setSubmissionStateCurrentStep
+    processSectionsWithDebounce,
+    setCurrentStep: setSubmissionStateCurrentStep,
+    finalizeSubmissionData
   } = useFormSubmissionState(formTemplate);
   
   // Update the current step in our submission state hook when it changes
@@ -94,15 +97,20 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
     setSubmissionStateCurrentStep(currentStep);
   }, [currentStep, setSubmissionStateCurrentStep]);
   
-  // Process the current section(s) whenever they or form values change
+  // Process sections when values or visible sections change, with debouncing
   useEffect(() => {
+    // Only process if we have visible sections for the current step
     if (visibleSections.length > 0 && currentStep < visibleSections.length) {
-      // Process each section in the current step
-      visibleSections[currentStep].forEach(section => {
-        processSection(section, currentValues);
-      });
+      // Check if values have changed significantly to avoid redundant processing
+      const currentValuesJson = JSON.stringify(watchedValues);
+      if (currentValuesJson !== previousValuesRef.current) {
+        previousValuesRef.current = currentValuesJson;
+        
+        // Process all sections at the current step with debouncing
+        processSectionsWithDebounce(visibleSections[currentStep], watchedValues);
+      }
     }
-  }, [currentStep, visibleSections, currentValues, processSection]);
+  }, [currentStep, visibleSections, watchedValues, processSectionsWithDebounce]);
   
   // Handle next step logic with validation
   const handleNextStep = async () => {
@@ -197,7 +205,7 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
             {visibleSections.length > 0 && currentStep < visibleSections.length && (
               <FormStepContent 
                 sections={visibleSections[currentStep]} 
-                currentValues={currentValues}
+                currentValues={watchedValues}
               />
             )}
           </form>

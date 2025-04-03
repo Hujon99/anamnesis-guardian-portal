@@ -1,4 +1,3 @@
-
 /**
  * This component displays detailed information about an anamnesis entry
  * in a modal dialog, replacing the previous sidebar detail view.
@@ -172,7 +171,7 @@ export function AnamnesisDetailModal({
                 onClick={copyLinkToClipboard}
                 className="flex items-center gap-1"
               >
-                <Copy className="h-3 w-3" />
+                <Copy className="h-3.5 w-3.5" />
                 Kopiera länk
               </Button>
               
@@ -183,7 +182,7 @@ export function AnamnesisDetailModal({
                 disabled={sendLinkMutation.isPending}
                 className="flex items-center gap-1"
               >
-                <Mail className="h-3 w-3" />
+                <Mail className="h-3.5 w-3.5" />
                 {sendLinkMutation.isPending 
                   ? <span className="flex items-center gap-1">
                       <Loader2 className="h-3 w-3 animate-spin" /> 

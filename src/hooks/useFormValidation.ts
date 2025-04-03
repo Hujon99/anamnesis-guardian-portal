@@ -81,7 +81,7 @@ export function useFormValidation(formTemplate: FormTemplate, currentValues: Rec
       });
     });
     
-    return z.object(schemaMap);
+    return Object.keys(schemaMap).length > 0 ? z.object(schemaMap) : null;
   }, [formTemplate, currentValues]);
 
   // Function to get all field IDs that should be validated in a specific section

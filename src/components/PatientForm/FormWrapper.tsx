@@ -56,17 +56,20 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
   
   const defaultValues = generateDefaultValues(formTemplate);
   
-  // Initialize form
+  // Custom hooks for form functionality
+  const { validationSchema, getFieldsToValidate } = useFormValidation(formTemplate, defaultValues);
+  
+  // Initialize form with validation schema (if available)
   const form = useForm({
     defaultValues,
-    mode: "onChange"
+    mode: "onChange",
+    resolver: validationSchema ? zodResolver(validationSchema) : undefined
   });
   
   const { watch, handleSubmit, trigger, formState } = form;
   const currentValues = watch();
   
-  // Custom hooks for form functionality
-  const { validationSchema, getFieldsToValidate } = useFormValidation(formTemplate, currentValues);
+  // Update validation when form values change
   const { visibleSections, totalSections } = useConditionalFields(formTemplate, currentValues);
   const { 
     currentStep, 
@@ -76,12 +79,6 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
     isLastStep, 
     calculateProgress 
   } = useMultiStepForm({ totalSteps: totalSections });
-  
-  // Update resolver when validation schema changes
-  React.useEffect(() => {
-    form.clearErrors();
-    form.setError = validationSchema ? zodResolver(validationSchema)(form).setError : form.setError;
-  }, [validationSchema, form]);
   
   // Handle next step logic with validation
   const handleNextStep = async () => {

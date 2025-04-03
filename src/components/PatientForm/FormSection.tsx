@@ -5,7 +5,7 @@
  * and validates required fields.
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import { FormSection as FormSectionType, FormQuestion } from "@/types/anamnesis";
 import { FormFieldRenderer } from "./FormFieldRenderer";
 import { useFormContext } from "react-hook-form";
@@ -22,6 +22,11 @@ export const FormSection: React.FC<FormSectionProps> = ({
   const { formState } = useFormContext();
   const { errors } = formState;
 
+  // Debug render cycle of sections
+  useEffect(() => {
+    console.log(`Rendering section: "${section.section_title}" with ${section.questions.length} questions`);
+  }, [section]);
+
   // Determine if the section should be shown based on its show_if condition
   const shouldShowSection = () => {
     if (!section.show_if) return true;
@@ -29,11 +34,19 @@ export const FormSection: React.FC<FormSectionProps> = ({
     const { question, equals } = section.show_if;
     const dependentValue = currentValues[question];
     
+    let shouldShow = false;
     if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
+      shouldShow = equals.includes(dependentValue);
+    } else {
+      shouldShow = dependentValue === equals;
     }
     
-    return dependentValue === equals;
+    console.log(`Section "${section.section_title}" visibility check:`, 
+      shouldShow ? "VISIBLE" : "HIDDEN", 
+      `(depends on ${question}=${JSON.stringify(equals)}, actual value=${dependentValue})`
+    );
+    
+    return shouldShow;
   };
 
   // If the section has a show_if condition and it's not met, don't render the section
@@ -56,14 +69,24 @@ export const FormSection: React.FC<FormSectionProps> = ({
             const { question: dependentQuestionId, equals } = question.show_if;
             const dependentValue = currentValues[dependentQuestionId];
             
+            let shouldShow = false;
             if (Array.isArray(equals)) {
-              return equals.includes(dependentValue);
+              shouldShow = equals.includes(dependentValue);
+            } else {
+              shouldShow = dependentValue === equals;
             }
             
-            return dependentValue === equals;
+            console.log(`Question "${question.label}" (${question.id}) visibility check:`, 
+              shouldShow ? "VISIBLE" : "HIDDEN", 
+              `(depends on ${dependentQuestionId}=${JSON.stringify(equals)}, actual value=${dependentValue})`
+            );
+            
+            return shouldShow;
           };
 
-          if (!shouldShowQuestion()) {
+          const isVisible = shouldShowQuestion();
+          
+          if (!isVisible) {
             return null;
           }
 

@@ -1,3 +1,4 @@
+
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that all relevant answers from dynamic forms are saved in a 
@@ -55,6 +56,9 @@ export const processFormAnswers = (
   
       const { question, equals } = condition;
       const dependentValue = inputs[question];
+      
+      // Log condition evaluation for debugging
+      console.log(`Evaluating condition: question=${question}, equals=${JSON.stringify(equals)}, actual value=${dependentValue}`);
   
       if (Array.isArray(equals)) {
         return equals.includes(dependentValue);
@@ -66,14 +70,17 @@ export const processFormAnswers = (
     // Process all sections and their questions recursively to account for nested conditions
     const processQuestionsRecursively = () => {
       let hasChanges = false;
+      let visibleQuestionsBefore = visibleQuestionIds.size;
       
-      formTemplate.sections.forEach(section => {
+      formTemplate.sections.forEach((section, sectionIndex) => {
         // Check if section should be shown
         const sectionShouldBeShown = evaluateCondition(section.show_if, userInputs);
         
         if (sectionShouldBeShown) {
-          section.questions.forEach(question => {
-            // If this question is already marked as visible, skip processing
+          console.log(`Section "${section.section_title}" (index ${sectionIndex}) should be shown`);
+          
+          section.questions.forEach((question, questionIndex) => {
+            // If this question is already marked as visible, skip detailed processing
             if (visibleQuestionIds.has(question.id)) {
               return;
             }
@@ -82,29 +89,70 @@ export const processFormAnswers = (
             const questionShouldBeShown = evaluateCondition(question.show_if, userInputs);
             
             if (questionShouldBeShown) {
+              console.log(`Question "${question.label}" (id: ${question.id}) should be shown`);
               visibleQuestionIds.add(question.id);
               hasChanges = true;
               
-              // Also check for special cases like "Other" fields
+              // Get the user's answer to this question
+              const answer = userInputs[question.id];
+              
+              // Check for "Other" fields that should be conditionally shown
               if (
                 (question.type === 'radio' || question.type === 'dropdown') &&
                 question.options
               ) {
-                const value = userInputs[question.id];
-                if (value === 'Övrigt' || value === 'Annat' || value === 'Other') {
+                const otherOptions = ['Övrigt', 'Annat', 'Other'];
+                
+                // If answered with an "Other" option, show the corresponding field
+                if (otherOptions.includes(answer)) {
                   const suffixes = ['_other', '_övrigt', '_annat'];
+                  
                   suffixes.forEach(suffix => {
                     const otherFieldId = `${question.id}${suffix}`;
                     if (otherFieldId in userInputs) {
+                      console.log(`Adding "Other" field: ${otherFieldId} with value: ${userInputs[otherFieldId]}`);
                       visibleQuestionIds.add(otherFieldId);
+                      hasChanges = true;
                     }
                   });
                 }
+                
+                // Special handling for conditional dependencies:
+                // Some questions might depend on specific values from this question
+                formTemplate.sections.forEach(depSection => {
+                  depSection.questions.forEach(depQuestion => {
+                    if (depQuestion.show_if && depQuestion.show_if.question === question.id) {
+                      const { equals } = depQuestion.show_if;
+                      
+                      // If the current answer matches the condition
+                      if ((Array.isArray(equals) && equals.includes(answer)) || equals === answer) {
+                        console.log(`Found dependent question "${depQuestion.label}" (id: ${depQuestion.id}) that depends on ${question.id}=${answer}`);
+                      }
+                    }
+                  });
+                  
+                  // Also check if any sections depend on this question
+                  if (depSection.show_if && depSection.show_if.question === question.id) {
+                    const { equals } = depSection.show_if;
+                    
+                    // If the current answer matches the condition
+                    if ((Array.isArray(equals) && equals.includes(answer)) || equals === answer) {
+                      console.log(`Found dependent section "${depSection.section_title}" that depends on ${question.id}=${answer}`);
+                    }
+                  }
+                });
               }
+            } else {
+              console.log(`Question "${question.label}" (id: ${question.id}) should NOT be shown due to condition: ${JSON.stringify(question.show_if)}`);
             }
           });
+        } else {
+          console.log(`Section "${section.section_title}" (index ${sectionIndex}) should NOT be shown due to condition: ${JSON.stringify(section.show_if)}`);
         }
       });
+      
+      let visibleQuestionsAfter = visibleQuestionIds.size;
+      console.log(`Iteration added ${visibleQuestionsAfter - visibleQuestionsBefore} visible questions`);
       
       return hasChanges;
     };
@@ -114,18 +162,31 @@ export const processFormAnswers = (
     let iterations = 0;
     let maxIterations = 10; // Prevent infinite loops, adjust if needed
     
+    console.log("Starting recursive question identification process");
+    
     while (processQuestionsRecursively() && iterations < maxIterations) {
       iterations++;
+      console.log(`Completed iteration ${iterations}, total visible questions so far: ${visibleQuestionIds.size}`);
+      
+      // Debug output - log all visible questions after each iteration
+      console.log("Currently visible questions:");
+      Array.from(visibleQuestionIds).forEach(id => {
+        console.log(`- ${id}: ${userInputs[id]}`);
+      });
     }
     
     console.log(`Identified ${visibleQuestionIds.size} visible questions after ${iterations} iterations`);
+    console.log("Final list of visible questions:");
+    Array.from(visibleQuestionIds).forEach(id => {
+      console.log(`- ${id}: ${userInputs[id] !== undefined ? userInputs[id] : 'undefined'}`);
+    });
   };
   
   // Call the function to identify all visible questions
   identifyVisibleQuestions();
   
-  // Second pass: build the formatted answer structure
-  formTemplate.sections.forEach(section => {
+  // Second pass: build the formatted answer structure based on visible questions
+  formTemplate.sections.forEach((section, sectionIndex) => {
     // Skip sections that shouldn't be shown based on conditions
     if (section.show_if) {
       const { question, equals } = section.show_if;
@@ -139,6 +200,7 @@ export const processFormAnswers = (
       }
       
       if (!sectionShouldBeShown) {
+        console.log(`Skipping section "${section.section_title}" in formatted answer because it doesn't meet conditions`);
         return;
       }
     }
@@ -149,10 +211,17 @@ export const processFormAnswers = (
       responses: []
     };
 
+    // Track how many questions we process from this section
+    let processedQuestions = 0;
+    let includedAnswers = 0;
+
     // Process each question in the section, but only include those we identified as visible
-    section.questions.forEach(question => {
+    section.questions.forEach((question, questionIndex) => {
+      processedQuestions++;
+      
       // Only include questions that were determined to be visible
       if (!visibleQuestionIds.has(question.id)) {
+        console.log(`Skipping question "${question.label}" (id: ${question.id}) because it's not in the visible set`);
         return;
       }
 
@@ -165,14 +234,17 @@ export const processFormAnswers = (
         userAnswer === null || 
         (typeof userAnswer === 'string' && userAnswer.trim() === '')
       ) {
+        console.log(`Skipping question "${question.label}" (id: ${question.id}) because it has no answer`);
         return;
       }
 
       // Add the answer to the formatted section
+      console.log(`Adding answer for question "${question.label}" (id: ${question.id}): ${userAnswer}`);
       formattedSection.responses.push({
         id: question.id,
         answer: userAnswer
       });
+      includedAnswers++;
 
       // Add any associated "Other" field answers
       if (
@@ -190,19 +262,26 @@ export const processFormAnswers = (
         for (const suffix of possibleOtherFieldSuffixes) {
           const otherFieldId = `${baseId}${suffix}`;
           if (visibleQuestionIds.has(otherFieldId) && otherFieldId in userInputs && userInputs[otherFieldId]) {
+            console.log(`Adding "Other" field answer for question "${question.label}": ${otherFieldId}=${userInputs[otherFieldId]}`);
             formattedSection.responses.push({
               id: otherFieldId,
               answer: userInputs[otherFieldId]
             });
+            includedAnswers++;
             break; // Found and added the "other" field, no need to check further
           }
         }
       }
     });
 
+    console.log(`Section "${section.section_title}": processed ${processedQuestions} questions, included ${includedAnswers} answers`);
+
     // Only include sections that have responses
     if (formattedSection.responses.length > 0) {
       formattedAnswer.answeredSections.push(formattedSection);
+      console.log(`Added section "${section.section_title}" with ${formattedSection.responses.length} responses to the formatted answer`);
+    } else {
+      console.log(`Skipping section "${section.section_title}" because it has no responses`);
     }
   });
 
@@ -225,8 +304,14 @@ export const prepareFormSubmission = (
   formTemplate: FormTemplate,
   userInputs: Record<string, any>
 ): Record<string, any> => {
+  console.log("Preparing form submission with template:", formTemplate.title);
+  console.log("Raw user inputs:", Object.keys(userInputs).length);
+  
   // Process the answers into the structured format
   const formattedAnswers = processFormAnswers(formTemplate, userInputs);
+  
+  console.log("Formatted answers contains sections:", formattedAnswers.answeredSections.length);
+  console.log("Total formatted responses:", formattedAnswers.answeredSections.reduce((sum, section) => sum + section.responses.length, 0));
   
   // Return an object structure suitable for API submission
   return {

@@ -41,9 +41,12 @@ export const FormSection: React.FC<FormSectionProps> = ({
     return null;
   }
 
+  // Generate a section ID for accessibility linking
+  const sectionId = `section-${section.section_title.toLowerCase().replace(/\s+/g, '-')}`;
+
   return (
-    <div className="mb-6">
-      <h3 className="text-lg font-medium mb-4">{section.section_title}</h3>
+    <div className="mb-6" role="region" aria-labelledby={sectionId}>
+      <h3 id={sectionId} className="text-lg font-medium mb-4">{section.section_title}</h3>
       <div className="space-y-6">
         {section.questions.map((question) => {
           // Check if the question should be shown based on its own show_if condition
@@ -64,12 +67,18 @@ export const FormSection: React.FC<FormSectionProps> = ({
             return null;
           }
 
+          const hasError = errors[question.id] !== undefined;
+
           return (
-            <FormFieldRenderer 
+            <div 
               key={question.id} 
-              question={question} 
-              error={errors[question.id]} 
-            />
+              className={hasError ? "animate-shake" : ""}
+            >
+              <FormFieldRenderer 
+                question={question} 
+                error={errors[question.id]} 
+              />
+            </div>
           );
         })}
       </div>

@@ -1,0 +1,50 @@
+
+/**
+ * This file contains custom animations for the application.
+ * These animations help provide visual cues for form interactions and changes.
+ */
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Focus visible styling for better keyboard navigation */
+.focus-visible-ring {
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring focus-visible:ring-offset-background;
+}
+
+/* For high contrast mode support */
+@media (forced-colors: active) {
+  .forced-colors-button {
+    border: 2px solid transparent;
+  }
+  
+  .forced-colors-button:focus {
+    border-color: Highlight;
+  }
+}

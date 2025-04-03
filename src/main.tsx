@@ -1,31 +1,27 @@
 
-import { createRoot } from 'react-dom/client';
-import { ClerkProvider } from '@clerk/clerk-react';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
-import './index.css';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { ClerkProvider } from '@clerk/clerk-react'
+import { BrowserRouter } from 'react-router-dom'
 
-// Your Clerk publishable key
-const PUBLISHABLE_KEY = "pk_test_dG9nZXRoZXItbGFkeWJ1Zy05NC5jbGVyay5hY2NvdW50cy5kZXYk";
+import App from './App'
+import './index.css'
+import './styles/animations.css'
 
-if (!PUBLISHABLE_KEY) {
-  throw new Error('Missing Clerk Publishable Key');
+// Get the publishable key from environment variables
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+
+// Check if the key is available
+if (!CLERK_PUBLISHABLE_KEY) {
+  throw new Error("Missing Publishable Key")
 }
 
-createRoot(document.getElementById('root')!).render(
-  <ClerkProvider 
-    publishableKey={PUBLISHABLE_KEY}
-    clerkJSVersion="5.56.0-snapshot.v20250312225817"
-    signInUrl="/sign-in"
-    signUpUrl="/sign-up"
-    signInFallbackRedirectUrl="/dashboard"
-    signUpFallbackRedirectUrl="/"
-    signInForceRedirectUrl="/dashboard"
-    signUpForceRedirectUrl="/"
-    afterSignOutUrl="/"
-  >
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </ClerkProvider>
-);
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ClerkProvider>
+  </React.StrictMode>,
+)

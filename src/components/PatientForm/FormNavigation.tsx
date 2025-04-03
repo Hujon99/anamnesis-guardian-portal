@@ -30,26 +30,33 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
           type="button" 
           variant="outline" 
           onClick={onPrevious}
+          aria-label="Gå till föregående steg"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Föregående
+          <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+          <span>Föregående</span>
+          <span className="sr-only"> (Alt+Vänsterpil)</span>
         </Button>
       )}
       
       <Button 
         type="button" 
         onClick={onNext}
-        className={`${isFirstStep && "ml-auto"}`}
+        className={`${isFirstStep ? "ml-auto" : ""}`}
         disabled={isSubmitting}
+        aria-label={isLastStep ? "Skicka formulär" : "Gå till nästa steg"}
       >
         {isSubmitting ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+            <span>Skickar...</span>
+          </>
         ) : isLastStep ? (
-          "Skicka svar"
+          <span>Skicka svar</span>
         ) : (
           <>
-            Nästa
-            <ArrowRight className="ml-2 h-4 w-4" />
+            <span>Nästa</span>
+            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+            <span className="sr-only"> (Alt+Högerpil)</span>
           </>
         )}
       </Button>

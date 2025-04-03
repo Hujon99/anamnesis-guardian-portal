@@ -24,10 +24,10 @@ const FormHeader: React.FC<FormHeaderProps> = ({
 }) => {
   return (
     <CardHeader>
-      <div className="flex justify-center mb-4">
+      <div className="flex justify-center mb-4" aria-hidden="true">
         <FileQuestion className="h-10 w-10 text-primary" />
       </div>
-      <CardTitle className="text-center">
+      <CardTitle className="text-center" id="form-title">
         {title}
       </CardTitle>
       <CardDescription className="text-center">
@@ -40,7 +40,14 @@ const FormHeader: React.FC<FormHeaderProps> = ({
           <span className="text-xs">Steg {currentStep + 1} av {totalSteps}</span>
           <span className="text-xs">{progress}% klart</span>
         </div>
-        <Progress value={progress} className="h-2" />
+        <Progress 
+          value={progress} 
+          className="h-2" 
+          aria-label={`Formulärets framsteg: ${progress}% klart`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+        />
       </div>
     </CardHeader>
   );

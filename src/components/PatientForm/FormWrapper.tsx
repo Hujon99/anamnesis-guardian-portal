@@ -5,7 +5,7 @@
  * based on a template with conditional sections and questions.
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormTemplate } from "@/types/anamnesis";
@@ -94,8 +94,55 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
     
     if (isValid) {
       nextStep();
+      // Announce step change to screen readers
+      const stepInfo = document.getElementById('step-info');
+      if (stepInfo) {
+        stepInfo.setAttribute('aria-live', 'polite');
+        setTimeout(() => {
+          stepInfo.removeAttribute('aria-live');
+        }, 1000);
+      }
+    } else {
+      // Announce validation errors to screen readers
+      const firstErrorEl = document.querySelector('[aria-invalid="true"]');
+      if (firstErrorEl) {
+        (firstErrorEl as HTMLElement).focus();
+      }
     }
   };
+
+  // Handle keyboard shortcuts for navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only process shortcuts if no modal is open and not in a text field
+      if (e.target instanceof HTMLInputElement || 
+          e.target instanceof HTMLTextAreaElement ||
+          e.target instanceof HTMLSelectElement) {
+        return;
+      }
+
+      // Alt+Left: Previous step, Alt+Right: Next step
+      if (e.altKey) {
+        switch (e.key) {
+          case 'ArrowLeft':
+            if (!isFirstStep) {
+              e.preventDefault();
+              previousStep();
+            }
+            break;
+          case 'ArrowRight':
+            if (!isLastStep) {
+              e.preventDefault();
+              handleNextStep();
+            }
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFirstStep, isLastStep, previousStep, handleNextStep]);
   
   return (
     <FormProvider {...form}>
@@ -108,7 +155,20 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
         />
         
         <CardContent>
-          <form id="patient-form" onSubmit={(e) => e.preventDefault()} className="space-y-6">
+          <form 
+            id="patient-form" 
+            onSubmit={(e) => e.preventDefault()} 
+            className="space-y-6"
+            aria-labelledby="form-title"
+            noValidate
+          >
+            <div 
+              id="step-info" 
+              className="sr-only" 
+            >
+              Steg {currentStep + 1} av {totalSections}
+            </div>
+            
             {visibleSections.length > 0 && currentStep < visibleSections.length && (
               <FormStepContent 
                 sections={visibleSections[currentStep]} 

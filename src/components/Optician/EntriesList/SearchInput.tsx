@@ -2,6 +2,7 @@
 /**
  * This component provides search functionality for the anamnesis list.
  * It includes a search input with instant filtering and a refresh button.
+ * The component is designed to be accessible and responsive.
  */
 
 import { Input } from "@/components/ui/input";
@@ -29,12 +30,15 @@ export function SearchInput({
         onChange={(e) => onSearchChange(e.target.value)}
         className="flex-1"
         aria-label="Sök efter anamnesen"
+        type="search"
+        autoComplete="off"
       />
       <Button 
         variant="outline" 
         onClick={onRefresh} 
         disabled={isRefreshing}
         aria-label="Uppdatera listan"
+        title="Uppdatera listan"
       >
         <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
       </Button>

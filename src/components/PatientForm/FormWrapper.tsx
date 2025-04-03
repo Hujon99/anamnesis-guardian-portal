@@ -83,7 +83,7 @@ export const FormWrapper: React.FC<FormWrapperProps> = ({
   // Handle next step logic with validation
   const handleNextStep = async () => {
     if (isLastStep) {
-      // This is the last step, submit the form
+      // This is the last step, submit the form with all values
       await handleSubmit(onSubmit)();
       return;
     }

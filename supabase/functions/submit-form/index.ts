@@ -1,12 +1,15 @@
 
 /**
- * Submit Form Edge Function (v6)
+ * Submit Form Edge Function (v7)
  * 
  * This edge function handles the submission of patient form data.
- * It validates the token, checks form status, and stores patient answers.
+ * It validates the token, checks form status, and stores patient answers
+ * in a structured format based on the form template.
  * 
- * The function includes comprehensive validation checks, structured error responses,
- * and detailed logging for troubleshooting.
+ * Updates in v7:
+ * - Added support for structured answer format
+ * - Improved handling of form data with metadata
+ * - Preserved backward compatibility for existing clients
  * 
  * Error handling:
  * - Invalid/missing token or answers: 400 Bad Request
@@ -27,7 +30,7 @@ import { validateToken } from "../utils/validationUtils.ts";
 import { createSupabaseClient } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v6";
+const FUNCTION_VERSION = "v7";
 const FUNCTION_NAME = "submit-form";
 
 serve(async (req) => {
@@ -65,8 +68,15 @@ serve(async (req) => {
       formData = requestData.formData;
       console.log(`Request data parsed successfully`);
       console.log(`Token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
-      console.log(`Answers keys: ${answers ? Object.keys(answers).join(', ') : 'missing'}`);
+      console.log(`Answers received: ${answers ? 'yes' : 'no'}`);
       console.log(`Form metadata received: ${formData ? 'yes' : 'no'}`);
+      
+      // Log structure of answers for debugging
+      if (answers) {
+        console.log(`Answer structure: ${typeof answers === 'object' ? 
+          (answers.formattedAnswers ? 'New structured format' : 'Legacy format') : 
+          typeof answers}`);
+      }
     } catch (parseError) {
       console.error('Error parsing request JSON:', parseError);
       return createErrorResponse(
@@ -186,19 +196,12 @@ serve(async (req) => {
       );
     }
     
-    // Prepare the answers data with additional metadata if provided
-    console.log(`Preparing answers data for submission...`);
-    const answersData = {
-      ...answers,
-      ...(formData ? { formMetadata: formData } : {})
-    };
-    
     // Update the entry with answers
     console.log(`Updating entry ${entry.id} with answers and setting status to 'pending'...`);
     const { data, error } = await supabase
       .from('anamnes_entries')
       .update({ 
-        answers: answersData,
+        answers: answers,
         status: 'pending',
         updated_at: new Date().toISOString()
       })

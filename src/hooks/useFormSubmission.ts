@@ -1,87 +1,84 @@
 
 /**
- * This hook handles the form submission process for patient anamnesis forms.
- * It encapsulates the form submission logic, status tracking, and error handling.
+ * This hook manages the form submission process for patient anamnesis forms.
+ * It handles submission state, error handling, and interacts with the API
+ * to send the processed form data.
  */
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
+import { prepareFormSubmission } from "@/utils/formSubmissionUtils";
+import { FormTemplate } from "@/types/anamnesis";
 
-type FormSubmissionState = {
-  isSubmitting: boolean;
-  error: string | null;
-  isSubmitted: boolean;
-};
+export const useFormSubmission = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
-type FormSubmissionResult = FormSubmissionState & {
-  submitForm: (token: string, values: any) => Promise<void>;
-};
+  const submitForm = async (token: string, values: Record<string, any>, formTemplate?: FormTemplate) => {
+    setIsSubmitting(true);
+    setError(null);
 
-export const useFormSubmission = (): FormSubmissionResult => {
-  const [state, setState] = useState<FormSubmissionState>({
-    isSubmitting: false,
-    error: null,
-    isSubmitted: false
-  });
-
-  const submitForm = async (token: string, values: any) => {
-    if (!token) return;
-    
     try {
-      setState(prev => ({ ...prev, isSubmitting: true, error: null }));
-      
-      const formMetadata = {
-        submittedAt: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        screenSize: `${window.innerWidth}x${window.innerHeight}`
-      };
-      
-      // Submit the form using the edge function
-      const response = await supabase.functions.invoke('submit-form', {
-        body: { 
-          token,
-          answers: values,
-          formData: formMetadata
-        }
-      });
+      // Prepare the submission data
+      const submissionData = formTemplate 
+        ? prepareFormSubmission(formTemplate, values)
+        : { answers: values }; // Fallback for backward compatibility
 
-      if (response.error) {
-        // Handle specific error cases
-        if (response.error.message.includes('gått ut') || response.data?.status === 'expired') {
-          setState(prev => ({
-            ...prev,
-            isSubmitting: false,
-            error: "Länken har gått ut",
-            isSubmitted: false
-          }));
-        } else {
-          setState(prev => ({
-            ...prev,
-            isSubmitting: false,
-            error: response.error.message || "Det gick inte att skicka formuläret.",
-            isSubmitted: false
-          }));
+      // Call the submit-form edge function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-form`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            token,
+            answers: submissionData,
+          }),
         }
-        return;
+      );
+
+      // Process the response
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `Ett fel uppstod (${response.status})`
+        );
       }
 
-      // Form submitted successfully
-      setState({
-        isSubmitting: false,
-        error: null,
-        isSubmitted: true
+      // Success handling
+      setIsSubmitted(true);
+      
+      toast({
+        title: "Tack för dina svar!",
+        description: "Dina svar har skickats in framgångsrikt.",
       });
       
-    } catch (err) {
-      console.error("Error submitting form:", err);
-      setState(prev => ({
-        ...prev,
-        isSubmitting: false,
-        error: "Ett tekniskt fel uppstod vid inskickning. Försök igen senare.",
-        isSubmitted: false
-      }));
+      return true;
+    } catch (err: any) {
+      // Error handling
+      console.error("Form submission error:", err);
+      setError(err);
+      
+      toast({
+        title: "Det gick inte att skicka in formuläret",
+        description: err.message || "Ett oväntat fel uppstod.",
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  return { ...state, submitForm };
+  return {
+    isSubmitting,
+    isSubmitted,
+    error,
+    submitForm,
+  };
 };

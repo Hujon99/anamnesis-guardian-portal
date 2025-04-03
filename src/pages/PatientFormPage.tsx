@@ -37,10 +37,10 @@ const PatientFormPage = () => {
     submitForm 
   } = useFormSubmission();
 
-  // Handle form submission
+  // Handle form submission with form template
   const handleFormSubmit = async (values: any) => {
     if (!token) return;
-    await submitForm(token, values);
+    await submitForm(token, values, formTemplate);
   };
 
   // Render different UI states based on the form status

@@ -76,7 +76,7 @@ const PatientFormPage = () => {
   if (submissionError) {
     return (
       <ErrorCard 
-        error={submissionError} 
+        error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
         onRetry={() => handleFormSubmit({})} 
       />
     );

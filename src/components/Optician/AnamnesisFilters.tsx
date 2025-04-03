@@ -19,6 +19,7 @@ interface AnamnesisFiltersProps {
   onUnansweredFilterChange: (value: boolean) => void;
   sortDescending: boolean;
   onSortDirectionChange: (value: boolean) => void;
+  onResetFilters: () => void;
 }
 
 export function AnamnesisFilters({
@@ -29,7 +30,8 @@ export function AnamnesisFilters({
   showOnlyUnanswered,
   onUnansweredFilterChange,
   sortDescending,
-  onSortDirectionChange
+  onSortDirectionChange,
+  onResetFilters
 }: AnamnesisFiltersProps) {
   return (
     <div className="flex flex-wrap gap-3 items-center" aria-label="Filtrera anamneser">
@@ -45,6 +47,7 @@ export function AnamnesisFilters({
           <SelectItem value="sent">Skickade</SelectItem>
           <SelectItem value="pending">Att granska</SelectItem>
           <SelectItem value="ready">Klara</SelectItem>
+          <SelectItem value="reviewed">Granskade</SelectItem>
         </SelectContent>
       </Select>
       
@@ -85,11 +88,7 @@ export function AnamnesisFilters({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => {
-          onStatusFilterChange(null);
-          onTimeFilterChange(null);
-          onUnansweredFilterChange(false);
-        }}
+        onClick={onResetFilters}
         className="ml-auto"
       >
         <Filter className="h-4 w-4 mr-2" />

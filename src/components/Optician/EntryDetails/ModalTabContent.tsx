@@ -52,14 +52,14 @@ export function ModalTabContent({
       onValueChange={setActiveTab} 
       className="flex-1 flex flex-col"
     >
-      <TabsList>
+      <TabsList className="mb-2">
         <TabsTrigger value="info">Information</TabsTrigger>
         <TabsTrigger value="notes">Anteckningar</TabsTrigger>
       </TabsList>
       
       <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden">
-        <ScrollArea className="flex-1 pr-4 h-full">
-          <div className="space-y-6">
+        <ScrollArea className="flex-1 h-full pr-4">
+          <div className="space-y-6 pb-4">
             {showPatientInfoSection && (
               <PatientInfo 
                 patientEmail={patientEmail}

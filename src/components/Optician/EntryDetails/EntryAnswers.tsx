@@ -59,7 +59,8 @@ const questionLabels: Record<string, string> = {
   bokningsorsak: "Bokningsorsak",
   hjälpmedel: "Hjälpmedel",
   glasögon_ålder: "Ålder på glasögon",
-  glasögon_funktion: "Glasögonfunktion"
+  glasögon_funktion: "Glasögonfunktion",
+  huvudvärk: "Huvudvärk"
 };
 
 export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps) => {
@@ -136,8 +137,8 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
         </h3>
         
         {formattedAnswersData.answeredSections.map((section, sectionIndex) => (
-          <div key={`section-${sectionIndex}`} className="mb-6">
-            <h4 className="text-md font-medium mb-2">{section.section_title}</h4>
+          <div key={`section-${sectionIndex}`} className="mb-8">
+            <h4 className="text-md font-medium mb-3 border-b pb-1">{section.section_title}</h4>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -148,10 +149,10 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
               <TableBody>
                 {section.responses.map((response, responseIndex) => (
                   <TableRow key={`${section.section_title}-${response.id}-${responseIndex}`}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium py-3">
                       {questionLabels[response.id] || response.id}
                     </TableCell>
-                    <TableCell className="whitespace-pre-wrap break-words">
+                    <TableCell className="whitespace-pre-wrap break-words py-3">
                       {response.answer !== null && response.answer !== undefined 
                         ? String(response.answer) 
                         : ""}
@@ -168,7 +169,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
 
   // Fallback to legacy format if no structured data is found
   return (
-    <div>
+    <div className="space-y-6">
       <h3 className="text-lg font-medium mb-4 flex items-center">
         <FileText className="h-5 w-5 mr-2 text-primary" />
         Patientens svar
@@ -186,10 +187,10 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
             .filter(([key]) => key !== 'formMetadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && key !== 'metadata')
             .map(([questionId, answer]) => (
               <TableRow key={questionId}>
-                <TableCell className="font-medium">
+                <TableCell className="font-medium py-3">
                   {questionLabels[questionId] || questionId}
                 </TableCell>
-                <TableCell className="whitespace-pre-wrap break-words">
+                <TableCell className="whitespace-pre-wrap break-words py-3">
                   {answer !== null && answer !== undefined ? String(answer) : ""}
                 </TableCell>
               </TableRow>

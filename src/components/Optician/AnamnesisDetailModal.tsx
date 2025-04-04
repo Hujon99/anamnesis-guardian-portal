@@ -61,7 +61,10 @@ export function AnamnesisDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl h-[80vh] flex flex-col max-h-[85vh]" aria-label="Anamnesdetaljer">
+      <DialogContent 
+        className="max-w-3xl h-[85vh] flex flex-col max-h-[85vh] overflow-hidden p-5" 
+        aria-label="Anamnesdetaljer"
+      >
         <ModalHeader 
           entry={entry}
           isExpired={isExpired}

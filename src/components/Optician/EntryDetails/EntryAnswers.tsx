@@ -25,14 +25,16 @@ interface AnsweredSection {
   responses: FormattedAnswer[];
 }
 
-interface FormattedAnswers {
+interface FormattedAnswersContent {
   formTitle?: string;
   submissionTimestamp?: string;
   answeredSections: AnsweredSection[];
 }
 
 interface AnswersData {
-  formattedAnswers?: FormattedAnswers;
+  formattedAnswers?: {
+    formattedAnswers?: FormattedAnswersContent;
+  };
   rawAnswers?: Record<string, any>;
   metadata?: {
     formTemplateId: string;
@@ -76,16 +78,52 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
     );
   }
 
+  // Function to extract the correct formatted answers data, handling different possible structures
+  const extractFormattedAnswers = (): FormattedAnswersContent | undefined => {
+    // Case 1: New format with double nesting: answers.formattedAnswers.formattedAnswers
+    if (
+      answers && 
+      typeof answers === 'object' && 
+      'formattedAnswers' in answers && 
+      answers.formattedAnswers && 
+      typeof answers.formattedAnswers === 'object' &&
+      'formattedAnswers' in answers.formattedAnswers &&
+      answers.formattedAnswers.formattedAnswers
+    ) {
+      console.log("Found double-nested formattedAnswers structure");
+      return answers.formattedAnswers.formattedAnswers;
+    }
+    
+    // Case 2: Single nesting: answers.formattedAnswers
+    if (
+      answers && 
+      typeof answers === 'object' && 
+      'formattedAnswers' in answers && 
+      answers.formattedAnswers && 
+      typeof answers.formattedAnswers === 'object' &&
+      'answeredSections' in answers.formattedAnswers
+    ) {
+      console.log("Found single-nested formattedAnswers structure");
+      return answers.formattedAnswers;
+    }
+    
+    // Case 3: Direct structure: answers.answeredSections
+    if (
+      answers && 
+      typeof answers === 'object' && 
+      'answeredSections' in answers
+    ) {
+      console.log("Found direct answeredSections structure");
+      return answers as unknown as FormattedAnswersContent;
+    }
+    
+    // No structured answers found
+    console.log("No structured answers format found, falling back to legacy format");
+    return undefined;
+  };
+
   // Extract formatted answers data
-  let formattedAnswersData: FormattedAnswers | undefined;
-  
-  // Check if answers follows the new structured format
-  if ('formattedAnswers' in answers) {
-    formattedAnswersData = answers.formattedAnswers;
-  } else if ('answeredSections' in answers) {
-    // Handle case where formattedAnswers might be directly in answers
-    formattedAnswersData = answers as unknown as FormattedAnswers;
-  } 
+  const formattedAnswersData = extractFormattedAnswers();
   
   // If we have structured data, render it accordingly
   if (formattedAnswersData?.answeredSections) {
@@ -94,6 +132,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
         <h3 className="text-lg font-medium mb-4 flex items-center">
           <FileText className="h-5 w-5 mr-2 text-primary" />
           Patientens svar
+          {formattedAnswersData.formTitle && <span className="text-sm ml-2 text-muted-foreground">({formattedAnswersData.formTitle})</span>}
         </h3>
         
         {formattedAnswersData.answeredSections.map((section, sectionIndex) => (
@@ -144,7 +183,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
         </TableHeader>
         <TableBody>
           {Object.entries(answers)
-            .filter(([key]) => key !== 'formMetadata')
+            .filter(([key]) => key !== 'formMetadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && key !== 'metadata')
             .map(([questionId, answer]) => (
               <TableRow key={questionId}>
                 <TableCell className="font-medium">

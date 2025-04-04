@@ -57,8 +57,8 @@ export function ModalTabContent({
         <TabsTrigger value="notes">Anteckningar</TabsTrigger>
       </TabsList>
       
-      <TabsContent value="info" className="flex-1 flex flex-col">
-        <ScrollArea className="flex-1 pr-4">
+      <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden">
+        <ScrollArea className="flex-1 pr-4 h-full">
           <div className="space-y-6">
             {showPatientInfoSection && (
               <PatientInfo 

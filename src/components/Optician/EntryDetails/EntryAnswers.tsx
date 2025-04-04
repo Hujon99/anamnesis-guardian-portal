@@ -128,7 +128,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
   // If we have structured data, render it accordingly
   if (formattedAnswersData?.answeredSections) {
     return (
-      <div>
+      <div className="space-y-6">
         <h3 className="text-lg font-medium mb-4 flex items-center">
           <FileText className="h-5 w-5 mr-2 text-primary" />
           Patientens svar

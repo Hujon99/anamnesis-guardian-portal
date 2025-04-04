@@ -8,20 +8,22 @@ import React from "react";
 import { Progress } from "@/components/ui/progress";
 import { FileQuestion } from "lucide-react";
 import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useFormContext } from "@/contexts/FormContext";
 
 interface FormHeaderProps {
-  title: string;
   currentStep: number;
   totalSteps: number;
   progress: number;
 }
 
 const FormHeader: React.FC<FormHeaderProps> = ({
-  title,
   currentStep,
   totalSteps,
   progress
 }) => {
+  // Get the form title from context
+  const title = useFormContext().form.formState.defaultValues?.formTitle || "Patientformulär";
+
   return (
     <CardHeader>
       <div className="flex justify-center mb-4" aria-hidden="true">

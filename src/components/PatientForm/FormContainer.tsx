@@ -5,7 +5,7 @@
  */
 
 import React from "react";
-import { FormWrapper } from "@/components/PatientForm/FormWrapper";
+import { FormOrchestrator } from "@/components/PatientForm/FormOrchestrator";
 import { FormTemplate } from "@/types/anamnesis";
 import { Loader2 } from "lucide-react";
 
@@ -24,7 +24,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         {formTemplate ? (
-          <FormWrapper 
+          <FormOrchestrator 
             formTemplate={formTemplate}
             onSubmit={onSubmit}
             isSubmitting={isSubmitting}

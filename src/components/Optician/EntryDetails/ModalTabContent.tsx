@@ -50,15 +50,18 @@ export function ModalTabContent({
       defaultValue="info" 
       value={activeTab} 
       onValueChange={setActiveTab} 
-      className="flex-1 flex flex-col"
+      className="flex-1 flex flex-col min-h-0"
     >
-      <TabsList className="mb-2">
+      <TabsList className="mb-2 w-full">
         <TabsTrigger value="info">Information</TabsTrigger>
         <TabsTrigger value="notes">Anteckningar</TabsTrigger>
       </TabsList>
       
-      <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden">
-        <ScrollArea className="flex-1 h-full pr-4">
+      <TabsContent 
+        value="info" 
+        className="flex-1 flex flex-col overflow-hidden min-h-0"
+      >
+        <ScrollArea className="flex-1 w-full pr-4">
           <div className="space-y-6 pb-4">
             {showPatientInfoSection && (
               <PatientInfo 
@@ -79,7 +82,7 @@ export function ModalTabContent({
         </ScrollArea>
       </TabsContent>
       
-      <TabsContent value="notes" className="flex-1 flex flex-col">
+      <TabsContent value="notes" className="flex-1 flex flex-col min-h-0">
         <InternalNotes 
           notes={notes}
           setNotes={setNotes}

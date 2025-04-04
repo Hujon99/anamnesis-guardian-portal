@@ -1,3 +1,10 @@
+
+/**
+ * This component provides a scrollable container with custom scrollbars.
+ * It uses the Radix UI ScrollArea component to create a scrollable area with
+ * customizable scrollbars and maintains the native scroll behavior.
+ */
+
 import * as React from "react"
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 

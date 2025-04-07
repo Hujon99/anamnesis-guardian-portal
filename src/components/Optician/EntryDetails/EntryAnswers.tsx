@@ -68,7 +68,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
   if (!hasAnswers) {
     return (
       status !== "draft" && (
-        <div className="text-center p-4 border border-dashed rounded-md h-[400px] flex items-center justify-center">
+        <div className="text-center p-4 border border-dashed rounded-md flex-1 flex items-center justify-center">
           <div>
             <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
             <p className="text-muted-foreground">
@@ -94,7 +94,6 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
       'formattedAnswers' in answers.formattedAnswers &&
       answers.formattedAnswers.formattedAnswers
     ) {
-      console.log("Found double-nested formattedAnswers structure");
       return answers.formattedAnswers.formattedAnswers;
     }
     
@@ -107,7 +106,6 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
       typeof answers.formattedAnswers === 'object' &&
       'answeredSections' in answers.formattedAnswers
     ) {
-      console.log("Found single-nested formattedAnswers structure");
       return answers.formattedAnswers;
     }
     
@@ -117,12 +115,10 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
       typeof answers === 'object' && 
       'answeredSections' in answers
     ) {
-      console.log("Found direct answeredSections structure");
       return answers as unknown as FormattedAnswersContent;
     }
     
     // No structured answers found
-    console.log("No structured answers format found, falling back to legacy format");
     return undefined;
   };
 
@@ -132,7 +128,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
   // If we have structured data, render it accordingly
   if (formattedAnswersData?.answeredSections) {
     return (
-      <div className="space-y-4 flex flex-col h-full min-h-[500px]">
+      <div className="flex-1 flex flex-col">
         <div className="sticky top-0 bg-background z-10 pb-2 border-b border-border">
           <h3 className="text-lg font-medium flex items-center">
             <FileText className="h-5 w-5 mr-2 text-primary" />
@@ -141,7 +137,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
           </h3>
         </div>
         
-        <div className="flex-1 overflow-visible pb-8">
+        <div className="flex-1 py-4">
           {formattedAnswersData.answeredSections.map((section, sectionIndex) => (
             <div 
               key={`section-${sectionIndex}`} 
@@ -181,7 +177,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
 
   // Fallback to legacy format if no structured data is found
   return (
-    <div className="space-y-4 flex flex-col h-full min-h-[500px]">
+    <div className="flex-1 flex flex-col">
       <div className="sticky top-0 bg-background z-10 pb-2 border-b border-border">
         <h3 className="text-lg font-medium flex items-center">
           <FileText className="h-5 w-5 mr-2 text-primary" />
@@ -189,7 +185,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
         </h3>
       </div>
       
-      <div className="flex-1 border border-muted rounded-md overflow-hidden shadow-sm">
+      <div className="flex-1 border border-muted rounded-md overflow-hidden shadow-sm mt-4">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-muted/20">
             <TableRow>

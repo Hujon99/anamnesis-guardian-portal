@@ -1,4 +1,9 @@
 
+/**
+ * This component displays a loading state for the anamnesis list.
+ * It shows a spinner and informative text while data is being fetched.
+ */
+
 import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 

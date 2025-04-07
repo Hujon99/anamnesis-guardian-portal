@@ -35,7 +35,10 @@ export function SearchInput({
       />
       <Button 
         variant="outline" 
-        onClick={onRefresh} 
+        onClick={() => {
+          console.log("Manual refresh triggered");
+          onRefresh();
+        }} 
         disabled={isRefreshing}
         aria-label="Uppdatera listan"
         title="Uppdatera listan"

@@ -36,6 +36,12 @@ export function AnamnesisListView() {
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
   const isMobile = useIsMobile();
 
+  // Manual refresh handler with debug console log
+  const handleManualRefresh = () => {
+    console.log("Manual refresh triggered in AnamnesisListView");
+    refetch();
+  };
+
   if ((isLoading && !entries.length)) {
     return <LoadingState />;
   }
@@ -51,7 +57,7 @@ export function AnamnesisListView() {
           <SearchInput
             searchQuery={filters.searchQuery}
             onSearchChange={(value) => updateFilter("searchQuery", value)}
-            onRefresh={refetch}
+            onRefresh={handleManualRefresh}
             isRefreshing={isFetching}
           />
         </div>

@@ -68,7 +68,7 @@ export const useAnamnesisList = () => {
           throw error;
         }
 
-        console.log(`Fetched ${data.length} entries`);
+        console.log(`Fetched ${data?.length || 0} entries`);
         return data as AnamnesesEntry[];
       } catch (fetchError) {
         const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
@@ -88,7 +88,7 @@ export const useAnamnesisList = () => {
     enabled: !!organization?.id,
     retry: 1,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    refetchOnWindowFocus: false, // Changed to false as we'll use realtime
+    refetchOnWindowFocus: true,
     refetchOnReconnect: true, 
     refetchOnMount: true,
   });

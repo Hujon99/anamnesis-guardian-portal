@@ -21,6 +21,7 @@ import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { AnamnesisProvider, useAnamnesis } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Error fallback component
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -52,11 +53,20 @@ const OpticianContent = () => {
   const { organization } = useOrganization();
   const { supabase, isLoading: supabaseLoading, error: supabaseError, refreshClient } = useSupabaseClient();
   const { isSyncing, isSynced, error: syncError } = useSyncOrganization();
-  const { error: contextError, clearError } = useAnamnesis();
+  const { error: contextError, clearError, refreshData } = useAnamnesis();
   const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
 
   const isReady = !supabaseLoading && !isSyncing && isSynced;
   const combinedError = error || supabaseError || syncError || contextError;
+
+  // Fetch data when component mounts and all dependencies are ready
+  useEffect(() => {
+    if (isReady && organization?.id) {
+      console.log("OpticianContent is ready, triggering data fetch");
+      queryClient.invalidateQueries({ queryKey: ["anamnes-entries-all"] });
+    }
+  }, [isReady, organization?.id, queryClient]);
 
   const handleRetry = async () => {
     setError(null);
@@ -91,7 +101,7 @@ const OpticianContent = () => {
 
   return (
     <div className="container max-w-7xl mx-auto">
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
         <OpticianHeader />
         <LinkGenerator />
       </div>

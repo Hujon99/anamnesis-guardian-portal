@@ -1,4 +1,3 @@
-
 /**
  * This hook manages the data fetching and filtering logic for anamnesis entries.
  * It provides a unified interface for retrieving, filtering, and sorting
@@ -48,7 +47,7 @@ export const useAnamnesisList = () => {
     error, 
     refetch, 
     isFetching,
-    setQueryData
+    queryClient
   } = useQuery({
     queryKey: ["anamnes-entries-all", organization?.id],
     queryFn: async () => {
@@ -83,7 +82,7 @@ export const useAnamnesisList = () => {
         throw fetchError;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes (increased from 1 minute)
+    staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!organization?.id,
     retry: 1,
@@ -120,14 +119,17 @@ export const useAnamnesisList = () => {
           
           // Handle different event types
           if (payload.eventType === 'INSERT') {
-            setQueryData((currentData: AnamnesesEntry[] = []) => {
-              const newEntry = payload.new as AnamnesesEntry;
-              // Check if entry already exists to avoid duplicates
-              if (!currentData.some(entry => entry.id === newEntry.id)) {
-                return [newEntry, ...currentData];
+            queryClient.setQueryData(
+              ["anamnes-entries-all", organization.id],
+              (oldData: AnamnesesEntry[] = []) => {
+                const newEntry = payload.new as AnamnesesEntry;
+                // Check if entry already exists to avoid duplicates
+                if (!oldData.some(entry => entry.id === newEntry.id)) {
+                  return [newEntry, ...oldData];
+                }
+                return oldData;
               }
-              return currentData;
-            });
+            );
             
             toast({
               title: "Ny anamnes",
@@ -135,18 +137,24 @@ export const useAnamnesisList = () => {
             });
           } 
           else if (payload.eventType === 'UPDATE') {
-            setQueryData((currentData: AnamnesesEntry[] = []) => {
-              return currentData.map(entry => 
-                entry.id === payload.new.id 
-                  ? { ...entry, ...payload.new as Partial<AnamnesesEntry> } 
-                  : entry
-              );
-            });
+            queryClient.setQueryData(
+              ["anamnes-entries-all", organization.id],
+              (oldData: AnamnesesEntry[] = []) => {
+                return oldData.map(entry => 
+                  entry.id === payload.new.id 
+                    ? { ...entry, ...payload.new as Partial<AnamnesesEntry> } 
+                    : entry
+                );
+              }
+            );
           }
           else if (payload.eventType === 'DELETE') {
-            setQueryData((currentData: AnamnesesEntry[] = []) => {
-              return currentData.filter(entry => entry.id !== payload.old.id);
-            });
+            queryClient.setQueryData(
+              ["anamnes-entries-all", organization.id],
+              (oldData: AnamnesesEntry[] = []) => {
+                return oldData.filter(entry => entry.id !== payload.old.id);
+              }
+            );
           }
         }
       )
@@ -170,7 +178,7 @@ export const useAnamnesisList = () => {
       console.log("Cleaning up realtime subscription");
       channel.unsubscribe();
     };
-  }, [organization?.id, supabase, setQueryData]);
+  }, [organization?.id, supabase, queryClient]);
 
   // Set up realtime subscription when org or supabase client changes
   useEffect(() => {

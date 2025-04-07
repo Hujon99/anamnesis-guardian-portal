@@ -10,7 +10,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
-import { useOrganization } from "@clerk/clerk-react";
 
 interface AnamnesisContextType {
   selectedEntry: AnamnesesEntry | null;
@@ -32,7 +31,6 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
   const [dataLastUpdated, setDataLastUpdated] = useState<Date | null>(new Date());
   const queryClient = useQueryClient();
   const { refreshClient } = useSupabaseClient();
-  const { organization } = useOrganization();
 
   // Clear error state
   const clearError = useCallback(() => {
@@ -41,33 +39,16 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
 
   // Regular refresh data with error handling
   const refreshData = useCallback(() => {
-    if (!organization?.id) return;
-    
     setIsLoading(true);
     
     try {
-      // Refresh authentication with normal priority (use cache if available)
-      refreshClient(false)
-        .then(() => {
-          // Invalidate all anamnesis entries queries
-          queryClient.invalidateQueries({ 
-            queryKey: ["anamnes-entries-all"] 
-          });
-          
-          setDataLastUpdated(new Date());
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.error("Error refreshing data:", err);
-          setError(err instanceof Error ? err : new Error(String(err)));
-          setIsLoading(false);
-          
-          toast({
-            title: "Uppdateringsfel",
-            description: "Det gick inte att uppdatera data. Försök igen.",
-            variant: "destructive",
-          });
-        });
+      // Invalidate all anamnesis entries queries
+      queryClient.invalidateQueries({ 
+        queryKey: ["anamnes-entries-all"] 
+      });
+      
+      setDataLastUpdated(new Date());
+      setIsLoading(false);
     } catch (err) {
       console.error("Error in refresh data:", err);
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -79,7 +60,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [queryClient, refreshClient, organization?.id]);
+  }, [queryClient]);
 
   // Force refresh that bypasses all caches
   const forceRefresh = useCallback(() => {

@@ -5,7 +5,7 @@
  * Supabase's realtime functionality for live updates to entries.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisDetailModal } from "./AnamnesisDetailModal";
 import { AnamnesisFilters } from "./AnamnesisFilters";
@@ -15,6 +15,7 @@ import { SearchInput } from "./EntriesList/SearchInput";
 import { EntriesSummary } from "./EntriesList/EntriesSummary";
 import { EntriesList } from "./EntriesList/EntriesList";
 import { useAnamnesisList } from "@/hooks/useAnamnesisList";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function AnamnesisListView() {
   const {
@@ -33,16 +34,7 @@ export function AnamnesisListView() {
   
   // State for selected entry
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
-
-  // Automatically fetch data when component mounts once
-  useEffect(() => {
-    // Small delay to ensure auth context is ready
-    const timer = setTimeout(() => {
-      refetch();
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [refetch]);
+  const isMobile = useIsMobile();
 
   if ((isLoading && !entries.length)) {
     return <LoadingState />;
@@ -54,25 +46,29 @@ export function AnamnesisListView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 mb-6">
-        <SearchInput
-          searchQuery={filters.searchQuery}
-          onSearchChange={(value) => updateFilter("searchQuery", value)}
-          onRefresh={refetch}
-          isRefreshing={isFetching}
-        />
+      <div className={`flex ${isMobile ? 'flex-col' : 'flex-row justify-between'} gap-4 mb-6`}>
+        <div className={`${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
+          <SearchInput
+            searchQuery={filters.searchQuery}
+            onSearchChange={(value) => updateFilter("searchQuery", value)}
+            onRefresh={refetch}
+            isRefreshing={isFetching}
+          />
+        </div>
         
-        <AnamnesisFilters
-          statusFilter={filters.statusFilter}
-          onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
-          timeFilter={filters.timeFilter}
-          onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
-          showOnlyUnanswered={filters.showOnlyUnanswered}
-          onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
-          sortDescending={filters.sortDescending}
-          onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
-          onResetFilters={resetFilters}
-        />
+        <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
+          <AnamnesisFilters
+            statusFilter={filters.statusFilter}
+            onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
+            timeFilter={filters.timeFilter}
+            onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
+            showOnlyUnanswered={filters.showOnlyUnanswered}
+            onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
+            sortDescending={filters.sortDescending}
+            onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
+            onResetFilters={resetFilters}
+          />
+        </div>
       </div>
       
       <div>

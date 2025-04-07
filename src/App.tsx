@@ -1,4 +1,9 @@
 
+/**
+ * Main application component that handles routing and authentication.
+ * It sets up the application structure including authenticated and public routes.
+ */
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,7 +18,6 @@ import SignUpPage from "./pages/SignUpPage";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import OpticianView from "./pages/OpticianView";
-import NotesPage from "./pages/NotesPage";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -79,20 +83,6 @@ const App = () => (
           }
         />
         
-        {/* Notes Page */}
-        <Route 
-          path="/notes" 
-          element={
-            <SignedIn>
-              <Layout>
-                <ProtectedRoute>
-                  <NotesPage />
-                </ProtectedRoute>
-              </Layout>
-            </SignedIn>
-          }
-        />
-        
         <Route 
           path="/admin" 
           element={
@@ -124,15 +114,6 @@ const App = () => (
         
         <Route
           path="/anamnes/*"
-          element={
-            <SignedOut>
-              <RedirectToSignIn />
-            </SignedOut>
-          }
-        />
-        
-        <Route
-          path="/notes/*"
           element={
             <SignedOut>
               <RedirectToSignIn />

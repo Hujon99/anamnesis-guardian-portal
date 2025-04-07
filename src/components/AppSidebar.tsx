@@ -1,9 +1,13 @@
 
+/**
+ * This component renders the application's sidebar navigation.
+ * It displays different menu items based on the user's role and authentication status.
+ */
+
 import { useAuth } from "@clerk/clerk-react";
 import { Link, useLocation } from "react-router-dom";
 import { 
   ClipboardList, 
-  FileText, 
   Home, 
   Settings, 
   Users 
@@ -66,18 +70,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  asChild 
-                  isActive={location.pathname === '/notes'}
-                >
-                  <Link to="/notes">
-                    <FileText />
-                    <span>Anteckningar</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               
               {isAdmin && (
                 <SidebarMenuItem>

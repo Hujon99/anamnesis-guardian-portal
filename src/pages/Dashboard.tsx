@@ -1,9 +1,14 @@
 
+/**
+ * Dashboard page that serves as the main landing page after authentication.
+ * Shows organizational overview and quick access to main features based on user role.
+ */
+
 import { useOrganization } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, FileText, Settings } from "lucide-react";
+import { ClipboardList, Settings } from "lucide-react";
 
 const Dashboard = () => {
   const { organization } = useOrganization();
@@ -26,7 +31,7 @@ const Dashboard = () => {
         <p className="text-muted-foreground mt-2">Här är en översikt över dina aktiviteter</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2">
@@ -39,22 +44,6 @@ const Dashboard = () => {
             <p className="mb-4">Här kan du se alla anamneser och markera dem som klara för undersökning.</p>
             <Button asChild className="w-full">
               <Link to="/anamnes">Gå till anamneslista</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Anteckningar
-            </CardTitle>
-            <CardDescription>Hantera dina anteckningar</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">Skapa och hantera anteckningar för ditt arbete.</p>
-            <Button asChild variant="secondary" className="w-full">
-              <Link to="/notes">Gå till anteckningar</Link>
             </Button>
           </CardContent>
         </Card>

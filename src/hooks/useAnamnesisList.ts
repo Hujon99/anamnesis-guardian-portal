@@ -1,3 +1,4 @@
+
 /**
  * This hook manages the data fetching and filtering logic for anamnesis entries.
  * It provides a unified interface for retrieving, filtering, and sorting
@@ -6,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { AnamnesesEntry } from "@/types/anamnesis";
@@ -27,6 +28,7 @@ export const useAnamnesisList = () => {
   const { organization } = useOrganization();
   const { supabase, refreshClient } = useSupabaseClient();
   const { dataLastUpdated, forceRefresh } = useAnamnesis();
+  const queryClient = useQueryClient(); // Get the query client directly
   
   // State for filters
   const [filters, setFilters] = useState<AnamnesisFilters>({
@@ -46,8 +48,7 @@ export const useAnamnesisList = () => {
     isLoading, 
     error, 
     refetch, 
-    isFetching,
-    queryClient
+    isFetching
   } = useQuery({
     queryKey: ["anamnes-entries-all", organization?.id],
     queryFn: async () => {

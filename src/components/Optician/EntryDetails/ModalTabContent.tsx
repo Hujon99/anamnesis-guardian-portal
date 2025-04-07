@@ -7,7 +7,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PatientInfo } from "./PatientInfo";
-import { EntryAnswers } from "./EntryAnswers";
+import { OptimizedAnswersView } from "./OptimizedAnswersView";
 import { InternalNotes } from "./InternalNotes";
 
 interface ModalTabContentProps {
@@ -62,7 +62,7 @@ export function ModalTabContent({
         className="flex-1 flex flex-col overflow-hidden"
       >
         <ScrollArea className="flex-1 w-full pr-3 rounded-md border border-muted/30">
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4 flex flex-col flex-1">
             {showPatientInfoSection && (
               <PatientInfo 
                 patientEmail={patientEmail}
@@ -73,7 +73,7 @@ export function ModalTabContent({
               />
             )}
             
-            <EntryAnswers 
+            <OptimizedAnswersView 
               answers={answers}
               hasAnswers={hasAnswers}
               status={status}

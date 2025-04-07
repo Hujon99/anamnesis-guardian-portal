@@ -51,7 +51,11 @@ const TabsContent = React.forwardRef<
       "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className
     )}
-    style={{ WebkitFontSmoothing: 'antialiased', textRendering: 'optimizeLegibility' }}
+    style={{ 
+      WebkitFontSmoothing: 'antialiased', 
+      textRendering: 'optimizeLegibility',
+      height: 'calc(100% - 10px)' // Adjust for the mt-2 (8px) + some extra space
+    }}
     {...props}
   />
 ))

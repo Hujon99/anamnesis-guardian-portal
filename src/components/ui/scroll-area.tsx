@@ -21,7 +21,11 @@ const ScrollArea = React.forwardRef<
   >
     <ScrollAreaPrimitive.Viewport 
       className="h-full w-full rounded-[inherit]"
-      style={{ WebkitFontSmoothing: 'antialiased', textRendering: 'optimizeLegibility' }}
+      style={{ 
+        WebkitFontSmoothing: 'antialiased', 
+        textRendering: 'optimizeLegibility',
+        overscrollBehavior: 'contain' 
+      }}
     >
       {children}
     </ScrollAreaPrimitive.Viewport>

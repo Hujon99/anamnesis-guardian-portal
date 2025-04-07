@@ -5,7 +5,7 @@
  * tab-based interface for a more streamlined user experience.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisDetailModal } from "./AnamnesisDetailModal";
 import { AnamnesisFilters } from "./AnamnesisFilters";
@@ -33,6 +33,16 @@ export function AnamnesisListView() {
   
   // State for selected entry
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
+
+  // Automatically fetch data when component mounts
+  useEffect(() => {
+    // Small delay to ensure auth context is ready
+    const timer = setTimeout(() => {
+      refetch();
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [refetch]);
 
   if ((isLoading && !entries.length)) {
     return <LoadingState />;

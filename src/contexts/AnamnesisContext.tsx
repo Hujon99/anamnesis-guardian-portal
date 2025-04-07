@@ -30,7 +30,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [dataLastUpdated, setDataLastUpdated] = useState<Date | null>(null);
+  const [dataLastUpdated, setDataLastUpdated] = useState<Date | null>(new Date());
   const [isInitialized, setIsInitialized] = useState(false);
   const queryClient = useQueryClient();
   const { refreshClient } = useSupabaseClient();
@@ -49,13 +49,16 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
     consecutiveErrorsRef[0] = 0;
   }, [consecutiveErrorsRef]);
 
-  // Initial data load on mount
+  // Initial data load on mount - runs immediately when the context is first created
   useEffect(() => {
     if (isOrgLoaded && organization?.id && !isInitialized) {
-      setTimeout(() => {
+      // Immediate initialization with a small delay to ensure auth is ready
+      const timer = setTimeout(() => {
         refreshData();
         setIsInitialized(true);
-      }, 500);
+      }, 300);
+      
+      return () => clearTimeout(timer);
     }
   }, [isOrgLoaded, organization?.id, isInitialized]);
 
@@ -88,14 +91,13 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
       refreshClient(false)
         .then(() => {
           // Invalidate all anamnesis entries queries
-          setTimeout(() => {
-            queryClient.invalidateQueries({ 
-              queryKey: ["anamnes-entries-all"] 
-            });
-            consecutiveErrorsRef[0] = 0;
-            setDataLastUpdated(new Date());
-            setIsLoading(false);
-          }, 100); // Small delay to ensure auth refresh completes first
+          queryClient.invalidateQueries({ 
+            queryKey: ["anamnes-entries-all"] 
+          });
+          
+          consecutiveErrorsRef[0] = 0;
+          setDataLastUpdated(new Date());
+          setIsLoading(false);
         })
         .catch((err) => {
           console.error("Error refreshing data:", err);
@@ -132,23 +134,21 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
       refreshClient(true)
         .then(() => {
           // Invalidate and refetch all queries
-          setTimeout(() => {
-            queryClient.invalidateQueries({ 
-              queryKey: ["anamnes-entries-all"] 
-            });
-            queryClient.refetchQueries({ 
-              queryKey: ["anamnes-entries-all"] 
-            });
-            consecutiveErrorsRef[0] = 0;
-            setDataLastUpdated(new Date());
-            
-            toast({
-              title: "Data uppdaterad",
-              description: "Anamneser har uppdaterats.",
-            });
-            
-            setIsLoading(false);
-          }, 100);
+          queryClient.invalidateQueries({ 
+            queryKey: ["anamnes-entries-all"] 
+          });
+          queryClient.refetchQueries({ 
+            queryKey: ["anamnes-entries-all"] 
+          });
+          consecutiveErrorsRef[0] = 0;
+          setDataLastUpdated(new Date());
+          
+          toast({
+            title: "Data uppdaterad",
+            description: "Anamneser har uppdaterats.",
+          });
+          
+          setIsLoading(false);
         })
         .catch((err) => {
           console.error("Error force refreshing data:", err);

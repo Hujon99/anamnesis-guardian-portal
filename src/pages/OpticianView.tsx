@@ -57,29 +57,17 @@ const OpticianContent = () => {
   const isReady = !supabaseLoading && !isSyncing && isSynced;
   const combinedError = error || supabaseError || syncError || contextError;
 
-  // Effect to handle reset when critical dependencies change
+  // Effect to handle initial data load and refreshes
   useEffect(() => {
-    if (organization?.id && !isReady && !combinedError) {
-      const initializeData = async () => {
-        try {
-          await refreshClient();
-          setTimeout(() => {
-            refreshData();
-          }, 100);
-        } catch (err) {
-          console.error("Error initializing data:", err);
-          setError(err instanceof Error ? err : new Error(String(err)));
-        }
-      };
+    if (organization?.id && isReady && !combinedError) {
+      // Automatically refresh data when component mounts or dependencies change
+      const timer = setTimeout(() => {
+        refreshData();
+      }, 500);
       
-      initializeData();
+      return () => clearTimeout(timer);
     }
-    
-    // Clear local error when context error changes
-    return () => {
-      setError(null);
-    };
-  }, [organization?.id, isReady, combinedError, refreshClient, refreshData]);
+  }, [organization?.id, isReady, combinedError, refreshData]);
 
   const handleRetry = async () => {
     setError(null);

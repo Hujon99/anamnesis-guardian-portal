@@ -77,18 +77,19 @@ export const useAnamnesisList = () => {
         throw fetchError;
       }
     },
-    staleTime: 3 * 60 * 1000, // 3 minutes
+    staleTime: 60 * 1000, // 1 minute (reduced from 3 minutes)
     gcTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!organization?.id,
     retry: 1,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnWindowFocus: true, // Changed to true to refresh data when user focuses window
+    refetchOnReconnect: true, // Changed to true to refresh data when user reconnects
+    refetchOnMount: true, // Changed to true to refresh when component mounts
   });
 
-  // Refetch when dataLastUpdated changes
+  // Refetch when dataLastUpdated changes or organization changes
   useEffect(() => {
-    if (organization?.id && dataLastUpdated) {
+    if (organization?.id) {
       refetch();
     }
   }, [organization?.id, dataLastUpdated, refetch]);

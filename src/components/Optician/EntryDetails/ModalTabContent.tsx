@@ -61,8 +61,8 @@ export function ModalTabContent({
         value="info" 
         className="flex-1 flex flex-col overflow-hidden min-h-0"
       >
-        <ScrollArea className="flex-1 w-full pr-4 rounded-md border border-muted/30">
-          <div className="p-4 space-y-6">
+        <ScrollArea className="flex-1 w-full pr-3 rounded-md border border-muted/30 h-[calc(100vh-300px)]">
+          <div className="p-4">
             {showPatientInfoSection && (
               <PatientInfo 
                 patientEmail={patientEmail}

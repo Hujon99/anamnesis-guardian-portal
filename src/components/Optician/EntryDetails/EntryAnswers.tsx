@@ -68,13 +68,15 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
   if (!hasAnswers) {
     return (
       status !== "draft" && (
-        <div className="text-center p-4 border border-dashed rounded-md">
-          <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-muted-foreground">
-            {status === "sent" 
-              ? "Väntar på att patienten ska fylla i anamnesen" 
-              : "Ingen information från patienten"}
-          </p>
+        <div className="text-center p-4 border border-dashed rounded-md h-[400px] flex items-center justify-center">
+          <div>
+            <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-muted-foreground">
+              {status === "sent" 
+                ? "Väntar på att patienten ska fylla i anamnesen" 
+                : "Ingen information från patienten"}
+            </p>
+          </div>
         </div>
       )
     );
@@ -130,8 +132,8 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
   // If we have structured data, render it accordingly
   if (formattedAnswersData?.answeredSections) {
     return (
-      <div className="space-y-6 min-h-[400px] flex flex-col">
-        <div className="sticky top-0 bg-background z-10 pb-2">
+      <div className="space-y-4 flex flex-col h-full min-h-[500px]">
+        <div className="sticky top-0 bg-background z-10 pb-2 border-b border-border">
           <h3 className="text-lg font-medium flex items-center">
             <FileText className="h-5 w-5 mr-2 text-primary" />
             Patientens svar
@@ -143,7 +145,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
           {formattedAnswersData.answeredSections.map((section, sectionIndex) => (
             <div 
               key={`section-${sectionIndex}`} 
-              className="mb-8 border border-muted rounded-md overflow-hidden"
+              className="mb-8 border border-muted rounded-md overflow-hidden shadow-sm"
             >
               <h4 className="text-md font-medium p-3 bg-muted/20 border-b">
                 {section.section_title}
@@ -179,15 +181,15 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
 
   // Fallback to legacy format if no structured data is found
   return (
-    <div className="space-y-6 min-h-[400px] flex flex-col">
-      <div className="sticky top-0 bg-background z-10 pb-2">
+    <div className="space-y-4 flex flex-col h-full min-h-[500px]">
+      <div className="sticky top-0 bg-background z-10 pb-2 border-b border-border">
         <h3 className="text-lg font-medium flex items-center">
           <FileText className="h-5 w-5 mr-2 text-primary" />
           Patientens svar
         </h3>
       </div>
       
-      <div className="flex-1 border border-muted rounded-md overflow-hidden">
+      <div className="flex-1 border border-muted rounded-md overflow-hidden shadow-sm">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-muted/20">
             <TableRow>

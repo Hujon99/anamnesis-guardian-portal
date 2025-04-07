@@ -2,7 +2,8 @@
 /**
  * This component displays the answers provided by the patient in the anamnesis form.
  * It renders the answers in a table format, showing the question and corresponding answer.
- * It also handles the case when no answers are available yet.
+ * It also handles the case when no answers are available yet and provides visual indicators
+ * for scrolling and content boundaries.
  */
 
 import { FileText } from "lucide-react";
@@ -129,74 +130,87 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
   // If we have structured data, render it accordingly
   if (formattedAnswersData?.answeredSections) {
     return (
-      <div className="space-y-6">
-        <h3 className="text-lg font-medium mb-4 flex items-center">
-          <FileText className="h-5 w-5 mr-2 text-primary" />
-          Patientens svar
-          {formattedAnswersData.formTitle && <span className="text-sm ml-2 text-muted-foreground">({formattedAnswersData.formTitle})</span>}
-        </h3>
+      <div className="space-y-6 min-h-[400px] flex flex-col">
+        <div className="sticky top-0 bg-background z-10 pb-2">
+          <h3 className="text-lg font-medium flex items-center">
+            <FileText className="h-5 w-5 mr-2 text-primary" />
+            Patientens svar
+            {formattedAnswersData.formTitle && <span className="text-sm ml-2 text-muted-foreground">({formattedAnswersData.formTitle})</span>}
+          </h3>
+        </div>
         
-        {formattedAnswersData.answeredSections.map((section, sectionIndex) => (
-          <div key={`section-${sectionIndex}`} className="mb-8">
-            <h4 className="text-md font-medium mb-3 border-b pb-1">{section.section_title}</h4>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-1/3">Fråga</TableHead>
-                  <TableHead>Svar</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {section.responses.map((response, responseIndex) => (
-                  <TableRow key={`${section.section_title}-${response.id}-${responseIndex}`}>
-                    <TableCell className="font-medium py-3">
-                      {questionLabels[response.id] || response.id}
-                    </TableCell>
-                    <TableCell className="whitespace-pre-wrap break-words py-3">
-                      {response.answer !== null && response.answer !== undefined 
-                        ? String(response.answer) 
-                        : ""}
-                    </TableCell>
+        <div className="flex-1 overflow-visible pb-8">
+          {formattedAnswersData.answeredSections.map((section, sectionIndex) => (
+            <div 
+              key={`section-${sectionIndex}`} 
+              className="mb-8 border border-muted rounded-md overflow-hidden"
+            >
+              <h4 className="text-md font-medium p-3 bg-muted/20 border-b">
+                {section.section_title}
+              </h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/3">Fråga</TableHead>
+                    <TableHead>Svar</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ))}
+                </TableHeader>
+                <TableBody>
+                  {section.responses.map((response, responseIndex) => (
+                    <TableRow key={`${section.section_title}-${response.id}-${responseIndex}`}>
+                      <TableCell className="font-medium py-3">
+                        {questionLabels[response.id] || response.id}
+                      </TableCell>
+                      <TableCell className="whitespace-pre-wrap break-words py-3">
+                        {response.answer !== null && response.answer !== undefined 
+                          ? String(response.answer) 
+                          : ""}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   // Fallback to legacy format if no structured data is found
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium mb-4 flex items-center">
-        <FileText className="h-5 w-5 mr-2 text-primary" />
-        Patientens svar
-      </h3>
+    <div className="space-y-6 min-h-[400px] flex flex-col">
+      <div className="sticky top-0 bg-background z-10 pb-2">
+        <h3 className="text-lg font-medium flex items-center">
+          <FileText className="h-5 w-5 mr-2 text-primary" />
+          Patientens svar
+        </h3>
+      </div>
       
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-1/3">Fråga</TableHead>
-            <TableHead>Svar</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Object.entries(answers)
-            .filter(([key]) => key !== 'formMetadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && key !== 'metadata')
-            .map(([questionId, answer]) => (
-              <TableRow key={questionId}>
-                <TableCell className="font-medium py-3">
-                  {questionLabels[questionId] || questionId}
-                </TableCell>
-                <TableCell className="whitespace-pre-wrap break-words py-3">
-                  {answer !== null && answer !== undefined ? String(answer) : ""}
-                </TableCell>
-              </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div className="flex-1 border border-muted rounded-md overflow-hidden">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-muted/20">
+            <TableRow>
+              <TableHead className="w-1/3">Fråga</TableHead>
+              <TableHead>Svar</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Object.entries(answers)
+              .filter(([key]) => key !== 'formMetadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && key !== 'metadata')
+              .map(([questionId, answer]) => (
+                <TableRow key={questionId}>
+                  <TableCell className="font-medium py-3">
+                    {questionLabels[questionId] || questionId}
+                  </TableCell>
+                  <TableCell className="whitespace-pre-wrap break-words py-3">
+                    {answer !== null && answer !== undefined ? String(answer) : ""}
+                  </TableCell>
+                </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };

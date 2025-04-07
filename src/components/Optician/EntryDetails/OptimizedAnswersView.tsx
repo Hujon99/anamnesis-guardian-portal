@@ -74,7 +74,7 @@ export const OptimizedAnswersView = ({
       </h3>
       
       <div className="border border-muted rounded-md overflow-hidden shadow-sm flex-1">
-        <ScrollArea className="h-full">
+        <ScrollArea className="h-full max-h-[60vh]">
           <pre className="p-4 whitespace-pre-wrap text-sm">
             {optimizedText}
           </pre>

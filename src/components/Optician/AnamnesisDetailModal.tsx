@@ -74,23 +74,25 @@ export function AnamnesisDetailModal({
           isSendingLink={sendLinkMutation.isPending}
         />
         
-        <ModalTabContent
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          patientEmail={patientEmail}
-          isEditing={isEditing}
-          toggleEditing={toggleEditing}
-          setPatientEmail={setPatientEmail}
-          savePatientEmail={handleSavePatientEmail}
-          notes={notes}
-          setNotes={setNotes}
-          saveNotes={handleSaveNotes}
-          isPending={updateEntryMutation.isPending}
-          answers={answers}
-          hasAnswers={hasAnswers}
-          status={entry.status || ""}
-          showPatientInfoSection={showPatientInfoSection}
-        />
+        <div className="flex-1 overflow-hidden">
+          <ModalTabContent
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            patientEmail={patientEmail}
+            isEditing={isEditing}
+            toggleEditing={toggleEditing}
+            setPatientEmail={setPatientEmail}
+            savePatientEmail={handleSavePatientEmail}
+            notes={notes}
+            setNotes={setNotes}
+            saveNotes={handleSaveNotes}
+            isPending={updateEntryMutation.isPending}
+            answers={answers}
+            hasAnswers={hasAnswers}
+            status={entry.status || ""}
+            showPatientInfoSection={showPatientInfoSection}
+          />
+        </div>
         
         <ModalActions
           status={entry.status || ""}

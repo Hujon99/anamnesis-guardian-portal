@@ -1,3 +1,9 @@
+
+/**
+ * This component provides tabs functionality based on Radix UI's Tabs primitive.
+ * It allows for switching between different content sections using tab navigation.
+ */
+
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
@@ -45,6 +51,7 @@ const TabsContent = React.forwardRef<
       "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className
     )}
+    style={{ WebkitFontSmoothing: 'antialiased', textRendering: 'optimizeLegibility' }}
     {...props}
   />
 ))

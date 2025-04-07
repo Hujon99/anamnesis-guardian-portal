@@ -28,7 +28,8 @@ export function useAnamnesisDetail(
     updateStatus,
     saveNotes,
     savePatientEmail,
-    saveAiSummary
+    saveAiSummary,
+    sendLink
   } = useEntryMutations(entry.id, onEntryUpdated);
   
   const { showPrintPreview, printForm, exportToPDF } = usePrintFunction();

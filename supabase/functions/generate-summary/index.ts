@@ -76,7 +76,8 @@ Strukturera sammanfattningen tydligt, förslagsvis under följande rubriker (anp
 Viktiga instruktioner:
   1. Inkludera endast information som uttryckligen finns i den angivna fråge- och svarslistan. Gör inga egna antaganden,   tolkningar eller tillägg.
   2. Var koncis och fokusera på det kliniskt relevanta.
-  3. Använd enkla emojis för att göra styckena tydligare. `;
+  3. Använd enkla emojis för att göra rubriker tydligare.
+  4. Formattera EJ som markdown, utan tänk txt`;
 
     // 4. Make the fetch call
     console.log("Calling Azure OpenAI API...");

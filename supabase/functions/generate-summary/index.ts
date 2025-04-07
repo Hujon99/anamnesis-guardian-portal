@@ -63,6 +63,7 @@ serve(async (req: Request) => {
 3. Lyfta fram eventuella väsentliga medicinska tillstånd eller läkemedel som kan påverka synen.
 4. Sammanfatta patientens användning av glasögon/linser och tidigare erfarenheter.
 5. Gör inga egna slutsatser. Sammanfatta bara information.
+6. Ingen fetstil
 
 Använd professionell klinisk terminologi. Håll din sammanfattning koncis men omfattande. Formatera texten i distinkta stycken för läsbarhet. Använd gärna enkla emojis för att markera styckena`;
 

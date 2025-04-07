@@ -2,6 +2,7 @@
 /**
  * This component renders the tab content for the anamnesis detail modal.
  * It switches between patient information and notes based on the active tab.
+ * It provides proper scrolling behavior and content layout for both tabs.
  */
 
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -61,8 +62,8 @@ export function ModalTabContent({
         value="info" 
         className="flex-1 flex flex-col overflow-hidden min-h-0"
       >
-        <ScrollArea className="flex-1 w-full pr-4">
-          <div className="space-y-6 pb-8">
+        <ScrollArea className="flex-1 w-full pr-4 border-t border-border/30 pt-3">
+          <div className="space-y-6 pb-10">
             {showPatientInfoSection && (
               <PatientInfo 
                 patientEmail={patientEmail}

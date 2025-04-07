@@ -24,7 +24,7 @@ const ScrollArea = React.forwardRef<
       style={{ 
         WebkitFontSmoothing: 'antialiased', 
         textRendering: 'optimizeLegibility',
-        overscrollBehavior: 'contain' 
+        overscrollBehavior: 'contain'
       }}
     >
       {children}

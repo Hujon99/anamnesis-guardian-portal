@@ -115,7 +115,7 @@ export const OptimizedAnswersView = ({
   }
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium flex items-center">
           <FileText className="h-5 w-5 mr-2 text-primary" />
@@ -134,7 +134,7 @@ export const OptimizedAnswersView = ({
         </Button>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         <TabsList className="mb-2">
           <TabsTrigger value="raw">Rådata</TabsTrigger>
           <TabsTrigger value="summary" disabled={!summary}>
@@ -142,16 +142,22 @@ export const OptimizedAnswersView = ({
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="raw" className="flex-1 border border-muted rounded-md overflow-hidden shadow-sm flex flex-col">
-          <ScrollArea className="h-full max-h-[60vh]">
+        <TabsContent 
+          value="raw" 
+          className="flex-1 border border-muted rounded-md overflow-hidden"
+        >
+          <ScrollArea className="h-full">
             <pre className="p-4 whitespace-pre-wrap text-sm">
               {optimizedText}
             </pre>
           </ScrollArea>
         </TabsContent>
         
-        <TabsContent value="summary" className="flex-1 border border-muted rounded-md overflow-hidden shadow-sm flex flex-col">
-          <ScrollArea className="h-full max-h-[60vh]">
+        <TabsContent 
+          value="summary" 
+          className="flex-1 border border-muted rounded-md overflow-hidden"
+        >
+          <ScrollArea className="h-full">
             <div className="p-4">
               <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
                 <h4 className="text-primary font-medium flex items-center mb-2">

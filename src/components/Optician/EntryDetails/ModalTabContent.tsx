@@ -50,7 +50,7 @@ export function ModalTabContent({
       defaultValue="info" 
       value={activeTab} 
       onValueChange={setActiveTab} 
-      className="flex-1 flex flex-col"
+      className="flex-1 flex flex-col h-full"
     >
       <TabsList className="mb-2 w-full">
         <TabsTrigger value="info">Information</TabsTrigger>
@@ -61,8 +61,8 @@ export function ModalTabContent({
         value="info" 
         className="flex-1 flex flex-col overflow-hidden"
       >
-        <ScrollArea className="flex-1 w-full pr-3 rounded-md border border-muted/30">
-          <div className="p-4 space-y-4 flex flex-col flex-1">
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
             {showPatientInfoSection && (
               <PatientInfo 
                 patientEmail={patientEmail}

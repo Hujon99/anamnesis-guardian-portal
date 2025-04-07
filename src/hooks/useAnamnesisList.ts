@@ -3,9 +3,10 @@
  * This hook manages the data fetching and filtering logic for anamnesis entries.
  * It provides a unified interface for retrieving, filtering, and sorting
  * anamnesis entries with loading states and error handling.
+ * It uses Supabase Realtime for live updates when entries change.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
@@ -13,6 +14,7 @@ import { AnamnesesEntry } from "@/types/anamnesis";
 import { subDays } from "date-fns";
 import { useAnamnesis } from "@/contexts/AnamnesisContext";
 import { toast } from "@/components/ui/use-toast";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface AnamnesisFilters {
   searchQuery: string;
@@ -36,13 +38,17 @@ export const useAnamnesisList = () => {
     sortDescending: true,
   });
 
+  // Track realtime subscription
+  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+
   // Fetch all entries regardless of status
   const { 
     data: entries = [], 
     isLoading, 
     error, 
     refetch, 
-    isFetching 
+    isFetching,
+    setQueryData
   } = useQuery({
     queryKey: ["anamnes-entries-all", organization?.id],
     queryFn: async () => {
@@ -77,22 +83,110 @@ export const useAnamnesisList = () => {
         throw fetchError;
       }
     },
-    staleTime: 60 * 1000, // 1 minute (reduced from 3 minutes)
+    staleTime: 5 * 60 * 1000, // 5 minutes (increased from 1 minute)
     gcTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!organization?.id,
     retry: 1,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    refetchOnWindowFocus: true, // Changed to true to refresh data when user focuses window
-    refetchOnReconnect: true, // Changed to true to refresh data when user reconnects
-    refetchOnMount: true, // Changed to true to refresh when component mounts
+    refetchOnWindowFocus: false, // Changed to false as we'll use realtime
+    refetchOnReconnect: true, 
+    refetchOnMount: true,
   });
 
-  // Refetch when dataLastUpdated changes or organization changes
+  // Handle realtime updates
+  const setupRealtimeSubscription = useCallback(() => {
+    if (!organization?.id || !supabase) return;
+    
+    // Clean up previous subscription if exists
+    if (realtimeChannel) {
+      realtimeChannel.unsubscribe();
+    }
+    
+    console.log("Setting up realtime subscription for anamnes_entries");
+    
+    // Create new subscription
+    const channel = supabase
+      .channel('anamnesis-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for inserts, updates, and deletes
+          schema: 'public',
+          table: 'anamnes_entries',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log("Realtime change detected:", payload);
+          
+          // Handle different event types
+          if (payload.eventType === 'INSERT') {
+            setQueryData((currentData: AnamnesesEntry[] = []) => {
+              const newEntry = payload.new as AnamnesesEntry;
+              // Check if entry already exists to avoid duplicates
+              if (!currentData.some(entry => entry.id === newEntry.id)) {
+                return [newEntry, ...currentData];
+              }
+              return currentData;
+            });
+            
+            toast({
+              title: "Ny anamnes",
+              description: "En ny anamnes har tagits emot",
+            });
+          } 
+          else if (payload.eventType === 'UPDATE') {
+            setQueryData((currentData: AnamnesesEntry[] = []) => {
+              return currentData.map(entry => 
+                entry.id === payload.new.id 
+                  ? { ...entry, ...payload.new as Partial<AnamnesesEntry> } 
+                  : entry
+              );
+            });
+          }
+          else if (payload.eventType === 'DELETE') {
+            setQueryData((currentData: AnamnesesEntry[] = []) => {
+              return currentData.filter(entry => entry.id !== payload.old.id);
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log("Successfully subscribed to realtime updates");
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error("Error subscribing to realtime updates");
+          // Try to reconnect after a delay if there's an error
+          setTimeout(() => {
+            setupRealtimeSubscription();
+          }, 5000);
+        }
+      });
+    
+    setRealtimeChannel(channel);
+    
+    return () => {
+      console.log("Cleaning up realtime subscription");
+      channel.unsubscribe();
+    };
+  }, [organization?.id, supabase, setQueryData]);
+
+  // Set up realtime subscription when org or supabase client changes
   useEffect(() => {
+    const cleanup = setupRealtimeSubscription();
+    
+    // Initial data fetch on mount
     if (organization?.id) {
       refetch();
     }
-  }, [organization?.id, dataLastUpdated, refetch]);
+    
+    return () => {
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
+  }, [organization?.id, supabase, setupRealtimeSubscription, refetch]);
 
   // Update a single filter
   const updateFilter = <K extends keyof AnamnesisFilters>(

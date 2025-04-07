@@ -5,6 +5,7 @@
  * information accessible through a modal dialog.
  * 
  * The view handles error states, authentication, and synchronization with the organization data.
+ * It uses Supabase Realtime for live updates of anamnesis entries.
  */
 
 import { useState, useEffect } from "react";
@@ -51,29 +52,16 @@ const OpticianContent = () => {
   const { organization } = useOrganization();
   const { supabase, isLoading: supabaseLoading, error: supabaseError, refreshClient } = useSupabaseClient();
   const { isSyncing, isSynced, error: syncError } = useSyncOrganization();
-  const { error: contextError, clearError, refreshData } = useAnamnesis();
+  const { error: contextError, clearError } = useAnamnesis();
   const [error, setError] = useState<Error | null>(null);
 
   const isReady = !supabaseLoading && !isSyncing && isSynced;
   const combinedError = error || supabaseError || syncError || contextError;
 
-  // Effect to handle initial data load and refreshes
-  useEffect(() => {
-    if (organization?.id && isReady && !combinedError) {
-      // Automatically refresh data when component mounts or dependencies change
-      const timer = setTimeout(() => {
-        refreshData();
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [organization?.id, isReady, combinedError, refreshData]);
-
   const handleRetry = async () => {
     setError(null);
     clearError();
     await refreshClient();
-    refreshData();
   };
 
   if (combinedError) {

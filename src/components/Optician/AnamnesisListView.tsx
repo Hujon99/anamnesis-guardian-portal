@@ -1,8 +1,8 @@
 
 /**
  * This component provides a unified list view of all anamnesis entries
- * with filtering, searching, and sorting capabilities. It replaces the previous
- * tab-based interface for a more streamlined user experience.
+ * with filtering, searching, and sorting capabilities. It implements
+ * Supabase's realtime functionality for live updates to entries.
  */
 
 import { useState, useEffect } from "react";
@@ -34,7 +34,7 @@ export function AnamnesisListView() {
   // State for selected entry
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
 
-  // Automatically fetch data when component mounts
+  // Automatically fetch data when component mounts once
   useEffect(() => {
     // Small delay to ensure auth context is ready
     const timer = setTimeout(() => {

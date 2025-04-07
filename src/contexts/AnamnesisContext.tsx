@@ -1,12 +1,11 @@
 
 /**
  * This context provides state management for the anamnesis list and detail views.
- * It handles data fetching, refresh logic, error state management, and selected entry tracking.
- * The context implements a circuit breaker pattern to prevent excessive refresh attempts
- * when errors occur.
+ * It handles data fetching, error state management, and selected entry tracking.
+ * The context implements error handling and manages the initial data loading.
  */
 
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from "react";
+import { createContext, useContext, ReactNode, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
@@ -31,59 +30,19 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [dataLastUpdated, setDataLastUpdated] = useState<Date | null>(new Date());
-  const [isInitialized, setIsInitialized] = useState(false);
   const queryClient = useQueryClient();
   const { refreshClient } = useSupabaseClient();
-  const { organization, isLoaded: isOrgLoaded } = useOrganization();
-  
-  // Track consecutive errors to implement circuit breaker
-  const consecutiveErrorsRef = useState<number>(0);
-  const lastRefreshAttemptRef = useState<number>(0);
-  const MIN_REFRESH_INTERVAL = 3000; // Minimum time between refresh attempts (3000ms)
-  const CIRCUIT_BREAKER_THRESHOLD = 5; // Break after 5 consecutive errors
-  const CIRCUIT_BREAKER_RESET_TIME = 30000; // 30 seconds before resetting circuit breaker
+  const { organization } = useOrganization();
 
   // Clear error state
   const clearError = useCallback(() => {
     setError(null);
-    consecutiveErrorsRef[0] = 0;
-  }, [consecutiveErrorsRef]);
+  }, []);
 
-  // Initial data load on mount - runs immediately when the context is first created
-  useEffect(() => {
-    if (isOrgLoaded && organization?.id && !isInitialized) {
-      // Immediate initialization with a small delay to ensure auth is ready
-      const timer = setTimeout(() => {
-        refreshData();
-        setIsInitialized(true);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isOrgLoaded, organization?.id, isInitialized]);
-
-  // Regular refresh data with debounce and error handling
+  // Regular refresh data with error handling
   const refreshData = useCallback(() => {
-    const now = Date.now();
-    if (now - lastRefreshAttemptRef[0] < MIN_REFRESH_INTERVAL) {
-      console.log("Refresh attempt debounced - too frequent");
-      return;
-    }
+    if (!organization?.id) return;
     
-    // Circuit breaker pattern
-    if (consecutiveErrorsRef[0] >= CIRCUIT_BREAKER_THRESHOLD) {
-      const timeSinceLastError = now - lastRefreshAttemptRef[0];
-      if (timeSinceLastError < CIRCUIT_BREAKER_RESET_TIME) {
-        console.log(`Circuit breaker active - waiting ${(CIRCUIT_BREAKER_RESET_TIME - timeSinceLastError) / 1000}s to retry`);
-        return;
-      } else {
-        // Reset circuit breaker after cooling period
-        console.log("Circuit breaker reset after cooling period");
-        consecutiveErrorsRef[0] = 0;
-      }
-    }
-    
-    lastRefreshAttemptRef[0] = now;
     setIsLoading(true);
     
     try {
@@ -95,14 +54,12 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
             queryKey: ["anamnes-entries-all"] 
           });
           
-          consecutiveErrorsRef[0] = 0;
           setDataLastUpdated(new Date());
           setIsLoading(false);
         })
         .catch((err) => {
           console.error("Error refreshing data:", err);
           setError(err instanceof Error ? err : new Error(String(err)));
-          consecutiveErrorsRef[0]++;
           setIsLoading(false);
           
           toast({
@@ -114,7 +71,6 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Error in refresh data:", err);
       setError(err instanceof Error ? err : new Error(String(err)));
-      consecutiveErrorsRef[0]++;
       setIsLoading(false);
       
       toast({
@@ -123,7 +79,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [queryClient, refreshClient, consecutiveErrorsRef, lastRefreshAttemptRef]);
+  }, [queryClient, refreshClient, organization?.id]);
 
   // Force refresh that bypasses all caches
   const forceRefresh = useCallback(() => {
@@ -140,7 +96,6 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
           queryClient.refetchQueries({ 
             queryKey: ["anamnes-entries-all"] 
           });
-          consecutiveErrorsRef[0] = 0;
           setDataLastUpdated(new Date());
           
           toast({
@@ -153,7 +108,6 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
         .catch((err) => {
           console.error("Error force refreshing data:", err);
           setError(err instanceof Error ? err : new Error(String(err)));
-          consecutiveErrorsRef[0]++;
           setIsLoading(false);
           
           toast({
@@ -165,7 +119,6 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Error in force refresh:", err);
       setError(err instanceof Error ? err : new Error(String(err)));
-      consecutiveErrorsRef[0]++;
       setIsLoading(false);
       
       toast({
@@ -174,7 +127,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [queryClient, refreshClient, consecutiveErrorsRef]);
+  }, [queryClient, refreshClient]);
 
   return (
     <AnamnesisContext.Provider value={{ 

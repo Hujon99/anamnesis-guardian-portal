@@ -27,7 +27,7 @@ serve(async (req: Request) => {
     const deploymentName = Deno.env.get("AZURE_OPENAI_DEPLOYMENT_NAME");
     
     // 2. Define API version in code
-    const apiVersion = "2023-05-15"; // Using a supported API version
+    const apiVersion = "2025-01-01-preview"; // Using a supported API version
     
     // Check if all values exist
     if (!apiKey || !baseEndpoint || !deploymentName) {
@@ -63,7 +63,7 @@ serve(async (req: Request) => {
 3. Lyfta fram eventuella väsentliga medicinska tillstånd eller läkemedel som kan påverka synen.
 4. Sammanfatta patientens användning av glasögon/linser och tidigare erfarenheter.
 
-Använd professionell klinisk terminologi. Håll din sammanfattning koncis men omfattande. Formatera texten i distinkta stycken för läsbarhet.`;
+Använd professionell klinisk terminologi. Håll din sammanfattning koncis men omfattande. Formatera texten i distinkta stycken för läsbarhet. Använd gärna enkla emojis för att markera styckena`;
 
     // 4. Make the fetch call
     console.log("Calling Azure OpenAI API...");

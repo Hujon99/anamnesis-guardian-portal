@@ -8,7 +8,7 @@
 
 import { useFormTemplate } from "@/hooks/useFormTemplate";
 import { useEffect, useState } from "react";
-import { FileText, Lightbulb } from "lucide-react";
+import { FileText, Lightbulb, Copy, CheckCheck } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,6 +38,7 @@ export const OptimizedAnswersView = ({
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState(aiSummary ? "summary" : "raw");
+  const [isCopied, setIsCopied] = useState(false);
 
   // Generate optimized text when answers or form template changes
   useEffect(() => {
@@ -106,6 +107,22 @@ export const OptimizedAnswersView = ({
     }
   };
 
+  const copySummaryToClipboard = () => {
+    if (summary) {
+      navigator.clipboard.writeText(summary);
+      setIsCopied(true);
+      toast({
+        title: "Kopierad!",
+        description: "AI-sammanfattningen har kopierats till urklipp",
+      });
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+    }
+  };
+
   if (!hasAnswers) {
     return (
       status !== "draft" && (
@@ -169,10 +186,33 @@ export const OptimizedAnswersView = ({
           <ScrollArea className="h-full">
             <div className="p-4">
               <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
-                <h4 className="text-primary font-medium flex items-center mb-2">
-                  <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
-                  AI-sammanfattning
-                </h4>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-primary font-medium flex items-center">
+                    <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
+                    AI-sammanfattning
+                  </h4>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={copySummaryToClipboard}
+                    className="flex items-center"
+                    disabled={!summary}
+                  >
+                    {isCopied ? (
+                      <>
+                        <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
+                        Kopierad
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Kopiera
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
                 <div className="prose prose-sm max-w-none whitespace-pre-wrap">
                   {summary}
                 </div>
@@ -184,3 +224,4 @@ export const OptimizedAnswersView = ({
     </div>
   );
 };
+

@@ -71,6 +71,17 @@ export const updateEntryPatientEmail = async (
 };
 
 /**
+ * Updates the AI summary of an anamnesis entry
+ */
+export const updateEntryAiSummary = async (
+  supabase: SupabaseClient,
+  entryId: string,
+  summary: string
+) => {
+  return updateEntry(supabase, entryId, { ai_summary: summary });
+};
+
+/**
  * Sends a link to a patient by updating the entry status and email
  */
 export const sendLinkToPatient = async (

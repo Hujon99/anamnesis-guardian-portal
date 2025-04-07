@@ -7,7 +7,13 @@
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
-import { updateEntry, updateEntryStatus, updateEntryNotes, updateEntryPatientEmail } from "@/utils/entryMutationUtils";
+import { 
+  updateEntry, 
+  updateEntryStatus, 
+  updateEntryNotes, 
+  updateEntryPatientEmail,
+  updateEntryAiSummary 
+} from "@/utils/entryMutationUtils";
 import { AnamnesesEntry } from "@/types/anamnesis";
 
 export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) => {
@@ -32,7 +38,7 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
   };
 
   const updateEntryMutation = useMutation({
-    mutationFn: async ({ status, notes, email }: { status?: string; notes?: string; email?: string }) => {
+    mutationFn: async ({ status, notes, email, aiSummary }: { status?: string; notes?: string; email?: string; aiSummary?: string }) => {
       // Ensure we have a valid authentication token
       await ensureAuthenticated();
       
@@ -41,6 +47,7 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       if (status) updates.status = status;
       if (notes !== undefined) updates.internal_notes = notes;
       if (email !== undefined) updates.patient_email = email;
+      if (aiSummary !== undefined) updates.ai_summary = aiSummary;
       
       return updateEntry(supabase, entryId, updates);
     },
@@ -108,5 +115,8 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
     savePatientEmail: (email: string) => {
       updateEntryMutation.mutate({ email });
     },
+    saveAiSummary: (aiSummary: string) => {
+      updateEntryMutation.mutate({ aiSummary });
+    }
   };
 };

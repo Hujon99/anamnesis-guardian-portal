@@ -49,6 +49,7 @@ export function AnamnesisDetailModal({
     handleSavePatientEmail,
     handleSendLink,
     handleStatusUpdate,
+    handleSaveAiSummary,
     copyLinkToClipboard,
     
     // Print functions
@@ -91,6 +92,8 @@ export function AnamnesisDetailModal({
             hasAnswers={hasAnswers}
             status={entry.status || ""}
             showPatientInfoSection={showPatientInfoSection}
+            entry={entry}
+            onSaveAiSummary={handleSaveAiSummary}
           />
         </div>
         

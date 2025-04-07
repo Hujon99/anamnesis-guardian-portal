@@ -12,6 +12,7 @@ export type Database = {
       anamnes_entries: {
         Row: {
           access_token: string | null
+          ai_summary: string | null
           answers: Json | null
           created_at: string | null
           created_by: string | null
@@ -27,6 +28,7 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
+          ai_summary?: string | null
           answers?: Json | null
           created_at?: string | null
           created_by?: string | null
@@ -42,6 +44,7 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
+          ai_summary?: string | null
           answers?: Json | null
           created_at?: string | null
           created_by?: string | null

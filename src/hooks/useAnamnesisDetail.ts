@@ -28,7 +28,7 @@ export function useAnamnesisDetail(
     updateStatus,
     saveNotes,
     savePatientEmail,
-    sendLink
+    saveAiSummary
   } = useEntryMutations(entry.id, onEntryUpdated);
   
   const { showPrintPreview, printForm, exportToPDF } = usePrintFunction();
@@ -58,6 +58,10 @@ export function useAnamnesisDetail(
 
   const handleStatusUpdate = (newStatus: string) => {
     updateStatus(newStatus, notes);
+  };
+
+  const handleSaveAiSummary = (summary: string) => {
+    saveAiSummary(summary);
   };
 
   const copyLinkToClipboard = () => {
@@ -98,6 +102,7 @@ export function useAnamnesisDetail(
     handleSavePatientEmail,
     handleSendLink,
     handleStatusUpdate,
+    handleSaveAiSummary,
     copyLinkToClipboard,
     
     // Print functions

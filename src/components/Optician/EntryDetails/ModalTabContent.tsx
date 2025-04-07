@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PatientInfo } from "./PatientInfo";
 import { OptimizedAnswersView } from "./OptimizedAnswersView";
 import { InternalNotes } from "./InternalNotes";
+import { AnamnesesEntry } from "@/types/anamnesis";
 
 interface ModalTabContentProps {
   activeTab: string;
@@ -26,6 +27,8 @@ interface ModalTabContentProps {
   hasAnswers: boolean;
   status: string;
   showPatientInfoSection: boolean;
+  entry: AnamnesesEntry;
+  onSaveAiSummary: (summary: string) => void;
 }
 
 export function ModalTabContent({
@@ -43,7 +46,9 @@ export function ModalTabContent({
   answers,
   hasAnswers,
   status,
-  showPatientInfoSection
+  showPatientInfoSection,
+  entry,
+  onSaveAiSummary
 }: ModalTabContentProps) {
   return (
     <Tabs 
@@ -77,6 +82,9 @@ export function ModalTabContent({
               answers={answers}
               hasAnswers={hasAnswers}
               status={status}
+              entryId={entry.id}
+              aiSummary={entry.ai_summary}
+              onSaveSummary={onSaveAiSummary}
             />
           </div>
         </ScrollArea>

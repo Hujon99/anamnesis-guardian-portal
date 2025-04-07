@@ -16,7 +16,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     updateEntryMutation,
     updateStatus,
     saveNotes,
-    savePatientEmail
+    savePatientEmail,
+    saveAiSummary
   } = useEntryUpdateMutation(entryId, onSuccess);
   
   const {
@@ -30,6 +31,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     updateStatus,
     saveNotes,
     savePatientEmail,
+    saveAiSummary,
     sendLink,
     refreshData: () => {
       // Provide a more selective refresh that only refreshes the current view

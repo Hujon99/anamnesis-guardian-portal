@@ -20,18 +20,24 @@ interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
   hasAnswers: boolean;
   status: string;
+  entryId: string;
+  aiSummary: string | null;
+  onSaveSummary: (summary: string) => void;
 }
 
 export const OptimizedAnswersView = ({ 
   answers, 
   hasAnswers, 
-  status 
+  status,
+  entryId,
+  aiSummary,
+  onSaveSummary
 }: OptimizedAnswersViewProps) => {
   const { data: formTemplate } = useFormTemplate();
   const [optimizedText, setOptimizedText] = useState<string>("");
-  const [summary, setSummary] = useState<string>("");
+  const [summary, setSummary] = useState<string>(aiSummary || "");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState("raw");
+  const [activeTab, setActiveTab] = useState(aiSummary ? "summary" : "raw");
 
   // Generate optimized text when answers or form template changes
   useEffect(() => {
@@ -82,6 +88,9 @@ export const OptimizedAnswersView = ({
       if (data?.summary) {
         setSummary(data.summary);
         setActiveTab("summary");
+        
+        // Save the summary to the database
+        onSaveSummary(data.summary);
       } else {
         throw new Error('Fick inget svar från AI-tjänsten');
       }
@@ -130,7 +139,7 @@ export const OptimizedAnswersView = ({
           className="flex items-center"
         >
           <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
-          {isGenerating ? "Genererar..." : "Generera AI-sammanfattning"}
+          {isGenerating ? "Genererar..." : summary ? "Uppdatera AI-sammanfattning" : "Generera AI-sammanfattning"}
         </Button>
       </div>
       

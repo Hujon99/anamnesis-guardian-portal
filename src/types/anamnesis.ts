@@ -56,3 +56,32 @@ export type AnamnesForm = {
   schema: FormTemplate;
   created_at: string | null;
 };
+
+// Add a new type for formatted answers to include the isOpticianSubmission property
+export interface FormattedAnswerData {
+  formTitle: string;
+  submissionTimestamp: string;
+  answeredSections: {
+    section_title: string;
+    responses: {
+      id: string;
+      answer: any;
+    }[];
+  }[];
+  isOpticianSubmission?: boolean;
+}
+
+// Add a type for the submission data structure
+export interface SubmissionData {
+  formattedAnswers: FormattedAnswerData;
+  rawAnswers: Record<string, any>;
+  metadata: {
+    formTemplateId: string;
+    submittedAt: string;
+    version: string;
+  };
+  _metadata?: {
+    submittedBy: string;
+    autoSetStatus: string;
+  };
+}

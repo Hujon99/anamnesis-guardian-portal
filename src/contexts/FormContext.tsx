@@ -1,4 +1,3 @@
-
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
@@ -6,7 +5,7 @@
  */
 
 import React, { createContext, useContext, useMemo, useCallback } from "react";
-import { FormTemplate } from "@/types/anamnesis";
+import { FormTemplate, FormattedAnswerData, SubmissionData } from "@/types/anamnesis";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -174,7 +173,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         const currentValues = values || form.getValues();
         
         // Finalize the formatted answers and submit
-        const formattedSubmissionData = finalizeSubmissionData();
+        const formattedSubmissionData = finalizeSubmissionData() as SubmissionData;
         
         console.log("Form submission triggered with values:", currentValues);
         console.log("Formatted submission data:", formattedSubmissionData);
@@ -184,8 +183,6 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
           // Set the flag in the appropriate location
           if (formattedSubmissionData.formattedAnswers) {
             formattedSubmissionData.formattedAnswers.isOpticianSubmission = true;
-          } else {
-            formattedSubmissionData.isOpticianSubmission = true;
           }
           
           // Also add metadata for the edge function

@@ -5,19 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FormTemplate, FormSection, FormQuestion } from "@/types/anamnesis";
-
-export interface FormattedAnswerData {
-  formTitle: string;
-  submissionTimestamp: string;
-  answeredSections: {
-    section_title: string;
-    responses: {
-      id: string;
-      answer: any;
-    }[];
-  }[];
-}
+import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData, SubmissionData } from "@/types/anamnesis";
 
 export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Use ref for mutable submission data to avoid unnecessary re-renders
@@ -294,7 +282,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   }, [processSection]);
 
   // Update the timestamp before final submission
-  const finalizeSubmissionData = useCallback(() => {
+  const finalizeSubmissionData = useCallback((): SubmissionData => {
     submissionDataRef.current.submissionTimestamp = new Date().toISOString();
     return {
       formattedAnswers: { ...submissionDataRef.current },

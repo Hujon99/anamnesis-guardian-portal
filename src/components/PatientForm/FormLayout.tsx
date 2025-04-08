@@ -31,13 +31,13 @@ export const FormLayout: React.FC = () => {
   // The actual submission handler that should be called when the form is submitted
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[FormLayout/onSubmit]: Form submission triggered from form submit event");
+    
     if (isLastStep) {
       // Execute the final submit action by passing the current form data
-      console.log("[FormLayout/onSubmit]: Form submission triggered from form submit event");
       form.handleSubmit((data) => {
-        console.log("[FormLayout/onSubmit]: Form data validated successfully, calling context handleSubmit");
+        console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
         // Call the submission handler from context with the current data
-        // Important: We're NOT providing a callback here because the context already has the onSubmit handler
         handleSubmit()(data);
       })();
     }
@@ -80,12 +80,7 @@ export const FormLayout: React.FC = () => {
           isFirstStep={isFirstStep}
           isLastStep={isLastStep}
           isSubmitting={isSubmitting}
-          onNext={isLastStep ? form.handleSubmit((data) => {
-            console.log("[FormLayout/FormNavigation]: Form submission triggered from 'Next' button");
-            // Call the submission handler from context without providing a callback
-            // The context already has the onSubmit handler from the parent component
-            handleSubmit()(data);
-          }) : nextStep}
+          onNext={nextStep}
           onPrevious={previousStep}
         />
         

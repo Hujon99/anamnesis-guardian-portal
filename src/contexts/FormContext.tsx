@@ -134,6 +134,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Handle next step with validation
   const nextStep = async () => {
     if (isLastStep) {
+      console.log("[FormContext/nextStep]: On last step, not proceeding to next");
       return;
     }
     
@@ -142,6 +143,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     const isValid = await trigger(fieldsToValidate);
     
     if (isValid) {
+      console.log("[FormContext/nextStep]: Step validation successful, moving to next step");
       goToNextStep();
       // Announce step change to screen readers
       const stepInfo = document.getElementById('step-info');
@@ -152,6 +154,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         }, 1000);
       }
     } else {
+      console.log("[FormContext/nextStep]: Step validation failed");
       // Announce validation errors to screen readers
       const firstErrorEl = document.querySelector('[aria-invalid="true"]');
       if (firstErrorEl) {
@@ -162,6 +165,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
 
   // Handle previous step
   const previousStep = () => {
+    console.log("[FormContext/previousStep]: Moving to previous step");
     goToPreviousStep();
     window.scrollTo(0, 0); // Scroll to top for the new step
   };
@@ -170,6 +174,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<any>) => {
     return (values?: any, formattedAnswers?: any) => {
       if (isLastStep) {
+        console.log("[FormContext/handleFormSubmit]: Form submission triggered on last step");
         // Get the current form values if not provided
         const currentValues = values || form.getValues();
         
@@ -207,6 +212,9 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
           console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
           return Promise.resolve();
         }
+      } else {
+        console.log("[FormContext/handleFormSubmit]: Not on last step, skipping submission");
+        return Promise.resolve();
       }
     };
   }, [form, isLastStep, isOpticianMode, finalizeSubmissionData, onSubmit]);

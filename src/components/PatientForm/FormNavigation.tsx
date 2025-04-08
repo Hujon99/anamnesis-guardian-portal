@@ -40,32 +40,41 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
         </Button>
       )}
       
-      <Button 
-        type={isLastStep ? "submit" : "button"} 
-        onClick={() => {
-          console.log("[FormNavigation]: Button clicked, isLastStep:", isLastStep);
-          onNext();
-        }}
-        className={`${isFirstStep ? "ml-auto" : ""}`}
-        disabled={isSubmitting}
-        aria-label={isLastStep ? "Skicka formulär" : "Gå till nästa steg"}
-        form={isLastStep ? "patient-form" : undefined}
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            <span>Skickar...</span>
-          </>
-        ) : isLastStep ? (
-          <span>Skicka svar</span>
-        ) : (
-          <>
-            <span>Nästa</span>
-            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-            <span className="sr-only"> (Alt+Högerpil)</span>
-          </>
-        )}
-      </Button>
+      {isLastStep ? (
+        <Button 
+          type="submit" 
+          className={`${isFirstStep ? "ml-auto" : ""}`}
+          disabled={isSubmitting}
+          aria-label="Skicka formulär"
+          form="patient-form"
+          onClick={() => {
+            console.log("[FormNavigation]: Submit button clicked");
+          }}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              <span>Skickar...</span>
+            </>
+          ) : (
+            <span>Skicka svar</span>
+          )}
+        </Button>
+      ) : (
+        <Button 
+          type="button"
+          onClick={() => {
+            console.log("[FormNavigation]: Next button clicked");
+            onNext();
+          }}
+          className={`${isFirstStep ? "ml-auto" : ""}`}
+          aria-label="Gå till nästa steg"
+        >
+          <span>Nästa</span>
+          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+          <span className="sr-only"> (Alt+Högerpil)</span>
+        </Button>
+      )}
     </div>
   );
 };

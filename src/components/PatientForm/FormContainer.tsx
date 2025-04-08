@@ -24,11 +24,23 @@ const FormContainer: React.FC<FormContainerProps> = ({
 }) => {
   console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
   
+  const handleSubmit = async (values: any, formattedAnswers?: any) => {
+    console.log("[FormContainer/handleSubmit]: Form submission received in container");
+    
+    try {
+      console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler");
+      return await onSubmit(values, formattedAnswers);
+    } catch (error) {
+      console.error("[FormContainer/handleSubmit]: Error in form submission:", error);
+      throw error;
+    }
+  };
+  
   return (
     <>
       <FormOrchestrator
         formTemplate={formTemplate}
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
         isOpticianMode={isOpticianMode}
       />

@@ -28,7 +28,7 @@ type FormContextValue = {
   nextStep: () => void;
   previousStep: () => void;
   isSubmitting: boolean;
-  handleSubmit: (callback: (values: any, formattedAnswers?: any) => Promise<void>) => (values?: any, formattedAnswers?: any) => void;
+  handleSubmit: (callback?: (values: any, formattedAnswers?: any) => Promise<any>) => (values?: any, formattedAnswers?: any) => void;
   isOpticianMode: boolean;
 };
 
@@ -45,7 +45,7 @@ export const useFormContext = () => {
 interface FormContextProviderProps {
   children: React.ReactNode;
   formTemplate: FormTemplate;
-  onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
+  onSubmit: (values: any, formattedAnswers?: any) => Promise<any>;
   isSubmitting: boolean;
   isOpticianMode?: boolean;
 }
@@ -166,8 +166,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   };
 
   // Handle form submission
-  const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<void>) => {
-    return (values?: any) => {
+  const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<any>) => {
+    return (values?: any, formattedAnswers?: any) => {
       if (isLastStep) {
         // Get the current form values if not provided
         const currentValues = values || form.getValues();

@@ -37,7 +37,7 @@ export const FormLayout: React.FC = () => {
       form.handleSubmit((data) => {
         console.log("FormLayout: Final form submission triggered with data:", data);
         // Call the submission handler from context with the current data
-        handleSubmit()(data);
+        handleSubmit((formValues, formattedAnswers) => Promise.resolve())(data);
       })();
     }
   };
@@ -81,7 +81,7 @@ export const FormLayout: React.FC = () => {
           isSubmitting={isSubmitting}
           onNext={isLastStep ? form.handleSubmit((data) => {
             console.log("FormNavigation: Form submission triggered from 'Next' button");
-            handleSubmit()(data);
+            handleSubmit((formValues, formattedAnswers) => Promise.resolve())(data);
           }) : nextStep}
           onPrevious={previousStep}
         />

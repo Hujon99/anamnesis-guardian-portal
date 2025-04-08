@@ -56,10 +56,10 @@ const OpticianFormPage = () => {
   }, [isOpticianMode, loading, navigate]);
 
   // Handle form submission with form template
-  const handleFormSubmit = useCallback(async (values: any, formattedAnswers?: any) => {
+  const handleFormSubmit = useCallback(async (values: any, formattedAnswers?: any): Promise<void> => {
     if (!token) {
       console.error("OpticianFormPage: No token available for submission");
-      return false;
+      return;
     }
     
     console.log("OpticianFormPage: Starting form submission with values:", values);
@@ -90,14 +90,11 @@ const OpticianFormPage = () => {
           console.log("OpticianFormPage: Navigating to dashboard");
           navigate('/dashboard');
         }, 2000);
-        return true;
       } else {
         console.error("OpticianFormPage: Form submission failed");
-        return false;
       }
     } catch (error) {
       console.error("OpticianFormPage: Error during form submission:", error);
-      return false;
     }
   }, [token, formTemplate, submitForm, navigate]);
 

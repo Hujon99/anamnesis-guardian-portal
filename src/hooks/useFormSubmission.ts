@@ -21,7 +21,7 @@ export const useFormSubmission = () => {
     values: Record<string, any>, 
     formTemplate?: FormTemplate,
     preProcessedFormattedAnswers?: any
-  ) => {
+  ): Promise<boolean> => {
     setIsSubmitting(true);
     setError(null);
 

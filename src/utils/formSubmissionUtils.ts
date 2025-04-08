@@ -22,6 +22,7 @@ export interface FormattedAnswer {
   }[];
 }
 
+
 /**
  * Prepares form answers for submission to the API.
  * This combines the user inputs with additional metadata.

@@ -14,6 +14,7 @@ import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEffect } from "react";
+import { LinkGenerator } from "@/components/Optician/LinkGenerator";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -69,9 +70,12 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Översikt</h1>
-        <p className="text-muted-foreground mt-2">Hantering av anamneslista och patientdata</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Översikt</h1>
+          <p className="text-muted-foreground mt-2">Hantering av anamneslista och patientdata</p>
+        </div>
+        <LinkGenerator />
       </div>
 
       <QueryErrorResetBoundary>

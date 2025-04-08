@@ -34,7 +34,7 @@ export const FormLayout: React.FC = () => {
     if (isLastStep) {
       // Execute the final submit action
       form.handleSubmit((data) => {
-        handleSubmit((values, formattedAnswers) => Promise.resolve())(values, formattedAnswers);
+        handleSubmit((formValues, formattedAnswers) => Promise.resolve())(data, null);
       })();
     }
   };
@@ -77,7 +77,7 @@ export const FormLayout: React.FC = () => {
           isLastStep={isLastStep}
           isSubmitting={isSubmitting}
           onNext={isLastStep ? form.handleSubmit((data) => {
-            handleSubmit((values, formattedAnswers) => Promise.resolve())(data, null);
+            handleSubmit((formValues, formattedAnswers) => Promise.resolve())(data, null);
           }) : nextStep}
           onPrevious={previousStep}
         />

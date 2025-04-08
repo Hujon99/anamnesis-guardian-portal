@@ -25,7 +25,9 @@ const FormContainer: React.FC<FormContainerProps> = ({
   console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
   
   const handleSubmit = async (values: any, formattedAnswers?: any) => {
-    console.log("[FormContainer/handleSubmit]: Form submission received in container");
+    console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
+    console.log("[FormContainer/handleSubmit]: Form values:", values);
+    console.log("[FormContainer/handleSubmit]: Formatted answers:", formattedAnswers);
     
     try {
       console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler");

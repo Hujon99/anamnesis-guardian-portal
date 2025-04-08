@@ -28,19 +28,13 @@ export const FormLayout: React.FC = () => {
     form
   } = useFormContext();
 
-  // The actual submission handler that should be called when the form is submitted
+  // The onSubmit handler now only prevents default behavior but doesn't trigger submission
+  // This prevents automatic form submission when pressing Enter or when the form is naturally submitted
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[FormLayout/onSubmit]: Form submission triggered from form submit event");
-    
-    if (isLastStep) {
-      // Execute the final submit action by passing the current form data
-      form.handleSubmit((data) => {
-        console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
-        // Call the submission handler from context with the current data
-        handleSubmit()(data);
-      })();
-    }
+    console.log("[FormLayout/onSubmit]: Form submit event intercepted and prevented");
+    // We no longer automatically submit the form here
+    // The actual submission will only happen when the user clicks the Submit button
   };
 
   return (
@@ -54,7 +48,7 @@ export const FormLayout: React.FC = () => {
       <CardContent>
         <form 
           id="patient-form" 
-          onSubmit={onSubmit}
+          onSubmit={onSubmit} // Only prevents default, doesn't trigger submission
           className="space-y-6"
           aria-labelledby="form-title"
           noValidate
@@ -82,6 +76,14 @@ export const FormLayout: React.FC = () => {
           isSubmitting={isSubmitting}
           onNext={nextStep}
           onPrevious={previousStep}
+          onSubmit={() => {
+            console.log("[FormLayout]: Submit button clicked, triggering form submission");
+            form.handleSubmit((data) => {
+              console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
+              // Call the submission handler from context with the current data
+              handleSubmit()(data);
+            })();
+          }}
         />
         
         <p className="text-sm text-muted-foreground text-center">

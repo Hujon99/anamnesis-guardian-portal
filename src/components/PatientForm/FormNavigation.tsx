@@ -14,6 +14,7 @@ interface FormNavigationProps {
   isSubmitting: boolean;
   onNext: () => void;
   onPrevious: () => void;
+  onSubmit: () => void;
 }
 
 const FormNavigation: React.FC<FormNavigationProps> = ({
@@ -21,7 +22,8 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
   isLastStep,
   isSubmitting,
   onNext,
-  onPrevious
+  onPrevious,
+  onSubmit
 }) => {
   console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
   
@@ -42,13 +44,13 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
       
       {isLastStep ? (
         <Button 
-          type="submit" 
+          type="button" // Changed from "submit" to "button" to prevent automatic submission
           className={`${isFirstStep ? "ml-auto" : ""}`}
           disabled={isSubmitting}
           aria-label="Skicka formulär"
-          form="patient-form"
           onClick={() => {
-            console.log("[FormNavigation]: Submit button clicked");
+            console.log("[FormNavigation]: Submit button clicked, calling onSubmit");
+            onSubmit(); // Call the provided onSubmit handler
           }}
         >
           {isSubmitting ? (

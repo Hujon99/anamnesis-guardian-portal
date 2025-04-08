@@ -1,4 +1,3 @@
-
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
@@ -173,47 +172,51 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Handle form submission
   const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<any>) => {
     return (values?: any, formattedAnswers?: any) => {
-      if (isLastStep) {
-        console.log("[FormContext/handleFormSubmit]: Form submission triggered on last step");
-        // Get the current form values if not provided
-        const currentValues = values || form.getValues();
-        
-        // Finalize the formatted answers and submit
-        const formattedSubmissionData = finalizeSubmissionData() as SubmissionData;
-        
-        console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
-        console.log("[FormContext/handleFormSubmit]: Formatted submission data:", formattedSubmissionData);
-        
-        // Add optician flag directly to the formatted data if applicable
-        if (isOpticianMode && formattedSubmissionData) {
-          // Set the flag in the appropriate location
-          if (formattedSubmissionData.formattedAnswers) {
-            formattedSubmissionData.formattedAnswers.isOpticianSubmission = true;
-          }
-          
-          // Also add metadata for the edge function
-          currentValues._metadata = {
-            submittedBy: 'optician',
-            autoSetStatus: 'ready'
-          };
-          
-          console.log("[FormContext/handleFormSubmit]: Added optician mode metadata to submission");
+      console.log("[FormContext/handleFormSubmit]: Submission handler called");
+      console.log("[FormContext/handleFormSubmit]: isLastStep:", isLastStep);
+      
+      if (!isLastStep) {
+        console.log("[FormContext/handleFormSubmit]: Not on last step, submission prevented");
+        return Promise.resolve();
+      }
+      
+      console.log("[FormContext/handleFormSubmit]: On last step, proceeding with submission");
+      
+      // Get the current form values if not provided
+      const currentValues = values || form.getValues();
+      
+      // Finalize the formatted answers and submit
+      const formattedSubmissionData = finalizeSubmissionData() as SubmissionData;
+      
+      console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
+      console.log("[FormContext/handleFormSubmit]: Formatted submission data:", formattedSubmissionData);
+      
+      // Add optician flag directly to the formatted data if applicable
+      if (isOpticianMode && formattedSubmissionData) {
+        // Set the flag in the appropriate location
+        if (formattedSubmissionData.formattedAnswers) {
+          formattedSubmissionData.formattedAnswers.isOpticianSubmission = true;
         }
         
-        // If a callback was provided, call it with the form values and formatted answers
-        if (callback) {
-          console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
-          return callback(currentValues, formattedSubmissionData);
-        } else if (onSubmit) {
-          // Fall back to the onSubmit prop if no specific callback was provided
-          console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
-          return onSubmit(currentValues, formattedSubmissionData);
-        } else {
-          console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
-          return Promise.resolve();
-        }
+        // Also add metadata for the edge function
+        currentValues._metadata = {
+          submittedBy: 'optician',
+          autoSetStatus: 'ready'
+        };
+        
+        console.log("[FormContext/handleFormSubmit]: Added optician mode metadata to submission");
+      }
+      
+      // If a callback was provided, call it with the form values and formatted answers
+      if (callback) {
+        console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
+        return callback(currentValues, formattedSubmissionData);
+      } else if (onSubmit) {
+        // Fall back to the onSubmit prop if no specific callback was provided
+        console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
+        return onSubmit(currentValues, formattedSubmissionData);
       } else {
-        console.log("[FormContext/handleFormSubmit]: Not on last step, skipping submission");
+        console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
         return Promise.resolve();
       }
     };

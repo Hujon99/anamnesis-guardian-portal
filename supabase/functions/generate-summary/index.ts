@@ -51,6 +51,7 @@ serve(async (req: Request) => {
     }
     
     console.log(`Received prompt text with length: ${promptText.length}`);
+    console.log("First 100 characters of prompt text:", promptText.substring(0, 100));
     
     // 3. Construct the complete URL dynamically
     const requestUrl = `${baseEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`;

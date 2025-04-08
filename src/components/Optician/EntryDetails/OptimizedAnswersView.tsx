@@ -8,9 +8,10 @@
 
 import { useFormTemplate } from "@/hooks/useFormTemplate";
 import { useEffect, useState } from "react";
-import { FileText, Lightbulb, Copy, CheckCheck } from "lucide-react";
+import { FileText, Lightbulb, Copy, CheckCheck, PenLine, Save } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
 import { createOptimizedPromptInput, extractFormattedAnswers } from "@/utils/anamnesisTextUtils";
@@ -35,10 +36,13 @@ export const OptimizedAnswersView = ({
 }: OptimizedAnswersViewProps) => {
   const { data: formTemplate } = useFormTemplate();
   const [optimizedText, setOptimizedText] = useState<string>("");
+  const [editedText, setEditedText] = useState<string>("");
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState(aiSummary ? "summary" : "raw");
   const [isCopied, setIsCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Generate optimized text when answers or form template changes
   useEffect(() => {
@@ -54,18 +58,21 @@ export const OptimizedAnswersView = ({
         // Generate the optimized text
         const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
         setOptimizedText(text);
+        setEditedText(text); // Initialize edited text with the optimized text
       } else {
         console.warn("Could not extract formatted answers from the data structure");
         setOptimizedText("Kunde inte formatera svaren på ett läsbart sätt.");
+        setEditedText("Kunde inte formatera svaren på ett läsbart sätt.");
       }
     } catch (error) {
       console.error("Error generating optimized text:", error);
       setOptimizedText("Ett fel uppstod vid formatering av svaren.");
+      setEditedText("Ett fel uppstod vid formatering av svaren.");
     }
   }, [answers, formTemplate, hasAnswers]);
 
   const generateSummary = async () => {
-    if (!optimizedText) {
+    if (!editedText) {
       toast({
         title: "Kunde inte generera sammanfattning",
         description: "Det finns inga svar att sammanfatta.",
@@ -76,9 +83,10 @@ export const OptimizedAnswersView = ({
 
     setIsGenerating(true);
     try {
+      // Use the edited text instead of the original optimized text
       const { data, error } = await supabase.functions.invoke('generate-summary', {
         body: {
-          promptText: optimizedText
+          promptText: editedText
         }
       });
 
@@ -123,6 +131,50 @@ export const OptimizedAnswersView = ({
     }
   };
 
+  const toggleEditing = () => {
+    if (isEditing) {
+      // Coming out of editing mode, ask if they want to reset changes
+      setIsEditing(false);
+    } else {
+      // Going into editing mode
+      setIsEditing(true);
+    }
+  };
+
+  const resetChanges = () => {
+    setEditedText(optimizedText);
+    toast({
+      title: "Ändringar återställda",
+      description: "Dina ändringar har återställts till originalsvaren",
+    });
+  };
+
+  const saveChanges = async () => {
+    setIsSaving(true);
+    try {
+      // Store the edited text in the custom field of the answer object
+      // This will require a backend implementation that we'll need to add
+      
+      // For now, we'll just update the local state and inform the user
+      toast({
+        title: "Ändringar sparade",
+        description: "Dina anteckningar har sparats för AI-sammanfattning",
+      });
+      
+      // Stay in the editing mode so they can continue modifying if needed
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error saving edited text:", error);
+      toast({
+        title: "Kunde inte spara ändringar",
+        description: "Ett fel uppstod, försök igen senare",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (!hasAnswers) {
     return (
       status !== "draft" && (
@@ -148,16 +200,52 @@ export const OptimizedAnswersView = ({
           Patientens svar
         </h3>
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={generateSummary}
-          disabled={isGenerating || !optimizedText}
-          className="flex items-center"
-        >
-          <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
-          {isGenerating ? "Genererar..." : summary ? "Uppdatera AI-sammanfattning" : "Generera AI-sammanfattning"}
-        </Button>
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetChanges}
+                className="flex items-center"
+              >
+                Återställ
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={saveChanges}
+                disabled={isSaving}
+                className="flex items-center"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? "Sparar..." : "Spara ändringar"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleEditing}
+                className="flex items-center"
+              >
+                <PenLine className="h-4 w-4 mr-2" />
+                Redigera/Lägg till anteckningar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={generateSummary}
+                disabled={isGenerating || !editedText}
+                className="flex items-center"
+              >
+                <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
+                {isGenerating ? "Genererar..." : summary ? "Uppdatera AI-sammanfattning" : "Generera AI-sammanfattning"}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
@@ -173,9 +261,23 @@ export const OptimizedAnswersView = ({
           className="flex-1 border border-muted rounded-md overflow-hidden"
         >
           <ScrollArea className="h-full">
-            <pre className="p-4 whitespace-pre-wrap text-sm">
-              {optimizedText}
-            </pre>
+            {isEditing ? (
+              <div className="p-4">
+                <Textarea 
+                  value={editedText}
+                  onChange={(e) => setEditedText(e.target.value)}
+                  className="min-h-[400px] font-mono text-sm"
+                  placeholder="Redigera svaren eller lägg till anteckningar..."
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Dina ändringar och anteckningar kommer att användas för AI-sammanfattningen.
+                </p>
+              </div>
+            ) : (
+              <pre className="p-4 whitespace-pre-wrap text-sm">
+                {editedText}
+              </pre>
+            )}
           </ScrollArea>
         </TabsContent>
         
@@ -224,4 +326,3 @@ export const OptimizedAnswersView = ({
     </div>
   );
 };
-

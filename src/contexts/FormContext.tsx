@@ -166,7 +166,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   };
 
   // Handle form submission
-  const handleFormSubmit = useCallback((callback: (values: any, formattedAnswers?: any) => Promise<void>) => {
+  const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<void>) => {
     return (values?: any) => {
       if (isLastStep) {
         // Get the current form values if not provided
@@ -175,8 +175,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         // Finalize the formatted answers and submit
         const formattedSubmissionData = finalizeSubmissionData() as SubmissionData;
         
-        console.log("Form submission triggered with values:", currentValues);
-        console.log("Formatted submission data:", formattedSubmissionData);
+        console.log("FormContext: Form submission triggered with values:", currentValues);
+        console.log("FormContext: Formatted submission data:", formattedSubmissionData);
         
         // Add optician flag directly to the formatted data if applicable
         if (isOpticianMode && formattedSubmissionData) {
@@ -191,13 +191,23 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
             autoSetStatus: 'ready'
           };
           
-          console.log("Added optician mode metadata to submission");
+          console.log("FormContext: Added optician mode metadata to submission");
         }
         
-        return callback(currentValues, formattedSubmissionData);
+        // If a callback was provided, call it with the form values and formatted answers
+        if (callback) {
+          return callback(currentValues, formattedSubmissionData);
+        } else if (onSubmit) {
+          // Fall back to the onSubmit prop if no specific callback was provided
+          console.log("FormContext: Using default onSubmit handler");
+          return onSubmit(currentValues, formattedSubmissionData);
+        } else {
+          console.warn("FormContext: No submission handler provided");
+          return Promise.resolve();
+        }
       }
     };
-  }, [form, isLastStep, isOpticianMode, finalizeSubmissionData]);
+  }, [form, isLastStep, isOpticianMode, finalizeSubmissionData, onSubmit]);
 
   // Create memoized context value
   const contextValue = useMemo(() => ({

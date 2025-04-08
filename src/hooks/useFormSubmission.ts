@@ -34,9 +34,9 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, values, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: values }; // Fallback for backward compatibility
 
-      console.log("Submitting form with data:", JSON.stringify(submissionData, null, 2));
-      console.log("Token:", token);
-      console.log("isOpticianSubmission:", isOpticianSubmission);
+      console.log("useFormSubmission: Submitting form with data:", JSON.stringify(submissionData, null, 2));
+      console.log("useFormSubmission: Token:", token);
+      console.log("useFormSubmission: isOpticianSubmission:", isOpticianSubmission);
       
       // Submit the form using the edge function
       const response = await supabase.functions.invoke('submit-form', {
@@ -46,15 +46,17 @@ export const useFormSubmission = () => {
         }
       });
 
+      console.log("useFormSubmission: Response from edge function:", response);
+
       // Process the response
       if (response.error) {
-        console.error("Form submission error:", response.error);
+        console.error("useFormSubmission: Form submission error:", response.error);
         throw new Error(
           response.error.message || "Ett fel uppstod vid formulärinskickning"
         );
       }
 
-      console.log("Form submission response:", response.data);
+      console.log("useFormSubmission: Form submission response:", response.data);
 
       // Success handling
       setIsSubmitted(true);
@@ -69,7 +71,7 @@ export const useFormSubmission = () => {
       return true;
     } catch (err: any) {
       // Error handling
-      console.error("Form submission error:", err);
+      console.error("useFormSubmission: Form submission error:", err);
       setError(err);
       
       toast({

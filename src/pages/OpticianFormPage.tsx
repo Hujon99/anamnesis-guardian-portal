@@ -12,7 +12,7 @@ import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import FormContainer from "@/components/PatientForm/FormContainer";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
@@ -56,8 +56,11 @@ const OpticianFormPage = () => {
   }, [isOpticianMode, loading, navigate]);
 
   // Handle form submission with form template
-  const handleFormSubmit = async (values: any, formattedAnswers?: any) => {
-    if (!token) return;
+  const handleFormSubmit = useCallback(async (values: any, formattedAnswers?: any) => {
+    if (!token) {
+      console.error("OpticianFormPage: No token available for submission");
+      return false;
+    }
     
     console.log("OpticianFormPage: Starting form submission with values:", values);
     console.log("OpticianFormPage: Formatted answers:", formattedAnswers);
@@ -71,24 +74,32 @@ const OpticianFormPage = () => {
       }
     };
     
-    console.log("Submitting optician form with data:", opticianSubmissionData);
+    console.log("OpticianFormPage: Submitting optician form with data:", opticianSubmissionData);
     
-    // Pass the optician metadata along with the form values
-    const result = await submitForm(token, opticianSubmissionData, formTemplate, formattedAnswers);
-    
-    // Set local submission state on success
-    if (result) {
-      console.log("OpticianFormPage: Form submission successful, setting localSubmitted to true");
-      setLocalSubmitted(true);
+    try {
+      // Pass the optician metadata along with the form values
+      const result = await submitForm(token, opticianSubmissionData, formTemplate, formattedAnswers);
       
-      // After a short delay, navigate to the dashboard to show the updated entry
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-    } else {
-      console.error("OpticianFormPage: Form submission failed");
+      // Set local submission state on success
+      if (result) {
+        console.log("OpticianFormPage: Form submission successful, setting localSubmitted to true");
+        setLocalSubmitted(true);
+        
+        // After a short delay, navigate to the dashboard to show the updated entry
+        setTimeout(() => {
+          console.log("OpticianFormPage: Navigating to dashboard");
+          navigate('/dashboard');
+        }, 2000);
+        return true;
+      } else {
+        console.error("OpticianFormPage: Form submission failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("OpticianFormPage: Error during form submission:", error);
+      return false;
     }
-  };
+  }, [token, formTemplate, submitForm, navigate]);
 
   // Successful submission view for opticians
   const OpticianSubmittedView = () => (
@@ -147,7 +158,7 @@ const OpticianFormPage = () => {
         error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
         errorCode="" 
         diagnosticInfo="" 
-        onRetry={() => handleFormSubmit({})} 
+        onRetry={() => handleFormSubmit({}, null)} 
       />
     );
   }

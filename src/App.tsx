@@ -37,8 +37,8 @@ const queryClient = new QueryClient({
   },
 });
 
-// Clerk publishable key hardcoded for development
-const CLERK_PUBLISHABLE_KEY = "pk_test_dG9nZXRoZXItbGFkeWJ1Zy05NC5jbGVyay5hY2NvdW50cy5kZXYk";
+// Environment variables for Clerk authentication
+const CLERK_PUBLISHABLE_KEY: string = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
 
 function App() {
   return (

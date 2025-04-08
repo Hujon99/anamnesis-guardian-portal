@@ -5,7 +5,7 @@
  * and manages the form submission with the appropriate status for optician completion.
  */
 
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useFormSubmission } from "@/hooks/useFormSubmission";
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
@@ -16,7 +16,6 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -81,6 +80,11 @@ const OpticianFormPage = () => {
     if (result) {
       console.log("OpticianFormPage: Form submission successful, setting localSubmitted to true");
       setLocalSubmitted(true);
+      
+      // After a short delay, navigate to the dashboard to show the updated entry
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
     } else {
       console.error("OpticianFormPage: Form submission failed");
     }
@@ -96,6 +100,9 @@ const OpticianFormPage = () => {
       <CardContent>
         <p className="mb-6">
           Formuläret har nu markerats som ifyllt av optiker och statusen är ändrad till "Klar för undersökning".
+        </p>
+        <p className="text-sm text-muted-foreground mb-6">
+          Du kommer automatiskt att omdirigeras till översikten...
         </p>
         <Button onClick={() => navigate("/dashboard")} className="w-full">
           Tillbaka till översikten

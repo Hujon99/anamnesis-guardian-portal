@@ -1,16 +1,16 @@
 
 /**
- * Submit Form Edge Function (v8)
+ * Submit Form Edge Function (v9)
  * 
  * This edge function handles the submission of patient form data.
  * It validates the token, checks form status, and stores patient answers
  * in a structured format based on the form template.
  * 
- * Updates in v8:
- * - Added support for optician-submitted forms
- * - Auto-updates status based on submitter role
- * - Preserves optician comments in answer structure
- * - Maintains backward compatibility
+ * Updates in v9:
+ * - Improved handling of optician-submitted forms
+ * - Fixed structure of data containing optician metadata 
+ * - Better detection of submission type from different formats
+ * - Enhanced logging for debugging submission issues
  * 
  * Error handling:
  * - Invalid/missing token or answers: 400 Bad Request
@@ -31,7 +31,7 @@ import { validateToken } from "../utils/validationUtils.ts";
 import { createSupabaseClient } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v8.1";
+const FUNCTION_VERSION = "v9.0";
 const FUNCTION_NAME = "submit-form";
 
 serve(async (req) => {
@@ -60,7 +60,7 @@ serve(async (req) => {
     console.log(`Supabase client created successfully`);
     
     // Parse request data
-    let token, answers, formData, metadata;
+    let token, answers, formData, isOpticianSubmission, autoSetStatus;
     try {
       console.log(`Parsing request data...`);
       const requestData = await req.json();
@@ -70,21 +70,33 @@ serve(async (req) => {
       
       console.log("Full request data:", JSON.stringify(requestData, null, 2));
       
-      // Check for optician submission flag in answers._metadata
-      const isOpticianSubmission = answers?._metadata?.submittedBy === 'optician';
-      const autoSetStatus = answers?._metadata?.autoSetStatus;
+      // Parse metadata from multiple possible locations in the answers object
       
-      if (isOpticianSubmission) {
-        console.log('Detected submission by optician with metadata:', JSON.stringify(answers._metadata, null, 2));
-        metadata = answers._metadata;
+      // Method 1: Check for _metadata at top level
+      if (answers?._metadata?.submittedBy === 'optician') {
+        console.log('Detected submission by optician (top level _metadata)');
+        isOpticianSubmission = true;
+        autoSetStatus = answers._metadata.autoSetStatus || 'ready';
+      }
+      // Method 2: Check for metadata in formattedAnswers
+      else if (answers?.formattedAnswers?.isOpticianSubmission) {
+        console.log('Detected submission by optician (formattedAnswers flag)');
+        isOpticianSubmission = true;
+        autoSetStatus = 'ready'; // Default for optician
+      }
+      // Method 3: Check old structure
+      else if (answers?.isOpticianSubmission) {
+        console.log('Detected submission by optician (legacy flag)');
+        isOpticianSubmission = true;
+        autoSetStatus = 'ready'; // Default for optician
       }
       
       console.log(`Request data parsed successfully`);
       console.log(`Token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
       console.log(`Answers received: ${answers ? 'yes' : 'no'}`);
       console.log(`Form metadata received: ${formData ? 'yes' : 'no'}`);
-      console.log(`Submission metadata: ${metadata ? JSON.stringify(metadata) : 'none'}`);
-      console.log(`Auto-set status: ${autoSetStatus || 'not specified'}`);
+      console.log(`isOpticianSubmission: ${isOpticianSubmission ? 'yes' : 'no'}`);
+      console.log(`autoSetStatus: ${autoSetStatus || 'not specified'}`);
       
       // Log structure of answers for debugging
       if (answers) {
@@ -180,13 +192,11 @@ serve(async (req) => {
       );
     }
     
-    // Check for optician submission flag from metadata extracted earlier
-    const isOpticianSubmission = metadata?.submittedBy === 'optician';
-    const autoSetStatus = metadata?.autoSetStatus;
-    
-    // Remove metadata from answers before saving if it exists
+    // Remove metadata from answers before saving if it exists at top level
     if (answers._metadata) {
-      delete answers._metadata;
+      const { _metadata, ...cleanAnswers } = answers;
+      answers = cleanAnswers;
+      console.log('Removed top-level _metadata before saving');
     }
     
     // Determine the new status based on submission type
@@ -196,11 +206,6 @@ serve(async (req) => {
       // For optician submissions, use the specified status or default to 'ready'
       newStatus = autoSetStatus || 'ready';
       console.log(`Setting entry status to '${newStatus}' based on optician submission`);
-      
-      // If the answers object has a formattedAnswers property, set the isOpticianSubmission flag
-      if (answers.formattedAnswers) {
-        answers.formattedAnswers.isOpticianSubmission = true;
-      }
     } else {
       // For patient submissions, verify entry status is 'sent'
       if (entry.status !== 'sent') {

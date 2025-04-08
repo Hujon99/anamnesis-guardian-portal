@@ -28,14 +28,6 @@ export const useFormSubmission = () => {
     try {
       // Extract metadata for optician submissions if present
       const isOpticianSubmission = values._metadata?.submittedBy === 'optician';
-      const autoSetStatus = values._metadata?.autoSetStatus;
-      let metadata = values._metadata;
-      
-      // Remove _metadata from values to prevent it from being included in answers
-      if (values._metadata) {
-        const { _metadata, ...restValues } = values;
-        values = restValues;
-      }
       
       // Prepare the submission data, using the pre-processed data if available
       const submissionData = formTemplate 
@@ -45,12 +37,6 @@ export const useFormSubmission = () => {
       console.log("Submitting form with data:", JSON.stringify(submissionData, null, 2));
       console.log("Token:", token);
       console.log("isOpticianSubmission:", isOpticianSubmission);
-      console.log("autoSetStatus:", autoSetStatus);
-      
-      // Reattach metadata for the edge function to process
-      if (isOpticianSubmission) {
-        submissionData._metadata = metadata;
-      }
       
       // Submit the form using the edge function
       const response = await supabase.functions.invoke('submit-form', {

@@ -1,3 +1,4 @@
+
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -66,7 +67,7 @@ export const prepareFormSubmission = (
     // Return an object structure suitable for API submission
     return {
       // Include the formatted answers
-      formattedAnswers: processedAnswers,
+      ...processedAnswers,
       
       // Also include the raw answers for backward compatibility
       rawAnswers: { ...userInputs },

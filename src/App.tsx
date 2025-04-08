@@ -17,7 +17,6 @@ import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
-import OpticianView from "./pages/OpticianView";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -69,20 +68,6 @@ const App = () => (
           }
         />
         
-        {/* Anamnes List Route (formerly Optician View) */}
-        <Route 
-          path="/anamnes" 
-          element={
-            <SignedIn>
-              <Layout>
-                <ProtectedRoute requireRole={["org:admin", "org:member"]}>
-                  <OpticianView />
-                </ProtectedRoute>
-              </Layout>
-            </SignedIn>
-          }
-        />
-        
         <Route 
           path="/admin" 
           element={
@@ -96,24 +81,19 @@ const App = () => (
           }
         />
 
-        {/* Redirect path for backward compatibility */}
+        {/* Redirect paths for backward compatibility */}
+        <Route
+          path="/anamnes"
+          element={<Navigate to="/dashboard" replace />}
+        />
         <Route
           path="/optician"
-          element={<Navigate to="/anamnes" replace />}
+          element={<Navigate to="/dashboard" replace />}
         />
 
         {/* Catch unauthorized access to protected routes */}
         <Route
           path="/dashboard/*"
-          element={
-            <SignedOut>
-              <RedirectToSignIn />
-            </SignedOut>
-          }
-        />
-        
-        <Route
-          path="/anamnes/*"
           element={
             <SignedOut>
               <RedirectToSignIn />

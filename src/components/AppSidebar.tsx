@@ -2,6 +2,7 @@
 /**
  * This component renders the application's sidebar navigation.
  * It displays different menu items based on the user's role and authentication status.
+ * The navigation is now more intuitive with the overview showing the anamnesis list directly.
  */
 
 import { useAuth } from "@clerk/clerk-react";
@@ -57,20 +58,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               
-              {isMember && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location.pathname === '/anamnes'}
-                  >
-                    <Link to="/anamnes">
-                      <ClipboardList />
-                      <span>Anamneslista</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              
               {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton 
@@ -78,7 +65,7 @@ export function AppSidebar() {
                     isActive={location.pathname === '/admin'}
                   >
                     <Link to="/admin">
-                      <Users />
+                      <Settings />
                       <span>Administration</span>
                     </Link>
                   </SidebarMenuButton>

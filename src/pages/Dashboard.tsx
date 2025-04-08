@@ -1,14 +1,30 @@
 
 /**
  * Dashboard page that serves as the main landing page after authentication.
- * Shows organizational overview and quick access to main features based on user role.
+ * It now displays the anamnesis list directly for better usability,
+ * providing immediate access to the most important functionality.
  */
 
 import { useOrganization } from "@clerk/clerk-react";
-import { Link } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ClipboardList, Settings } from "lucide-react";
+import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
+import { QueryErrorResetBoundary } from "@tanstack/react-query";
+import { ErrorBoundary } from "react-error-boundary";
+
+// Error fallback component for the Dashboard
+const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
+  return (
+    <Alert variant="destructive" className="mb-6">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Ett fel uppstod</AlertTitle>
+      <AlertDescription className="space-y-4">
+        <p>{error.message || "Ett oväntat fel uppstod. Försök ladda om sidan."}</p>
+      </AlertDescription>
+    </Alert>
+  );
+};
 
 const Dashboard = () => {
   const { organization } = useOrganization();
@@ -25,45 +41,21 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Välkommen, {organization.name}</h1>
-        <p className="text-muted-foreground mt-2">Här är en översikt över dina aktiviteter</p>
+        <h1 className="text-3xl font-bold">Översikt</h1>
+        <p className="text-muted-foreground mt-2">Hantering av anamneslista och patientdata</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
-              Anamneslista
-            </CardTitle>
-            <CardDescription>Granska och hantera anamneser</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">Här kan du se alla anamneser och markera dem som klara för undersökning.</p>
-            <Button asChild className="w-full">
-              <Link to="/anamnes">Gå till anamneslista</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Inställningar
-            </CardTitle>
-            <CardDescription>Hantera kontoinställningar</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">Uppdatera dina personliga inställningar och preferenser.</p>
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/admin">Gå till inställningar</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <QueryErrorResetBoundary>
+        {({ reset }) => (
+          <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
+            <AnamnesisProvider>
+              <AnamnesisListView />
+            </AnamnesisProvider>
+          </ErrorBoundary>
+        )}
+      </QueryErrorResetBoundary>
     </div>
   );
 };

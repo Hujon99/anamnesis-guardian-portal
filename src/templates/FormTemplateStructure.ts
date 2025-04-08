@@ -1,3 +1,4 @@
+
 /**
  * This file serves as a reference template for the JSON structure of form templates.
  * It is primarily used as documentation and a guide when creating new form templates
@@ -98,7 +99,7 @@ export const ConciseFormTemplateExample: FormTemplate = {
           id: "symptom_optician_notes",
           label: "Optician's Notes on Symptoms:",
           type: "text",
-          show_in_mode": "optician" // Another optician-specific field
+          show_in_mode: "optician" // Another optician-specific field
         }
       ]
     }

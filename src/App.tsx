@@ -7,7 +7,6 @@
 
 import React from "react";
 import { Routes, Route } from "react-router-dom";
-import { ClerkProvider } from "@clerk/clerk-react";
 import { Toaster } from "sonner";
 
 // Pages
@@ -37,36 +36,31 @@ const queryClient = new QueryClient({
   },
 });
 
-// Environment variables for Clerk authentication
-const CLERK_PUBLISHABLE_KEY: string = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
-
 function App() {
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-      <QueryClientProvider client={queryClient}>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/sign-in/*" element={<SignInPage />} />
-          <Route path="/sign-up/*" element={<SignUpPage />} />
-          
-          {/* Form page - accessed via token, no auth required */}
-          <Route path="/patient-form" element={<PatientFormPage />} />
-          
-          {/* Protected routes that require authentication */}
-          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route path="/" element={<Index />} />
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/optician" element={<OpticianView />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/optician-form" element={<OpticianFormPage />} />
-          </Route>
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster richColors position="top-center" />
-      </QueryClientProvider>
-    </ClerkProvider>
+    <QueryClientProvider client={queryClient}>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/sign-in/*" element={<SignInPage />} />
+        <Route path="/sign-up/*" element={<SignUpPage />} />
+        
+        {/* Form page - accessed via token, no auth required */}
+        <Route path="/patient-form" element={<PatientFormPage />} />
+        
+        {/* Protected routes that require authentication */}
+        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route path="/" element={<Index />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/optician" element={<OpticianView />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/optician-form" element={<OpticianFormPage />} />
+        </Route>
+        
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Toaster richColors position="top-center" />
+    </QueryClientProvider>
   );
 }
 

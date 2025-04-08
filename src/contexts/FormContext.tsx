@@ -1,4 +1,3 @@
-
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
@@ -173,12 +172,19 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         // Finalize the formatted answers and submit
         const formattedSubmissionData = finalizeSubmissionData();
         
+        // Make sure we have a properly typed object to add the optician flag to
+        const formattedSubmissionDataWithOptician = formattedSubmissionData || {};
+        
         // Add a flag to indicate this was submitted in optician mode if applicable
         if (isOpticianMode) {
-          formattedSubmissionData.isOpticianSubmission = true;
+          // Ensure we don't get TypeScript errors by checking the structure
+          if (typeof formattedSubmissionDataWithOptician === 'object') {
+            // @ts-ignore - We're adding a dynamic property that might not be in the type definition
+            formattedSubmissionDataWithOptician.isOpticianSubmission = true;
+          }
         }
         
-        await callback(values, formattedSubmissionData);
+        await callback(values, formattedSubmissionDataWithOptician);
       }
     });
   };

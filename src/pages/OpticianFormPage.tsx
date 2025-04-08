@@ -122,6 +122,8 @@ const OpticianFormPage = () => {
     return (
       <ErrorCard 
         error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
+        errorCode="" 
+        diagnosticInfo="" 
         onRetry={() => handleFormSubmit({})} 
       />
     );
@@ -151,7 +153,12 @@ const OpticianFormPage = () => {
             isOpticianMode={isOpticianMode}
           />
         ) : (
-          <ErrorCard error="Kunde inte ladda formulärmallen" />
+          <ErrorCard 
+            error="Kunde inte ladda formulärmallen" 
+            errorCode="" 
+            diagnosticInfo="" 
+            onRetry={handleRetry} 
+          />
         )}
       </div>
     </div>

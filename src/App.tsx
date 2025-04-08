@@ -1,120 +1,73 @@
 
 /**
- * Main application component that handles routing and authentication.
- * It sets up the application structure including authenticated and public routes.
+ * This is the main application component that sets up routing, authentication,
+ * and global contexts. It defines all available routes and their corresponding
+ * components, ensuring proper authentication protection where needed.
  */
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import { ClerkProvider } from "@clerk/clerk-react";
+import { Toaster } from "sonner";
 
 // Pages
-import HomePage from "./pages/HomePage";
-import SignInPage from "./pages/SignInPage";
-import SignUpPage from "./pages/SignUpPage";
-import Dashboard from "./pages/Dashboard";
-import AdminPanel from "./pages/AdminPanel";
-import NotFound from "./pages/NotFound";
-import Layout from "./components/Layout";
-import ProtectedRoute from "./components/ProtectedRoute";
-import PatientFormPage from "./pages/PatientFormPage";
+import SignInPage from "@/pages/SignInPage";
+import SignUpPage from "@/pages/SignUpPage";
+import HomePage from "@/pages/HomePage";
+import Dashboard from "@/pages/Dashboard";
+import OpticianView from "@/pages/OpticianView";
+import AdminPanel from "@/pages/AdminPanel";
+import NotFound from "@/pages/NotFound";
+import PatientFormPage from "@/pages/PatientFormPage";
+import OpticianFormPage from "@/pages/OpticianFormPage";
 
-const queryClient = new QueryClient();
+// Components
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Layout from "@/components/Layout";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Index from "./pages/Index";
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <Routes>
-        {/* Public routes */}
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
-        
-        {/* Public patient form route - accessible without authentication */}
-        <Route path="/patient-form" element={<PatientFormPage />} />
-        {/* Backward compatibility for old links */}
-        <Route path="/fylli" element={<Navigate to="/patient-form" replace />} />
+// Create a query client instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
-        {/* Home route with authentication check */}
-        <Route 
-          path="/" 
-          element={
-            <>
-              <SignedIn>
-                <Navigate to="/dashboard" replace />
-              </SignedIn>
-              <SignedOut>
-                <HomePage />
-              </SignedOut>
-            </>
-          } 
-        />
+// Environment variables for Clerk authentication
+const CLERK_PUBLISHABLE_KEY: string = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
 
-        {/* Protected routes */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <SignedIn>
-              <Layout>
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              </Layout>
-            </SignedIn>
-          }
-        />
-        
-        <Route 
-          path="/admin" 
-          element={
-            <SignedIn>
-              <Layout>
-                <ProtectedRoute requireRole="org:admin">
-                  <AdminPanel />
-                </ProtectedRoute>
-              </Layout>
-            </SignedIn>
-          }
-        />
-
-        {/* Redirect paths for backward compatibility */}
-        <Route
-          path="/anamnes"
-          element={<Navigate to="/dashboard" replace />}
-        />
-        <Route
-          path="/optician"
-          element={<Navigate to="/dashboard" replace />}
-        />
-
-        {/* Catch unauthorized access to protected routes */}
-        <Route
-          path="/dashboard/*"
-          element={
-            <SignedOut>
-              <RedirectToSignIn />
-            </SignedOut>
-          }
-        />
-        
-        <Route
-          path="/admin/*"
-          element={
-            <SignedOut>
-              <RedirectToSignIn />
-            </SignedOut>
-          }
-        />
-
-        {/* Catch-all and Not Found */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up/*" element={<SignUpPage />} />
+          
+          {/* Form page - accessed via token, no auth required */}
+          <Route path="/patient-form" element={<PatientFormPage />} />
+          
+          {/* Protected routes that require authentication */}
+          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route path="/" element={<Index />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/optician" element={<OpticianView />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/optician-form" element={<OpticianFormPage />} />
+          </Route>
+          
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster richColors position="top-center" />
+      </QueryClientProvider>
+    </ClerkProvider>
+  );
+}
 
 export default App;

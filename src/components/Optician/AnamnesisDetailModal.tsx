@@ -102,6 +102,8 @@ export function AnamnesisDetailModal({
           hasAnswers={hasAnswers}
           isPending={updateEntryMutation.isPending}
           onUpdateStatus={handleStatusUpdate}
+          entryToken={entry.access_token || undefined}
+          onCloseModal={() => onOpenChange(false)}
         />
         
         <PrintStyles showPrintPreview={showPrintPreview} />

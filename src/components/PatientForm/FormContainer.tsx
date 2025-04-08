@@ -13,12 +13,14 @@ interface FormContainerProps {
   formTemplate: FormTemplate | null;
   onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
   isSubmitting: boolean;
+  isOpticianMode?: boolean;
 }
 
 const FormContainer: React.FC<FormContainerProps> = ({
   formTemplate,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  isOpticianMode = false
 }) => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
@@ -28,6 +30,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
             formTemplate={formTemplate}
             onSubmit={onSubmit}
             isSubmitting={isSubmitting}
+            isOpticianMode={isOpticianMode}
           />
         ) : (
           <div className="text-center">

@@ -30,6 +30,7 @@ type FormContextValue = {
   previousStep: () => void;
   isSubmitting: boolean;
   handleSubmit: (callback: (values: any, formattedAnswers?: any) => Promise<void>) => () => void;
+  isOpticianMode: boolean;
 };
 
 const FormContext = createContext<FormContextValue | undefined>(undefined);
@@ -47,13 +48,15 @@ interface FormContextProviderProps {
   formTemplate: FormTemplate;
   onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
   isSubmitting: boolean;
+  isOpticianMode?: boolean;
 }
 
 export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   children,
   formTemplate,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  isOpticianMode = false
 }) => {
   // Initialize form with default values
   const generateDefaultValues = (template: FormTemplate) => {
@@ -61,6 +64,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     
     template.sections.forEach(section => {
       section.questions.forEach(question => {
+        // Skip questions that are only for opticians if we're not in optician mode
+        if (question.show_in_mode === "optician" && !isOpticianMode) {
+          return;
+        }
+        
         switch (question.type) {
           case "checkbox":
             defaultValues[question.id] = false;
@@ -93,7 +101,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const watchedValues = watch();
   
   // Initialize hooks for form state
-  const { visibleSections, totalSections } = useConditionalFields(formTemplate, watchedValues);
+  // Pass isOpticianMode to ensure fields are properly filtered
+  const { visibleSections, totalSections } = useConditionalFields(formTemplate, watchedValues, isOpticianMode);
   
   const { 
     currentStep, 
@@ -163,6 +172,12 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       if (isLastStep) {
         // Finalize the formatted answers and submit
         const formattedSubmissionData = finalizeSubmissionData();
+        
+        // Add a flag to indicate this was submitted in optician mode if applicable
+        if (isOpticianMode) {
+          formattedSubmissionData.isOpticianSubmission = true;
+        }
+        
         await callback(values, formattedSubmissionData);
       }
     });
@@ -181,7 +196,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     nextStep,
     previousStep,
     isSubmitting,
-    handleSubmit: handleFormSubmit
+    handleSubmit: handleFormSubmit,
+    isOpticianMode
   }), [
     form,
     currentStep,
@@ -192,7 +208,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     isLastStep,
     calculateProgress,
     isSubmitting,
-    handleFormSubmit
+    handleFormSubmit,
+    isOpticianMode
   ]);
 
   // Keyboard shortcuts for navigation

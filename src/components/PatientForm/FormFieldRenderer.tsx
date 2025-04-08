@@ -25,11 +25,13 @@ import { useFormContext } from "react-hook-form";
 interface FormFieldRendererProps {
   question: FormQuestion;
   error: any;
+  isOpticianField?: boolean;
 }
 
 export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   question,
-  error
+  error,
+  isOpticianField = false
 }) => {
   const { control } = useFormContext();
   const hasError = error !== undefined;
@@ -46,24 +48,29 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={question.id}
             render={({ field }) => (
               <FormItem>
-                <FormLabel htmlFor={fieldId}>
+                <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
+                  {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
                 <FormControl>
                   <Textarea 
                     id={fieldId}
-                    placeholder="Skriv ditt svar här..." 
+                    placeholder={isOpticianField ? "Anteckningar från optiker..." : "Skriv ditt svar här..."} 
                     {...field} 
                     rows={3}
                     aria-required={question.required}
                     aria-invalid={hasError}
                     aria-describedby={`${descriptionId} ${hasError ? errorId : ''}`}
+                    className={isOpticianField ? "border-primary/30 focus-visible:ring-primary" : ""}
                   />
                 </FormControl>
                 <FormDescription id={descriptionId}>
-                  Var så detaljerad som möjligt i ditt svar.
+                  {isOpticianField 
+                    ? "Anteckningar visas endast för optiker."
+                    : "Var så detaljerad som möjligt i ditt svar."
+                  }
                 </FormDescription>
                 <FormMessage id={errorId} />
               </FormItem>
@@ -78,10 +85,11 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={question.id}
             render={({ field }) => (
               <FormItem className="space-y-3">
-                <FormLabel id={`label-${question.id}`}>
+                <FormLabel id={`label-${question.id}`} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
+                  {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
                 <FormControl>
                   <RadioGroup
@@ -98,7 +106,9 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                       return (
                         <FormItem key={option} className="flex items-center space-x-3 space-y-0">
                           <FormControl>
-                            <RadioGroupItem value={option} id={optionId} />
+                            <RadioGroupItem value={option} id={optionId} 
+                              className={isOpticianField ? "text-primary border-primary" : ""}
+                            />
                           </FormControl>
                           <FormLabel className="font-normal" htmlFor={optionId}>{option}</FormLabel>
                         </FormItem>
@@ -119,10 +129,11 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={question.id}
             render={({ field }) => (
               <FormItem>
-                <FormLabel htmlFor={fieldId}>
+                <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
+                  {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
                 <Select 
                   onValueChange={field.onChange} 
@@ -135,6 +146,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                       aria-required={question.required}
                       aria-invalid={hasError}
                       aria-describedby={hasError ? errorId : undefined}
+                      className={isOpticianField ? "border-primary/30" : ""}
                     >
                       <SelectValue placeholder="Välj ett alternativ" />
                     </SelectTrigger>
@@ -158,10 +170,11 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={question.id}
             render={({ field }) => (
               <FormItem>
-                <FormLabel htmlFor={fieldId}>
+                <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
+                  {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
                 <FormControl>
                   <Input 
@@ -173,6 +186,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                     aria-required={question.required}
                     aria-invalid={hasError}
                     aria-describedby={hasError ? errorId : undefined}
+                    className={isOpticianField ? "border-primary/30" : ""}
                   />
                 </FormControl>
                 <FormMessage id={errorId} />
@@ -196,13 +210,15 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                     aria-required={question.required}
                     aria-invalid={hasError}
                     aria-describedby={`${fieldId}-label ${hasError ? errorId : ''}`}
+                    className={isOpticianField ? "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" : ""}
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
-                  <FormLabel id={`${fieldId}-label`} htmlFor={fieldId}>
+                  <FormLabel id={`${fieldId}-label`} htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                     {question.label}
                     {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
                     {question.required && <span className="sr-only">(Obligatoriskt)</span>}
+                    {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                   </FormLabel>
                 </div>
                 <FormMessage id={errorId} />
@@ -218,10 +234,11 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={question.id}
             render={({ field }) => (
               <FormItem>
-                <FormLabel htmlFor={fieldId}>
+                <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
+                  {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
                 <FormControl>
                   <Input 
@@ -230,6 +247,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                     aria-required={question.required}
                     aria-invalid={hasError}
                     aria-describedby={hasError ? errorId : undefined}
+                    className={isOpticianField ? "border-primary/30" : ""}
                   />
                 </FormControl>
                 <FormMessage id={errorId} />

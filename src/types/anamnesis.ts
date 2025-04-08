@@ -1,3 +1,4 @@
+
 /**
  * This file contains types for the anamnesis forms and entries in the system.
  * These types define the structure of form templates and the patient data entries.
@@ -30,6 +31,8 @@ export type FormQuestion = {
     question: string;
     equals: string | string[];
   };
+  // New property to indicate this field should only be shown in a specific mode
+  show_in_mode?: "optician" | "patient";
 };
 
 export type FormSection = {

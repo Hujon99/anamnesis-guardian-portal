@@ -6,7 +6,7 @@
  * for scrolling and content boundaries.
  */
 
-import { FileText } from "lucide-react";
+import { FileText, MessageCircle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 interface FormattedAnswer {
   id: string;
@@ -30,6 +31,7 @@ interface FormattedAnswersContent {
   formTitle?: string;
   submissionTimestamp?: string;
   answeredSections: AnsweredSection[];
+  isOpticianSubmission?: boolean;
 }
 
 interface AnswersData {
@@ -125,14 +127,20 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
   // Extract formatted answers data
   const formattedAnswersData = extractFormattedAnswers();
   
+  // Check if this was submitted by an optician
+  const isOpticianSubmission = formattedAnswersData?.isOpticianSubmission;
+  
   // If we have structured data, render it accordingly
   if (formattedAnswersData?.answeredSections) {
     return (
       <div className="flex flex-col">
         <h3 className="text-lg font-medium flex items-center mb-4">
           <FileText className="h-5 w-5 mr-2 text-primary" />
-          Patientens svar
+          {isOpticianSubmission ? "Optikerns ifyllda svar" : "Patientens svar"}
           {formattedAnswersData.formTitle && <span className="text-sm ml-2 text-muted-foreground">({formattedAnswersData.formTitle})</span>}
+          {isOpticianSubmission && (
+            <Badge variant="outline" className="ml-2 bg-primary/10 text-primary">Ifylld av optiker</Badge>
+          )}
         </h3>
         
         <div className="space-y-4">
@@ -152,18 +160,32 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {section.responses.map((response, responseIndex) => (
-                    <TableRow key={`${section.section_title}-${response.id}-${responseIndex}`}>
-                      <TableCell className="font-medium py-3">
-                        {questionLabels[response.id] || response.id}
-                      </TableCell>
-                      <TableCell className="whitespace-pre-wrap break-words py-3">
-                        {response.answer !== null && response.answer !== undefined 
-                          ? String(response.answer) 
-                          : ""}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {section.responses.map((response, responseIndex) => {
+                    // Determine if this is an optician comment field
+                    const isOpticianComment = response.id.includes('_optiker_ovrigt');
+                    
+                    return (
+                      <TableRow 
+                        key={`${section.section_title}-${response.id}-${responseIndex}`}
+                        className={isOpticianComment ? "bg-primary/5" : ""}
+                      >
+                        <TableCell className="font-medium py-3 flex items-center">
+                          {isOpticianComment && <MessageCircle className="h-4 w-4 mr-2 text-primary" />}
+                          {questionLabels[response.id] || response.id}
+                          {isOpticianComment && (
+                            <Badge variant="outline" className="ml-2 bg-primary/10 text-primary text-xs">
+                              Optikernotering
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-pre-wrap break-words py-3">
+                          {response.answer !== null && response.answer !== undefined 
+                            ? String(response.answer) 
+                            : ""}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

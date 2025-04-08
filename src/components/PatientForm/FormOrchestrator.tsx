@@ -15,18 +15,21 @@ interface FormOrchestratorProps {
   formTemplate: FormTemplate;
   onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
   isSubmitting: boolean;
+  isOpticianMode?: boolean;
 }
 
 export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
   formTemplate,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  isOpticianMode = false
 }) => {
   return (
     <FormContextProvider 
       formTemplate={formTemplate} 
       onSubmit={onSubmit}
       isSubmitting={isSubmitting}
+      isOpticianMode={isOpticianMode}
     >
       <Card>
         <FormLayout />

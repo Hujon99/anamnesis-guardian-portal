@@ -20,6 +20,7 @@ export interface FormattedAnswer {
       answer: any;
     }[];
   }[];
+  isOpticianSubmission?: boolean;
 }
 
 
@@ -30,47 +31,88 @@ export interface FormattedAnswer {
  * @param formTemplate - The form template used for the submission
  * @param userInputs - The raw user inputs
  * @param formattedAnswers - Pre-processed formatted answers from useFormSubmissionState
+ * @param isOpticianMode - Whether this submission is from an optician
  * @returns An object ready for API submission
  */
 export const prepareFormSubmission = (
   formTemplate: FormTemplate,
   userInputs: Record<string, any>,
-  formattedAnswers?: any
+  formattedAnswers?: any,
+  isOpticianMode?: boolean
 ): Record<string, any> => {
+  // Process the formatted answers if provided
+  let processedAnswers = formattedAnswers;
+  
+  // If we're in optician mode, make sure to mark it in the formatted answers
+  if (isOpticianMode && formattedAnswers) {
+    // Clone the formatted answers to avoid mutation
+    processedAnswers = { ...formattedAnswers };
+    
+    // Mark this as an optician submission
+    if (processedAnswers.formattedAnswers) {
+      processedAnswers.formattedAnswers.isOpticianSubmission = true;
+    } else if (processedAnswers) {
+      processedAnswers.isOpticianSubmission = true;
+    }
+  }
+  
   // If formattedAnswers is provided, use it directly (new approach)
-  if (formattedAnswers) {
+  if (processedAnswers) {
     console.log("[FormSubmission] Using pre-processed formattedAnswers");
     
     // Return an object structure suitable for API submission
     return {
       // Include the formatted answers
-      formattedAnswers,
+      formattedAnswers: processedAnswers,
       
       // Also include the raw answers for backward compatibility
       rawAnswers: { ...userInputs },
       
-      // Add metadata
+      // Add metadata for optician submissions if applicable
+      ...(isOpticianMode && {
+        _metadata: {
+          submittedBy: 'optician',
+          autoSetStatus: 'ready'
+        }
+      }),
+      
+      // Add general metadata
       metadata: {
         formTemplateId: formTemplate.title,
-        submittedAt: formattedAnswers.formattedAnswers?.submissionTimestamp || new Date().toISOString(),
+        submittedAt: processedAnswers.formattedAnswers?.submissionTimestamp || new Date().toISOString(),
         version: "2.0"
       }
     };
   } else {
     // Fallback to legacy approach (should not be used anymore)
     console.warn("[FormSubmission] WARNING: Using legacy processFormAnswers approach");
+    const formattedData = processFormAnswers(formTemplate, userInputs);
+    
+    // If in optician mode, mark the submission
+    if (isOpticianMode) {
+      formattedData.isOpticianSubmission = true;
+    }
+    
     return {
       // Include the formatted answers 
-      formattedAnswers: processFormAnswers(formTemplate, userInputs),
+      formattedAnswers: formattedData,
       
       // Also include the raw answers for backward compatibility
       rawAnswers: { ...userInputs },
+      
+      // Add metadata for optician submissions if applicable
+      ...(isOpticianMode && {
+        _metadata: {
+          submittedBy: 'optician',
+          autoSetStatus: 'ready'
+        }
+      }),
       
       // Add metadata
       metadata: {
         formTemplateId: formTemplate.title,
         submittedAt: new Date().toISOString(),
-        version: "1.0"
+        version: isOpticianMode ? "2.1" : "1.0"
       }
     };
   }

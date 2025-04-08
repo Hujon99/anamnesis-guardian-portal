@@ -1,15 +1,16 @@
 
 /**
- * Submit Form Edge Function (v7)
+ * Submit Form Edge Function (v8)
  * 
  * This edge function handles the submission of patient form data.
  * It validates the token, checks form status, and stores patient answers
  * in a structured format based on the form template.
  * 
- * Updates in v7:
- * - Added support for structured answer format
- * - Improved handling of form data with metadata
- * - Preserved backward compatibility for existing clients
+ * Updates in v8:
+ * - Added support for optician-submitted forms
+ * - Auto-updates status based on submitter role
+ * - Preserves optician comments in answer structure
+ * - Maintains backward compatibility
  * 
  * Error handling:
  * - Invalid/missing token or answers: 400 Bad Request
@@ -30,7 +31,7 @@ import { validateToken } from "../utils/validationUtils.ts";
 import { createSupabaseClient } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v7";
+const FUNCTION_VERSION = "v8";
 const FUNCTION_NAME = "submit-form";
 
 serve(async (req) => {
@@ -59,17 +60,33 @@ serve(async (req) => {
     console.log(`Supabase client created successfully`);
     
     // Parse request data
-    let token, answers, formData;
+    let token, answers, formData, metadata;
     try {
       console.log(`Parsing request data...`);
       const requestData = await req.json();
       token = requestData.token;
       answers = requestData.answers;
       formData = requestData.formData;
+      metadata = requestData.metadata || {};
+      
+      // Check for optician submission flag in answers._metadata
+      const isOpticianSubmission = answers._metadata?.submittedBy === 'optician';
+      const autoSetStatus = answers._metadata?.autoSetStatus;
+      
+      if (isOpticianSubmission) {
+        console.log('Detected submission by optician');
+        
+        // Remove metadata from answers before processing
+        if (answers._metadata) {
+          delete answers._metadata;
+        }
+      }
+      
       console.log(`Request data parsed successfully`);
       console.log(`Token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
       console.log(`Answers received: ${answers ? 'yes' : 'no'}`);
       console.log(`Form metadata received: ${formData ? 'yes' : 'no'}`);
+      console.log(`Auto-set status: ${autoSetStatus || 'not specified'}`);
       
       // Log structure of answers for debugging
       if (answers) {
@@ -165,25 +182,47 @@ serve(async (req) => {
       );
     }
     
-    // Verify entry status is 'sent'
-    if (entry.status !== 'sent') {
-      let message = 'Formuläret kan inte fyllas i för tillfället';
-      
-      if (entry.status === 'pending' || entry.status === 'ready' || entry.status === 'reviewed') {
-        message = 'Formuläret har redan fyllts i';
-      }
-      
-      console.log(`Invalid status for form submission: ${entry.status}`);
-      return createErrorResponse(
-        message,
-        'invalid_status',
-        400,
-        undefined,
-        { status: entry.status }
-      );
+    // Check for optician submission flag
+    const isOpticianSubmission = answers._metadata?.submittedBy === 'optician';
+    const autoSetStatus = answers._metadata?.autoSetStatus;
+    
+    // Remove metadata from answers before saving
+    if (answers._metadata) {
+      delete answers._metadata;
     }
     
-    console.log(`Entry status is valid: ${entry.status}`);
+    // Determine the new status based on submission type
+    let newStatus = 'pending'; // Default status for patient submissions
+    
+    if (isOpticianSubmission) {
+      // For optician submissions, use the specified status or default to 'ready'
+      newStatus = autoSetStatus || 'ready';
+      
+      // If the answers object has a formattedAnswers property, set the isOpticianSubmission flag
+      if (answers.formattedAnswers) {
+        answers.formattedAnswers.isOpticianSubmission = true;
+      }
+    } else {
+      // For patient submissions, verify entry status is 'sent'
+      if (entry.status !== 'sent') {
+        let message = 'Formuläret kan inte fyllas i för tillfället';
+        
+        if (entry.status === 'pending' || entry.status === 'ready' || entry.status === 'reviewed') {
+          message = 'Formuläret har redan fyllts i';
+        }
+        
+        console.log(`Invalid status for form submission: ${entry.status}`);
+        return createErrorResponse(
+          message,
+          'invalid_status',
+          400,
+          undefined,
+          { status: entry.status }
+        );
+      }
+    }
+    
+    console.log(`Entry status will be set to: ${newStatus}`);
     
     // Ensure organization_id is preserved
     if (!entry.organization_id) {
@@ -197,12 +236,12 @@ serve(async (req) => {
     }
     
     // Update the entry with answers
-    console.log(`Updating entry ${entry.id} with answers and setting status to 'pending'...`);
+    console.log(`Updating entry ${entry.id} with answers and setting status to '${newStatus}'...`);
     const { data, error } = await supabase
       .from('anamnes_entries')
       .update({ 
         answers: answers,
-        status: 'pending',
+        status: newStatus,
         updated_at: new Date().toISOString()
       })
       .eq('access_token', token)
@@ -224,7 +263,10 @@ serve(async (req) => {
     
     // Return successful response
     console.log('Form submission successful, returning updated entry data');
-    return createSuccessResponse({ entry: data });
+    return createSuccessResponse({ 
+      entry: data,
+      submissionType: isOpticianSubmission ? 'optician' : 'patient'
+    });
   } catch (error) {
     // Handle unexpected errors
     return handleUnexpectedError(error as Error, FUNCTION_NAME);

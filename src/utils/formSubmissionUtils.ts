@@ -1,4 +1,3 @@
-
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -40,19 +39,23 @@ export const prepareFormSubmission = (
   formattedAnswers?: any,
   isOpticianMode?: boolean
 ): Record<string, any> => {
+  console.log("prepareFormSubmission called with isOpticianMode:", isOpticianMode);
+  
   // Process the formatted answers if provided
   let processedAnswers = formattedAnswers;
   
   // If we're in optician mode, make sure to mark it in the formatted answers
-  if (isOpticianMode && formattedAnswers) {
+  if (isOpticianMode && processedAnswers) {
     // Clone the formatted answers to avoid mutation
     processedAnswers = { ...formattedAnswers };
     
     // Mark this as an optician submission
     if (processedAnswers.formattedAnswers) {
       processedAnswers.formattedAnswers.isOpticianSubmission = true;
+      console.log("Marked formattedAnswers.formattedAnswers as optician submission");
     } else if (processedAnswers) {
       processedAnswers.isOpticianSubmission = true;
+      console.log("Marked processedAnswers as optician submission");
     }
   }
   
@@ -80,7 +83,7 @@ export const prepareFormSubmission = (
       metadata: {
         formTemplateId: formTemplate.title,
         submittedAt: processedAnswers.formattedAnswers?.submissionTimestamp || new Date().toISOString(),
-        version: "2.0"
+        version: isOpticianMode ? "2.1" : "2.0"
       }
     };
   } else {
@@ -91,6 +94,7 @@ export const prepareFormSubmission = (
     // If in optician mode, mark the submission
     if (isOpticianMode) {
       formattedData.isOpticianSubmission = true;
+      console.log("Marked formattedData as optician submission");
     }
     
     return {

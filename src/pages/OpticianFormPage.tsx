@@ -60,12 +60,15 @@ const OpticianFormPage = () => {
   const handleFormSubmit = async (values: any, formattedAnswers?: any) => {
     if (!token) return;
     
+    console.log("OpticianFormPage: Starting form submission with values:", values);
+    console.log("OpticianFormPage: Formatted answers:", formattedAnswers);
+    
     // For optician submissions, we'll set some additional metadata
     const opticianSubmissionData = {
       ...values,
       _metadata: {
         submittedBy: "optician",
-        autoSetStatus: "ready" // This will be used by the submit-form function to automatically set the status
+        autoSetStatus: "ready" // This will be used by the submit-form function to set the status
       }
     };
     
@@ -76,7 +79,10 @@ const OpticianFormPage = () => {
     
     // Set local submission state on success
     if (result) {
+      console.log("OpticianFormPage: Form submission successful, setting localSubmitted to true");
       setLocalSubmitted(true);
+    } else {
+      console.error("OpticianFormPage: Form submission failed");
     }
   };
 

@@ -168,28 +168,36 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
 
   // Handle form submission
   const handleFormSubmit = useCallback((callback: (values: any, formattedAnswers?: any) => Promise<void>) => {
-    return (values?: any, formattedAnswers?: any) => {
+    return (values?: any) => {
       if (isLastStep) {
         // Get the current form values if not provided
         const currentValues = values || form.getValues();
         
         // Finalize the formatted answers and submit
-        const formattedSubmissionData = formattedAnswers || finalizeSubmissionData();
-        
-        // Make sure we have a properly typed object to add the optician flag to
-        const formattedSubmissionDataWithOptician = formattedSubmissionData || {};
-        
-        // Add a flag to indicate this was submitted in optician mode if applicable
-        if (isOpticianMode) {
-          // Ensure we don't get TypeScript errors by checking the structure
-          if (typeof formattedSubmissionDataWithOptician === 'object') {
-            // @ts-ignore - We're adding a dynamic property that might not be in the type definition
-            formattedSubmissionDataWithOptician.isOpticianSubmission = true;
-          }
-        }
+        const formattedSubmissionData = finalizeSubmissionData();
         
         console.log("Form submission triggered with values:", currentValues);
-        return callback(currentValues, formattedSubmissionDataWithOptician);
+        console.log("Formatted submission data:", formattedSubmissionData);
+        
+        // Add optician flag directly to the formatted data if applicable
+        if (isOpticianMode && formattedSubmissionData) {
+          // Set the flag in the appropriate location
+          if (formattedSubmissionData.formattedAnswers) {
+            formattedSubmissionData.formattedAnswers.isOpticianSubmission = true;
+          } else {
+            formattedSubmissionData.isOpticianSubmission = true;
+          }
+          
+          // Also add metadata for the edge function
+          currentValues._metadata = {
+            submittedBy: 'optician',
+            autoSetStatus: 'ready'
+          };
+          
+          console.log("Added optician mode metadata to submission");
+        }
+        
+        return callback(currentValues, formattedSubmissionData);
       }
     };
   }, [form, isLastStep, isOpticianMode, finalizeSubmissionData]);

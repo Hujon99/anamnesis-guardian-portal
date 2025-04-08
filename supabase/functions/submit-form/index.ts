@@ -31,7 +31,7 @@ import { validateToken } from "../utils/validationUtils.ts";
 import { createSupabaseClient } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v8";
+const FUNCTION_VERSION = "v8.1";
 const FUNCTION_NAME = "submit-form";
 
 serve(async (req) => {
@@ -67,25 +67,23 @@ serve(async (req) => {
       token = requestData.token;
       answers = requestData.answers;
       formData = requestData.formData;
-      metadata = requestData.metadata || {};
+      
+      console.log("Full request data:", JSON.stringify(requestData, null, 2));
       
       // Check for optician submission flag in answers._metadata
-      const isOpticianSubmission = answers._metadata?.submittedBy === 'optician';
-      const autoSetStatus = answers._metadata?.autoSetStatus;
+      const isOpticianSubmission = answers?._metadata?.submittedBy === 'optician';
+      const autoSetStatus = answers?._metadata?.autoSetStatus;
       
       if (isOpticianSubmission) {
-        console.log('Detected submission by optician');
-        
-        // Remove metadata from answers before processing
-        if (answers._metadata) {
-          delete answers._metadata;
-        }
+        console.log('Detected submission by optician with metadata:', JSON.stringify(answers._metadata, null, 2));
+        metadata = answers._metadata;
       }
       
       console.log(`Request data parsed successfully`);
       console.log(`Token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
       console.log(`Answers received: ${answers ? 'yes' : 'no'}`);
       console.log(`Form metadata received: ${formData ? 'yes' : 'no'}`);
+      console.log(`Submission metadata: ${metadata ? JSON.stringify(metadata) : 'none'}`);
       console.log(`Auto-set status: ${autoSetStatus || 'not specified'}`);
       
       // Log structure of answers for debugging
@@ -182,11 +180,11 @@ serve(async (req) => {
       );
     }
     
-    // Check for optician submission flag
-    const isOpticianSubmission = answers._metadata?.submittedBy === 'optician';
-    const autoSetStatus = answers._metadata?.autoSetStatus;
+    // Check for optician submission flag from metadata extracted earlier
+    const isOpticianSubmission = metadata?.submittedBy === 'optician';
+    const autoSetStatus = metadata?.autoSetStatus;
     
-    // Remove metadata from answers before saving
+    // Remove metadata from answers before saving if it exists
     if (answers._metadata) {
       delete answers._metadata;
     }
@@ -197,6 +195,7 @@ serve(async (req) => {
     if (isOpticianSubmission) {
       // For optician submissions, use the specified status or default to 'ready'
       newStatus = autoSetStatus || 'ready';
+      console.log(`Setting entry status to '${newStatus}' based on optician submission`);
       
       // If the answers object has a formattedAnswers property, set the isOpticianSubmission flag
       if (answers.formattedAnswers) {
@@ -259,7 +258,7 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Entry ${entry.id} successfully updated with answers`);
+    console.log(`Entry ${entry.id} successfully updated with answers and status: ${data?.status}`);
     
     // Return successful response
     console.log('Form submission successful, returning updated entry data');

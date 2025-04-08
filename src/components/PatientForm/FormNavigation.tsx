@@ -23,6 +23,8 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
   onNext,
   onPrevious
 }) => {
+  console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
+  
   return (
     <div className="flex justify-between w-full">
       {!isFirstStep && (
@@ -40,7 +42,10 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
       
       <Button 
         type={isLastStep ? "submit" : "button"} 
-        onClick={onNext}
+        onClick={() => {
+          console.log("[FormNavigation]: Button clicked, isLastStep:", isLastStep);
+          onNext();
+        }}
         className={`${isFirstStep ? "ml-auto" : ""}`}
         disabled={isSubmitting}
         aria-label={isLastStep ? "Skicka formulär" : "Gå till nästa steg"}

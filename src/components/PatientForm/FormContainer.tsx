@@ -1,45 +1,39 @@
 
 /**
- * This component serves as a container for the patient form.
- * It handles the form state and renders the appropriate form content.
+ * This component renders the form container, including the Toaster component
+ * to ensure toast messages are properly displayed.
  */
 
 import React from "react";
-import { FormOrchestrator } from "@/components/PatientForm/FormOrchestrator";
 import { FormTemplate } from "@/types/anamnesis";
-import { Loader2 } from "lucide-react";
+import { FormOrchestrator } from "./FormOrchestrator";
+import { Toaster } from "@/components/ui/toaster";
 
 interface FormContainerProps {
-  formTemplate: FormTemplate | null;
-  onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
+  formTemplate: FormTemplate;
+  onSubmit: (values: any, formattedAnswers?: any) => Promise<any>;
   isSubmitting: boolean;
   isOpticianMode?: boolean;
 }
 
-const FormContainer: React.FC<FormContainerProps> = ({
-  formTemplate,
-  onSubmit,
+const FormContainer: React.FC<FormContainerProps> = ({ 
+  formTemplate, 
+  onSubmit, 
   isSubmitting,
   isOpticianMode = false
 }) => {
+  console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
+  
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
-      <div className="max-w-2xl mx-auto">
-        {formTemplate ? (
-          <FormOrchestrator 
-            formTemplate={formTemplate}
-            onSubmit={onSubmit}
-            isSubmitting={isSubmitting}
-            isOpticianMode={isOpticianMode}
-          />
-        ) : (
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-            <p className="mt-4 text-gray-600">Laddar formulärmall...</p>
-          </div>
-        )}
-      </div>
-    </div>
+    <>
+      <FormOrchestrator
+        formTemplate={formTemplate}
+        onSubmit={onSubmit}
+        isSubmitting={isSubmitting}
+        isOpticianMode={isOpticianMode}
+      />
+      <Toaster />
+    </>
   );
 };
 

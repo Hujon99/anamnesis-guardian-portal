@@ -22,6 +22,7 @@ export const useFormSubmission = () => {
     formTemplate?: FormTemplate,
     preProcessedFormattedAnswers?: any
   ): Promise<boolean> => {
+    console.log("[useFormSubmission/submitForm]: Starting form submission");
     setIsSubmitting(true);
     setError(null);
 
@@ -34,11 +35,12 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, values, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: values }; // Fallback for backward compatibility
 
-      console.log("useFormSubmission: Submitting form with data:", JSON.stringify(submissionData, null, 2));
-      console.log("useFormSubmission: Token:", token);
-      console.log("useFormSubmission: isOpticianSubmission:", isOpticianSubmission);
+      console.log("[useFormSubmission/submitForm]: Submitting form with data:", JSON.stringify(submissionData, null, 2));
+      console.log("[useFormSubmission/submitForm]: Token:", token);
+      console.log("[useFormSubmission/submitForm]: isOpticianSubmission:", isOpticianSubmission);
       
       // Submit the form using the edge function
+      console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
       const response = await supabase.functions.invoke('submit-form', {
         body: { 
           token,
@@ -46,17 +48,17 @@ export const useFormSubmission = () => {
         }
       });
 
-      console.log("useFormSubmission: Response from edge function:", response);
+      console.log("[useFormSubmission/submitForm]: Response from edge function:", response);
 
       // Process the response
       if (response.error) {
-        console.error("useFormSubmission: Form submission error:", response.error);
+        console.error("[useFormSubmission/submitForm]: Form submission error:", response.error);
         throw new Error(
           response.error.message || "Ett fel uppstod vid formulärinskickning"
         );
       }
 
-      console.log("useFormSubmission: Form submission response:", response.data);
+      console.log("[useFormSubmission/submitForm]: Form submission response:", response.data);
 
       // Success handling
       setIsSubmitted(true);
@@ -71,7 +73,7 @@ export const useFormSubmission = () => {
       return true;
     } catch (err: any) {
       // Error handling
-      console.error("useFormSubmission: Form submission error:", err);
+      console.error("[useFormSubmission/submitForm]: Form submission error:", err);
       setError(err);
       
       toast({

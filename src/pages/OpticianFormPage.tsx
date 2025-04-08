@@ -16,6 +16,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -58,12 +59,18 @@ const OpticianFormPage = () => {
   // Handle form submission with form template
   const handleFormSubmit = useCallback(async (values: any, formattedAnswers?: any): Promise<void> => {
     if (!token) {
-      console.error("OpticianFormPage: No token available for submission");
+      console.error("[OpticianFormPage/handleFormSubmit]: No token available for submission");
+      toast({
+        title: "Error",
+        description: "Missing token for form submission",
+        variant: "destructive",
+      });
       return;
     }
     
-    console.log("OpticianFormPage: Starting form submission with values:", values);
-    console.log("OpticianFormPage: Formatted answers:", formattedAnswers);
+    console.log("[OpticianFormPage/handleFormSubmit]: Starting form submission with values:", values);
+    console.log("[OpticianFormPage/handleFormSubmit]: Formatted answers:", formattedAnswers);
+    console.log("[OpticianFormPage/handleFormSubmit]: Token:", token);
     
     // For optician submissions, we'll set some additional metadata
     const opticianSubmissionData = {
@@ -74,27 +81,43 @@ const OpticianFormPage = () => {
       }
     };
     
-    console.log("OpticianFormPage: Submitting optician form with data:", opticianSubmissionData);
+    console.log("[OpticianFormPage/handleFormSubmit]: Submitting optician form with data:", opticianSubmissionData);
     
     try {
       // Pass the optician metadata along with the form values
       const result = await submitForm(token, opticianSubmissionData, formTemplate, formattedAnswers);
+      console.log("[OpticianFormPage/handleFormSubmit]: Submit form result:", result);
       
       // Set local submission state on success
       if (result) {
-        console.log("OpticianFormPage: Form submission successful, setting localSubmitted to true");
+        console.log("[OpticianFormPage/handleFormSubmit]: Form submission successful, setting localSubmitted to true");
         setLocalSubmitted(true);
+        
+        toast({
+          title: "Formuläret har fyllts i",
+          description: "Patientens anamnes har markerats som klar för undersökning",
+        });
         
         // After a short delay, navigate to the dashboard to show the updated entry
         setTimeout(() => {
-          console.log("OpticianFormPage: Navigating to dashboard");
+          console.log("[OpticianFormPage/handleFormSubmit]: Navigating to dashboard");
           navigate('/dashboard');
         }, 2000);
       } else {
-        console.error("OpticianFormPage: Form submission failed");
+        console.error("[OpticianFormPage/handleFormSubmit]: Form submission failed");
+        toast({
+          title: "Något gick fel",
+          description: "Formuläret kunde inte skickas in, försök igen",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error("OpticianFormPage: Error during form submission:", error);
+      console.error("[OpticianFormPage/handleFormSubmit]: Error during form submission:", error);
+      toast({
+        title: "Ett fel uppstod",
+        description: "Kunde inte skicka in formuläret på grund av ett tekniskt fel",
+        variant: "destructive",
+      });
     }
   }, [token, formTemplate, submitForm, navigate]);
 

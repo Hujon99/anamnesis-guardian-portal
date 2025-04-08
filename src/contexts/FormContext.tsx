@@ -1,3 +1,4 @@
+
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
@@ -175,8 +176,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         // Finalize the formatted answers and submit
         const formattedSubmissionData = finalizeSubmissionData() as SubmissionData;
         
-        console.log("FormContext: Form submission triggered with values:", currentValues);
-        console.log("FormContext: Formatted submission data:", formattedSubmissionData);
+        console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
+        console.log("[FormContext/handleFormSubmit]: Formatted submission data:", formattedSubmissionData);
         
         // Add optician flag directly to the formatted data if applicable
         if (isOpticianMode && formattedSubmissionData) {
@@ -191,18 +192,19 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
             autoSetStatus: 'ready'
           };
           
-          console.log("FormContext: Added optician mode metadata to submission");
+          console.log("[FormContext/handleFormSubmit]: Added optician mode metadata to submission");
         }
         
         // If a callback was provided, call it with the form values and formatted answers
         if (callback) {
+          console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
           return callback(currentValues, formattedSubmissionData);
         } else if (onSubmit) {
           // Fall back to the onSubmit prop if no specific callback was provided
-          console.log("FormContext: Using default onSubmit handler");
+          console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
           return onSubmit(currentValues, formattedSubmissionData);
         } else {
-          console.warn("FormContext: No submission handler provided");
+          console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
           return Promise.resolve();
         }
       }

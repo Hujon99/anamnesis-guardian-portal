@@ -1,4 +1,3 @@
-
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -40,7 +39,7 @@ export const prepareFormSubmission = (
   formattedAnswers?: any,
   isOpticianMode?: boolean
 ): Record<string, any> => {
-  console.log("prepareFormSubmission called with isOpticianMode:", isOpticianMode);
+  console.log("[formSubmissionUtils/prepareFormSubmission]: Called with isOpticianMode:", isOpticianMode);
   
   // Process the formatted answers if provided
   let processedAnswers = formattedAnswers;
@@ -53,16 +52,16 @@ export const prepareFormSubmission = (
     // Mark this as an optician submission
     if (processedAnswers.formattedAnswers) {
       processedAnswers.formattedAnswers.isOpticianSubmission = true;
-      console.log("Marked formattedAnswers.formattedAnswers as optician submission");
+      console.log("[formSubmissionUtils/prepareFormSubmission]: Marked formattedAnswers.formattedAnswers as optician submission");
     } else if (processedAnswers) {
       processedAnswers.isOpticianSubmission = true;
-      console.log("Marked processedAnswers as optician submission");
+      console.log("[formSubmissionUtils/prepareFormSubmission]: Marked processedAnswers as optician submission");
     }
   }
   
   // If formattedAnswers is provided, use it directly (new approach)
   if (processedAnswers) {
-    console.log("[FormSubmission] Using pre-processed formattedAnswers");
+    console.log("[formSubmissionUtils/prepareFormSubmission]: Using pre-processed formattedAnswers");
     
     // Return an object structure suitable for API submission
     return {
@@ -89,18 +88,95 @@ export const prepareFormSubmission = (
     };
   } else {
     // Fallback to legacy approach (should not be used anymore)
-    console.warn("[FormSubmission] WARNING: Using legacy processFormAnswers approach");
-    const formattedData = processFormAnswers(formTemplate, userInputs);
+    console.warn("[formSubmissionUtils/prepareFormSubmission]: WARNING: Using legacy processFormAnswers approach");
     
-    // If in optician mode, mark the submission
-    if (isOpticianMode) {
-      formattedData.isOpticianSubmission = true;
-      console.log("Marked formattedData as optician submission");
+    // Initialize the structured answer object
+  const formattedAnswer: FormattedAnswer = {
+    formTitle: formTemplate.title,
+    submissionTimestamp: new Date().toISOString(),
+    answeredSections: []
+  };
+
+  // Function to evaluate show_if conditions
+  const evaluateCondition = (
+    condition: { question: string; equals: string | string[] } | undefined
+  ): boolean => {
+    if (!condition) return true;
+
+    const { question, equals } = condition;
+    const dependentValue = userInputs[question];
+
+    if (Array.isArray(equals)) {
+      return equals.includes(dependentValue);
     }
+
+    return dependentValue === equals;
+  };
+
+  // Process each section in the template
+  formTemplate.sections.forEach(section => {
+    // Create a new section for the formatted answer
+    const formattedSection = {
+      section_title: section.section_title,
+      responses: []
+    };
+
+    // Process each question in the section
+    section.questions.forEach(question => {
+      // Skip questions that shouldn't be shown based on conditions
+      if (!evaluateCondition(question.show_if)) {
+        return;
+      }
+
+      const userAnswer = userInputs[question.id];
+
+      // Skip if question wasn't answered (undefined, null, or empty string)
+      // Note: we include false and 0 as valid answers
+      if (
+        userAnswer === undefined || 
+        userAnswer === null || 
+        (typeof userAnswer === 'string' && userAnswer.trim() === '')
+      ) {
+        return;
+      }
+
+      // Add the answer to the formatted section
+      formattedSection.responses.push({
+        id: question.id,
+        answer: userAnswer
+      });
+
+      // Handle "Other" option for radio buttons and dropdowns
+      if (
+        (question.type === 'radio' || question.type === 'dropdown') &&
+        question.options && 
+        question.options.includes('Övrigt') &&
+        userAnswer === 'Övrigt'
+      ) {
+        // Look for the associated "other" text input (usually has _other or _övrigt suffix)
+        const otherFieldId = `${question.id}_other`;
+        const alternativeOtherFieldId = `${question.id}_övrigt`;
+        
+        const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
+        
+        if (otherAnswer) {
+          formattedSection.responses.push({
+            id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
+            answer: otherAnswer
+          });
+        }
+      }
+    });
+
+    // Only include sections that have responses
+    if (formattedSection.responses.length > 0) {
+      formattedAnswer.answeredSections.push(formattedSection);
+    }
+  });
     
     return {
       // Include the formatted answers 
-      formattedAnswers: formattedData,
+      formattedAnswers: formattedAnswer,
       
       // Also include the raw answers for backward compatibility
       rawAnswers: { ...userInputs },

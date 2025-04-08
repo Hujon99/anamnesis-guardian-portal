@@ -12,7 +12,6 @@ import { Toaster } from "sonner";
 // Pages
 import SignInPage from "@/pages/SignInPage";
 import SignUpPage from "@/pages/SignUpPage";
-import HomePage from "@/pages/HomePage";
 import Dashboard from "@/pages/Dashboard";
 import OpticianView from "@/pages/OpticianView";
 import AdminPanel from "@/pages/AdminPanel";
@@ -50,7 +49,6 @@ function App() {
         {/* Protected routes that require authentication */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/" element={<Index />} />
-          <Route path="/home" element={<HomePage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/optician" element={<OpticianView />} />
           <Route path="/admin" element={<AdminPanel />} />

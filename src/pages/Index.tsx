@@ -1,14 +1,30 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+/**
+ * This page serves as the entry point of the application.
+ * It automatically redirects authenticated users to the dashboard
+ * and unauthenticated users to the sign-in page.
+ */
+
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+  const { isSignedIn, isLoaded } = useAuth();
+  
+  // Show loading state while Clerk is initializing
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <h1 className="text-2xl font-medium mb-2">Laddar...</h1>
+          <p className="text-gray-600">Startar Anamnesportalen</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+  
+  // Redirect signed-in users to dashboard, others to sign-in
+  return <Navigate to={isSignedIn ? "/dashboard" : "/sign-in"} replace />;
 };
 
 export default Index;

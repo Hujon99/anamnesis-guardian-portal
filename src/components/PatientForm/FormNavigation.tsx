@@ -39,11 +39,12 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
       )}
       
       <Button 
-        type="button" 
+        type={isLastStep ? "submit" : "button"} 
         onClick={onNext}
         className={`${isFirstStep ? "ml-auto" : ""}`}
         disabled={isSubmitting}
         aria-label={isLastStep ? "Skicka formulär" : "Gå till nästa steg"}
+        form={isLastStep ? "patient-form" : undefined}
       >
         {isSubmitting ? (
           <>

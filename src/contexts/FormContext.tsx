@@ -1,10 +1,11 @@
+
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
  * and submission state, making these available throughout the form components.
  */
 
-import React, { createContext, useContext, useMemo, useReducer } from "react";
+import React, { createContext, useContext, useMemo, useCallback } from "react";
 import { FormTemplate } from "@/types/anamnesis";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +29,7 @@ type FormContextValue = {
   nextStep: () => void;
   previousStep: () => void;
   isSubmitting: boolean;
-  handleSubmit: (callback: (values: any, formattedAnswers?: any) => Promise<void>) => () => void;
+  handleSubmit: (callback: (values: any, formattedAnswers?: any) => Promise<void>) => (values?: any, formattedAnswers?: any) => void;
   isOpticianMode: boolean;
 };
 
@@ -166,11 +167,14 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   };
 
   // Handle form submission
-  const handleFormSubmit = (callback: (values: any, formattedAnswers?: any) => Promise<void>) => {
-    return handleSubmit(async (values) => {
+  const handleFormSubmit = useCallback((callback: (values: any, formattedAnswers?: any) => Promise<void>) => {
+    return (values?: any, formattedAnswers?: any) => {
       if (isLastStep) {
+        // Get the current form values if not provided
+        const currentValues = values || form.getValues();
+        
         // Finalize the formatted answers and submit
-        const formattedSubmissionData = finalizeSubmissionData();
+        const formattedSubmissionData = formattedAnswers || finalizeSubmissionData();
         
         // Make sure we have a properly typed object to add the optician flag to
         const formattedSubmissionDataWithOptician = formattedSubmissionData || {};
@@ -184,10 +188,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
           }
         }
         
-        await callback(values, formattedSubmissionDataWithOptician);
+        console.log("Form submission triggered with values:", currentValues);
+        return callback(currentValues, formattedSubmissionDataWithOptician);
       }
-    });
-  };
+    };
+  }, [form, isLastStep, isOpticianMode, finalizeSubmissionData]);
 
   // Create memoized context value
   const contextValue = useMemo(() => ({

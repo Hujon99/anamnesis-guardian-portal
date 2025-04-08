@@ -28,6 +28,17 @@ export const FormLayout: React.FC = () => {
     form
   } = useFormContext();
 
+  // The actual submission handler that should be called when the form is submitted
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLastStep) {
+      // Execute the final submit action
+      form.handleSubmit((data) => {
+        handleSubmit((values, formattedAnswers) => Promise.resolve())(values, formattedAnswers);
+      })();
+    }
+  };
+
   return (
     <>
       <FormHeader 
@@ -39,7 +50,7 @@ export const FormLayout: React.FC = () => {
       <CardContent>
         <form 
           id="patient-form" 
-          onSubmit={(e) => e.preventDefault()} 
+          onSubmit={onSubmit}
           className="space-y-6"
           aria-labelledby="form-title"
           noValidate
@@ -65,7 +76,9 @@ export const FormLayout: React.FC = () => {
           isFirstStep={isFirstStep}
           isLastStep={isLastStep}
           isSubmitting={isSubmitting}
-          onNext={nextStep}
+          onNext={isLastStep ? form.handleSubmit((data) => {
+            handleSubmit((values, formattedAnswers) => Promise.resolve())(data, null);
+          }) : nextStep}
           onPrevious={previousStep}
         />
         

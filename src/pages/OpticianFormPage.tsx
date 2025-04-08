@@ -12,7 +12,7 @@ import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import FormContainer from "@/components/PatientForm/FormContainer";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
@@ -46,6 +46,9 @@ const OpticianFormPage = () => {
     submitForm 
   } = useFormSubmission();
 
+  // Track local submission state
+  const [localSubmitted, setLocalSubmitted] = useState(false);
+
   // If not in optician mode, redirect to dashboard
   useEffect(() => {
     if (!isOpticianMode && !loading) {
@@ -66,8 +69,15 @@ const OpticianFormPage = () => {
       }
     };
     
+    console.log("Submitting optician form with data:", opticianSubmissionData);
+    
     // Pass the optician metadata along with the form values
-    await submitForm(token, opticianSubmissionData, formTemplate, formattedAnswers);
+    const result = await submitForm(token, opticianSubmissionData, formTemplate, formattedAnswers);
+    
+    // Set local submission state on success
+    if (result) {
+      setLocalSubmitted(true);
+    }
   };
 
   // Successful submission view for opticians
@@ -112,8 +122,8 @@ const OpticianFormPage = () => {
     );
   }
 
-  // Form already submitted state
-  if (submitted || isSubmitted) {
+  // Form already submitted state - check both global and local submitted state
+  if (submitted || isSubmitted || localSubmitted) {
     return <OpticianSubmittedView />;
   }
 

@@ -26,7 +26,7 @@ export interface AnamnesisFilters {
 
 export const useAnamnesisList = () => {
   const { organization } = useOrganization();
-  const { supabase, refreshClient } = useSupabaseClient();
+  const { supabase, isReady, refreshClient } = useSupabaseClient();
   const { dataLastUpdated, forceRefresh } = useAnamnesis();
   const queryClient = useQueryClient(); // Get the query client directly
   
@@ -41,6 +41,7 @@ export const useAnamnesisList = () => {
 
   // Track realtime subscription
   const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Fetch all entries regardless of status
   const { 
@@ -50,9 +51,13 @@ export const useAnamnesisList = () => {
     refetch, 
     isFetching
   } = useQuery({
-    queryKey: ["anamnes-entries-all", organization?.id],
+    queryKey: ["anamnes-entries-all", organization?.id, isReady],
     queryFn: async () => {
       if (!organization?.id) return [];
+      if (!isReady) {
+        console.log("Supabase client not ready yet, delaying fetch");
+        return [];
+      }
 
       try {
         console.log(`Fetching all entries for org: ${organization.id}`);
@@ -69,6 +74,7 @@ export const useAnamnesisList = () => {
         }
 
         console.log(`Fetched ${data?.length || 0} entries`);
+        setInitialLoadComplete(true);
         return data as AnamnesesEntry[];
       } catch (fetchError) {
         const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
@@ -85,7 +91,7 @@ export const useAnamnesisList = () => {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!organization?.id,
+    enabled: !!organization?.id && isReady, // Only enable when Supabase client is ready
     retry: 1,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     refetchOnWindowFocus: true,
@@ -95,7 +101,7 @@ export const useAnamnesisList = () => {
 
   // Handle realtime updates
   const setupRealtimeSubscription = useCallback(() => {
-    if (!organization?.id || !supabase) return;
+    if (!organization?.id || !supabase || !isReady) return;
     
     // Clean up previous subscription if exists
     if (realtimeChannel) {
@@ -179,14 +185,17 @@ export const useAnamnesisList = () => {
       console.log("Cleaning up realtime subscription");
       channel.unsubscribe();
     };
-  }, [organization?.id, supabase, queryClient]);
+  }, [organization?.id, supabase, queryClient, isReady]);
 
-  // Set up realtime subscription when org or supabase client changes
+  // Set up realtime subscription when org, supabase client, or isReady changes
   useEffect(() => {
+    if (!isReady) return;
+    
     const cleanup = setupRealtimeSubscription();
     
-    // Initial data fetch on mount
-    if (organization?.id) {
+    // Initial data fetch when ready
+    if (organization?.id && isReady && !initialLoadComplete) {
+      console.log("Triggering initial data fetch because client is now ready");
       refetch();
     }
     
@@ -195,7 +204,7 @@ export const useAnamnesisList = () => {
         cleanup();
       }
     };
-  }, [organization?.id, supabase, setupRealtimeSubscription, refetch]);
+  }, [organization?.id, supabase, setupRealtimeSubscription, refetch, isReady, initialLoadComplete]);
 
   // Update a single filter
   const updateFilter = <K extends keyof AnamnesisFilters>(
@@ -221,7 +230,7 @@ export const useAnamnesisList = () => {
 
   // Handle retry for errors
   const handleRetry = async () => {
-    await refreshClient(false);
+    await refreshClient(true);
     refetch();
   };
 
@@ -296,6 +305,7 @@ export const useAnamnesisList = () => {
     isFetching,
     refetch,
     handleRetry,
-    dataLastUpdated
+    dataLastUpdated,
+    isReady
   };
 };

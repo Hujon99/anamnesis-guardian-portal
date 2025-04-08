@@ -30,6 +30,7 @@ export const useSupabaseClient = () => {
   const [authenticatedClient, setAuthenticatedClient] = useState(supabaseClient);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isReady, setIsReady] = useState(false);
   
   // Use refs to track state without causing re-renders
   const initialized = useRef(false);
@@ -144,6 +145,7 @@ export const useSupabaseClient = () => {
         isRefreshingRef.current = false;
         pendingRefreshRef.current = false;
         setIsLoading(false);
+        setIsReady(true);
         return;
       }
       
@@ -153,6 +155,9 @@ export const useSupabaseClient = () => {
       if (token) {
         await createAuthenticatedClient(token);
       }
+
+      // Mark client as ready
+      setIsReady(true);
     } catch (err) {
       console.error("Error setting up Supabase client with Clerk session token:", err);
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -217,6 +222,7 @@ export const useSupabaseClient = () => {
     supabase: authenticatedClient, 
     isLoading, 
     error,
+    isReady, // New state to indicate client is fully initialized
     refreshClient // Expose refresh method with force option
   };
 };

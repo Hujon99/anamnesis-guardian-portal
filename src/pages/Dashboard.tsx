@@ -8,10 +8,12 @@
 import { useOrganization } from "@clerk/clerk-react";
 import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { useEffect } from "react";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -26,8 +28,28 @@ const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetError
   );
 };
 
+// Loading state component
+const LoadingState = () => (
+  <div className="flex items-center justify-center py-10">
+    <div className="text-center">
+      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+      <h2 className="text-xl font-medium mb-2">Förbereder översikt</h2>
+      <p className="text-muted-foreground">Ansluter till databasen...</p>
+    </div>
+  </div>
+);
+
 const Dashboard = () => {
   const { organization } = useOrganization();
+  const { isReady, refreshClient } = useSupabaseClient();
+  
+  // Ensure Supabase client is refreshed when dashboard mounts
+  useEffect(() => {
+    console.log("Dashboard mounted, ensuring Supabase client is ready");
+    if (!isReady) {
+      refreshClient(false);
+    }
+  }, [isReady, refreshClient]);
 
   if (!organization) {
     return (
@@ -38,6 +60,11 @@ const Dashboard = () => {
         </p>
       </div>
     );
+  }
+
+  // Show loading state while Supabase client is initializing
+  if (!isReady) {
+    return <LoadingState />;
   }
 
   return (

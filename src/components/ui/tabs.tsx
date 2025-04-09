@@ -56,13 +56,11 @@ const TabsContent = React.forwardRef<
     style={{ 
       WebkitFontSmoothing: 'antialiased', 
       textRendering: 'optimizeLegibility',
-      overflow: 'hidden', // Changed from 'auto' to 'hidden'
+      overflow: 'auto', 
       height: '100%',
       flexGrow: 1,
       display: 'flex',
-      flexDirection: 'column',
-      // Added to ensure content is absolute and only the active tab is shown
-      position: 'relative'
+      flexDirection: 'column'
     }}
     {...props}
   />

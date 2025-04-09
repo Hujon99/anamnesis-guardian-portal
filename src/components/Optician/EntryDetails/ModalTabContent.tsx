@@ -1,19 +1,16 @@
 
 /**
  * This component renders the tab content for the anamnesis detail modal.
- * It switches between patient information and notes based on the active tab.
+ * It now shows only patient information and answers, since notes functionality 
+ * has been moved directly into the raw data editing view.
  */
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PatientInfo } from "./PatientInfo";
 import { OptimizedAnswersView } from "./OptimizedAnswersView";
-import { InternalNotes } from "./InternalNotes";
 import { AnamnesesEntry } from "@/types/anamnesis";
 
 interface ModalTabContentProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
   patientEmail: string;
   isEditing: boolean;
   toggleEditing: () => void;
@@ -32,8 +29,6 @@ interface ModalTabContentProps {
 }
 
 export function ModalTabContent({
-  activeTab,
-  setActiveTab,
   patientEmail,
   isEditing,
   toggleEditing,
@@ -51,53 +46,33 @@ export function ModalTabContent({
   onSaveAiSummary
 }: ModalTabContentProps) {
   return (
-    <Tabs 
-      defaultValue="info" 
-      value={activeTab} 
-      onValueChange={setActiveTab} 
-      className="flex-1 flex flex-col h-full"
-    >
-      <TabsList className="mb-2 w-full">
-        <TabsTrigger value="info">Information</TabsTrigger>
-        <TabsTrigger value="notes">Anteckningar</TabsTrigger>
-      </TabsList>
-      
-      <TabsContent 
-        value="info" 
-        className="flex-1 flex flex-col overflow-hidden"
-      >
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-4">
-            {showPatientInfoSection && (
-              <PatientInfo 
-                patientEmail={patientEmail}
-                isEditing={isEditing}
-                setIsEditing={toggleEditing}
-                setPatientEmail={setPatientEmail}
-                savePatientEmail={savePatientEmail}
-              />
-            )}
-            
-            <OptimizedAnswersView 
-              answers={answers}
-              hasAnswers={hasAnswers}
-              status={status}
-              entryId={entry.id}
-              aiSummary={entry.ai_summary}
-              onSaveSummary={onSaveAiSummary}
+    <div className="flex flex-col h-full overflow-hidden">
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-4">
+          {showPatientInfoSection && (
+            <PatientInfo 
+              patientEmail={patientEmail}
+              isEditing={isEditing}
+              setIsEditing={toggleEditing}
+              setPatientEmail={setPatientEmail}
+              savePatientEmail={savePatientEmail}
             />
-          </div>
-        </ScrollArea>
-      </TabsContent>
-      
-      <TabsContent value="notes" className="flex-1">
-        <InternalNotes 
-          notes={notes}
-          setNotes={setNotes}
-          saveNotes={saveNotes}
-          isPending={isPending}
-        />
-      </TabsContent>
-    </Tabs>
+          )}
+          
+          <OptimizedAnswersView 
+            answers={answers}
+            hasAnswers={hasAnswers}
+            status={status}
+            entryId={entry.id}
+            aiSummary={entry.ai_summary}
+            onSaveSummary={onSaveAiSummary}
+            notes={notes}
+            setNotes={setNotes}
+            saveNotes={saveNotes}
+            isPending={isPending}
+          />
+        </div>
+      </ScrollArea>
+    </div>
   );
 }

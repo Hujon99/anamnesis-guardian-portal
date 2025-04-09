@@ -3,6 +3,8 @@
  * This component displays detailed information about an anamnesis entry
  * in a modal dialog. It's been refactored to improve maintainability
  * and separate concerns into smaller, more focused components.
+ * It no longer includes separate tabs for notes as those are now integrated
+ * directly in the raw data view.
  */
 
 import { AnamnesesEntry } from "@/types/anamnesis";
@@ -31,7 +33,6 @@ export function AnamnesisDetailModal({
     notes,
     patientEmail,
     isEditing,
-    activeTab,
     isExpired,
     answers,
     hasAnswers,
@@ -43,7 +44,6 @@ export function AnamnesisDetailModal({
     // Actions
     setNotes,
     setPatientEmail,
-    setActiveTab,
     toggleEditing,
     handleSaveNotes,
     handleSavePatientEmail,
@@ -77,8 +77,6 @@ export function AnamnesisDetailModal({
         
         <div className="flex-1 overflow-hidden">
           <ModalTabContent
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
             patientEmail={patientEmail}
             isEditing={isEditing}
             toggleEditing={toggleEditing}

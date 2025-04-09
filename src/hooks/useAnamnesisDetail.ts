@@ -3,6 +3,9 @@
  * This hook manages the state and logic for the anamnesis detail view.
  * It centralizes all operations related to viewing and updating an anamnesis entry,
  * including notes management, patient email updates, and status changes.
+ * 
+ * The notes functionality has been updated to directly integrate with the raw data
+ * editing capabilities rather than having a separate tab.
  */
 
 import { useState } from "react";
@@ -19,7 +22,6 @@ export function useAnamnesisDetail(
   const [notes, setNotes] = useState(entry.internal_notes || "");
   const [patientEmail, setPatientEmail] = useState(entry.patient_email || "");
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState("info");
   
   // Get mutations and print functions
   const {
@@ -76,6 +78,7 @@ export function useAnamnesisDetail(
   const toggleEditing = () => {
     setIsEditing(!isEditing);
     if (isEditing) {
+      // Reset to original value when canceling edit
       setPatientEmail(entry.patient_email || "");
     }
   };
@@ -85,7 +88,6 @@ export function useAnamnesisDetail(
     notes,
     patientEmail,
     isEditing,
-    activeTab,
     isExpired,
     answers,
     hasAnswers,
@@ -97,7 +99,6 @@ export function useAnamnesisDetail(
     // Actions
     setNotes,
     setPatientEmail,
-    setActiveTab,
     toggleEditing,
     handleSaveNotes,
     handleSavePatientEmail,

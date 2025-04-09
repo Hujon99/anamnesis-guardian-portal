@@ -4,6 +4,9 @@
  * It converts the complex JSON structure into a readable text representation
  * that's suitable for AI processing and human reading. It also includes functionality
  * to generate AI summaries using Azure OpenAI.
+ * 
+ * With the removal of the separate notes tab, this component now also handles
+ * the note-taking functionality directly in the raw data view.
  */
 
 import { useFormTemplate } from "@/hooks/useFormTemplate";
@@ -24,6 +27,10 @@ interface OptimizedAnswersViewProps {
   entryId: string;
   aiSummary: string | null;
   onSaveSummary: (summary: string) => void;
+  notes: string;
+  setNotes: (notes: string) => void;
+  saveNotes: () => void;
+  isPending: boolean;
 }
 
 export const OptimizedAnswersView = ({ 
@@ -32,7 +39,11 @@ export const OptimizedAnswersView = ({
   status,
   entryId,
   aiSummary,
-  onSaveSummary
+  onSaveSummary,
+  notes,
+  setNotes,
+  saveNotes,
+  isPending
 }: OptimizedAnswersViewProps) => {
   const { data: formTemplate } = useFormTemplate();
   const [optimizedText, setOptimizedText] = useState<string>("");
@@ -56,7 +67,13 @@ export const OptimizedAnswersView = ({
       
       if (formattedAnswers) {
         // Generate the optimized text
-        const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
+        let text = createOptimizedPromptInput(formTemplate, formattedAnswers);
+        
+        // If we have notes, append them to the optimized text
+        if (notes && notes.trim().length > 0) {
+          text += "\n\n--- INTERNA ANTECKNINGAR ---\n" + notes;
+        }
+        
         setOptimizedText(text);
         setEditedText(text); // Initialize edited text with the optimized text
       } else {
@@ -69,7 +86,7 @@ export const OptimizedAnswersView = ({
       setOptimizedText("Ett fel uppstod vid formatering av svaren.");
       setEditedText("Ett fel uppstod vid formatering av svaren.");
     }
-  }, [answers, formTemplate, hasAnswers]);
+  }, [answers, formTemplate, hasAnswers, notes]);
 
   const generateSummary = async () => {
     if (!editedText) {
@@ -132,12 +149,10 @@ export const OptimizedAnswersView = ({
   };
 
   const toggleEditing = () => {
+    setIsEditing(!isEditing);
     if (isEditing) {
-      // Coming out of editing mode, ask if they want to reset changes
-      setIsEditing(false);
-    } else {
-      // Going into editing mode
-      setIsEditing(true);
+      // Extract and save notes from edited text when exiting edit mode
+      extractAndSaveNotes(editedText);
     }
   };
 
@@ -149,19 +164,17 @@ export const OptimizedAnswersView = ({
     });
   };
 
-  const saveChanges = async () => {
+  const saveChanges = () => {
     setIsSaving(true);
     try {
-      // Store the edited text in the custom field of the answer object
-      // This will require a backend implementation that we'll need to add
+      // Extract internal notes from edited text
+      extractAndSaveNotes(editedText);
       
-      // For now, we'll just update the local state and inform the user
       toast({
         title: "Ändringar sparade",
         description: "Dina anteckningar har sparats för AI-sammanfattning",
       });
       
-      // Stay in the editing mode so they can continue modifying if needed
       setIsEditing(false);
     } catch (error) {
       console.error("Error saving edited text:", error);
@@ -172,6 +185,27 @@ export const OptimizedAnswersView = ({
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Extracts notes from the edited text and saves them
+  const extractAndSaveNotes = (text: string) => {
+    const notesRegex = /--- INTERNA ANTECKNINGAR ---\n([\s\S]*)/;
+    const match = text.match(notesRegex);
+    
+    if (match && match[1]) {
+      // We found notes section, extract and save notes
+      setNotes(match[1].trim());
+      saveNotes(); // Call the parent component's save function
+    } else {
+      // No notes section found, check if anything was added after the original content
+      const extraContent = text.replace(optimizedText.replace(/--- INTERNA ANTECKNINGAR ---[\s\S]*/, '').trim(), '').trim();
+      
+      if (extraContent && !extraContent.startsWith("--- INTERNA ANTECKNINGAR ---")) {
+        // User added content but didn't use the marker, treat all new content as notes
+        setNotes(extraContent);
+        saveNotes();
+      }
     }
   };
 
@@ -197,7 +231,7 @@ export const OptimizedAnswersView = ({
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium flex items-center">
           <FileText className="h-5 w-5 mr-2 text-primary" />
-          Patientens svar
+          Patientens svar och anteckningar
         </h3>
         
         <div className="flex gap-2">
@@ -215,11 +249,11 @@ export const OptimizedAnswersView = ({
                 variant="default"
                 size="sm"
                 onClick={saveChanges}
-                disabled={isSaving}
+                disabled={isSaving || isPending}
                 className="flex items-center"
               >
                 <Save className="h-4 w-4 mr-2" />
-                {isSaving ? "Sparar..." : "Spara ändringar"}
+                {isSaving || isPending ? "Sparar..." : "Spara ändringar"}
               </Button>
             </>
           ) : (
@@ -271,6 +305,7 @@ export const OptimizedAnswersView = ({
                 />
                 <p className="text-xs text-muted-foreground mt-2">
                   Dina ändringar och anteckningar kommer att användas för AI-sammanfattningen.
+                  Använd gärna "--- INTERNA ANTECKNINGAR ---" för att tydliggöra var dina anteckningar börjar.
                 </p>
               </div>
             ) : (

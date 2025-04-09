@@ -69,37 +69,35 @@ export function ModalTabContent({
             {hasPatientInfoTab && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
           </TabsList>
           
-          <div className="flex-1 overflow-hidden">
-            {hasAnswersTab && (
-              <TabsContent value="answers" className="h-full flex flex-col">
-                <OptimizedAnswersView
-                  answers={answers}
-                  hasAnswers={hasAnswers}
-                  status={status}
-                  entryId={entry.id}
-                  aiSummary={entry.ai_summary}
-                  onSaveSummary={onSaveAiSummary}
-                  formattedRawData={formattedRawData}
-                  setFormattedRawData={setFormattedRawData}
-                  saveFormattedRawData={saveFormattedRawData}
-                  isPending={isPending}
-                />
-              </TabsContent>
-            )}
-            
-            {hasPatientInfoTab && (
-              <TabsContent value="patient-info" className="h-full">
-                <PatientInfo
-                  patientEmail={patientEmail}
-                  isEditing={isEditing}
-                  toggleEditing={toggleEditing}
-                  setPatientEmail={setPatientEmail}
-                  savePatientEmail={savePatientEmail}
-                  status={status}
-                />
-              </TabsContent>
-            )}
-          </div>
+          {hasAnswersTab && (
+            <TabsContent value="answers" className="h-full flex flex-col overflow-hidden">
+              <OptimizedAnswersView
+                answers={answers}
+                hasAnswers={hasAnswers}
+                status={status}
+                entryId={entry.id}
+                aiSummary={entry.ai_summary}
+                onSaveSummary={onSaveAiSummary}
+                formattedRawData={formattedRawData}
+                setFormattedRawData={setFormattedRawData}
+                saveFormattedRawData={saveFormattedRawData}
+                isPending={isPending}
+              />
+            </TabsContent>
+          )}
+          
+          {hasPatientInfoTab && (
+            <TabsContent value="patient-info" className="h-full">
+              <PatientInfo
+                patientEmail={patientEmail}
+                isEditing={isEditing}
+                toggleEditing={toggleEditing}
+                setPatientEmail={setPatientEmail}
+                savePatientEmail={savePatientEmail}
+                status={status}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       ) : (
         // Fallback when no sections are available

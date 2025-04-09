@@ -97,6 +97,12 @@ export const OptimizedAnswersView = ({
     }
   }, [aiSummary]);
 
+  // Update active tab when changing between raw and summary
+  const handleTabChange = (value: string) => {
+    console.log("Tab changed to:", value);
+    setActiveTab(value);
+  };
+
   const generateSummary = async () => {
     if (!formattedRawData) {
       toast({
@@ -227,7 +233,7 @@ export const OptimizedAnswersView = ({
   console.log("Rendering OptimizedAnswersView with activeTab:", activeTab, "summary length:", summary?.length);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium flex items-center">
           <FileText className="h-5 w-5 mr-2 text-primary" />
@@ -294,87 +300,85 @@ export const OptimizedAnswersView = ({
       
       <Tabs 
         value={activeTab} 
-        onValueChange={setActiveTab} 
+        onValueChange={handleTabChange} 
         className="flex flex-col flex-grow overflow-hidden"
       >
-        <TabsList className="mb-2">
+        <TabsList>
           <TabsTrigger value="raw">Rådatavy</TabsTrigger>
           <TabsTrigger value="summary" disabled={!summary || summary.trim().length === 0}>
             AI-sammanfattning
           </TabsTrigger>
         </TabsList>
         
-        <div className="flex-grow overflow-hidden h-full">
-          <TabsContent 
-            value="raw" 
-            className="h-full border rounded-md flex flex-col"
-          >
-            {isEditing ? (
-              <Textarea 
-                value={formattedRawData}
-                onChange={(e) => {
-                  setFormattedRawData(e.target.value);
-                  setSaveIndicator("unsaved");
-                }}
-                className="min-h-[400px] font-mono text-sm h-full w-full resize-none border-0 p-4"
-                placeholder="Redigera svaren eller lägg till anteckningar..."
-              />
-            ) : (
-              <ScrollArea className="h-full w-full">
-                <div className="p-4">
-                  <pre className="whitespace-pre-wrap text-sm">
-                    {formattedRawData || initialFormattedText}
-                  </pre>
-                </div>
-              </ScrollArea>
-            )}
-          </TabsContent>
-          
-          <TabsContent 
-            value="summary" 
-            className="h-full border rounded-md flex flex-col"
-          >
+        <TabsContent 
+          value="raw" 
+          className="border rounded-md flex-grow overflow-hidden"
+        >
+          {isEditing ? (
+            <Textarea 
+              value={formattedRawData}
+              onChange={(e) => {
+                setFormattedRawData(e.target.value);
+                setSaveIndicator("unsaved");
+              }}
+              className="min-h-[400px] font-mono text-sm h-full w-full resize-none border-0 p-4"
+              placeholder="Redigera svaren eller lägg till anteckningar..."
+            />
+          ) : (
             <ScrollArea className="h-full w-full">
               <div className="p-4">
-                <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-primary font-medium flex items-center">
-                      <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
-                      AI-sammanfattning
-                    </h4>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={copySummaryToClipboard}
-                      className="flex items-center"
-                      disabled={!summary || summary.trim().length === 0}
-                    >
-                      {isCopied ? (
-                        <>
-                          <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
-                          Kopierad
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Kopiera
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  
-                  <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                    {summary && summary.trim().length > 0 
-                      ? summary 
-                      : "Ingen AI-sammanfattning tillgänglig"
-                    }
-                  </div>
-                </div>
+                <pre className="whitespace-pre-wrap text-sm">
+                  {formattedRawData || initialFormattedText}
+                </pre>
               </div>
             </ScrollArea>
-          </TabsContent>
-        </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent 
+          value="summary" 
+          className="border rounded-md flex-grow overflow-hidden"
+        >
+          <ScrollArea className="h-full w-full">
+            <div className="p-4">
+              <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-primary font-medium flex items-center">
+                    <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
+                    AI-sammanfattning
+                  </h4>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={copySummaryToClipboard}
+                    className="flex items-center"
+                    disabled={!summary || summary.trim().length === 0}
+                  >
+                    {isCopied ? (
+                      <>
+                        <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
+                        Kopierad
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Kopiera
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                  {summary && summary.trim().length > 0 
+                    ? summary 
+                    : "Ingen AI-sammanfattning tillgänglig"
+                  }
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </TabsContent>
       </Tabs>
     </div>
   );

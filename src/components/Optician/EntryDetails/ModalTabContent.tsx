@@ -48,43 +48,44 @@ export function ModalTabContent({
   entry,
   onSaveAiSummary
 }: ModalTabContentProps) {
-  const hasMultipleSections = hasAnswers || showPatientInfoSection;
+  // Determine what tabs should be shown based on available data
+  const showAnswersTab = hasAnswers;
+  const showPatientInfoTab = showPatientInfoSection;
+  
+  // Calculate total number of tabs
+  const totalTabs = [showAnswersTab, showPatientInfoTab].filter(Boolean).length;
+  
+  // Define default tab - prioritize patient answers if available
+  const defaultTab = showAnswersTab ? "answers" : (showPatientInfoTab ? "patient-info" : "answers");
   
   return (
     <div className="h-full flex flex-col flex-1 overflow-hidden">
-      {hasMultipleSections ? (
-        <Tabs defaultValue={entry.ai_summary ? "raw-data" : "raw-data"} className="h-full flex flex-col">
-          <TabsList className="mb-2 grid w-full grid-cols-3">
-            <TabsTrigger value="raw-data">Rådatavy</TabsTrigger>
-            <TabsTrigger value="formatted">Formaterad vy</TabsTrigger>
-            {showPatientInfoSection && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
+      {totalTabs > 0 ? (
+        <Tabs defaultValue={defaultTab} className="h-full flex flex-col">
+          <TabsList className={`mb-2 grid w-full ${totalTabs === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {showAnswersTab && <TabsTrigger value="answers">Patient svar</TabsTrigger>}
+            {showPatientInfoTab && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
           </TabsList>
           
           <div className="flex-1 overflow-hidden">
-            <TabsContent value="raw-data" className="h-full">
-              <OptimizedAnswersView
-                answers={answers}
-                hasAnswers={hasAnswers}
-                status={status}
-                entryId={entry.id}
-                aiSummary={entry.ai_summary}
-                onSaveSummary={onSaveAiSummary}
-                formattedRawData={formattedRawData}
-                setFormattedRawData={setFormattedRawData}
-                saveFormattedRawData={saveFormattedRawData}
-                isPending={isPending}
-              />
-            </TabsContent>
+            {showAnswersTab && (
+              <TabsContent value="answers" className="h-full">
+                <OptimizedAnswersView
+                  answers={answers}
+                  hasAnswers={hasAnswers}
+                  status={status}
+                  entryId={entry.id}
+                  aiSummary={entry.ai_summary}
+                  onSaveSummary={onSaveAiSummary}
+                  formattedRawData={formattedRawData}
+                  setFormattedRawData={setFormattedRawData}
+                  saveFormattedRawData={saveFormattedRawData}
+                  isPending={isPending}
+                />
+              </TabsContent>
+            )}
             
-            <TabsContent value="formatted" className="h-full">
-              <EntryAnswers
-                answers={answers}
-                hasAnswers={hasAnswers}
-                status={status}
-              />
-            </TabsContent>
-            
-            {showPatientInfoSection && (
+            {showPatientInfoTab && (
               <TabsContent value="patient-info" className="h-full">
                 <PatientInfo
                   patientEmail={patientEmail}
@@ -99,31 +100,9 @@ export function ModalTabContent({
           </div>
         </Tabs>
       ) : (
-        /* When there's only one section, just show it directly */
-        <div className="h-full overflow-hidden">
-          {showPatientInfoSection ? (
-            <PatientInfo
-              patientEmail={patientEmail}
-              isEditing={isEditing}
-              toggleEditing={toggleEditing}
-              setPatientEmail={setPatientEmail}
-              savePatientEmail={savePatientEmail}
-              status={status}
-            />
-          ) : (
-            <OptimizedAnswersView
-              answers={answers}
-              hasAnswers={hasAnswers}
-              status={status}
-              entryId={entry.id}
-              aiSummary={entry.ai_summary}
-              onSaveSummary={onSaveAiSummary}
-              formattedRawData={formattedRawData}
-              setFormattedRawData={setFormattedRawData}
-              saveFormattedRawData={saveFormattedRawData}
-              isPending={isPending}
-            />
-          )}
+        // Fallback when no sections are available (shouldn't typically happen)
+        <div className="h-full flex items-center justify-center text-muted-foreground">
+          Ingen information tillgänglig
         </div>
       )}
     </div>

@@ -300,32 +300,32 @@ export const OptimizedAnswersView = ({
           <div className="flex-grow overflow-hidden">
             <TabsContent 
               value="raw" 
-              className="h-full border border-muted rounded-md"
+              className="h-full border rounded-md"
             >
-              <ScrollArea className="h-full">
-                <div className="p-4">
-                  {isEditing ? (
-                    <Textarea 
-                      value={formattedRawData}
-                      onChange={(e) => {
-                        setFormattedRawData(e.target.value);
-                        setSaveIndicator("unsaved");
-                      }}
-                      className="min-h-[400px] font-mono text-sm"
-                      placeholder="Redigera svaren eller lägg till anteckningar..."
-                    />
-                  ) : (
+              {isEditing ? (
+                <Textarea 
+                  value={formattedRawData}
+                  onChange={(e) => {
+                    setFormattedRawData(e.target.value);
+                    setSaveIndicator("unsaved");
+                  }}
+                  className="min-h-[400px] font-mono text-sm h-full w-full resize-none border-0 p-4"
+                  placeholder="Redigera svaren eller lägg till anteckningar..."
+                />
+              ) : (
+                <ScrollArea className="h-full">
+                  <div className="p-4">
                     <pre className="whitespace-pre-wrap text-sm">
                       {formattedRawData || initialFormattedText}
                     </pre>
-                  )}
-                </div>
-              </ScrollArea>
+                  </div>
+                </ScrollArea>
+              )}
             </TabsContent>
             
             <TabsContent 
               value="summary" 
-              className="h-full border border-muted rounded-md"
+              className="h-full border rounded-md"
             >
               <ScrollArea className="h-full">
                 <div className="p-4">

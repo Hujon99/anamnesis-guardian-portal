@@ -1,3 +1,10 @@
+
+/**
+ * This component provides alert dialog functionality based on Radix UI's AlertDialog primitive.
+ * Alert dialogs are modal windows that require an explicit user action, typically confirming 
+ * or canceling an operation.
+ */
+
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
@@ -77,7 +84,10 @@ const AlertDialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold", className)}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
     {...props}
   />
 ))

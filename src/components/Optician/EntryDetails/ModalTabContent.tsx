@@ -69,9 +69,9 @@ export function ModalTabContent({
             {hasPatientInfoTab && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
           </TabsList>
           
-          <div className="flex-grow overflow-hidden">
+          <div className="flex-grow overflow-hidden relative">
             {hasAnswersTab && (
-              <TabsContent value="answers" className="h-full m-0 border-0 p-0">
+              <TabsContent value="answers" className="h-full m-0 border-0 p-0 absolute inset-0">
                 <OptimizedAnswersView
                   answers={answers}
                   hasAnswers={hasAnswers}
@@ -88,7 +88,7 @@ export function ModalTabContent({
             )}
             
             {hasPatientInfoTab && (
-              <TabsContent value="patient-info" className="h-full m-0 border-0 p-0">
+              <TabsContent value="patient-info" className="h-full m-0 border-0 p-0 absolute inset-0">
                 <PatientInfo
                   patientEmail={patientEmail}
                   isEditing={isEditing}

@@ -56,11 +56,13 @@ const TabsContent = React.forwardRef<
     style={{ 
       WebkitFontSmoothing: 'antialiased', 
       textRendering: 'optimizeLegibility',
-      overflow: 'auto', 
+      overflow: 'auto',
       height: '100%',
       flexGrow: 1,
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      width: '100%',
+      position: 'relative'
     }}
     {...props}
   />

@@ -60,44 +60,46 @@ export function ModalTabContent({
   
   // Main content tabs
   return (
-    <div className="h-full flex flex-col flex-1 overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* If we have at least one type of content to show */}
       {(hasAnswersTab || hasPatientInfoTab) ? (
-        <Tabs defaultValue={hasAnswersTab ? "answers" : "patient-info"} className="h-full flex flex-col">
+        <Tabs defaultValue={hasAnswersTab ? "answers" : "patient-info"} className="flex flex-col h-full">
           <TabsList className={`mb-2 grid w-full ${hasAnswersTab && hasPatientInfoTab ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {hasAnswersTab && <TabsTrigger value="answers">Patient svar</TabsTrigger>}
             {hasPatientInfoTab && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
           </TabsList>
           
-          {hasAnswersTab && (
-            <TabsContent value="answers" className="h-full flex flex-col overflow-hidden">
-              <OptimizedAnswersView
-                answers={answers}
-                hasAnswers={hasAnswers}
-                status={status}
-                entryId={entry.id}
-                aiSummary={entry.ai_summary}
-                onSaveSummary={onSaveAiSummary}
-                formattedRawData={formattedRawData}
-                setFormattedRawData={setFormattedRawData}
-                saveFormattedRawData={saveFormattedRawData}
-                isPending={isPending}
-              />
-            </TabsContent>
-          )}
-          
-          {hasPatientInfoTab && (
-            <TabsContent value="patient-info" className="h-full">
-              <PatientInfo
-                patientEmail={patientEmail}
-                isEditing={isEditing}
-                toggleEditing={toggleEditing}
-                setPatientEmail={setPatientEmail}
-                savePatientEmail={savePatientEmail}
-                status={status}
-              />
-            </TabsContent>
-          )}
+          <div className="flex-grow overflow-hidden">
+            {hasAnswersTab && (
+              <TabsContent value="answers" className="h-full m-0 border-0 p-0">
+                <OptimizedAnswersView
+                  answers={answers}
+                  hasAnswers={hasAnswers}
+                  status={status}
+                  entryId={entry.id}
+                  aiSummary={entry.ai_summary}
+                  onSaveSummary={onSaveAiSummary}
+                  formattedRawData={formattedRawData}
+                  setFormattedRawData={setFormattedRawData}
+                  saveFormattedRawData={saveFormattedRawData}
+                  isPending={isPending}
+                />
+              </TabsContent>
+            )}
+            
+            {hasPatientInfoTab && (
+              <TabsContent value="patient-info" className="h-full m-0 border-0 p-0">
+                <PatientInfo
+                  patientEmail={patientEmail}
+                  isEditing={isEditing}
+                  toggleEditing={toggleEditing}
+                  setPatientEmail={setPatientEmail}
+                  savePatientEmail={savePatientEmail}
+                  status={status}
+                />
+              </TabsContent>
+            )}
+          </div>
         </Tabs>
       ) : (
         // Fallback when no sections are available

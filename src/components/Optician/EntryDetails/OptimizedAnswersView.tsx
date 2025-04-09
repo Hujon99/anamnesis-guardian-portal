@@ -84,6 +84,13 @@ export const OptimizedAnswersView = ({
     }
   }, [answers, formTemplate, hasAnswers, setFormattedRawData, formattedRawData]);
 
+  // Set summary from aiSummary when it changes
+  useEffect(() => {
+    if (aiSummary) {
+      setSummary(aiSummary);
+    }
+  }, [aiSummary]);
+
   const generateSummary = async () => {
     if (!formattedRawData) {
       toast({
@@ -350,7 +357,7 @@ export const OptimizedAnswersView = ({
                     </div>
                     
                     <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                      {summary}
+                      {summary || "Ingen AI-sammanfattning tillgänglig"}
                     </div>
                   </div>
                 </div>

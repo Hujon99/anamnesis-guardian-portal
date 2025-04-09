@@ -51,7 +51,7 @@ export function ModalTabContent({
   const hasMultipleSections = hasAnswers || showPatientInfoSection;
   
   return (
-    <div className="h-full flex-1 overflow-hidden">
+    <div className="h-full flex flex-col flex-1 overflow-hidden">
       {hasMultipleSections ? (
         <Tabs defaultValue="raw-data" className="h-full flex flex-col">
           <TabsList className="mb-2 grid w-full grid-cols-3">

@@ -54,10 +54,11 @@ const TabsContent = React.forwardRef<
     style={{ 
       WebkitFontSmoothing: 'antialiased', 
       textRendering: 'optimizeLegibility',
+      height: '100%',
+      flexGrow: 1,
       display: 'flex',
       flexDirection: 'column',
-      height: '100%',
-      overflow: 'hidden'
+      overflow: 'auto'
     }}
     {...props}
   />

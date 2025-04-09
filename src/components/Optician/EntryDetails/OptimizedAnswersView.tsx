@@ -230,8 +230,6 @@ export const OptimizedAnswersView = ({
     );
   }
 
-  console.log("Rendering OptimizedAnswersView with activeTab:", activeTab, "summary length:", summary?.length);
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex justify-between items-center mb-4">
@@ -303,16 +301,22 @@ export const OptimizedAnswersView = ({
         onValueChange={handleTabChange} 
         className="flex flex-col flex-grow overflow-hidden"
       >
-        <TabsList>
-          <TabsTrigger value="raw">Rådatavy</TabsTrigger>
-          <TabsTrigger value="summary" disabled={!summary || summary.trim().length === 0}>
-            AI-sammanfattning
-          </TabsTrigger>
-        </TabsList>
+        <div className="mb-4 border-b">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="raw" className="flex-1 max-w-[200px]">Rådatavy</TabsTrigger>
+            <TabsTrigger 
+              value="summary" 
+              className="flex-1 max-w-[200px]"
+              disabled={!summary || summary.trim().length === 0}
+            >
+              AI-sammanfattning
+            </TabsTrigger>
+          </TabsList>
+        </div>
         
         <TabsContent 
           value="raw" 
-          className="border rounded-md flex-grow overflow-hidden"
+          className="flex-grow overflow-hidden p-0 m-0 border rounded-md"
         >
           {isEditing ? (
             <Textarea 
@@ -337,7 +341,7 @@ export const OptimizedAnswersView = ({
         
         <TabsContent 
           value="summary" 
-          className="border rounded-md flex-grow overflow-hidden"
+          className="flex-grow overflow-hidden p-0 m-0 border rounded-md"
         >
           <ScrollArea className="h-full w-full">
             <div className="p-4">

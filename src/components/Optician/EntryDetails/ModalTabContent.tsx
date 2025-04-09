@@ -51,26 +51,21 @@ export function ModalTabContent({
   const hasAnswersTab = hasAnswers || status === "sent";
   const hasPatientInfoTab = showPatientInfoSection;
   
-  console.log("ModalTabContent rendering with:", {
-    hasAnswers,
-    hasPatientInfoTab,
-    aiSummary: entry.ai_summary ? `length: ${entry.ai_summary.length}` : "none",
-    formattedRawData: formattedRawData ? `length: ${formattedRawData.length}` : "none"
-  });
-  
   // Main content tabs
   return (
     <div className="h-full flex flex-col flex-1 overflow-hidden">
       {/* If we have at least one type of content to show */}
       {(hasAnswersTab || hasPatientInfoTab) ? (
         <Tabs defaultValue={hasAnswersTab ? "answers" : "patient-info"} className="h-full flex flex-col">
-          <TabsList className={`mb-2 grid w-full ${hasAnswersTab && hasPatientInfoTab ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {hasAnswersTab && <TabsTrigger value="answers">Patient svar</TabsTrigger>}
-            {hasPatientInfoTab && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
-          </TabsList>
+          <div className="border-b mb-4">
+            <TabsList className={`mb-0 grid w-full ${hasAnswersTab && hasPatientInfoTab ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {hasAnswersTab && <TabsTrigger value="answers">Patient svar</TabsTrigger>}
+              {hasPatientInfoTab && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
+            </TabsList>
+          </div>
           
           {hasAnswersTab && (
-            <TabsContent value="answers" className="h-full flex flex-col overflow-hidden">
+            <TabsContent value="answers" className="h-full flex flex-col overflow-hidden m-0 p-0">
               <OptimizedAnswersView
                 answers={answers}
                 hasAnswers={hasAnswers}
@@ -87,7 +82,7 @@ export function ModalTabContent({
           )}
           
           {hasPatientInfoTab && (
-            <TabsContent value="patient-info" className="h-full">
+            <TabsContent value="patient-info" className="h-full m-0 p-0">
               <PatientInfo
                 patientEmail={patientEmail}
                 isEditing={isEditing}

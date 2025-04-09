@@ -2,13 +2,13 @@
 /**
  * This hook manages the state and logic for the anamnesis detail view.
  * It centralizes all operations related to viewing and updating an anamnesis entry,
- * including notes management, patient email updates, and status changes.
+ * including formatted raw data management, patient email updates, and status changes.
  * 
- * The notes functionality has been updated to directly integrate with the raw data
- * editing capabilities rather than having a separate tab.
+ * The formatted raw data is directly stored in the database and used for AI summarization,
+ * removing the need for separate internal notes management.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useEntryMutations } from "./useEntryMutations";
 import { usePrintFunction } from "./usePrintFunction";
@@ -18,17 +18,23 @@ export function useAnamnesisDetail(
   onEntryUpdated: () => void,
   onClose?: () => void
 ) {
-  // Local state
-  const [notes, setNotes] = useState(entry.internal_notes || "");
+  // Local state for edited data
+  const [formattedRawData, setFormattedRawData] = useState(entry.formatted_raw_data || "");
   const [patientEmail, setPatientEmail] = useState(entry.patient_email || "");
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Update local state when entry changes (e.g., after refresh)
+  useEffect(() => {
+    setFormattedRawData(entry.formatted_raw_data || "");
+    setPatientEmail(entry.patient_email || "");
+  }, [entry.formatted_raw_data, entry.patient_email]);
   
   // Get mutations and print functions
   const {
     updateEntryMutation,
     sendLinkMutation,
     updateStatus,
-    saveNotes,
+    saveFormattedRawData,
     savePatientEmail,
     saveAiSummary,
     sendLink
@@ -44,12 +50,12 @@ export function useAnamnesisDetail(
   const hasAnswers = entry.answers && Object.keys(answers).length > 0;
 
   // Handle operations with debounce
-  const handleSaveNotes = useCallback(() => {
-    if (notes !== entry.internal_notes) {
-      console.log("Saving notes:", notes);
-      saveNotes(notes);
+  const handleSaveFormattedRawData = useCallback(() => {
+    if (formattedRawData !== entry.formatted_raw_data) {
+      console.log("Saving formatted raw data of length:", formattedRawData.length);
+      saveFormattedRawData(formattedRawData);
     }
-  }, [notes, entry.internal_notes, saveNotes]);
+  }, [formattedRawData, entry.formatted_raw_data, saveFormattedRawData]);
 
   const handleSavePatientEmail = () => {
     if (patientEmail !== entry.patient_email) {
@@ -65,7 +71,7 @@ export function useAnamnesisDetail(
   };
 
   const handleStatusUpdate = (newStatus: string) => {
-    updateStatus(newStatus, notes);
+    updateStatus(newStatus, formattedRawData);
   };
 
   const handleSaveAiSummary = (summary: string) => {
@@ -90,7 +96,7 @@ export function useAnamnesisDetail(
 
   return {
     // State
-    notes,
+    formattedRawData,
     patientEmail,
     isEditing,
     isExpired,
@@ -102,10 +108,10 @@ export function useAnamnesisDetail(
     sendLinkMutation,
     
     // Actions
-    setNotes,
+    setFormattedRawData,
     setPatientEmail,
     toggleEditing,
-    handleSaveNotes,
+    handleSaveFormattedRawData,
     handleSavePatientEmail,
     handleSendLink,
     handleStatusUpdate,

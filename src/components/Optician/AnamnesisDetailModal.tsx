@@ -3,8 +3,8 @@
  * This component displays detailed information about an anamnesis entry
  * in a modal dialog. It's been refactored to improve maintainability
  * and separate concerns into smaller, more focused components.
- * It no longer includes separate tabs for notes as those are now integrated
- * directly in the raw data view.
+ * It now uses formatted_raw_data as the single source of truth for
+ * patient answers and optician notes.
  */
 
 import { AnamnesesEntry } from "@/types/anamnesis";
@@ -30,7 +30,7 @@ export function AnamnesisDetailModal({
 }: AnamnesisDetailModalProps) {
   const {
     // State
-    notes,
+    formattedRawData,
     patientEmail,
     isEditing,
     isExpired,
@@ -42,10 +42,10 @@ export function AnamnesisDetailModal({
     sendLinkMutation,
     
     // Actions
-    setNotes,
+    setFormattedRawData,
     setPatientEmail,
     toggleEditing,
-    handleSaveNotes,
+    handleSaveFormattedRawData,
     handleSavePatientEmail,
     handleSendLink,
     handleStatusUpdate,
@@ -82,9 +82,9 @@ export function AnamnesisDetailModal({
             toggleEditing={toggleEditing}
             setPatientEmail={setPatientEmail}
             savePatientEmail={handleSavePatientEmail}
-            notes={notes}
-            setNotes={setNotes}
-            saveNotes={handleSaveNotes}
+            formattedRawData={formattedRawData}
+            setFormattedRawData={setFormattedRawData}
+            saveFormattedRawData={handleSaveFormattedRawData}
             isPending={updateEntryMutation.isPending}
             answers={answers}
             hasAnswers={hasAnswers}

@@ -1,12 +1,11 @@
 
 /**
  * This component displays the patient's anamnesis answers in an optimized text format.
- * It converts the complex JSON structure into a readable text representation
- * that's suitable for AI processing and human reading. It also includes functionality
- * to generate AI summaries using Azure OpenAI.
+ * It directly manages the formatted raw data stored in the database and provides
+ * interfaces for editing, saving, and generating AI summaries from that data.
  * 
- * With the removal of the separate notes tab, this component now also handles
- * the note-taking functionality directly in the raw data view.
+ * The formatted raw data is used as a unified source of truth for both display
+ * and AI processing, removing the need for separate internal notes management.
  */
 
 import { useFormTemplate } from "@/hooks/useFormTemplate";
@@ -27,9 +26,9 @@ interface OptimizedAnswersViewProps {
   entryId: string;
   aiSummary: string | null;
   onSaveSummary: (summary: string) => void;
-  notes: string;
-  setNotes: (notes: string) => void;
-  saveNotes: () => void;
+  formattedRawData: string;
+  setFormattedRawData: (data: string) => void;
+  saveFormattedRawData: () => void;
   isPending: boolean;
 }
 
@@ -40,23 +39,22 @@ export const OptimizedAnswersView = ({
   entryId,
   aiSummary,
   onSaveSummary,
-  notes,
-  setNotes,
-  saveNotes,
+  formattedRawData,
+  setFormattedRawData,
+  saveFormattedRawData,
   isPending
 }: OptimizedAnswersViewProps) => {
   const { data: formTemplate } = useFormTemplate();
-  const [optimizedText, setOptimizedText] = useState<string>("");
-  const [editedText, setEditedText] = useState<string>("");
+  const [initialFormattedText, setInitialFormattedText] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState(aiSummary ? "summary" : "raw");
   const [isCopied, setIsCopied] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
 
-  // Generate optimized text when answers or form template changes
+  // Generate optimized text from answers when component mounts or answers change
   useEffect(() => {
     if (!hasAnswers || !formTemplate) {
       return;
@@ -67,33 +65,27 @@ export const OptimizedAnswersView = ({
       const formattedAnswers = extractFormattedAnswers(answers);
       
       if (formattedAnswers) {
-        // Generate the optimized text - WITHOUT appending notes
-        let text = createOptimizedPromptInput(formTemplate, formattedAnswers);
-        setOptimizedText(text);
+        // Generate the optimized text
+        const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
+        setInitialFormattedText(text);
         
-        // Initialize edited text with optimized text + notes as separate sections
-        let combinedText = text;
-        
-        // Only add notes marker if there are actual notes
-        if (notes && notes.trim().length > 0) {
-          combinedText += "\n\n--- INTERNA ANTECKNINGAR ---\n" + notes;
+        // If there's no formatted raw data yet, use the generated text
+        if (!formattedRawData) {
+          console.log("Setting initial formatted raw data");
+          setFormattedRawData(text);
         }
-        
-        setEditedText(combinedText);
       } else {
         console.warn("Could not extract formatted answers from the data structure");
-        setOptimizedText("Kunde inte formatera svaren på ett läsbart sätt.");
-        setEditedText("Kunde inte formatera svaren på ett läsbart sätt.");
+        setInitialFormattedText("Kunde inte formatera svaren på ett läsbart sätt.");
       }
     } catch (error) {
       console.error("Error generating optimized text:", error);
-      setOptimizedText("Ett fel uppstod vid formatering av svaren.");
-      setEditedText("Ett fel uppstod vid formatering av svaren.");
+      setInitialFormattedText("Ett fel uppstod vid formatering av svaren.");
     }
-  }, [answers, formTemplate, hasAnswers, notes]);
+  }, [answers, formTemplate, hasAnswers, setFormattedRawData, formattedRawData]);
 
   const generateSummary = async () => {
-    if (!editedText) {
+    if (!formattedRawData) {
       toast({
         title: "Kunde inte generera sammanfattning",
         description: "Det finns inga svar att sammanfatta.",
@@ -104,10 +96,10 @@ export const OptimizedAnswersView = ({
 
     setIsGenerating(true);
     try {
-      // Use the edited text instead of the original optimized text
+      // Use the formatted raw data for AI processing
       const { data, error } = await supabase.functions.invoke('generate-summary', {
         body: {
-          promptText: editedText
+          promptText: formattedRawData
         }
       });
 
@@ -153,22 +145,17 @@ export const OptimizedAnswersView = ({
   };
 
   const toggleEditing = () => {
-    if (isEditing) {
-      // Extract and save notes from edited text when exiting edit mode
-      extractAndSaveNotes(editedText);
+    if (isEditing && formattedRawData !== initialFormattedText) {
+      // Save when exiting edit mode
+      saveFormattedRawData();
     }
     setIsEditing(!isEditing);
   };
 
   const resetChanges = () => {
-    // Reset to original optimized text + existing notes (if any)
-    let combinedText = optimizedText;
-    
-    if (notes && notes.trim().length > 0) {
-      combinedText += "\n\n--- INTERNA ANTECKNINGAR ---\n" + notes;
-    }
-    
-    setEditedText(combinedText);
+    // Reset to original optimized text
+    setFormattedRawData(initialFormattedText);
+    setSaveIndicator("unsaved");
     
     toast({
       title: "Ändringar återställda",
@@ -181,8 +168,8 @@ export const OptimizedAnswersView = ({
     setSaveIndicator("unsaved");
     
     try {
-      // Extract internal notes from edited text
-      extractAndSaveNotes(editedText);
+      // Save the formatted raw data
+      saveFormattedRawData();
       
       toast({
         title: "Ändringar sparade",
@@ -204,65 +191,6 @@ export const OptimizedAnswersView = ({
     } finally {
       setIsSaving(false);
     }
-  };
-
-  // Extracts notes from the edited text and saves them
-  const extractAndSaveNotes = (text: string) => {
-    const notesRegex = /--- INTERNA ANTECKNINGAR ---\n([\s\S]*)/;
-    const match = text.match(notesRegex);
-    
-    if (match && match[1]) {
-      // We found notes section, extract and save notes
-      const extractedNotes = match[1].trim();
-      setNotes(extractedNotes);
-      saveNotes(); // Call the parent component's save function
-    } else {
-      // No notes section found, check if anything was added after the original content
-      const originalTextWithoutNotes = optimizedText.replace(/--- INTERNA ANTECKNINGAR ---[\s\S]*/, '').trim();
-      const extraContent = text.replace(originalTextWithoutNotes, '').trim();
-      
-      if (extraContent && !extraContent.startsWith("--- INTERNA ANTECKNINGAR ---")) {
-        // User added content but didn't use the marker, treat all new content as notes
-        setNotes(extraContent);
-        saveNotes();
-      } else if (!extraContent && notes.length > 0) {
-        // Notes were removed, clear them
-        setNotes('');
-        saveNotes();
-      }
-    }
-  };
-
-  // This function renders the raw data view without duplicating content
-  const renderRawDataView = () => {
-    let displayContent = optimizedText;
-    
-    // Only in view mode (not editing), show notes separately if they exist
-    if (!isEditing && notes && notes.trim().length > 0) {
-      displayContent += "\n\n--- INTERNA ANTECKNINGAR ---\n" + notes;
-    }
-    
-    return isEditing ? (
-      <div className="p-4">
-        <Textarea 
-          value={editedText}
-          onChange={(e) => {
-            setEditedText(e.target.value);
-            setSaveIndicator("unsaved");
-          }}
-          className="min-h-[400px] font-mono text-sm"
-          placeholder="Redigera svaren eller lägg till anteckningar..."
-        />
-        <p className="text-xs text-muted-foreground mt-2">
-          Använd "--- INTERNA ANTECKNINGAR ---" för att tydliggöra var dina anteckningar börjar.
-          Alla ändringar under denna markör kommer att sparas som anteckningar.
-        </p>
-      </div>
-    ) : (
-      <pre className="p-4 whitespace-pre-wrap text-sm">
-        {displayContent}
-      </pre>
-    );
   };
 
   if (!hasAnswers) {
@@ -331,13 +259,13 @@ export const OptimizedAnswersView = ({
                 className="flex items-center"
               >
                 <PenLine className="h-4 w-4 mr-2" />
-                Redigera/Lägg till anteckningar
+                Redigera anteckningar
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={generateSummary}
-                disabled={isGenerating || !editedText}
+                disabled={isGenerating || !formattedRawData}
                 className="flex items-center"
               >
                 <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
@@ -350,7 +278,7 @@ export const OptimizedAnswersView = ({
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         <TabsList className="mb-2">
-          <TabsTrigger value="raw">Rådata</TabsTrigger>
+          <TabsTrigger value="raw">Rådatavy</TabsTrigger>
           <TabsTrigger value="summary" disabled={!summary}>
             AI-sammanfattning
           </TabsTrigger>
@@ -361,7 +289,23 @@ export const OptimizedAnswersView = ({
           className="flex-1 border border-muted rounded-md overflow-hidden"
         >
           <ScrollArea className="h-full">
-            {renderRawDataView()}
+            <div className="p-4">
+              {isEditing ? (
+                <Textarea 
+                  value={formattedRawData}
+                  onChange={(e) => {
+                    setFormattedRawData(e.target.value);
+                    setSaveIndicator("unsaved");
+                  }}
+                  className="min-h-[400px] font-mono text-sm"
+                  placeholder="Redigera svaren eller lägg till anteckningar..."
+                />
+              ) : (
+                <pre className="whitespace-pre-wrap text-sm">
+                  {formattedRawData || initialFormattedText}
+                </pre>
+              )}
+            </div>
           </ScrollArea>
         </TabsContent>
         

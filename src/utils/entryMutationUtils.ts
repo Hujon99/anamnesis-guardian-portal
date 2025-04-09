@@ -1,7 +1,7 @@
 
 /**
  * This file provides utility functions for anamnesis entry mutations.
- * It includes functions for updating entry statuses, notes, and patient information,
+ * It includes functions for updating entry statuses, formatted raw data, notes, patient information,
  * and ensures consistent error handling and payload formatting.
  */
 
@@ -34,30 +34,30 @@ export const updateEntry = async (
 };
 
 /**
- * Updates the status of an anamnesis entry, optionally with notes
+ * Updates the status of an anamnesis entry, optionally with formatted raw data
  */
 export const updateEntryStatus = async (
   supabase: SupabaseClient,
   entryId: string,
   status: string,
-  notes?: string
+  formattedRawData?: string
 ) => {
   const updates: Partial<AnamnesesEntry> = { status };
-  if (notes !== undefined) updates.internal_notes = notes;
+  if (formattedRawData !== undefined) updates.formatted_raw_data = formattedRawData;
   
   return updateEntry(supabase, entryId, updates);
 };
 
 /**
- * Updates the internal notes of an anamnesis entry
+ * Updates the formatted raw data of an anamnesis entry
  */
-export const updateEntryNotes = async (
+export const updateEntryFormattedRawData = async (
   supabase: SupabaseClient,
   entryId: string,
-  notes: string
+  formattedRawData: string
 ) => {
-  console.log(`Saving notes for entry ${entryId}:`, notes);
-  return updateEntry(supabase, entryId, { internal_notes: notes });
+  console.log(`Saving formatted raw data for entry ${entryId}`);
+  return updateEntry(supabase, entryId, { formatted_raw_data: formattedRawData });
 };
 
 /**

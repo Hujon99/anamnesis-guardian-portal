@@ -8,9 +8,9 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import { 
-  updateEntry, 
-  updateEntryStatus, 
-  updateEntryNotes, 
+  updateEntry,
+  updateEntryStatus,
+  updateEntryFormattedRawData,
   updateEntryPatientEmail,
   updateEntryAiSummary 
 } from "@/utils/entryMutationUtils";
@@ -38,16 +38,26 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
   };
 
   const updateEntryMutation = useMutation({
-    mutationFn: async ({ status, notes, email, aiSummary }: { status?: string; notes?: string; email?: string; aiSummary?: string }) => {
+    mutationFn: async ({ 
+      status, 
+      formattedRawData, 
+      email, 
+      aiSummary 
+    }: { 
+      status?: string; 
+      formattedRawData?: string; 
+      email?: string; 
+      aiSummary?: string 
+    }) => {
       // Ensure we have a valid authentication token
       await ensureAuthenticated();
       
       const updates: Partial<AnamnesesEntry> = {};
       
       if (status) updates.status = status;
-      if (notes !== undefined) {
-        console.log("Updating notes:", notes);
-        updates.internal_notes = notes;
+      if (formattedRawData !== undefined) {
+        console.log("Updating formatted raw data");
+        updates.formatted_raw_data = formattedRawData;
       }
       if (email !== undefined) updates.patient_email = email;
       if (aiSummary !== undefined) updates.ai_summary = aiSummary;
@@ -109,12 +119,12 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
 
   return {
     updateEntryMutation,
-    updateStatus: (newStatus: string, notes?: string) => {
-      updateEntryMutation.mutate({ status: newStatus, notes });
+    updateStatus: (newStatus: string, formattedRawData?: string) => {
+      updateEntryMutation.mutate({ status: newStatus, formattedRawData });
     },
-    saveNotes: (notes: string) => {
-      console.log("saveNotes called with:", notes);
-      updateEntryMutation.mutate({ notes });
+    saveFormattedRawData: (formattedRawData: string) => {
+      console.log("saveFormattedRawData called with data of length:", formattedRawData.length);
+      updateEntryMutation.mutate({ formattedRawData });
     },
     savePatientEmail: (email: string) => {
       updateEntryMutation.mutate({ email });

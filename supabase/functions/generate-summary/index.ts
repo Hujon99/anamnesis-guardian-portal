@@ -1,7 +1,7 @@
 
 /**
  * This edge function interfaces with Azure OpenAI to generate summaries of patient anamnesis data.
- * It processes optimized text inputs and returns AI-generated clinical summaries that can help
+ * It processes optimized text inputs and returns AI-generated clinical summaries that help
  * opticians quickly understand patient history and needs.
  */
 
@@ -37,7 +37,8 @@ serve(async (req: Request) => {
     
     // Parse request body
     console.log("Parsing request body...");
-    const { promptText } = await req.json();
+    const requestBody = await req.json();
+    const { promptText } = requestBody;
     
     if (!promptText) {
       console.error("No prompt text provided");
@@ -80,6 +81,13 @@ Viktiga instruktioner:
   3. Använd enkla emojis för att göra rubriker tydligare.
   4. Formattera EJ som markdown, utan tänk txt`;
 
+    // Log request parameters for better debugging
+    console.log("Request parameters:");
+    console.log("- API version:", apiVersion);
+    console.log("- Deployment name:", deploymentName);
+    console.log("- Temperature:", 0.3);
+    console.log("- Max tokens:", 2000);
+    
     // 4. Make the fetch call
     console.log("Calling Azure OpenAI API...");
     const response = await fetch(requestUrl, {
@@ -125,6 +133,8 @@ Viktiga instruktioner:
     const summary = data.choices?.[0]?.message?.content || "Kunde inte generera sammanfattning.";
     
     console.log("Summary generated successfully");
+    console.log("Summary length:", summary.length);
+    console.log("First 100 characters of summary:", summary.substring(0, 100));
     
     // Return the summary
     return new Response(

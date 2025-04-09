@@ -53,7 +53,7 @@ export function ModalTabContent({
   return (
     <div className="h-full flex flex-col flex-1 overflow-hidden">
       {hasMultipleSections ? (
-        <Tabs defaultValue="raw-data" className="h-full flex flex-col">
+        <Tabs defaultValue={entry.ai_summary ? "raw-data" : "raw-data"} className="h-full flex flex-col">
           <TabsList className="mb-2 grid w-full grid-cols-3">
             <TabsTrigger value="raw-data">Rådatavy</TabsTrigger>
             <TabsTrigger value="formatted">Formaterad vy</TabsTrigger>

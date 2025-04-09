@@ -49,7 +49,7 @@ export const OptimizedAnswersView = ({
   const [isEditing, setIsEditing] = useState(false);
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState(aiSummary ? "summary" : "raw");
+  const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
@@ -88,6 +88,7 @@ export const OptimizedAnswersView = ({
   useEffect(() => {
     if (aiSummary) {
       setSummary(aiSummary);
+      setActiveTab("summary"); // Switch to summary tab when we have data
     }
   }, [aiSummary]);
 

@@ -298,11 +298,11 @@ export const OptimizedAnswersView = ({
         </div>
       </div>
       
-      <div className="flex-grow overflow-hidden border rounded-md">
+      <div className="flex-grow overflow-hidden border rounded-md flex flex-col">
         <Tabs 
           value={activeTab} 
           onValueChange={handleTabChange} 
-          className="flex flex-col h-full"
+          className="flex flex-col h-full w-full"
         >
           <div className="border-b px-4 pt-2">
             <TabsList className="bg-transparent p-0 h-auto">
@@ -319,10 +319,10 @@ export const OptimizedAnswersView = ({
             </TabsList>
           </div>
           
-          <div className="flex-grow overflow-hidden relative">
+          <div className="flex-grow flex flex-col overflow-hidden">
             <TabsContent 
               value="raw" 
-              className="m-0 h-full border-0 p-0 absolute inset-0"
+              className="flex-grow m-0 h-full border-0 p-0 overflow-auto"
             >
               {isEditing ? (
                 <Textarea 
@@ -347,7 +347,7 @@ export const OptimizedAnswersView = ({
             
             <TabsContent 
               value="summary" 
-              className="m-0 h-full border-0 p-0 absolute inset-0"
+              className="flex-grow m-0 h-full border-0 p-0 overflow-auto"
             >
               <ScrollArea className="h-full w-full">
                 <div className="p-4">

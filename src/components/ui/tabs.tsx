@@ -53,17 +53,6 @@ const TabsContent = React.forwardRef<
       "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className
     )}
-    style={{ 
-      WebkitFontSmoothing: 'antialiased', 
-      textRendering: 'optimizeLegibility',
-      overflow: 'auto',
-      height: '100%',
-      flexGrow: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      width: '100%',
-      position: 'relative'
-    }}
     {...props}
   />
 ))

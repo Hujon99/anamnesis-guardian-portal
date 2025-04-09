@@ -54,8 +54,10 @@ const TabsContent = React.forwardRef<
     style={{ 
       WebkitFontSmoothing: 'antialiased', 
       textRendering: 'optimizeLegibility',
-      height: '100%', // Change from calc to 100% for better flexibility
-      overflow: 'hidden' // Ensure the content doesn't overflow
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      overflow: 'hidden'
     }}
     {...props}
   />

@@ -276,81 +276,89 @@ export const OptimizedAnswersView = ({
         </div>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 h-full">
-        <TabsList className="mb-2">
-          <TabsTrigger value="raw">Rådatavy</TabsTrigger>
-          <TabsTrigger value="summary" disabled={!summary}>
-            AI-sammanfattning
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent 
-          value="raw" 
-          className="flex-1 border border-muted rounded-md overflow-hidden h-full"
+      <div className="flex flex-col flex-grow overflow-hidden">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={setActiveTab} 
+          className="flex flex-col h-full"
         >
-          <ScrollArea className="h-full">
-            <div className="p-4">
-              {isEditing ? (
-                <Textarea 
-                  value={formattedRawData}
-                  onChange={(e) => {
-                    setFormattedRawData(e.target.value);
-                    setSaveIndicator("unsaved");
-                  }}
-                  className="min-h-[400px] font-mono text-sm"
-                  placeholder="Redigera svaren eller lägg till anteckningar..."
-                />
-              ) : (
-                <pre className="whitespace-pre-wrap text-sm">
-                  {formattedRawData || initialFormattedText}
-                </pre>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-        
-        <TabsContent 
-          value="summary" 
-          className="flex-1 border border-muted rounded-md overflow-hidden h-full"
-        >
-          <ScrollArea className="h-full">
-            <div className="p-4">
-              <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="text-primary font-medium flex items-center">
-                    <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
-                    AI-sammanfattning
-                  </h4>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={copySummaryToClipboard}
-                    className="flex items-center"
-                    disabled={!summary}
-                  >
-                    {isCopied ? (
-                      <>
-                        <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
-                        Kopierad
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Kopiera
-                      </>
-                    )}
-                  </Button>
+          <TabsList className="mb-2">
+            <TabsTrigger value="raw">Rådatavy</TabsTrigger>
+            <TabsTrigger value="summary" disabled={!summary}>
+              AI-sammanfattning
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="flex-grow overflow-hidden">
+            <TabsContent 
+              value="raw" 
+              className="h-full border border-muted rounded-md"
+            >
+              <ScrollArea className="h-full">
+                <div className="p-4">
+                  {isEditing ? (
+                    <Textarea 
+                      value={formattedRawData}
+                      onChange={(e) => {
+                        setFormattedRawData(e.target.value);
+                        setSaveIndicator("unsaved");
+                      }}
+                      className="min-h-[400px] font-mono text-sm"
+                      placeholder="Redigera svaren eller lägg till anteckningar..."
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-sm">
+                      {formattedRawData || initialFormattedText}
+                    </pre>
+                  )}
                 </div>
-                
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                  {summary}
+              </ScrollArea>
+            </TabsContent>
+            
+            <TabsContent 
+              value="summary" 
+              className="h-full border border-muted rounded-md"
+            >
+              <ScrollArea className="h-full">
+                <div className="p-4">
+                  <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-primary font-medium flex items-center">
+                        <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
+                        AI-sammanfattning
+                      </h4>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={copySummaryToClipboard}
+                        className="flex items-center"
+                        disabled={!summary}
+                      >
+                        {isCopied ? (
+                          <>
+                            <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
+                            Kopierad
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Kopiera
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    
+                    <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                      {summary}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
+              </ScrollArea>
+            </TabsContent>
+          </div>
+        </Tabs>
+      </div>
     </div>
   );
 };

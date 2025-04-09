@@ -51,54 +51,56 @@ export function ModalTabContent({
   const hasMultipleSections = hasAnswers || showPatientInfoSection;
   
   return (
-    <>
+    <div className="h-full flex-1 overflow-hidden">
       {hasMultipleSections ? (
-        <Tabs defaultValue="raw-data" className="flex-1 overflow-hidden flex flex-col">
+        <Tabs defaultValue="raw-data" className="h-full flex flex-col">
           <TabsList className="mb-2 grid w-full grid-cols-3">
             <TabsTrigger value="raw-data">Rådatavy</TabsTrigger>
             <TabsTrigger value="formatted">Formaterad vy</TabsTrigger>
             {showPatientInfoSection && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
           </TabsList>
           
-          <TabsContent value="raw-data" className="flex-1 overflow-y-auto">
-            <OptimizedAnswersView
-              answers={answers}
-              hasAnswers={hasAnswers}
-              status={status}
-              entryId={entry.id}
-              aiSummary={entry.ai_summary}
-              onSaveSummary={onSaveAiSummary}
-              formattedRawData={formattedRawData}
-              setFormattedRawData={setFormattedRawData}
-              saveFormattedRawData={saveFormattedRawData}
-              isPending={isPending}
-            />
-          </TabsContent>
-          
-          <TabsContent value="formatted" className="flex-1 overflow-y-auto">
-            <EntryAnswers
-              answers={answers}
-              hasAnswers={hasAnswers}
-              status={status}
-            />
-          </TabsContent>
-          
-          {showPatientInfoSection && (
-            <TabsContent value="patient-info" className="flex-1 overflow-y-auto">
-              <PatientInfo
-                patientEmail={patientEmail}
-                isEditing={isEditing}
-                toggleEditing={toggleEditing}
-                setPatientEmail={setPatientEmail}
-                savePatientEmail={savePatientEmail}
+          <div className="flex-1 overflow-hidden">
+            <TabsContent value="raw-data" className="h-full">
+              <OptimizedAnswersView
+                answers={answers}
+                hasAnswers={hasAnswers}
+                status={status}
+                entryId={entry.id}
+                aiSummary={entry.ai_summary}
+                onSaveSummary={onSaveAiSummary}
+                formattedRawData={formattedRawData}
+                setFormattedRawData={setFormattedRawData}
+                saveFormattedRawData={saveFormattedRawData}
+                isPending={isPending}
+              />
+            </TabsContent>
+            
+            <TabsContent value="formatted" className="h-full">
+              <EntryAnswers
+                answers={answers}
+                hasAnswers={hasAnswers}
                 status={status}
               />
             </TabsContent>
-          )}
+            
+            {showPatientInfoSection && (
+              <TabsContent value="patient-info" className="h-full">
+                <PatientInfo
+                  patientEmail={patientEmail}
+                  isEditing={isEditing}
+                  toggleEditing={toggleEditing}
+                  setPatientEmail={setPatientEmail}
+                  savePatientEmail={savePatientEmail}
+                  status={status}
+                />
+              </TabsContent>
+            )}
+          </div>
         </Tabs>
       ) : (
         /* When there's only one section, just show it directly */
-        <div className="flex-1 overflow-y-auto pt-4">
+        <div className="h-full overflow-hidden">
           {showPatientInfoSection ? (
             <PatientInfo
               patientEmail={patientEmail}
@@ -124,6 +126,6 @@ export function ModalTabContent({
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

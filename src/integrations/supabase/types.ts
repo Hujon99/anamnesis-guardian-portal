@@ -18,6 +18,7 @@ export type Database = {
           created_by: string | null
           expires_at: string | null
           form_id: string
+          formatted_raw_data: string | null
           id: string
           internal_notes: string | null
           organization_id: string
@@ -34,6 +35,7 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           form_id: string
+          formatted_raw_data?: string | null
           id?: string
           internal_notes?: string | null
           organization_id: string
@@ -50,6 +52,7 @@ export type Database = {
           created_by?: string | null
           expires_at?: string | null
           form_id?: string
+          formatted_raw_data?: string | null
           id?: string
           internal_notes?: string | null
           organization_id?: string

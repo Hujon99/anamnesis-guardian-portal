@@ -1,4 +1,10 @@
 
+/**
+ * This component displays and allows editing of patient information,
+ * particularly the email address associated with an anamnesis entry.
+ * It provides an interface for opticians to view, edit and save patient contact information.
+ */
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,17 +14,19 @@ import { Edit, Save } from "lucide-react";
 interface PatientInfoProps {
   patientEmail: string;
   isEditing: boolean;
-  setIsEditing: (value: boolean) => void;
+  toggleEditing: () => void;
   setPatientEmail: (value: string) => void;
   savePatientEmail: () => void;
+  status: string;
 }
 
 export const PatientInfo = ({
   patientEmail,
   isEditing,
-  setIsEditing,
+  toggleEditing,
   setPatientEmail,
-  savePatientEmail
+  savePatientEmail,
+  status
 }: PatientInfoProps) => {
   return (
     <div className="space-y-2">
@@ -28,7 +36,8 @@ export const PatientInfo = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setIsEditing(true)}
+            onClick={toggleEditing}
+            disabled={status === "completed" || status === "archived"}
           >
             <Edit className="h-3.5 w-3.5 mr-1" />
             Redigera
@@ -38,8 +47,8 @@ export const PatientInfo = ({
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              setIsEditing(false);
-              setPatientEmail("");
+              toggleEditing();
+              setPatientEmail(patientEmail); // Reset to original value
             }}
           >
             Avbryt

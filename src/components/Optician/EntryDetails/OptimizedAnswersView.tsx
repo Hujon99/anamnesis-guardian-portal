@@ -276,7 +276,7 @@ export const OptimizedAnswersView = ({
         </div>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 h-full">
         <TabsList className="mb-2">
           <TabsTrigger value="raw">Rådatavy</TabsTrigger>
           <TabsTrigger value="summary" disabled={!summary}>
@@ -286,7 +286,7 @@ export const OptimizedAnswersView = ({
         
         <TabsContent 
           value="raw" 
-          className="flex-1 border border-muted rounded-md overflow-hidden"
+          className="flex-1 border border-muted rounded-md overflow-hidden h-full"
         >
           <ScrollArea className="h-full">
             <div className="p-4">
@@ -311,7 +311,7 @@ export const OptimizedAnswersView = ({
         
         <TabsContent 
           value="summary" 
-          className="flex-1 border border-muted rounded-md overflow-hidden"
+          className="flex-1 border border-muted rounded-md overflow-hidden h-full"
         >
           <ScrollArea className="h-full">
             <div className="p-4">

@@ -2,6 +2,8 @@
 /**
  * This component provides tabs functionality based on Radix UI's Tabs primitive.
  * It allows for switching between different content sections using tab navigation.
+ * 
+ * The component has been enhanced to handle flexible layouts and proper content overflow.
  */
 
 import * as React from "react"
@@ -58,7 +60,7 @@ const TabsContent = React.forwardRef<
       flexGrow: 1,
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'auto'
+      overflow: 'hidden' // Changed from 'auto' to 'hidden' to prevent double scrollbars
     }}
     {...props}
   />

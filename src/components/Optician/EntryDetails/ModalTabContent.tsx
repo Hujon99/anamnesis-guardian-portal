@@ -9,7 +9,6 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PatientInfo } from "./PatientInfo";
-import { EntryAnswers } from "./EntryAnswers";
 import { OptimizedAnswersView } from "./OptimizedAnswersView";
 import { AnamnesesEntry } from "@/types/anamnesis";
 
@@ -48,28 +47,31 @@ export function ModalTabContent({
   entry,
   onSaveAiSummary
 }: ModalTabContentProps) {
-  // Determine what tabs should be shown based on available data
-  const showAnswersTab = hasAnswers;
-  const showPatientInfoTab = showPatientInfoSection;
+  // Calculate if we have tabs to show
+  const hasAnswersTab = hasAnswers || status === "sent";
+  const hasPatientInfoTab = showPatientInfoSection;
   
-  // Calculate total number of tabs
-  const totalTabs = [showAnswersTab, showPatientInfoTab].filter(Boolean).length;
+  console.log("ModalTabContent rendering with:", {
+    hasAnswers,
+    hasPatientInfoTab,
+    aiSummary: entry.ai_summary ? `length: ${entry.ai_summary.length}` : "none",
+    formattedRawData: formattedRawData ? `length: ${formattedRawData.length}` : "none"
+  });
   
-  // Define default tab - prioritize patient answers if available
-  const defaultTab = showAnswersTab ? "answers" : (showPatientInfoTab ? "patient-info" : "answers");
-  
+  // Main content tabs
   return (
     <div className="h-full flex flex-col flex-1 overflow-hidden">
-      {totalTabs > 0 ? (
-        <Tabs defaultValue={defaultTab} className="h-full flex flex-col">
-          <TabsList className={`mb-2 grid w-full ${totalTabs === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {showAnswersTab && <TabsTrigger value="answers">Patient svar</TabsTrigger>}
-            {showPatientInfoTab && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
+      {/* If we have at least one type of content to show */}
+      {(hasAnswersTab || hasPatientInfoTab) ? (
+        <Tabs defaultValue={hasAnswersTab ? "answers" : "patient-info"} className="h-full flex flex-col">
+          <TabsList className={`mb-2 grid w-full ${hasAnswersTab && hasPatientInfoTab ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {hasAnswersTab && <TabsTrigger value="answers">Patient svar</TabsTrigger>}
+            {hasPatientInfoTab && <TabsTrigger value="patient-info">Patient info</TabsTrigger>}
           </TabsList>
           
           <div className="flex-1 overflow-hidden">
-            {showAnswersTab && (
-              <TabsContent value="answers" className="h-full">
+            {hasAnswersTab && (
+              <TabsContent value="answers" className="h-full flex flex-col">
                 <OptimizedAnswersView
                   answers={answers}
                   hasAnswers={hasAnswers}
@@ -85,7 +87,7 @@ export function ModalTabContent({
               </TabsContent>
             )}
             
-            {showPatientInfoTab && (
+            {hasPatientInfoTab && (
               <TabsContent value="patient-info" className="h-full">
                 <PatientInfo
                   patientEmail={patientEmail}
@@ -100,7 +102,7 @@ export function ModalTabContent({
           </div>
         </Tabs>
       ) : (
-        // Fallback when no sections are available (shouldn't typically happen)
+        // Fallback when no sections are available
         <div className="h-full flex items-center justify-center text-muted-foreground">
           Ingen information tillgänglig
         </div>

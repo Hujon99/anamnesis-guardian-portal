@@ -45,7 +45,10 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       const updates: Partial<AnamnesesEntry> = {};
       
       if (status) updates.status = status;
-      if (notes !== undefined) updates.internal_notes = notes;
+      if (notes !== undefined) {
+        console.log("Updating notes:", notes);
+        updates.internal_notes = notes;
+      }
       if (email !== undefined) updates.patient_email = email;
       if (aiSummary !== undefined) updates.ai_summary = aiSummary;
       
@@ -110,6 +113,7 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       updateEntryMutation.mutate({ status: newStatus, notes });
     },
     saveNotes: (notes: string) => {
+      console.log("saveNotes called with:", notes);
       updateEntryMutation.mutate({ notes });
     },
     savePatientEmail: (email: string) => {

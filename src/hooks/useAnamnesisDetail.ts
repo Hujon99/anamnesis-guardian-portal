@@ -8,7 +8,7 @@
  * editing capabilities rather than having a separate tab.
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useEntryMutations } from "./useEntryMutations";
 import { usePrintFunction } from "./usePrintFunction";
@@ -43,13 +43,18 @@ export function useAnamnesisDetail(
   const answers = entry.answers as Record<string, string> || {};
   const hasAnswers = entry.answers && Object.keys(answers).length > 0;
 
-  // Handle operations
-  const handleSaveNotes = () => {
-    saveNotes(notes);
-  };
+  // Handle operations with debounce
+  const handleSaveNotes = useCallback(() => {
+    if (notes !== entry.internal_notes) {
+      console.log("Saving notes:", notes);
+      saveNotes(notes);
+    }
+  }, [notes, entry.internal_notes, saveNotes]);
 
   const handleSavePatientEmail = () => {
-    savePatientEmail(patientEmail);
+    if (patientEmail !== entry.patient_email) {
+      savePatientEmail(patientEmail);
+    }
     setIsEditing(false);
   };
 

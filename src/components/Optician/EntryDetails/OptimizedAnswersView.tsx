@@ -54,6 +54,7 @@ export const OptimizedAnswersView = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
 
   // Generate optimized text when answers or form template changes
   useEffect(() => {
@@ -66,16 +67,19 @@ export const OptimizedAnswersView = ({
       const formattedAnswers = extractFormattedAnswers(answers);
       
       if (formattedAnswers) {
-        // Generate the optimized text
+        // Generate the optimized text - WITHOUT appending notes
         let text = createOptimizedPromptInput(formTemplate, formattedAnswers);
+        setOptimizedText(text);
         
-        // If we have notes, append them to the optimized text
+        // Initialize edited text with optimized text + notes as separate sections
+        let combinedText = text;
+        
+        // Only add notes marker if there are actual notes
         if (notes && notes.trim().length > 0) {
-          text += "\n\n--- INTERNA ANTECKNINGAR ---\n" + notes;
+          combinedText += "\n\n--- INTERNA ANTECKNINGAR ---\n" + notes;
         }
         
-        setOptimizedText(text);
-        setEditedText(text); // Initialize edited text with the optimized text
+        setEditedText(combinedText);
       } else {
         console.warn("Could not extract formatted answers from the data structure");
         setOptimizedText("Kunde inte formatera svaren på ett läsbart sätt.");
@@ -149,15 +153,23 @@ export const OptimizedAnswersView = ({
   };
 
   const toggleEditing = () => {
-    setIsEditing(!isEditing);
     if (isEditing) {
       // Extract and save notes from edited text when exiting edit mode
       extractAndSaveNotes(editedText);
     }
+    setIsEditing(!isEditing);
   };
 
   const resetChanges = () => {
-    setEditedText(optimizedText);
+    // Reset to original optimized text + existing notes (if any)
+    let combinedText = optimizedText;
+    
+    if (notes && notes.trim().length > 0) {
+      combinedText += "\n\n--- INTERNA ANTECKNINGAR ---\n" + notes;
+    }
+    
+    setEditedText(combinedText);
+    
     toast({
       title: "Ändringar återställda",
       description: "Dina ändringar har återställts till originalsvaren",
@@ -166,6 +178,8 @@ export const OptimizedAnswersView = ({
 
   const saveChanges = () => {
     setIsSaving(true);
+    setSaveIndicator("unsaved");
+    
     try {
       // Extract internal notes from edited text
       extractAndSaveNotes(editedText);
@@ -175,6 +189,9 @@ export const OptimizedAnswersView = ({
         description: "Dina anteckningar har sparats för AI-sammanfattning",
       });
       
+      setSaveIndicator("saved");
+      setTimeout(() => setSaveIndicator(null), 2000);
+      
       setIsEditing(false);
     } catch (error) {
       console.error("Error saving edited text:", error);
@@ -183,6 +200,7 @@ export const OptimizedAnswersView = ({
         description: "Ett fel uppstod, försök igen senare",
         variant: "destructive",
       });
+      setSaveIndicator(null);
     } finally {
       setIsSaving(false);
     }
@@ -195,18 +213,56 @@ export const OptimizedAnswersView = ({
     
     if (match && match[1]) {
       // We found notes section, extract and save notes
-      setNotes(match[1].trim());
+      const extractedNotes = match[1].trim();
+      setNotes(extractedNotes);
       saveNotes(); // Call the parent component's save function
     } else {
       // No notes section found, check if anything was added after the original content
-      const extraContent = text.replace(optimizedText.replace(/--- INTERNA ANTECKNINGAR ---[\s\S]*/, '').trim(), '').trim();
+      const originalTextWithoutNotes = optimizedText.replace(/--- INTERNA ANTECKNINGAR ---[\s\S]*/, '').trim();
+      const extraContent = text.replace(originalTextWithoutNotes, '').trim();
       
       if (extraContent && !extraContent.startsWith("--- INTERNA ANTECKNINGAR ---")) {
         // User added content but didn't use the marker, treat all new content as notes
         setNotes(extraContent);
         saveNotes();
+      } else if (!extraContent && notes.length > 0) {
+        // Notes were removed, clear them
+        setNotes('');
+        saveNotes();
       }
     }
+  };
+
+  // This function renders the raw data view without duplicating content
+  const renderRawDataView = () => {
+    let displayContent = optimizedText;
+    
+    // Only in view mode (not editing), show notes separately if they exist
+    if (!isEditing && notes && notes.trim().length > 0) {
+      displayContent += "\n\n--- INTERNA ANTECKNINGAR ---\n" + notes;
+    }
+    
+    return isEditing ? (
+      <div className="p-4">
+        <Textarea 
+          value={editedText}
+          onChange={(e) => {
+            setEditedText(e.target.value);
+            setSaveIndicator("unsaved");
+          }}
+          className="min-h-[400px] font-mono text-sm"
+          placeholder="Redigera svaren eller lägg till anteckningar..."
+        />
+        <p className="text-xs text-muted-foreground mt-2">
+          Använd "--- INTERNA ANTECKNINGAR ---" för att tydliggöra var dina anteckningar börjar.
+          Alla ändringar under denna markör kommer att sparas som anteckningar.
+        </p>
+      </div>
+    ) : (
+      <pre className="p-4 whitespace-pre-wrap text-sm">
+        {displayContent}
+      </pre>
+    );
   };
 
   if (!hasAnswers) {
@@ -234,7 +290,17 @@ export const OptimizedAnswersView = ({
           Patientens svar och anteckningar
         </h3>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {saveIndicator === "unsaved" && (
+            <span className="text-amber-500 text-xs">Osparade ändringar</span>
+          )}
+          {saveIndicator === "saved" && (
+            <span className="text-green-500 text-xs flex items-center">
+              <CheckCheck className="h-3 w-3 mr-1" />
+              Sparad
+            </span>
+          )}
+          
           {isEditing ? (
             <>
               <Button
@@ -295,24 +361,7 @@ export const OptimizedAnswersView = ({
           className="flex-1 border border-muted rounded-md overflow-hidden"
         >
           <ScrollArea className="h-full">
-            {isEditing ? (
-              <div className="p-4">
-                <Textarea 
-                  value={editedText}
-                  onChange={(e) => setEditedText(e.target.value)}
-                  className="min-h-[400px] font-mono text-sm"
-                  placeholder="Redigera svaren eller lägg till anteckningar..."
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Dina ändringar och anteckningar kommer att användas för AI-sammanfattningen.
-                  Använd gärna "--- INTERNA ANTECKNINGAR ---" för att tydliggöra var dina anteckningar börjar.
-                </p>
-              </div>
-            ) : (
-              <pre className="p-4 whitespace-pre-wrap text-sm">
-                {editedText}
-              </pre>
-            )}
+            {renderRawDataView()}
           </ScrollArea>
         </TabsContent>
         

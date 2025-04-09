@@ -56,6 +56,7 @@ export const updateEntryNotes = async (
   entryId: string,
   notes: string
 ) => {
+  console.log(`Saving notes for entry ${entryId}:`, notes);
   return updateEntry(supabase, entryId, { internal_notes: notes });
 };
 

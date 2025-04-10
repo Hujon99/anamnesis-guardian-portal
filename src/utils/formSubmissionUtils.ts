@@ -1,3 +1,4 @@
+
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -34,7 +35,7 @@ export interface FormattedAnswer {
  * @returns An object ready for API submission
  */
 export const prepareFormSubmission = (
-  formTemplate: FormTemplate,
+  formTemplate: FormTemplate | null | undefined,
   userInputs: Record<string, any>,
   formattedAnswers?: any,
   isOpticianMode?: boolean
@@ -81,98 +82,133 @@ export const prepareFormSubmission = (
       
       // Add general metadata
       metadata: {
-        formTemplateId: formTemplate.title,
+        formTemplateId: formTemplate?.title || "Unknown Form",
         submittedAt: processedAnswers.formattedAnswers?.submissionTimestamp || new Date().toISOString(),
         version: isOpticianMode ? "2.1" : "2.0"
       }
     };
   } else {
-    // Fallback to legacy approach (should not be used anymore)
+    // Fallback to legacy approach with null check for formTemplate
     console.warn("[formSubmissionUtils/prepareFormSubmission]: WARNING: Using legacy processFormAnswers approach");
     
-    // Initialize the structured answer object
-  const formattedAnswer: FormattedAnswer = {
-    formTitle: formTemplate.title,
-    submissionTimestamp: new Date().toISOString(),
-    answeredSections: []
-  };
-
-  // Function to evaluate show_if conditions
-  const evaluateCondition = (
-    condition: { question: string; equals: string | string[] } | undefined
-  ): boolean => {
-    if (!condition) return true;
-
-    const { question, equals } = condition;
-    const dependentValue = userInputs[question];
-
-    if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
+    // Bail out early if formTemplate is null or undefined
+    if (!formTemplate) {
+      console.error("[formSubmissionUtils/prepareFormSubmission]: No form template provided for processing");
+      
+      // Return a minimal valid structure with the raw answers
+      return {
+        formattedAnswers: {
+          formTitle: "Unknown Form",
+          submissionTimestamp: new Date().toISOString(),
+          answeredSections: []
+        },
+        rawAnswers: { ...userInputs },
+        ...(isOpticianMode && {
+          _metadata: {
+            submittedBy: 'optician',
+            autoSetStatus: 'ready'
+          }
+        }),
+        metadata: {
+          formTemplateId: "Unknown Form",
+          submittedAt: new Date().toISOString(),
+          version: isOpticianMode ? "2.1" : "1.0"
+        }
+      };
     }
-
-    return dependentValue === equals;
-  };
-
-  // Process each section in the template
-  formTemplate.sections.forEach(section => {
-    // Create a new section for the formatted answer
-    const formattedSection = {
-      section_title: section.section_title,
-      responses: []
+    
+    // Initialize the structured answer object
+    const formattedAnswer: FormattedAnswer = {
+      formTitle: formTemplate.title,
+      submissionTimestamp: new Date().toISOString(),
+      answeredSections: []
     };
 
-    // Process each question in the section
-    section.questions.forEach(question => {
-      // Skip questions that shouldn't be shown based on conditions
-      if (!evaluateCondition(question.show_if)) {
-        return;
+    // Function to evaluate show_if conditions
+    const evaluateCondition = (
+      condition: { question: string; equals: string | string[] } | undefined
+    ): boolean => {
+      if (!condition) return true;
+
+      const { question, equals } = condition;
+      const dependentValue = userInputs[question];
+
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
       }
 
-      const userAnswer = userInputs[question.id];
+      return dependentValue === equals;
+    };
 
-      // Skip if question wasn't answered (undefined, null, or empty string)
-      // Note: we include false and 0 as valid answers
-      if (
-        userAnswer === undefined || 
-        userAnswer === null || 
-        (typeof userAnswer === 'string' && userAnswer.trim() === '')
-      ) {
-        return;
-      }
+    // Process each section in the template if it exists
+    if (formTemplate.sections && Array.isArray(formTemplate.sections)) {
+      formTemplate.sections.forEach(section => {
+        // Create a new section for the formatted answer
+        const formattedSection = {
+          section_title: section.section_title,
+          responses: []
+        };
 
-      // Add the answer to the formatted section
-      formattedSection.responses.push({
-        id: question.id,
-        answer: userAnswer
-      });
+        // Process each question in the section if it exists
+        if (section.questions && Array.isArray(section.questions)) {
+          section.questions.forEach(question => {
+            // Skip questions that shouldn't be shown based on conditions
+            if (!evaluateCondition(question.show_if)) {
+              return;
+            }
 
-      // Handle "Other" option for radio buttons and dropdowns
-      if (
-        (question.type === 'radio' || question.type === 'dropdown') &&
-        question.options && 
-        question.options.includes('Övrigt') &&
-        userAnswer === 'Övrigt'
-      ) {
-        // Look for the associated "other" text input (usually has _other or _övrigt suffix)
-        const otherFieldId = `${question.id}_other`;
-        const alternativeOtherFieldId = `${question.id}_övrigt`;
-        
-        const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
-        
-        if (otherAnswer) {
-          formattedSection.responses.push({
-            id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
-            answer: otherAnswer
+            const userAnswer = userInputs[question.id];
+
+            // Skip if question wasn't answered (undefined, null, or empty string)
+            // Note: we include false and 0 as valid answers
+            if (
+              userAnswer === undefined || 
+              userAnswer === null || 
+              (typeof userAnswer === 'string' && userAnswer.trim() === '')
+            ) {
+              return;
+            }
+
+            // Add the answer to the formatted section
+            formattedSection.responses.push({
+              id: question.id,
+              answer: userAnswer
+            });
+
+            // Handle "Other" option for radio buttons and dropdowns
+            if (
+              (question.type === 'radio' || question.type === 'dropdown') &&
+              question.options && 
+              question.options.includes('Övrigt') &&
+              userAnswer === 'Övrigt'
+            ) {
+              // Look for the associated "other" text input (usually has _other or _övrigt suffix)
+              const otherFieldId = `${question.id}_other`;
+              const alternativeOtherFieldId = `${question.id}_övrigt`;
+              
+              const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
+              
+              if (otherAnswer) {
+                formattedSection.responses.push({
+                  id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
+                  answer: otherAnswer
+                });
+              }
+            }
           });
         }
-      }
-    });
 
-    // Only include sections that have responses
-    if (formattedSection.responses.length > 0) {
-      formattedAnswer.answeredSections.push(formattedSection);
+        // Only include sections that have responses
+        if (formattedSection.responses.length > 0) {
+          formattedAnswer.answeredSections.push(formattedSection);
+        }
+      });
     }
-  });
+      
+    // If this is an optician submission, mark it
+    if (isOpticianMode) {
+      formattedAnswer.isOpticianSubmission = true;
+    }
     
     return {
       // Include the formatted answers 
@@ -293,3 +329,4 @@ export const processFormAnswers = (
 
   return formattedAnswer;
 };
+

@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFormSubmission } from "@/hooks/useFormSubmission";
 import { FormTemplate } from "@/types/anamnesis";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 export const useOpticianFormSubmission = (token: string | null) => {
   const navigate = useNavigate();

@@ -1,3 +1,4 @@
+
 /**
  * This hook manages the incremental construction of form submission data.
  * It tracks visible sections and questions in real-time as the user navigates
@@ -24,6 +25,40 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Prevent excessive processing with a debounce mechanism
   const processingTimerRef = useRef<number | null>(null);
   const lastProcessedValuesRef = useRef<string>("");
+
+  // Helper function to evaluate show_if conditions - MOVED TO THE TOP
+  const evaluateCondition = useCallback(
+    (
+      condition: { question: string; equals: string | string[] } | undefined,
+      currentValues: Record<string, any>
+    ): boolean => {
+      if (!condition) return true;
+
+      const { question, equals } = condition;
+      const dependentValue = currentValues[question];
+
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
+      }
+
+      return dependentValue === equals;
+    },
+    []
+  );
+
+  // Clean up any sections that no longer have answers
+  const cleanEmptySections = useCallback(() => {
+    const initialCount = submissionDataRef.current.answeredSections.length;
+    
+    submissionDataRef.current.answeredSections = submissionDataRef.current.answeredSections.filter(
+      section => section.responses.length > 0
+    );
+    
+    const removedCount = initialCount - submissionDataRef.current.answeredSections.length;
+    if (removedCount > 0) {
+      // console.log(`[FormSubmissionState/cleanEmptySections] Removed ${removedCount} empty sections`);
+    }
+  }, []);
 
   // Update the current step tracking
   const setCurrentStep = useCallback((step: number) => {
@@ -81,7 +116,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     section.questions.forEach(question => {
       processQuestion(question, section.section_title, currentValues);
     });
-  }, [findOrCreateSection]);
+  }, [findOrCreateSection, evaluateCondition]);
 
   // Process a single question's visibility and answer
   const processQuestion = useCallback((
@@ -91,7 +126,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   ) => {
     try {
       const shouldShowQuestion = evaluateCondition(question.show_if, currentValues);
-      console.log(`[FormSubmissionState/processQuestion] Question "${question.id}" visible: ${shouldShowQuestion}`);
+      // console.log(`[FormSubmissionState/processQuestion] Question "${question.id}" visible: ${shouldShowQuestion}`);
       
       // Find the section in our data
       const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
@@ -108,7 +143,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         };
         submissionDataRef.current.answeredSections.push(newSection);
         currentSectionIndex = submissionDataRef.current.answeredSections.length - 1;
-        console.log(`[FormSubmissionState/processQuestion] Created new section: ${sectionTitle}`);
+        // console.log(`[FormSubmissionState/processQuestion] Created new section: ${sectionTitle}`);
       }
       
       // If question shouldn't be shown, remove any existing data
@@ -119,7 +154,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
           );
           
           if (questionIndex !== -1) {
-            console.log(`[FormSubmissionState/processQuestion] Removing hidden question: ${question.id}`);
+            // console.log(`[FormSubmissionState/processQuestion] Removing hidden question: ${question.id}`);
             submissionDataRef.current.answeredSections[currentSectionIndex].responses.splice(questionIndex, 1);
           }
         }
@@ -136,11 +171,11 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         (typeof answer === 'string' && answer.trim() === '');
       
       // For debugging, log the question and its answer
-      console.log(`[FormSubmissionState/processQuestion] Question: ${question.id}, Answer: ${isEmpty ? 'empty' : JSON.stringify(answer)}`);
+      // console.log(`[FormSubmissionState/processQuestion] Question: ${question.id}, Answer: ${isEmpty ? 'empty' : JSON.stringify(answer)}`);
       
       // This is critical - force log the current submission data structure 
-      console.log(`[FormSubmissionState/processQuestion] Current submission data structure:`, 
-        JSON.stringify(submissionDataRef.current, null, 2));
+      // console.log(`[FormSubmissionState/processQuestion] Current submission data structure:`, 
+      //   JSON.stringify(submissionDataRef.current, null, 2));
       
       // Update or remove the answer
       if (isEmpty) {
@@ -151,7 +186,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
           );
           
           if (existingResponseIndex !== -1) {
-            console.log(`[FormSubmissionState/processQuestion] Removing empty answer for: ${question.id}`);
+            // console.log(`[FormSubmissionState/processQuestion] Removing empty answer for: ${question.id}`);
             submissionDataRef.current.answeredSections[currentSectionIndex].responses.splice(existingResponseIndex, 1);
           }
         }
@@ -164,13 +199,13 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
           
           if (existingResponseIndex !== -1) {
             submissionDataRef.current.answeredSections[currentSectionIndex].responses[existingResponseIndex].answer = answer;
-            console.log(`[FormSubmissionState/processQuestion] Updated answer for: ${question.id}`);
+            // console.log(`[FormSubmissionState/processQuestion] Updated answer for: ${question.id}`);
           } else {
             submissionDataRef.current.answeredSections[currentSectionIndex].responses.push({
               id: question.id,
               answer
             });
-            console.log(`[FormSubmissionState/processQuestion] Added new answer for: ${question.id}`);
+            // console.log(`[FormSubmissionState/processQuestion] Added new answer for: ${question.id}`);
           }
         } else {
           console.error(`[FormSubmissionState/processQuestion] Cannot find section for question: ${question.id}`);
@@ -183,20 +218,6 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     // Clean up empty sections
     cleanEmptySections();
   }, [evaluateCondition, cleanEmptySections]);
-
-  // Clean up any sections that no longer have answers
-  const cleanEmptySections = useCallback(() => {
-    const initialCount = submissionDataRef.current.answeredSections.length;
-    
-    submissionDataRef.current.answeredSections = submissionDataRef.current.answeredSections.filter(
-      section => section.responses.length > 0
-    );
-    
-    const removedCount = initialCount - submissionDataRef.current.answeredSections.length;
-    if (removedCount > 0) {
-      console.log(`[FormSubmissionState/cleanEmptySections] Removed ${removedCount} empty sections`);
-    }
-  }, []);
 
   // Process all sections with debouncing to prevent excessive processing
   const processSectionsWithDebounce = useCallback((
@@ -214,7 +235,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     // Update last processed values
     lastProcessedValuesRef.current = valuesHash;
     
-    console.log(`[FormSubmissionState/processSectionsWithDebounce] Processing ${sections.length} sections`);
+    // console.log(`[FormSubmissionState/processSectionsWithDebounce] Processing ${sections.length} sections`);
     
     // Clear any existing timer
     if (processingTimerRef.current !== null) {
@@ -231,8 +252,8 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         processSection(section, currentValues);
       });
       
-      console.log(`[FormSubmissionState/processSectionsWithDebounce] Current submission data:`, 
-        JSON.stringify(submissionDataRef.current, null, 2));
+      // console.log(`[FormSubmissionState/processSectionsWithDebounce] Current submission data:`, 
+      //   JSON.stringify(submissionDataRef.current, null, 2));
       
       processingTimerRef.current = null;
     }, 100); // 100ms debounce
@@ -242,8 +263,8 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   const finalizeSubmissionData = useCallback((): SubmissionData => {
     submissionDataRef.current.submissionTimestamp = new Date().toISOString();
     
-    console.log(`[FormSubmissionState/finalizeSubmissionData] Final submission data:`, 
-      JSON.stringify(submissionDataRef.current, null, 2));
+    // console.log(`[FormSubmissionState/finalizeSubmissionData] Final submission data:`, 
+    //   JSON.stringify(submissionDataRef.current, null, 2));
     
     return {
       formattedAnswers: { ...submissionDataRef.current },
@@ -255,23 +276,6 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       }
     };
   }, [formTemplate.title]);
-
-  // Helper function to evaluate show_if conditions
-  const evaluateCondition = (
-    condition: { question: string; equals: string | string[] } | undefined,
-    currentValues: Record<string, any>
-  ): boolean => {
-    if (!condition) return true;
-
-    const { question, equals } = condition;
-    const dependentValue = currentValues[question];
-
-    if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
-    }
-
-    return dependentValue === equals;
-  };
 
   // For debugging - return the current processing count
   const getProcessingCount = useCallback(() => processingCount, [processingCount]);

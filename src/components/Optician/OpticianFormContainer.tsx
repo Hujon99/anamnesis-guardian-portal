@@ -44,9 +44,33 @@ const OpticianFormInternal: React.FC<Pick<OpticianFormContainerProps, 'token' | 
             return;
         }
 
+        // --- BEGIN DIAGNOSTIC LOGGING ---
+        let formattedAnswers;
         try {
-            const formattedAnswers = finalizeSubmissionData();
+            // Get raw values first for comparison
+            const rawFormValues = form.getValues();
+            console.log("[OpticianFormContainer/handleValidSubmit]: Raw form values from RHF:", JSON.stringify(rawFormValues, null, 2));
 
+            formattedAnswers = finalizeSubmissionData();
+            console.log("[OpticianFormContainer/handleValidSubmit]: Data returned by finalizeSubmissionData():", JSON.stringify(formattedAnswers, null, 2));
+
+            // Basic check if formattedAnswers looks valid
+            if (!formattedAnswers || !formattedAnswers.answeredSections || !Array.isArray(formattedAnswers.answeredSections)) {
+                 console.error("[OpticianFormContainer/handleValidSubmit]: finalizeSubmissionData() returned invalid structure.");
+                 throw new Error("finalizeSubmissionData returnerade ogiltig data.");
+            }
+
+        } catch (finalizeError: any) {
+             console.error("[OpticianFormContainer/handleValidSubmit]: Error during finalizeSubmissionData():", finalizeError);
+             setError(`Kunde inte formatera svar: ${finalizeError.message}`);
+             setIsSubmitting(false);
+             toast({ title: "Formateringsfel", description: `Kunde inte förbereda svaren: ${finalizeError.message}`, variant: "destructive" });
+             return;
+        }
+        // --- END DIAGNOSTIC LOGGING ---
+
+
+        try {
             // Add optician-specific metadata
             const finalData: FormattedAnswerData = {
                 ...formattedAnswers,
@@ -57,19 +81,21 @@ const OpticianFormInternal: React.FC<Pick<OpticianFormContainerProps, 'token' | 
                 }
             };
 
-            console.log("[OpticianFormContainer/handleValidSubmit]: Final data for edge function:",
-                JSON.stringify(finalData, null, 2));
+            // --- Log the final payload being sent ---
+            const requestBody = { token, formattedAnswers: finalData };
+            console.log("[OpticianFormContainer/handleValidSubmit]: Final payload for edge function:",
+                JSON.stringify(requestBody, null, 2));
+            // ---
 
             const { data, error: functionError } = await supabase.functions.invoke('submit-form', {
-                body: {
-                    token,
-                    formattedAnswers: finalData // Send the prepared data
-                }
+                body: requestBody // Send the prepared data
             });
 
             if (functionError) {
                 console.error("[OpticianFormContainer/handleValidSubmit]: Edge function error:", functionError);
-                throw new Error(functionError.message || "Ett fel uppstod vid anrop till servern.");
+                // Try to get more details from the function error if available
+                const errorDetails = (functionError as any)?.context?.details || functionError.message || "Okänt serverfel";
+                throw new Error(`Fel från servern: ${errorDetails}`);
             }
 
             console.log("[OpticianFormContainer/handleValidSubmit]: Submission successful:", data);

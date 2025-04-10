@@ -4,6 +4,7 @@
  * including title, status badge, and action buttons.
  */
 
+import { useState } from "react";
 import { format } from "date-fns";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,8 @@ import {
   Clock, 
   Copy, 
   Printer, 
-  Loader2
+  Loader2,
+  CheckCircle2
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
@@ -35,8 +37,25 @@ export function ModalHeader({
   printForm,
   isSendingLink
 }: ModalHeaderProps) {
+  const [hasCopied, setHasCopied] = useState(false);
+
+  const handleCopy = () => {
+    copyLinkToClipboard();
+    setHasCopied(true);
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      setHasCopied(false);
+    }, 2000);
+    
+    toast({
+      title: "Länk kopierad",
+      description: "Länken har kopierats till urklipp.",
+    });
+  };
+
   return (
-    <DialogHeader className="space-y-2">
+    <DialogHeader className="space-y-3 pb-2">
       <div className="flex items-center justify-between">
         <DialogTitle className="text-xl">
           {entry.patient_email || `Anamnes #${entry.id.substring(0, 8)}`}
@@ -77,22 +96,25 @@ export function ModalHeader({
       </div>
       
       {entry.access_token && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-1">
           <Button 
-            variant="outline" 
+            variant={hasCopied ? "secondary" : "outline"}
             size="sm" 
-            onClick={copyLinkToClipboard}
-            className="flex items-center gap-1"
+            onClick={handleCopy}
+            className="flex items-center gap-1 transition-all duration-300"
             aria-label="Kopiera anamneslänk"
-            onClickCapture={() => {
-              toast({
-                title: "Länk kopierad",
-                description: "Länken har kopierats till urklipp.",
-              });
-            }}
           >
-            <Copy className="h-3.5 w-3.5" />
-            Kopiera länk
+            {hasCopied ? (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Kopierad
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                Kopiera länk
+              </>
+            )}
           </Button>
         </div>
       )}

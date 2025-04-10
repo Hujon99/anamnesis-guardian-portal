@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Loader2, Plus, Link as LinkIcon } from "lucide-react";
+import { Copy, Loader2, Plus, Link as LinkIcon, CheckCircle2 } from "lucide-react";
 
 export function LinkGenerator() {
   const { organization } = useOrganization();
@@ -23,6 +23,7 @@ export function LinkGenerator() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [patientIdentifier, setPatientIdentifier] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
+  const [hasCopied, setHasCopied] = useState(false);
   const queryClient = useQueryClient();
 
   const createAnamnesisEntry = useMutation({
@@ -84,10 +85,16 @@ export function LinkGenerator() {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedLink)
       .then(() => {
+        setHasCopied(true);
         toast({
           title: "Kopierad!",
           description: "Länken har kopierats till urklipp",
         });
+        
+        // Reset the copied state after 2 seconds
+        setTimeout(() => {
+          setHasCopied(false);
+        }, 2000);
       })
       .catch((error) => {
         console.error("Error copying link:", error);
@@ -107,54 +114,70 @@ export function LinkGenerator() {
           Skapa patientlänk
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Skapa ny patientlänk</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-md p-6">
+        <DialogHeader className="mb-4">
+          <DialogTitle className="text-xl">Skapa ny patientlänk</DialogTitle>
+          <DialogDescription className="text-base mt-2">
             Skapa en unik länk för patienten som kommer vara giltig i 7 dagar.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="patientIdentifier">Patient (namn/nummer)</Label>
+        <div className="grid gap-6 py-4">
+          <div className="grid gap-3">
+            <Label htmlFor="patientIdentifier" className="text-sm font-medium">Patient (namn/nummer)</Label>
             <Input
               id="patientIdentifier"
               placeholder="T.ex. Anna Andersson eller P12345"
               value={patientIdentifier}
               onChange={(e) => setPatientIdentifier(e.target.value)}
+              className="p-3"
             />
           </div>
           
           {generatedLink && (
-            <div className="grid gap-2">
-              <Label htmlFor="link">Patientlänk</Label>
+            <div className="grid gap-3 pt-2">
+              <Label htmlFor="link" className="text-sm font-medium">Patientlänk</Label>
               <div className="flex gap-2">
                 <Input
                   id="link"
                   value={generatedLink}
                   readOnly
-                  className="flex-1"
+                  className="flex-1 p-3 bg-gray-50"
                 />
-                <Button onClick={copyToClipboard}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Kopiera
+                <Button 
+                  onClick={copyToClipboard} 
+                  className="min-w-[110px] transition-all duration-300"
+                  variant={hasCopied ? "secondary" : "default"}
+                >
+                  {hasCopied ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Kopierad
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Kopiera
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
           )}
         </div>
         
-        <DialogFooter>
+        <DialogFooter className="mt-2">
           {!generatedLink ? (
             <Button 
               onClick={handleCreateLink}
               disabled={createAnamnesisEntry.isPending}
+              className="w-full sm:w-auto"
             >
-              {createAnamnesisEntry.isPending && (
+              {createAnamnesisEntry.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <LinkIcon className="h-4 w-4 mr-2" />
               )}
-              <LinkIcon className="h-4 w-4 mr-2" />
               Skapa länk
             </Button>
           ) : (
@@ -163,9 +186,10 @@ export function LinkGenerator() {
                 setIsDialogOpen(false);
                 setGeneratedLink("");
                 setPatientIdentifier("");
+                setHasCopied(false);
               }}
               variant="outline"
-              className="flex-1"
+              className="w-full sm:w-auto"
             >
               Stäng
             </Button>

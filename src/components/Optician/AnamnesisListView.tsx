@@ -1,4 +1,3 @@
-
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements

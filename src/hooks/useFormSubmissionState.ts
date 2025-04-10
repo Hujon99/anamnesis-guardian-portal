@@ -98,50 +98,21 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     return sectionData;
   }, []);
 
-  // Process a section's visibility and its questions
-  const processSection = useCallback((section: FormSection, currentValues: Record<string, any>) => {
-    // console.log(`[FormSubmissionState/processSection] Processing section "${section.section_title}"`);
-    
-    const shouldShowSection = evaluateCondition(section.show_if, currentValues);
-    // console.log(`[FormSubmissionState/processSection] Section "${section.section_title}" visible: ${shouldShowSection}`);
-    
-    if (!shouldShowSection) {
-      // Remove any existing data for this section
-      const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
-        s => s.section_title === section.section_title
-      );
-      
-      if (sectionIndex !== -1) {
-        // console.log(`[FormSubmissionState/processSection] Removing hidden section: ${section.section_title}`);
-        submissionDataRef.current.answeredSections.splice(sectionIndex, 1);
-      }
-      return;
-    }
-    
-    // Find or create section in our submission data
-    findOrCreateSection(section.section_title);
-    
-    // Process each question in the section
-    section.questions.forEach(question => {
-      processQuestion(question, currentValues);
-    });
-  }, [findOrCreateSection, evaluateCondition]);
-
   // Process a single question's visibility and answer
   const processQuestion = useCallback((
-    question: FormQuestion, 
-    sectionTitle: string, 
+    question: FormQuestion,
+    sectionTitle: string,
     currentValues: Record<string, any>
   ) => {
     try {
       const shouldShowQuestion = evaluateCondition(question.show_if, currentValues);
       // console.log(`[FormSubmissionState/processQuestion] Question "${question.id}" visible: ${shouldShowQuestion}`);
-      
+
       // Find the section in our data
       const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
         s => s.section_title === sectionTitle
       );
-      
+
       // If section doesn't exist yet, create it
       let currentSectionIndex = sectionIndex;
       if (sectionIndex === -1) {
@@ -154,14 +125,14 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         currentSectionIndex = submissionDataRef.current.answeredSections.length - 1;
         // console.log(`[FormSubmissionState/processQuestion] Created new section: ${sectionTitle}`);
       }
-      
+
       // If question shouldn't be shown, remove any existing data
       if (!shouldShowQuestion) {
         if (currentSectionIndex !== -1) {
           const questionIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
             r => r.id === question.id
           );
-          
+
           if (questionIndex !== -1) {
             // console.log(`[FormSubmissionState/processQuestion] Removing hidden question: ${question.id}`);
             submissionDataRef.current.answeredSections[currentSectionIndex].responses.splice(questionIndex, 1);
@@ -169,23 +140,23 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         }
         return;
       }
-      
+
       // Get the answer for this question
       const answer = currentValues[question.id];
-      
+
       // Skip if answer is undefined, null, or empty string (but keep false and 0)
-      const isEmpty = 
-        answer === undefined || 
-        answer === null || 
+      const isEmpty =
+        answer === undefined ||
+        answer === null ||
         (typeof answer === 'string' && answer.trim() === '');
-      
+
       // For debugging, log the question and its answer
       // console.log(`[FormSubmissionState/processQuestion] Question: ${question.id}, Answer: ${isEmpty ? 'empty' : JSON.stringify(answer)}`);
-      
-      // This is critical - force log the current submission data structure 
-      // console.log(`[FormSubmissionState/processQuestion] Current submission data structure:`, 
+
+      // This is critical - force log the current submission data structure
+      // console.log(`[FormSubmissionState/processQuestion] Current submission data structure:`,
       //   JSON.stringify(submissionDataRef.current, null, 2));
-      
+
       // Update or remove the answer
       if (isEmpty) {
         // Remove the answer if it exists but is now empty
@@ -193,7 +164,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
           const existingResponseIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
             r => r.id === question.id
           );
-          
+
           if (existingResponseIndex !== -1) {
             // console.log(`[FormSubmissionState/processQuestion] Removing empty answer for: ${question.id}`);
             submissionDataRef.current.answeredSections[currentSectionIndex].responses.splice(existingResponseIndex, 1);
@@ -205,7 +176,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
           const existingResponseIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
             r => r.id === question.id
           );
-          
+
           if (existingResponseIndex !== -1) {
             submissionDataRef.current.answeredSections[currentSectionIndex].responses[existingResponseIndex].answer = answer;
             // console.log(`[FormSubmissionState/processQuestion] Updated answer for: ${question.id}`);
@@ -223,10 +194,39 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     } catch (error) {
       console.error(`Error processing question ${question.id} in section ${sectionTitle}:`, error);
     }
-    
+
     // Clean up empty sections
     cleanEmptySections();
   }, [evaluateCondition, cleanEmptySections]);
+
+  // Process a section's visibility and its questions
+  const processSection = useCallback((section: FormSection, currentValues: Record<string, any>) => {
+    // console.log(`[FormSubmissionState/processSection] Processing section "${section.section_title}"`);
+
+    const shouldShowSection = evaluateCondition(section.show_if, currentValues);
+    // console.log(`[FormSubmissionState/processSection] Section "${section.section_title}" visible: ${shouldShowSection}`);
+
+    if (!shouldShowSection) {
+      // Remove any existing data for this section
+      const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
+        s => s.section_title === section.section_title
+      );
+
+      if (sectionIndex !== -1) {
+        // console.log(`[FormSubmissionState/processSection] Removing hidden section: ${section.section_title}`);
+        submissionDataRef.current.answeredSections.splice(sectionIndex, 1);
+      }
+      return;
+    }
+
+    // Find or create section in our submission data
+    findOrCreateSection(section.section_title); // Ensure section exists before processing questions
+
+    // Process each question in the section
+    section.questions.forEach(question => {
+      processQuestion(question, section.section_title, currentValues); // Now processQuestion is defined
+    });
+  }, [findOrCreateSection, evaluateCondition, processQuestion]); // processQuestion is now available here
 
   // Process all sections with debouncing to prevent excessive processing
   const processSectionsWithDebounce = useCallback(

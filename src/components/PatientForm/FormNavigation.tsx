@@ -25,7 +25,7 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
   onPrevious,
   onSubmit
 }) => {
-  console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
+  // console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
   
   return (
     <div className="flex justify-between w-full">

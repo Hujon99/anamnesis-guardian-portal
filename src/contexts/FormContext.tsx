@@ -58,7 +58,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   isSubmitting,
   isOpticianMode = false
 }) => {
-  console.log("[FormContextProvider]: Initializing with isOpticianMode:", isOpticianMode);
+  // console.log("[FormContextProvider]: Initializing with isOpticianMode:", isOpticianMode);
   
   // Initialize form with default values
   const generateDefaultValues = (template: FormTemplate) => {
@@ -129,7 +129,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     // Only process if we have visible sections for the current step
     if (visibleSections.length > 0 && currentStep < visibleSections.length) {
       // Process all sections at the current step with debouncing
-      console.log("[FormContext/useEffect]: Processing sections for step", currentStep, "isOpticianMode:", isOpticianMode);
+      // console.log("[FormContext/useEffect]: Processing sections for step", currentStep, "isOpticianMode:", isOpticianMode);
       processSectionsWithDebounce(visibleSections[currentStep], watchedValues);
     }
   }, [currentStep, setSubmissionStateCurrentStep, visibleSections, watchedValues, processSectionsWithDebounce]);

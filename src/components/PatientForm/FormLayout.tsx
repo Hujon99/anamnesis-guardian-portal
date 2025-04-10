@@ -30,7 +30,7 @@ export const FormLayout: React.FC = () => {
     finalizeSubmissionData  // Add this to access the function that prepares the formatted answers
   } = useFormContext();
 
-  console.log("[FormLayout]: Rendering with isOpticianMode:", isOpticianMode);
+  // console.log("[FormLayout]: Rendering with isOpticianMode:", isOpticianMode);
 
   // The onSubmit handler now only prevents default behavior but doesn't trigger submission
   // This prevents automatic form submission when pressing Enter or when the form is naturally submitted

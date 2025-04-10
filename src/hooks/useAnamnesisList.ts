@@ -75,7 +75,9 @@ export const useAnamnesisList = () => {
 
         console.log(`Fetched ${data?.length || 0} entries`);
         setInitialLoadComplete(true);
-        return data as AnamnesesEntry[];
+        
+        // Cast the data to AnamnesesEntry[] to ensure it matches the expected type
+        return data as unknown as AnamnesesEntry[];
       } catch (fetchError) {
         const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
         console.error("Error in query function:", fetchError);

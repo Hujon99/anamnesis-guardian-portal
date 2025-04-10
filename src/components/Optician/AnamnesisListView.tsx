@@ -55,8 +55,8 @@ export function AnamnesisListView() {
       <div className={`flex ${isMobile ? 'flex-col' : 'flex-row justify-between'} gap-4 mb-6`}>
         <div className={`${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
           <SearchInput
-            value={filters.searchQuery}
-            onChange={(value) => updateFilter("searchQuery", value)}
+            searchQuery={filters.searchQuery}
+            onSearchChange={(value) => updateFilter("searchQuery", value)}
             onRefresh={handleManualRefresh}
             isRefreshing={isFetching}
           />

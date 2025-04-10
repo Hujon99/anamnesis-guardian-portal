@@ -9,8 +9,8 @@ import { Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SearchInputProps {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
+  searchQuery: string;  // Changed from value to searchQuery
+  onSearchChange: (value: string) => void;  // Changed from onChange
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }

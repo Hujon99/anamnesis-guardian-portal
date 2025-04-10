@@ -5,7 +5,7 @@
  */
 
 import React, { createContext, useContext, useMemo, useCallback } from "react";
-import { FormTemplate, FormattedAnswerData, SubmissionData } from "@/types/anamnesis";
+import { FormTemplate, FormattedAnswerData } from "@/types/anamnesis";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -27,10 +27,8 @@ type FormContextValue = {
   progress: number;
   nextStep: () => void;
   previousStep: () => void;
-  isSubmitting: boolean;
-  handleSubmit: (callback?: (values: any, formattedAnswers?: any) => Promise<any>) => (values?: any, formattedAnswers?: any) => void;
   isOpticianMode: boolean;
-  finalizeSubmissionData: () => SubmissionData; // Expose the finalizeSubmissionData function
+  finalizeSubmissionData: () => FormattedAnswerData;
 };
 
 const FormContext = createContext<FormContextValue | undefined>(undefined);
@@ -46,16 +44,12 @@ export const useFormContext = () => {
 interface FormContextProviderProps {
   children: React.ReactNode;
   formTemplate: FormTemplate;
-  onSubmit: (values: any, formattedAnswers?: any) => Promise<any>;
-  isSubmitting: boolean;
   isOpticianMode?: boolean;
 }
 
 export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   children,
   formTemplate,
-  onSubmit,
-  isSubmitting,
   isOpticianMode = false
 }) => {
   // console.log("[FormContextProvider]: Initializing with isOpticianMode:", isOpticianMode);
@@ -99,7 +93,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     resolver: validationSchema ? zodResolver(validationSchema) : undefined
   });
   
-  const { watch, handleSubmit, trigger } = form;
+  const { watch, handleSubmit: RHFhandleSubmit, trigger } = form;
   const watchedValues = watch();
   
   // Initialize hooks for form state
@@ -173,51 +167,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     window.scrollTo(0, 0); // Scroll to top for the new step
   };
 
-  // Handle form submission
-  const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<any>) => {
-    return (values?: any, formattedAnswers?: any) => {
-      // console.log("[FormContext/handleFormSubmit]: Submission handler called");
-      // console.log("[FormContext/handleFormSubmit]: isLastStep:", isLastStep);
-      // console.log("[FormContext/handleFormSubmit]: isOpticianMode:", isOpticianMode);
-      
-      if (!isLastStep) {
-        // console.log("[FormContext/handleFormSubmit]: Not on last step, submission prevented");
-        return Promise.resolve();
-      }
-      
-      // console.log("[FormContext/handleFormSubmit]: On last step, proceeding with submission");
-      
-      // Get the current form values if not provided
-      const currentValues = values || form.getValues();
-      
-      // Use the provided formatted answers or generate them if not provided
-      let submissionData = formattedAnswers;
-      if (!submissionData) {
-        console.log("[FormContext/handleFormSubmit]: No formatted answers provided, generating now");
-        submissionData = finalizeSubmissionData();
-      }
-      
-      console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
-      console.log("[FormContext/handleFormSubmit]: Using formatted data:", 
-        JSON.stringify(submissionData, null, 2));
-      
-      // If a callback was provided, call it with the form values and formatted answers
-      if (callback) {
-        console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
-        return callback(currentValues, submissionData);
-      } else if (onSubmit) {
-        // Fall back to the onSubmit prop if no specific callback was provided
-        console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
-        return onSubmit(currentValues, submissionData);
-      } else {
-        console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
-        return Promise.resolve();
-      }
-    };
-  }, [form, isLastStep, isOpticianMode, finalizeSubmissionData, onSubmit]);
+  // Calculate progress (remains the same)
+  const progress = useMemo(() => calculateProgress(), [currentStep, calculateProgress]);
 
-  // Create memoized context value
-  const contextValue = useMemo(() => ({
+  // Memoize context value
+  const contextValue = useMemo<FormContextValue>(() => ({
     form,
     currentStep,
     watchedValues,
@@ -225,13 +179,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     totalSections,
     isFirstStep,
     isLastStep,
-    progress: calculateProgress(),
+    progress,
     nextStep,
     previousStep,
-    isSubmitting,
-    handleSubmit: handleFormSubmit,
     isOpticianMode,
-    finalizeSubmissionData // Add this to the context value
+    finalizeSubmissionData
   }), [
     form,
     currentStep,
@@ -240,11 +192,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     totalSections,
     isFirstStep,
     isLastStep,
-    calculateProgress,
-    isSubmitting,
-    handleFormSubmit,
+    progress,
+    nextStep,
+    previousStep,
     isOpticianMode,
-    finalizeSubmissionData // Add this to the dependencies
+    finalizeSubmissionData
   ]);
 
   // Keyboard shortcuts for navigation

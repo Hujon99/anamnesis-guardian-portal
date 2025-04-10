@@ -1,4 +1,3 @@
-
 /**
  * This hook manages the incremental construction of form submission data.
  * It tracks visible sections and questions in real-time as the user navigates
@@ -6,14 +5,24 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData, SubmissionData } from "@/types/anamnesis";
+import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData } from "@/types/anamnesis";
+
+// Debounce utility (or import from 'lodash.debounce')
+const debounce = (func: (...args: any[]) => void, wait: number) => {
+  let timeout: ReturnType<typeof setTimeout>;
+  return (...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
 
 export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Use ref for mutable submission data to avoid unnecessary re-renders
   const submissionDataRef = useRef<FormattedAnswerData>({
     formTitle: formTemplate.title,
-    submissionTimestamp: new Date().toISOString(),
-    answeredSections: []
+    submissionTimestamp: "", // Will be set on finalization
+    answeredSections: [],
+    // Add isOpticianSubmission flag here if needed globally, or add it later
   });
   
   // Debugging state to track processing
@@ -220,64 +229,56 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   }, [evaluateCondition, cleanEmptySections]);
 
   // Process all sections with debouncing to prevent excessive processing
-  const processSectionsWithDebounce = useCallback((
-    sections: FormSection[], 
-    currentValues: Record<string, any>
-  ) => {
-    // Create a hash of the current values to detect changes
-    const valuesHash = JSON.stringify(currentValues);
-    
-    // Skip processing if values haven't changed
-    if (valuesHash === lastProcessedValuesRef.current) {
-      return;
-    }
-    
-    // Update last processed values
-    lastProcessedValuesRef.current = valuesHash;
-    
-    // console.log(`[FormSubmissionState/processSectionsWithDebounce] Processing ${sections.length} sections`);
-    
-    // Clear any existing timer
-    if (processingTimerRef.current !== null) {
-      clearTimeout(processingTimerRef.current);
-    }
-    
-    // Set a new timer for processing (debounce)
-    processingTimerRef.current = window.setTimeout(() => {
-      // Update counter for debugging
-      setProcessingCount(prev => prev + 1);
+  const processSectionsWithDebounce = useCallback(
+    debounce((sections: FormSection[], currentValues: Record<string, any>) => {
+      // Create a hash of the current values to detect changes
+      const valuesHash = JSON.stringify(currentValues);
       
-      // Process each section
-      sections.forEach(section => {
-        processSection(section, currentValues);
-      });
-      
-      // console.log(`[FormSubmissionState/processSectionsWithDebounce] Current submission data:`, 
-      //   JSON.stringify(submissionDataRef.current, null, 2));
-      
-      processingTimerRef.current = null;
-    }, 100); // 100ms debounce
-  }, [processSection]);
-
-  // Update the timestamp before final submission
-  const finalizeSubmissionData = useCallback((): SubmissionData => {
-    submissionDataRef.current.submissionTimestamp = new Date().toISOString();
-    
-    // console.log(`[FormSubmissionState/finalizeSubmissionData] Final submission data:`, 
-    //   JSON.stringify(submissionDataRef.current, null, 2));
-    
-    return {
-      // Only include the formatted answers part
-      formattedAnswers: { ...submissionDataRef.current },
-      // REMOVED: rawAnswers property is no longer included
-      // rawAnswers: { /* Will be filled by the form submission hook */ },
-      metadata: {
-        formTemplateId: formTemplate.title,
-        submittedAt: submissionDataRef.current.submissionTimestamp,
-        version: "2.0" // Or determine version based on mode if needed here
+      // Skip processing if values haven't changed
+      if (valuesHash === lastProcessedValuesRef.current) {
+        return;
       }
-    };
-  }, [formTemplate.title]);
+      
+      // Update last processed values
+      lastProcessedValuesRef.current = valuesHash;
+      
+      // console.log(`[FormSubmissionState/processSectionsWithDebounce] Processing ${sections.length} sections`);
+      
+      // Clear any existing timer
+      if (processingTimerRef.current !== null) {
+        clearTimeout(processingTimerRef.current);
+      }
+      
+      // Set a new timer for processing (debounce)
+      processingTimerRef.current = window.setTimeout(() => {
+        // Update counter for debugging
+        setProcessingCount(prev => prev + 1);
+        
+        // Process each section
+        sections.forEach(section => {
+          processSection(section, currentValues);
+        });
+        
+        // console.log(`[FormSubmissionState/processSectionsWithDebounce] Current submission data:`, 
+        //   JSON.stringify(submissionDataRef.current, null, 2));
+        
+        processingTimerRef.current = null;
+      }, 100); // 100ms debounce
+    }, 300), // 300ms debounce time
+    [processSection] // Dependencies for the debounced function
+  );
+
+  // Update the timestamp and return the final data structure
+  const finalizeSubmissionData = useCallback((): FormattedAnswerData => {
+    submissionDataRef.current.submissionTimestamp = new Date().toISOString();
+
+    console.log(`[FormSubmissionState/finalizeSubmissionData] Final formatted data:`,
+      JSON.stringify(submissionDataRef.current, null, 2));
+
+    // Return the ref's current value directly
+    return { ...submissionDataRef.current }; // Return a copy
+
+  }, []);
 
   // For debugging - return the current processing count
   const getProcessingCount = useCallback(() => processingCount, [processingCount]);

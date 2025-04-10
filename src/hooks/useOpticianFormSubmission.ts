@@ -1,4 +1,3 @@
-
 /**
  * This hook manages form submission specifically for optician-completed anamnesis forms.
  * It handles submission state, navigation after submission, and automatically sets the
@@ -33,6 +32,26 @@ export const useOpticianFormSubmission = (token: string | null) => {
     console.log("[useOpticianFormSubmission/handleFormSubmit]: Starting form submission with values:", values);
     console.log("[useOpticianFormSubmission/handleFormSubmit]: Formatted answers:", 
       formattedAnswers ? JSON.stringify(formattedAnswers, null, 2) : "none provided");
+    
+    // If no formatted answers were provided, explicitly get them from the form context
+    if (!formattedAnswers) {
+      // Get the form context to access finalizeSubmissionData
+      try {
+        console.log("[useOpticianFormSubmission/handleFormSubmit]: No formatted answers provided, attempting to generate from current form state");
+        
+        // Call finalizeSubmissionData from anywhere that has access to the form context
+        // This will ensure we always have formatted answers
+        const formContextData = document.querySelector('[data-formcontext="true"]');
+        if (formContextData && 'finalizeSubmissionData' in window) {
+          formattedAnswers = (window as any).finalizeSubmissionData();
+          console.log("[useOpticianFormSubmission/handleFormSubmit]: Generated formatted answers:", 
+            JSON.stringify(formattedAnswers, null, 2));
+        }
+      } catch (error) {
+        console.error("[useOpticianFormSubmission/handleFormSubmit]: Error getting formatted answers from form context:", error);
+      }
+    }
+    
     console.log("[useOpticianFormSubmission/handleFormSubmit]: Token:", token);
     
     try {

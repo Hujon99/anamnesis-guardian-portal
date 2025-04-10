@@ -94,43 +94,33 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       console.log(`[FormSubmissionState/processQuestion] Question "${question.id}" visible: ${shouldShowQuestion}`);
       
       // Find the section in our data
-      let sectionIndex = submissionDataRef.current.answeredSections.findIndex(
+      const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
         s => s.section_title === sectionTitle
       );
       
       // If section doesn't exist yet, create it
+      let currentSectionIndex = sectionIndex;
       if (sectionIndex === -1) {
-        findOrCreateSection(sectionTitle);
-        sectionIndex = submissionDataRef.current.answeredSections.findIndex(
-          s => s.section_title === sectionTitle
-        );
-      }
-      
-      // Safety check
-      if (sectionIndex === -1) {
-        throw new Error(`Section "${sectionTitle}" not found in submission data after creation attempt`);
+        // Create new section and get its index
+        const newSection = {
+          section_title: sectionTitle,
+          responses: []
+        };
+        submissionDataRef.current.answeredSections.push(newSection);
+        currentSectionIndex = submissionDataRef.current.answeredSections.length - 1;
+        console.log(`[FormSubmissionState/processQuestion] Created new section: ${sectionTitle}`);
       }
       
       // If question shouldn't be shown, remove any existing data
       if (!shouldShowQuestion) {
-        const questionIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
-          r => r.id === question.id
-        );
-        
-        if (questionIndex !== -1) {
-          console.log(`[FormSubmissionState/processQuestion] Removing hidden question: ${question.id}`);
-          submissionDataRef.current.answeredSections[sectionIndex].responses.splice(questionIndex, 1);
-          
-          // Also remove any associated "other" fields
-          const otherFieldId = `${question.id}_other`;
-          const alternativeOtherFieldId = `${question.id}_övrigt`;
-          
-          const otherIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
-            r => r.id === otherFieldId || r.id === alternativeOtherFieldId
+        if (currentSectionIndex !== -1) {
+          const questionIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
+            r => r.id === question.id
           );
           
-          if (otherIndex !== -1) {
-            submissionDataRef.current.answeredSections[sectionIndex].responses.splice(otherIndex, 1);
+          if (questionIndex !== -1) {
+            console.log(`[FormSubmissionState/processQuestion] Removing hidden question: ${question.id}`);
+            submissionDataRef.current.answeredSections[currentSectionIndex].responses.splice(questionIndex, 1);
           }
         }
         return;
@@ -146,63 +136,44 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         (typeof answer === 'string' && answer.trim() === '');
       
       // For debugging, log the question and its answer
-      console.log(`[FormSubmissionState/processQuestion] Question: ${question.id}, Answer: ${isEmpty ? 'empty' : answer}`);
+      console.log(`[FormSubmissionState/processQuestion] Question: ${question.id}, Answer: ${isEmpty ? 'empty' : JSON.stringify(answer)}`);
+      
+      // This is critical - force log the current submission data structure 
+      console.log(`[FormSubmissionState/processQuestion] Current submission data structure:`, 
+        JSON.stringify(submissionDataRef.current, null, 2));
       
       // Update or remove the answer
-      const existingResponseIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
-        r => r.id === question.id
-      );
-      
       if (isEmpty) {
         // Remove the answer if it exists but is now empty
-        if (existingResponseIndex !== -1) {
-          console.log(`[FormSubmissionState/processQuestion] Removing empty answer for: ${question.id}`);
-          submissionDataRef.current.answeredSections[sectionIndex].responses.splice(existingResponseIndex, 1);
+        if (currentSectionIndex !== -1) {
+          const existingResponseIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
+            r => r.id === question.id
+          );
+          
+          if (existingResponseIndex !== -1) {
+            console.log(`[FormSubmissionState/processQuestion] Removing empty answer for: ${question.id}`);
+            submissionDataRef.current.answeredSections[currentSectionIndex].responses.splice(existingResponseIndex, 1);
+          }
         }
       } else {
-        // Add or update the answer
-        if (existingResponseIndex !== -1) {
-          submissionDataRef.current.answeredSections[sectionIndex].responses[existingResponseIndex].answer = answer;
-          console.log(`[FormSubmissionState/processQuestion] Updated answer for: ${question.id}`);
-        } else {
-          submissionDataRef.current.answeredSections[sectionIndex].responses.push({
-            id: question.id,
-            answer
-          });
-          console.log(`[FormSubmissionState/processQuestion] Added new answer for: ${question.id}`);
-        }
-        
-        // Handle "Other" option for radio buttons and dropdowns
-        if (
-          (question.type === 'radio' || question.type === 'dropdown') &&
-          question.options && 
-          question.options.includes('Övrigt') &&
-          answer === 'Övrigt'
-        ) {
-          // Look for the associated "other" text input
-          const otherFieldId = `${question.id}_other`;
-          const alternativeOtherFieldId = `${question.id}_övrigt`;
+        // Add or update the answer - ensure we're working with the right section index
+        if (currentSectionIndex !== -1) {
+          const existingResponseIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
+            r => r.id === question.id
+          );
           
-          const otherAnswer = currentValues[otherFieldId] || currentValues[alternativeOtherFieldId];
-          const otherFieldIdToUse = otherFieldId in currentValues ? otherFieldId : alternativeOtherFieldId;
-          
-          if (otherAnswer) {
-            // Check if we already have this "other" answer
-            const otherResponseIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
-              r => r.id === otherFieldIdToUse
-            );
-            
-            if (otherResponseIndex !== -1) {
-              submissionDataRef.current.answeredSections[sectionIndex].responses[otherResponseIndex].answer = otherAnswer;
-              console.log(`[FormSubmissionState/processQuestion] Updated "other" answer for: ${otherFieldIdToUse}`);
-            } else {
-              submissionDataRef.current.answeredSections[sectionIndex].responses.push({
-                id: otherFieldIdToUse,
-                answer: otherAnswer
-              });
-              console.log(`[FormSubmissionState/processQuestion] Added new "other" answer for: ${otherFieldIdToUse}`);
-            }
+          if (existingResponseIndex !== -1) {
+            submissionDataRef.current.answeredSections[currentSectionIndex].responses[existingResponseIndex].answer = answer;
+            console.log(`[FormSubmissionState/processQuestion] Updated answer for: ${question.id}`);
+          } else {
+            submissionDataRef.current.answeredSections[currentSectionIndex].responses.push({
+              id: question.id,
+              answer
+            });
+            console.log(`[FormSubmissionState/processQuestion] Added new answer for: ${question.id}`);
           }
+        } else {
+          console.error(`[FormSubmissionState/processQuestion] Cannot find section for question: ${question.id}`);
         }
       }
     } catch (error) {
@@ -211,7 +182,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     
     // Clean up empty sections
     cleanEmptySections();
-  }, [findOrCreateSection]);
+  }, [evaluateCondition, cleanEmptySections]);
 
   // Clean up any sections that no longer have answers
   const cleanEmptySections = useCallback(() => {

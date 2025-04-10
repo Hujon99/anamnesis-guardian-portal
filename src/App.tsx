@@ -1,4 +1,4 @@
-//Comment
+
 /**
  * This is the main application component that sets up routing, authentication,
  * and global contexts. It defines all available routes and their corresponding

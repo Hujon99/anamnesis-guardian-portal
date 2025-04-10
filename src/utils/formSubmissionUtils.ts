@@ -88,8 +88,8 @@ export const prepareFormSubmission = (
       }
     };
   } else {
-    // Fallback to legacy approach with null check for formTemplate
-    console.warn("[formSubmissionUtils/prepareFormSubmission]: WARNING: Using legacy processFormAnswers approach");
+    // If no pre-processed answers are provided, we need to process the raw answers ourselves
+    console.log("[formSubmissionUtils/prepareFormSubmission]: No pre-processed answers. Need to process raw answers");
     
     // Bail out early if formTemplate is null or undefined
     if (!formTemplate) {
@@ -208,6 +208,7 @@ export const prepareFormSubmission = (
     // If this is an optician submission, mark it
     if (isOpticianMode) {
       formattedAnswer.isOpticianSubmission = true;
+      console.log("[formSubmissionUtils/prepareFormSubmission]: Marked formattedAnswer as optician submission");
     }
     
     return {

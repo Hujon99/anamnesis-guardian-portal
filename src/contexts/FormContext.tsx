@@ -193,6 +193,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       
       // Add optician flag directly to the formatted data if applicable
       if (isOpticianMode && formattedSubmissionData) {
+        console.log("[FormContext/handleFormSubmit]: Adding optician mode flags to submission data");
+        
         // Set the flag in the appropriate location
         if (formattedSubmissionData.formattedAnswers) {
           formattedSubmissionData.formattedAnswers.isOpticianSubmission = true;

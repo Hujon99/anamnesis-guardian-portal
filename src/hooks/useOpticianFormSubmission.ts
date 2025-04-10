@@ -46,7 +46,8 @@ export const useOpticianFormSubmission = (token: string | null) => {
     console.log("[useOpticianFormSubmission/handleFormSubmit]: Submitting optician form with data:", opticianSubmissionData);
     
     try {
-      // Pass the optician metadata along with the form values
+      // Make sure that formattedAnswers is explicitly passed, even if it's empty
+      // This ensures our FormSubmissionUtils will process it
       const result = await submitForm(token, opticianSubmissionData, formTemplate, formattedAnswers);
       console.log("[useOpticianFormSubmission/handleFormSubmit]: Submit form result:", result);
       

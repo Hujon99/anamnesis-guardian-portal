@@ -28,9 +28,11 @@ const FormContainer: React.FC<FormContainerProps> = ({
     console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
     console.log("[FormContainer/handleSubmit]: Form values:", values);
     console.log("[FormContainer/handleSubmit]: Formatted answers:", formattedAnswers);
+    console.log("[FormContainer/handleSubmit]: isOpticianMode:", isOpticianMode);
     
     try {
       console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler");
+      // Make sure to pass along the formatted answers to maintain the chain
       return await onSubmit(values, formattedAnswers);
     } catch (error) {
       console.error("[FormContainer/handleSubmit]: Error in form submission:", error);

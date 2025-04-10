@@ -14,6 +14,7 @@ import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import OpticianFormContainer from "@/components/Optician/OpticianFormContainer";
 import OpticianSubmittedView from "@/components/Optician/OpticianSubmittedView";
 import { useEffect } from "react";
+import { toast } from "sonner";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -48,8 +49,14 @@ const OpticianFormPage = () => {
   useEffect(() => {
     if (!isOpticianMode && !loading) {
       navigate("/dashboard");
+      return;
     }
-  }, [isOpticianMode, loading, navigate]);
+
+    // Display notification for direct form filling mode
+    if (isOpticianMode && !loading && formTemplate && !submitted && !isSubmitted) {
+      toast.info("Du fyller nu i formuläret direkt i butiken");
+    }
+  }, [isOpticianMode, loading, navigate, formTemplate, submitted, isSubmitted]);
 
   // Loading state
   if (loading) {

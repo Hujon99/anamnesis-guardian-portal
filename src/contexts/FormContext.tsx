@@ -137,7 +137,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Handle next step with validation
   const nextStep = async () => {
     if (isLastStep) {
-      console.log("[FormContext/nextStep]: On last step, not proceeding to next");
+      // console.log("[FormContext/nextStep]: On last step, not proceeding to next");
       return;
     }
     
@@ -146,7 +146,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     const isValid = await trigger(fieldsToValidate);
     
     if (isValid) {
-      console.log("[FormContext/nextStep]: Step validation successful, moving to next step");
+      // console.log("[FormContext/nextStep]: Step validation successful, moving to next step");
       goToNextStep();
       // Announce step change to screen readers
       const stepInfo = document.getElementById('step-info');
@@ -168,7 +168,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
 
   // Handle previous step
   const previousStep = () => {
-    console.log("[FormContext/previousStep]: Moving to previous step");
+    // console.log("[FormContext/previousStep]: Moving to previous step");
     goToPreviousStep();
     window.scrollTo(0, 0); // Scroll to top for the new step
   };
@@ -176,16 +176,16 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Handle form submission
   const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<any>) => {
     return (values?: any, formattedAnswers?: any) => {
-      console.log("[FormContext/handleFormSubmit]: Submission handler called");
-      console.log("[FormContext/handleFormSubmit]: isLastStep:", isLastStep);
-      console.log("[FormContext/handleFormSubmit]: isOpticianMode:", isOpticianMode);
+      // console.log("[FormContext/handleFormSubmit]: Submission handler called");
+      // console.log("[FormContext/handleFormSubmit]: isLastStep:", isLastStep);
+      // console.log("[FormContext/handleFormSubmit]: isOpticianMode:", isOpticianMode);
       
       if (!isLastStep) {
-        console.log("[FormContext/handleFormSubmit]: Not on last step, submission prevented");
+        // console.log("[FormContext/handleFormSubmit]: Not on last step, submission prevented");
         return Promise.resolve();
       }
       
-      console.log("[FormContext/handleFormSubmit]: On last step, proceeding with submission");
+      // console.log("[FormContext/handleFormSubmit]: On last step, proceeding with submission");
       
       // Get the current form values if not provided
       const currentValues = values || form.getValues();

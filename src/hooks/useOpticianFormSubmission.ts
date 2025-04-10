@@ -26,11 +26,7 @@ export const useOpticianFormSubmission = (token: string | null) => {
   const handleFormSubmit = async (values: any, formTemplate?: FormTemplate, formattedAnswers?: any): Promise<void> => {
     if (!token) {
       console.error("[useOpticianFormSubmission/handleFormSubmit]: No token available for submission");
-      toast({
-        title: "Error",
-        description: "Missing token for form submission",
-        variant: "destructive",
-      });
+      toast.error("Missing token for form submission");
       return;
     }
     
@@ -59,8 +55,7 @@ export const useOpticianFormSubmission = (token: string | null) => {
         console.log("[useOpticianFormSubmission/handleFormSubmit]: Form submission successful, setting localSubmitted to true");
         setLocalSubmitted(true);
         
-        toast({
-          title: "Formuläret har fyllts i",
+        toast.success("Formuläret har fyllts i", {
           description: "Patientens anamnes har markerats som klar för undersökning",
         });
         
@@ -71,18 +66,14 @@ export const useOpticianFormSubmission = (token: string | null) => {
         }, 2000);
       } else {
         console.error("[useOpticianFormSubmission/handleFormSubmit]: Form submission failed");
-        toast({
-          title: "Något gick fel",
+        toast.error("Något gick fel", {
           description: "Formuläret kunde inte skickas in, försök igen",
-          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("[useOpticianFormSubmission/handleFormSubmit]: Error during form submission:", error);
-      toast({
-        title: "Ett fel uppstod",
+      toast.error("Ett fel uppstod", {
         description: "Kunde inte skicka in formuläret på grund av ett tekniskt fel",
-        variant: "destructive",
       });
     }
   };

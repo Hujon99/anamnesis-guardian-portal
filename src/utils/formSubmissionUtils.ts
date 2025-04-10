@@ -75,10 +75,10 @@ export const prepareFormSubmission = (
       console.warn("[formSubmissionUtils/prepareFormSubmission]: No answeredSections or empty answeredSections found");
     }
     
-    // Return an object structure suitable for API submission - without rawAnswers
+    // FIXED: Don't spread processedAnswers, maintain the structure
     return {
-      // Include the formatted answers
-      ...processedAnswers,
+      // Ensure formattedAnswers property exists at the top level
+      formattedAnswers: processedAnswers.formattedAnswers || formattedAnswersData,
       
       // Add metadata for optician submissions if applicable
       ...(isOpticianMode && {

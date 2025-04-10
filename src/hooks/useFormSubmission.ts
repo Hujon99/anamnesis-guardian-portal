@@ -1,4 +1,3 @@
-
 /**
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
@@ -39,6 +38,12 @@ export const useFormSubmission = () => {
       const submissionData = formTemplate 
         ? prepareFormSubmission(formTemplate, values, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: values }; // Fallback for backward compatibility
+
+      console.log("[useFormSubmission/submitForm]: Final submission structure:", 
+        JSON.stringify({
+          token: token.substring(0, 6) + '...',
+          answers: submissionData
+        }, null, 2));
 
       console.log("[useFormSubmission/submitForm]: Submitting form with data:", 
         JSON.stringify(submissionData, null, 2));

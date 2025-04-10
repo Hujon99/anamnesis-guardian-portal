@@ -61,14 +61,14 @@ export const updateEntryFormattedRawData = async (
 };
 
 /**
- * Updates the patient email of an anamnesis entry
+ * Updates the patient identification information of an anamnesis entry
  */
 export const updateEntryPatientEmail = async (
   supabase: SupabaseClient,
   entryId: string,
-  email: string
+  identifier: string
 ) => {
-  return updateEntry(supabase, entryId, { patient_email: email });
+  return updateEntry(supabase, entryId, { patient_email: identifier });
 };
 
 /**
@@ -83,19 +83,19 @@ export const updateEntryAiSummary = async (
 };
 
 /**
- * Sends a link to a patient by updating the entry status and email
+ * Creates a new entry with patient identifier
  */
-export const sendLinkToPatient = async (
+export const createEntryWithPatientIdentifier = async (
   supabase: SupabaseClient,
   entryId: string,
-  patientEmail: string
+  patientIdentifier: string
 ) => {
-  if (!patientEmail) {
-    throw new Error("E-post är obligatoriskt för att skicka länk");
+  if (!patientIdentifier) {
+    throw new Error("Patient-identifierare är obligatoriskt");
   }
   
   return updateEntry(supabase, entryId, {
-    patient_email: patientEmail,
+    patient_email: patientIdentifier,
     status: "sent",
     sent_at: new Date().toISOString()
   });

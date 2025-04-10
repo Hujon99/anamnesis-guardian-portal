@@ -1,13 +1,13 @@
 
 /**
- * This hook provides a mutation function for sending links to patients.
+ * This hook provides a mutation function for updating patient identification.
  * It handles authentication, validation, and error recovery.
  */
 
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
-import { sendLinkToPatient } from "@/utils/entryMutationUtils";
+import { updateEntryPatientEmail } from "@/utils/entryMutationUtils";
 
 export const useSendLinkMutation = (entryId: string, onSuccess?: () => void) => {
   const { supabase, refreshClient } = useSupabaseClient();
@@ -16,7 +16,7 @@ export const useSendLinkMutation = (entryId: string, onSuccess?: () => void) => 
   // Helper function to ensure authentication before making requests
   const ensureAuthenticated = async (force = false) => {
     try {
-      console.log(`Ensuring authentication for send link mutation (force=${force})`);
+      console.log(`Ensuring authentication for patient update mutation (force=${force})`);
       await refreshClient(force);
       return true;
     } catch (error) {
@@ -31,14 +31,14 @@ export const useSendLinkMutation = (entryId: string, onSuccess?: () => void) => 
   };
 
   const sendLinkMutation = useMutation({
-    mutationFn: async (patientEmail: string) => {
+    mutationFn: async (patientIdentifier: string) => {
       // Ensure we have a valid authentication token with forced refresh
       await ensureAuthenticated(true);
       
-      return sendLinkToPatient(supabase, entryId, patientEmail);
+      return updateEntryPatientEmail(supabase, entryId, patientIdentifier);
     },
     onSuccess: (data) => {
-      console.log("Link sent successfully:", data);
+      console.log("Patient identifier updated successfully:", data);
       
       // For significant status changes, we still need a more complete refresh
       // But we make it more targeted - only refresh the sent tab
@@ -50,18 +50,18 @@ export const useSendLinkMutation = (entryId: string, onSuccess?: () => void) => 
       }, 100);
       
       toast({
-        title: "Länk skickad",
-        description: "Anamneslänken har skickats till patienten.",
+        title: "Patientinformation uppdaterad",
+        description: "Patientens identifierare har uppdaterats.",
       });
       
       if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
-      console.error("Send link mutation error:", error);
+      console.error("Patient identification update error:", error);
       
       toast({
         title: "Ett fel uppstod",
-        description: error.message || "Kunde inte skicka länken. Försök igen.",
+        description: error.message || "Kunde inte uppdatera patientinformation. Försök igen.",
         variant: "destructive",
       });
       
@@ -82,8 +82,8 @@ export const useSendLinkMutation = (entryId: string, onSuccess?: () => void) => 
 
   return {
     sendLinkMutation,
-    sendLink: (patientEmail: string) => {
-      sendLinkMutation.mutate(patientEmail);
+    sendLink: (patientIdentifier: string) => {
+      sendLinkMutation.mutate(patientIdentifier);
     }
   };
 };

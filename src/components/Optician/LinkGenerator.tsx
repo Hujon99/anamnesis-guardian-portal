@@ -1,7 +1,7 @@
 
 /**
  * This component provides functionality for generating patient links.
- * It allows opticians to create new links, enter patient emails, and copy 
+ * It allows opticians to create new links, enter patient identifiers, and copy 
  * generated links to the clipboard for sharing with patients.
  */
 
@@ -14,19 +14,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Loader2, Plus, Send } from "lucide-react";
+import { Copy, Loader2, Plus, Link as LinkIcon } from "lucide-react";
 
 export function LinkGenerator() {
   const { organization } = useOrganization();
   const { user } = useUser();
   const { supabase } = useSupabaseClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [patientEmail, setPatientEmail] = useState("");
+  const [patientIdentifier, setPatientIdentifier] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
   const queryClient = useQueryClient();
 
   const createAnamnesisEntry = useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async (identifier: string) => {
       if (!organization?.id) {
         throw new Error("Organisation saknas");
       }
@@ -42,7 +42,7 @@ export function LinkGenerator() {
           status: "sent",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
           form_id: crypto.randomUUID(),
-          patient_email: email.trim() || null,
+          patient_email: identifier.trim() || null,
           created_by: user?.id || null,
           sent_at: new Date().toISOString()
         })
@@ -64,7 +64,7 @@ export function LinkGenerator() {
       
       toast({
         title: "Länk skapad",
-        description: "Länken har skapats och skickats till patienten",
+        description: "Länken har skapats för patienten",
       });
     },
     onError: (error: any) => {
@@ -78,7 +78,7 @@ export function LinkGenerator() {
   });
 
   const handleCreateLink = () => {
-    createAnamnesisEntry.mutate(patientEmail);
+    createAnamnesisEntry.mutate(patientIdentifier);
   };
 
   const copyToClipboard = () => {
@@ -111,19 +111,18 @@ export function LinkGenerator() {
         <DialogHeader>
           <DialogTitle>Skapa ny patientlänk</DialogTitle>
           <DialogDescription>
-            Skapa en unik länk som du kan skicka till patienten via SMS eller e-post.
-            Länken kommer att vara giltig i 7 dagar.
+            Skapa en unik länk för patienten som kommer vara giltig i 7 dagar.
           </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="patientEmail">Patientens e-post</Label>
+            <Label htmlFor="patientIdentifier">Patient (namn/nummer)</Label>
             <Input
-              id="patientEmail"
-              placeholder="patient@exempel.se"
-              value={patientEmail}
-              onChange={(e) => setPatientEmail(e.target.value)}
+              id="patientIdentifier"
+              placeholder="T.ex. Anna Andersson eller P12345"
+              value={patientIdentifier}
+              onChange={(e) => setPatientIdentifier(e.target.value)}
             />
           </div>
           
@@ -155,15 +154,15 @@ export function LinkGenerator() {
               {createAnamnesisEntry.isPending && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
-              <Send className="h-4 w-4 mr-2" />
-              Skapa och skicka länk
+              <LinkIcon className="h-4 w-4 mr-2" />
+              Skapa länk
             </Button>
           ) : (
             <Button 
               onClick={() => {
                 setIsDialogOpen(false);
                 setGeneratedLink("");
-                setPatientEmail("");
+                setPatientIdentifier("");
               }}
               variant="outline"
               className="flex-1"

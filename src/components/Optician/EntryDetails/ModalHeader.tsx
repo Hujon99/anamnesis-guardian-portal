@@ -14,7 +14,6 @@ import {
   Clock, 
   Copy, 
   Printer, 
-  Mail,
   Loader2
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
@@ -71,9 +70,9 @@ export function ModalHeader({
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Calendar className="h-4 w-4" />
         <span>
-          Skickad: {entry.sent_at 
+          Skapad: {entry.sent_at 
             ? format(new Date(entry.sent_at), "yyyy-MM-dd HH:mm") 
-            : "Ej skickad"}
+            : "Datum saknas"}
         </span>
       </div>
       
@@ -88,29 +87,12 @@ export function ModalHeader({
             onClickCapture={() => {
               toast({
                 title: "Länk kopierad",
-                description: "Länken till patienten har kopierats till urklipp.",
+                description: "Länken har kopierats till urklipp.",
               });
             }}
           >
             <Copy className="h-3.5 w-3.5" />
             Kopiera länk
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleSendLink}
-            disabled={isSendingLink}
-            className="flex items-center gap-1"
-            aria-label="Skicka anamneslänk igen"
-          >
-            <Mail className="h-3.5 w-3.5" />
-            {isSendingLink 
-              ? <span className="flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" /> 
-                  Skickar...
-                </span>
-              : "Skicka länk igen"}
           </Button>
         </div>
       )}

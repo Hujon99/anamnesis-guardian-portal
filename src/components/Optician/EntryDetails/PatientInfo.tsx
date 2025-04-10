@@ -1,8 +1,8 @@
 
 /**
  * This component displays and allows editing of patient information,
- * particularly the email address associated with an anamnesis entry.
- * It provides an interface for opticians to view, edit and save patient contact information.
+ * particularly the identifier (name/number) associated with an anamnesis entry.
+ * It provides an interface for opticians to view, edit and save patient information.
  */
 
 import { useState } from "react";
@@ -58,13 +58,13 @@ export const PatientInfo = ({
       
       {isEditing ? (
         <div className="space-y-2">
-          <Label htmlFor="patientEmail">Patientens e-post</Label>
+          <Label htmlFor="patientEmail">Patient (namn/nummer)</Label>
           <div className="flex gap-2">
             <Input
               id="patientEmail"
               value={patientEmail}
               onChange={(e) => setPatientEmail(e.target.value)}
-              placeholder="patient@exempel.se"
+              placeholder="T.ex. Anna Andersson eller P12345"
             />
             <Button onClick={savePatientEmail}>
               <Save className="h-4 w-4 mr-1" />
@@ -74,7 +74,7 @@ export const PatientInfo = ({
         </div>
       ) : (
         <p className="text-muted-foreground">
-          {patientEmail || "Ingen e-post angiven"}
+          {patientEmail || "Ingen patientidentifierare angiven"}
         </p>
       )}
     </div>

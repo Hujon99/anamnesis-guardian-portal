@@ -1,50 +1,27 @@
 
 /**
- * This component provides search functionality for the anamnesis list.
- * It includes a search input with instant filtering and a refresh button.
- * The component is designed to be accessible and responsive.
+ * This component provides a search input for filtering the anamnesis entry list.
+ * It allows users to search by patient identifier (name/number).
  */
 
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { Search } from "lucide-react";
 
 interface SearchInputProps {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
-  onRefresh: () => void;
-  isRefreshing: boolean;
+  value: string;
+  onChange: (value: string) => void;
 }
 
-export function SearchInput({
-  searchQuery,
-  onSearchChange,
-  onRefresh,
-  isRefreshing
-}: SearchInputProps) {
+export const SearchInput = ({ value, onChange }: SearchInputProps) => {
   return (
-    <div className="flex items-center gap-2">
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
       <Input
-        placeholder="Sök efter patient-epost..."
-        value={searchQuery}
-        onChange={(e) => onSearchChange(e.target.value)}
-        className="flex-1"
-        aria-label="Sök efter anamnesen"
-        type="search"
-        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Sök efter patient (namn/nummer)..."
+        className="pl-9"
       />
-      <Button 
-        variant="outline" 
-        onClick={() => {
-          console.log("Manual refresh triggered");
-          onRefresh();
-        }} 
-        disabled={isRefreshing}
-        aria-label="Uppdatera listan"
-        title="Uppdatera listan"
-      >
-        <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-      </Button>
     </div>
   );
 }

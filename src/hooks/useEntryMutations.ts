@@ -16,7 +16,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     updateEntryMutation,
     updateStatus,
     saveFormattedRawData,
-    savePatientEmail,
+    savePatientIdentifier,
     saveAiSummary
   } = useEntryUpdateMutation(entryId, onSuccess);
   
@@ -30,7 +30,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLinkMutation,
     updateStatus,
     saveFormattedRawData,
-    savePatientEmail,
+    savePatientIdentifier,
     saveAiSummary,
     sendLink,
     refreshData: () => {

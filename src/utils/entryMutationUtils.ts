@@ -63,12 +63,12 @@ export const updateEntryFormattedRawData = async (
 /**
  * Updates the patient identification information of an anamnesis entry
  */
-export const updateEntryPatientEmail = async (
+export const updateEntryPatientIdentifier = async (
   supabase: SupabaseClient,
   entryId: string,
   identifier: string
 ) => {
-  return updateEntry(supabase, entryId, { patient_email: identifier });
+  return updateEntry(supabase, entryId, { patient_identifier: identifier });
 };
 
 /**
@@ -95,7 +95,7 @@ export const createEntryWithPatientIdentifier = async (
   }
   
   return updateEntry(supabase, entryId, {
-    patient_email: patientIdentifier,
+    patient_identifier: patientIdentifier,
     status: "sent",
     sent_at: new Date().toISOString()
   });

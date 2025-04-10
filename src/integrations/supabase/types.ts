@@ -22,7 +22,7 @@ export type Database = {
           id: string
           internal_notes: string | null
           organization_id: string
-          patient_email: string | null
+          patient_identifier: string | null
           sent_at: string | null
           status: string | null
           updated_at: string | null
@@ -39,7 +39,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           organization_id: string
-          patient_email?: string | null
+          patient_identifier?: string | null
           sent_at?: string | null
           status?: string | null
           updated_at?: string | null
@@ -56,7 +56,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           organization_id?: string
-          patient_email?: string | null
+          patient_identifier?: string | null
           sent_at?: string | null
           status?: string | null
           updated_at?: string | null

@@ -2,7 +2,7 @@
 /**
  * This hook manages the state and logic for the anamnesis detail view.
  * It centralizes all operations related to viewing and updating an anamnesis entry,
- * including formatted raw data management, patient email updates, and status changes.
+ * including formatted raw data management, patient identifier updates, and status changes.
  * 
  * The formatted raw data is directly stored in the database and used for AI summarization,
  * removing the need for separate internal notes management.
@@ -20,14 +20,14 @@ export function useAnamnesisDetail(
 ) {
   // Local state for edited data
   const [formattedRawData, setFormattedRawData] = useState(entry.formatted_raw_data || "");
-  const [patientEmail, setPatientEmail] = useState(entry.patient_email || "");
+  const [patientIdentifier, setPatientIdentifier] = useState(entry.patient_identifier || "");
   const [isEditing, setIsEditing] = useState(false);
   
   // Update local state when entry changes (e.g., after refresh)
   useEffect(() => {
     setFormattedRawData(entry.formatted_raw_data || "");
-    setPatientEmail(entry.patient_email || "");
-  }, [entry.formatted_raw_data, entry.patient_email]);
+    setPatientIdentifier(entry.patient_identifier || "");
+  }, [entry.formatted_raw_data, entry.patient_identifier]);
   
   // Get mutations and print functions
   const {
@@ -35,7 +35,7 @@ export function useAnamnesisDetail(
     sendLinkMutation,
     updateStatus,
     saveFormattedRawData,
-    savePatientEmail,
+    savePatientIdentifier,
     saveAiSummary,
     sendLink
   } = useEntryMutations(entry.id, onEntryUpdated);
@@ -57,16 +57,16 @@ export function useAnamnesisDetail(
     }
   }, [formattedRawData, entry.formatted_raw_data, saveFormattedRawData]);
 
-  const handleSavePatientEmail = () => {
-    if (patientEmail !== entry.patient_email) {
-      savePatientEmail(patientEmail);
+  const handleSavePatientIdentifier = () => {
+    if (patientIdentifier !== entry.patient_identifier) {
+      savePatientIdentifier(patientIdentifier);
     }
     setIsEditing(false);
   };
 
   const handleSendLink = () => {
-    if (patientEmail) {
-      sendLink(patientEmail);
+    if (patientIdentifier) {
+      sendLink(patientIdentifier);
     }
   };
 
@@ -90,14 +90,14 @@ export function useAnamnesisDetail(
     setIsEditing(!isEditing);
     if (isEditing) {
       // Reset to original value when canceling edit
-      setPatientEmail(entry.patient_email || "");
+      setPatientIdentifier(entry.patient_identifier || "");
     }
   };
 
   return {
     // State
     formattedRawData,
-    patientEmail,
+    patientIdentifier,
     isEditing,
     isExpired,
     answers,
@@ -109,10 +109,10 @@ export function useAnamnesisDetail(
     
     // Actions
     setFormattedRawData,
-    setPatientEmail,
+    setPatientIdentifier,
     toggleEditing,
     handleSaveFormattedRawData,
-    handleSavePatientEmail,
+    handleSavePatientIdentifier,
     handleSendLink,
     handleStatusUpdate,
     handleSaveAiSummary,

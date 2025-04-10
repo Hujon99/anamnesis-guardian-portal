@@ -68,7 +68,7 @@ export function AnamnesisListItem({
       onClick={onClick}
       tabIndex={0}
       role="button"
-      aria-label={`Visa detaljer för anamnes ${entry.patient_email || `#${entry.id.substring(0, 8)}`}`}
+      aria-label={`Visa detaljer för anamnes ${entry.patient_identifier || `#${entry.id.substring(0, 8)}`}`}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           onClick();
@@ -81,7 +81,7 @@ export function AnamnesisListItem({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <EntryStatusIcon status={entry.status || ""} />
-              <p className="font-medium">{entry.patient_email || `Anamnes #${entry.id.substring(0, 8)}`}</p>
+              <p className="font-medium">{entry.patient_identifier || `Anamnes #${entry.id.substring(0, 8)}`}</p>
               {!hasAnswers && entry.status === 'sent' && (
                 <Badge variant="outline" className="text-xs">Ej besvarad</Badge>
               )}

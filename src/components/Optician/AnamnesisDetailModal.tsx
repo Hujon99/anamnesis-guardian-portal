@@ -31,7 +31,7 @@ export function AnamnesisDetailModal({
   const {
     // State
     formattedRawData,
-    patientEmail,
+    patientIdentifier, // Updated from patientEmail
     isEditing,
     isExpired,
     answers,
@@ -43,10 +43,10 @@ export function AnamnesisDetailModal({
     
     // Actions
     setFormattedRawData,
-    setPatientEmail,
+    setPatientIdentifier, // Updated from setPatientEmail
     toggleEditing,
     handleSaveFormattedRawData,
-    handleSavePatientEmail,
+    handleSavePatientIdentifier, // Updated from handleSavePatientEmail
     handleSendLink,
     handleStatusUpdate,
     handleSaveAiSummary,
@@ -58,7 +58,7 @@ export function AnamnesisDetailModal({
   } = useAnamnesisDetail(entry, onEntryUpdated, () => onOpenChange(false));
 
   // Determines if we need to show the patient info section
-  const showPatientInfoSection = !entry.patient_email;
+  const showPatientInfoSection = !entry.patient_identifier; // Updated from patient_email
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -77,11 +77,11 @@ export function AnamnesisDetailModal({
         
         <div className="flex-1 overflow-hidden">
           <ModalTabContent
-            patientEmail={patientEmail}
+            patientIdentifier={patientIdentifier} // Updated from patientEmail
             isEditing={isEditing}
             toggleEditing={toggleEditing}
-            setPatientEmail={setPatientEmail}
-            savePatientEmail={handleSavePatientEmail}
+            setPatientIdentifier={setPatientIdentifier} // Updated from setPatientEmail
+            savePatientIdentifier={handleSavePatientIdentifier} // Updated from savePatientEmail
             formattedRawData={formattedRawData}
             setFormattedRawData={setFormattedRawData}
             saveFormattedRawData={handleSaveFormattedRawData}

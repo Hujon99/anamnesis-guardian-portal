@@ -1,3 +1,4 @@
+
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -54,8 +55,8 @@ export function AnamnesisListView() {
       <div className={`flex ${isMobile ? 'flex-col' : 'flex-row justify-between'} gap-4 mb-6`}>
         <div className={`${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
           <SearchInput
-            searchQuery={filters.searchQuery}
-            onSearchChange={(value) => updateFilter("searchQuery", value)}
+            value={filters.searchQuery}
+            onChange={(value) => updateFilter("searchQuery", value)}
             onRefresh={handleManualRefresh}
             isRefreshing={isFetching}
           />

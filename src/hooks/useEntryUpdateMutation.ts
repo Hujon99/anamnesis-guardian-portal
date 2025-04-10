@@ -11,7 +11,7 @@ import {
   updateEntry,
   updateEntryStatus,
   updateEntryFormattedRawData,
-  updateEntryPatientEmail,
+  updateEntryPatientIdentifier,
   updateEntryAiSummary 
 } from "@/utils/entryMutationUtils";
 import { AnamnesesEntry } from "@/types/anamnesis";
@@ -41,12 +41,12 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
     mutationFn: async ({ 
       status, 
       formattedRawData, 
-      email, 
+      identifier, 
       aiSummary 
     }: { 
       status?: string; 
       formattedRawData?: string; 
-      email?: string; 
+      identifier?: string; 
       aiSummary?: string 
     }) => {
       // Ensure we have a valid authentication token
@@ -59,7 +59,7 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
         console.log("Updating formatted raw data");
         updates.formatted_raw_data = formattedRawData;
       }
-      if (email !== undefined) updates.patient_email = email;
+      if (identifier !== undefined) updates.patient_identifier = identifier;
       if (aiSummary !== undefined) updates.ai_summary = aiSummary;
       
       return updateEntry(supabase, entryId, updates);
@@ -126,8 +126,8 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       console.log("saveFormattedRawData called with data of length:", formattedRawData.length);
       updateEntryMutation.mutate({ formattedRawData });
     },
-    savePatientEmail: (email: string) => {
-      updateEntryMutation.mutate({ email });
+    savePatientIdentifier: (identifier: string) => {
+      updateEntryMutation.mutate({ identifier });
     },
     saveAiSummary: (aiSummary: string) => {
       updateEntryMutation.mutate({ aiSummary });

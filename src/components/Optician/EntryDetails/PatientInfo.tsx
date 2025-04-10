@@ -12,20 +12,20 @@ import { Label } from "@/components/ui/label";
 import { Edit, Save } from "lucide-react";
 
 interface PatientInfoProps {
-  patientEmail: string;
+  patientIdentifier: string;
   isEditing: boolean;
   toggleEditing: () => void;
-  setPatientEmail: (value: string) => void;
-  savePatientEmail: () => void;
+  setPatientIdentifier: (value: string) => void;
+  savePatientIdentifier: () => void;
   status: string;
 }
 
 export const PatientInfo = ({
-  patientEmail,
+  patientIdentifier,
   isEditing,
   toggleEditing,
-  setPatientEmail,
-  savePatientEmail,
+  setPatientIdentifier,
+  savePatientIdentifier,
   status
 }: PatientInfoProps) => {
   return (
@@ -48,7 +48,7 @@ export const PatientInfo = ({
             size="sm" 
             onClick={() => {
               toggleEditing();
-              setPatientEmail(patientEmail); // Reset to original value
+              setPatientIdentifier(patientIdentifier); // Reset to original value
             }}
           >
             Avbryt
@@ -58,15 +58,15 @@ export const PatientInfo = ({
       
       {isEditing ? (
         <div className="space-y-2">
-          <Label htmlFor="patientEmail">Patient (namn/nummer)</Label>
+          <Label htmlFor="patientIdentifier">Patient (namn/nummer)</Label>
           <div className="flex gap-2">
             <Input
-              id="patientEmail"
-              value={patientEmail}
-              onChange={(e) => setPatientEmail(e.target.value)}
+              id="patientIdentifier"
+              value={patientIdentifier}
+              onChange={(e) => setPatientIdentifier(e.target.value)}
               placeholder="T.ex. Anna Andersson eller P12345"
             />
-            <Button onClick={savePatientEmail}>
+            <Button onClick={savePatientIdentifier}>
               <Save className="h-4 w-4 mr-1" />
               Spara
             </Button>
@@ -74,7 +74,7 @@ export const PatientInfo = ({
         </div>
       ) : (
         <p className="text-muted-foreground">
-          {patientEmail || "Ingen patientidentifierare angiven"}
+          {patientIdentifier || "Ingen patientidentifierare angiven"}
         </p>
       )}
     </div>

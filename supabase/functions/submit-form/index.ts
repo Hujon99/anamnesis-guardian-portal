@@ -1,3 +1,4 @@
+
 /**
  * Submit Form Edge Function (v9)
  * 
@@ -18,7 +19,7 @@ import { validateToken } from "../utils/validationUtils.ts";
 import { createSupabaseClient } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v9.1";
+const FUNCTION_VERSION = "v9.2";
 const FUNCTION_NAME = "submit-form";
 
 serve(async (req) => {

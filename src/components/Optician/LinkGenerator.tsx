@@ -43,7 +43,7 @@ export function LinkGenerator() {
           status: "sent",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
           form_id: crypto.randomUUID(),
-          patient_email: identifier.trim() || null,
+          patient_identifier: identifier.trim() || null,
           created_by: user?.id || null,
           sent_at: new Date().toISOString()
         })

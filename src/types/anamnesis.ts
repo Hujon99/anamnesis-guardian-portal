@@ -14,7 +14,7 @@ export type AnamnesesEntry = {
   answers: any | null;
   created_at: string | null;
   expires_at: string | null;
-  patient_email: string | null; // This is now used as a patient identifier (name/number)
+  patient_identifier: string | null; // Updated from patient_email to patient_identifier
   sent_at: string | null;
   created_by: string | null;
   updated_at: string | null;

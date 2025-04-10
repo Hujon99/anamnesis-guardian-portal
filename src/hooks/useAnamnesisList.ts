@@ -243,9 +243,9 @@ export const useAnamnesisList = () => {
 
   // Filter and sort the entries based on current filters
   const filteredEntries = entries.filter(entry => {
-    // Filter by search query (email)
-    if (filters.searchQuery && entry.patient_email) {
-      if (!entry.patient_email.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
+    // Filter by search query (patient identifier)
+    if (filters.searchQuery && entry.patient_identifier) {
+      if (!entry.patient_identifier.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
         return false;
       }
     }

@@ -104,7 +104,7 @@ export const EntryHeader = ({
       <div className="flex justify-between items-start">
         <div>
           <CardTitle className="text-xl">
-            {entry.patient_email || `Anamnes #${entry.id.substring(0, 8)}`}
+            {entry.patient_identifier || `Anamnes #${entry.id.substring(0, 8)}`}
           </CardTitle>
           <CardDescription className="flex flex-col gap-1 mt-2">
             <div className="flex items-center gap-2">

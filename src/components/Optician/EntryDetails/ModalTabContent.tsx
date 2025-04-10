@@ -13,11 +13,11 @@ import { OptimizedAnswersView } from "./OptimizedAnswersView";
 import { AnamnesesEntry } from "@/types/anamnesis";
 
 interface ModalTabContentProps {
-  patientEmail: string;
+  patientIdentifier: string; // Updated from patientEmail
   isEditing: boolean;
   toggleEditing: () => void;
-  setPatientEmail: (email: string) => void;
-  savePatientEmail: () => void;
+  setPatientIdentifier: (value: string) => void; // Updated from setPatientEmail
+  savePatientIdentifier: () => void; // Updated from savePatientEmail
   formattedRawData: string;
   setFormattedRawData: (data: string) => void;
   saveFormattedRawData: () => void;
@@ -31,11 +31,11 @@ interface ModalTabContentProps {
 }
 
 export function ModalTabContent({
-  patientEmail,
+  patientIdentifier, // Updated from patientEmail
   isEditing,
   toggleEditing,
-  setPatientEmail,
-  savePatientEmail,
+  setPatientIdentifier, // Updated from setPatientEmail
+  savePatientIdentifier, // Updated from savePatientEmail
   formattedRawData,
   setFormattedRawData,
   saveFormattedRawData,
@@ -90,11 +90,11 @@ export function ModalTabContent({
             {hasPatientInfoTab && (
               <TabsContent value="patient-info" className="h-full m-0 border-0 p-0 flex flex-col">
                 <PatientInfo
-                  patientEmail={patientEmail}
+                  patientIdentifier={patientIdentifier}
                   isEditing={isEditing}
                   toggleEditing={toggleEditing}
-                  setPatientEmail={setPatientEmail}
-                  savePatientEmail={savePatientEmail}
+                  setPatientIdentifier={setPatientIdentifier}
+                  savePatientIdentifier={savePatientIdentifier}
                   status={status}
                 />
               </TabsContent>

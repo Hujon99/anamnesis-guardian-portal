@@ -7,7 +7,7 @@
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
-import { updateEntryPatientEmail } from "@/utils/entryMutationUtils";
+import { updateEntryPatientIdentifier } from "@/utils/entryMutationUtils";
 
 export const useSendLinkMutation = (entryId: string, onSuccess?: () => void) => {
   const { supabase, refreshClient } = useSupabaseClient();
@@ -35,7 +35,7 @@ export const useSendLinkMutation = (entryId: string, onSuccess?: () => void) => 
       // Ensure we have a valid authentication token with forced refresh
       await ensureAuthenticated(true);
       
-      return updateEntryPatientEmail(supabase, entryId, patientIdentifier);
+      return updateEntryPatientIdentifier(supabase, entryId, patientIdentifier);
     },
     onSuccess: (data) => {
       console.log("Patient identifier updated successfully:", data);

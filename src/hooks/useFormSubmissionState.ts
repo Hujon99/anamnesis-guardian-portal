@@ -123,7 +123,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     
     // Process each question in the section
     section.questions.forEach(question => {
-      processQuestion(question, section.section_title, currentValues);
+      processQuestion(question, currentValues);
     });
   }, [findOrCreateSection, evaluateCondition]);
 

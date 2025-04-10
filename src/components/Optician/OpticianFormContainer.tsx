@@ -1,4 +1,3 @@
-
 /**
  * This component renders the form container specifically for opticians to fill out
  * patient anamnesis forms. It includes the form header, form content, and ensures
@@ -68,7 +67,7 @@ const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
       }
     };
     
-    return onSubmit(processedValues, formattedAnswers);
+    return onSubmit(processedValues, formTemplate, formattedAnswers);
   };
 
   return (

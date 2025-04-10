@@ -241,17 +241,20 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Update the timestamp before final submission
   const finalizeSubmissionData = useCallback((): SubmissionData => {
     submissionDataRef.current.submissionTimestamp = new Date().toISOString();
-    
-    console.log(`[FormSubmissionState/finalizeSubmissionData] Final submission data:`, 
+
+    console.log(`[FormSubmissionState/finalizeSubmissionData] Final submission data (formatted only):`,
       JSON.stringify(submissionDataRef.current, null, 2));
-    
+
+    // Return structure expected by prepareFormSubmission
     return {
+      // Only include the formatted answers part
       formattedAnswers: { ...submissionDataRef.current },
-      rawAnswers: { /* Will be filled by the form submission hook */ },
+      // REMOVED: rawAnswers property is no longer included
+      // rawAnswers: { /* Will be filled by the form submission hook */ },
       metadata: {
         formTemplateId: formTemplate.title,
         submittedAt: submissionDataRef.current.submissionTimestamp,
-        version: "2.0"
+        version: "2.0" // Or determine version based on mode if needed here
       }
     };
   }, [formTemplate.title]);

@@ -31,7 +31,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       currentStepRef.current = step;
       // Reduced logging frequency
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[FormSubmissionState] Current step updated to: ${step}`);
+        // console.log(`[FormSubmissionState] Current step updated to: ${step}`);
       }
     }
   }, []);
@@ -48,7 +48,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         responses: []
       };
       submissionDataRef.current.answeredSections.push(sectionData);
-      console.log(`[FormSubmissionState] Added new section: ${sectionTitle}`);
+      // console.log(`[FormSubmissionState] Added new section: ${sectionTitle}`);
     }
     
     return sectionData;
@@ -56,10 +56,10 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
   // Process a section's visibility and its questions
   const processSection = useCallback((section: FormSection, currentValues: Record<string, any>) => {
-    console.log(`[FormSubmissionState/processSection] Processing section "${section.section_title}"`);
+    // console.log(`[FormSubmissionState/processSection] Processing section "${section.section_title}"`);
     
     const shouldShowSection = evaluateCondition(section.show_if, currentValues);
-    console.log(`[FormSubmissionState/processSection] Section "${section.section_title}" visible: ${shouldShowSection}`);
+    // console.log(`[FormSubmissionState/processSection] Section "${section.section_title}" visible: ${shouldShowSection}`);
     
     if (!shouldShowSection) {
       // Remove any existing data for this section
@@ -68,7 +68,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       );
       
       if (sectionIndex !== -1) {
-        console.log(`[FormSubmissionState/processSection] Removing hidden section: ${section.section_title}`);
+        // console.log(`[FormSubmissionState/processSection] Removing hidden section: ${section.section_title}`);
         submissionDataRef.current.answeredSections.splice(sectionIndex, 1);
       }
       return;

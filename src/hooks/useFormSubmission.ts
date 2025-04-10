@@ -20,15 +20,17 @@ export const useFormSubmission = () => {
     token: string, 
     values: Record<string, any>, 
     formTemplate?: FormTemplate,
-    preProcessedFormattedAnswers?: any
+    preProcessedFormattedAnswers?: any,
+    isOpticianMode?: boolean
   ): Promise<boolean> => {
     console.log("[useFormSubmission/submitForm]: Starting form submission");
+    console.log("[useFormSubmission/submitForm]: isOpticianMode:", isOpticianMode);
     setIsSubmitting(true);
     setError(null);
 
     try {
       // Extract metadata for optician submissions if present
-      const isOpticianSubmission = values._metadata?.submittedBy === 'optician';
+      const isOpticianSubmission = isOpticianMode || values._metadata?.submittedBy === 'optician';
       
       // Prepare the submission data, using the pre-processed data if available
       const submissionData = formTemplate 

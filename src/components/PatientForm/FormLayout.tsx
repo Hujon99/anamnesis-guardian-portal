@@ -25,8 +25,11 @@ export const FormLayout: React.FC = () => {
     previousStep,
     isSubmitting,
     handleSubmit,
-    form
+    form,
+    isOpticianMode
   } = useFormContext();
+
+  console.log("[FormLayout]: Rendering with isOpticianMode:", isOpticianMode);
 
   // The onSubmit handler now only prevents default behavior but doesn't trigger submission
   // This prevents automatic form submission when pressing Enter or when the form is naturally submitted
@@ -78,9 +81,12 @@ export const FormLayout: React.FC = () => {
           onPrevious={previousStep}
           onSubmit={() => {
             console.log("[FormLayout]: Submit button clicked, triggering form submission");
+            console.log("[FormLayout]: isOpticianMode:", isOpticianMode);
+            
             form.handleSubmit((data) => {
               console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
               // Call the submission handler from context with the current data
+              // The context will take care of finalizing the formatted answers
               handleSubmit()(data);
             })();
           }}

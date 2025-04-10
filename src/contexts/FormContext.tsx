@@ -1,3 +1,4 @@
+
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
@@ -57,6 +58,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   isSubmitting,
   isOpticianMode = false
 }) => {
+  console.log("[FormContextProvider]: Initializing with isOpticianMode:", isOpticianMode);
+  
   // Initialize form with default values
   const generateDefaultValues = (template: FormTemplate) => {
     const defaultValues: Record<string, any> = {};
@@ -126,6 +129,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     // Only process if we have visible sections for the current step
     if (visibleSections.length > 0 && currentStep < visibleSections.length) {
       // Process all sections at the current step with debouncing
+      console.log("[FormContext/useEffect]: Processing sections for step", currentStep, "isOpticianMode:", isOpticianMode);
       processSectionsWithDebounce(visibleSections[currentStep], watchedValues);
     }
   }, [currentStep, setSubmissionStateCurrentStep, visibleSections, watchedValues, processSectionsWithDebounce]);
@@ -174,6 +178,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     return (values?: any, formattedAnswers?: any) => {
       console.log("[FormContext/handleFormSubmit]: Submission handler called");
       console.log("[FormContext/handleFormSubmit]: isLastStep:", isLastStep);
+      console.log("[FormContext/handleFormSubmit]: isOpticianMode:", isOpticianMode);
       
       if (!isLastStep) {
         console.log("[FormContext/handleFormSubmit]: Not on last step, submission prevented");
@@ -185,29 +190,28 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       // Get the current form values if not provided
       const currentValues = values || form.getValues();
       
-      // Finalize the formatted answers and submit
-      const formattedSubmissionData = finalizeSubmissionData() as SubmissionData;
+      // Finalize the formatted answers
+      console.log("[FormContext/handleFormSubmit]: Finalizing submission data with isOpticianMode:", isOpticianMode);
+      const formattedSubmissionData = finalizeSubmissionData();
       
-      console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
-      console.log("[FormContext/handleFormSubmit]: Formatted submission data:", formattedSubmissionData);
-      
-      // Add optician flag directly to the formatted data if applicable
+      // Add optician flags to the formatted answers
       if (isOpticianMode && formattedSubmissionData) {
         console.log("[FormContext/handleFormSubmit]: Adding optician mode flags to submission data");
         
-        // Set the flag in the appropriate location
         if (formattedSubmissionData.formattedAnswers) {
           formattedSubmissionData.formattedAnswers.isOpticianSubmission = true;
+          console.log("[FormContext/handleFormSubmit]: Added isOpticianSubmission flag to formattedAnswers");
         }
         
-        // Also add metadata for the edge function
+        // Also add the metadata to the values object for the edge function
         currentValues._metadata = {
           submittedBy: 'optician',
           autoSetStatus: 'ready'
         };
-        
-        console.log("[FormContext/handleFormSubmit]: Added optician mode metadata to submission");
       }
+      
+      console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
+      console.log("[FormContext/handleFormSubmit]: Formatted submission data:", formattedSubmissionData);
       
       // If a callback was provided, call it with the form values and formatted answers
       if (callback) {

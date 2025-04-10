@@ -48,9 +48,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         responses: []
       };
       submissionDataRef.current.answeredSections.push(sectionData);
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[FormSubmissionState] Added new section: ${sectionTitle}`);
-      }
+      console.log(`[FormSubmissionState] Added new section: ${sectionTitle}`);
     }
     
     return sectionData;
@@ -58,12 +56,10 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
   // Process a section's visibility and its questions
   const processSection = useCallback((section: FormSection, currentValues: Record<string, any>) => {
-    const shouldShowSection = evaluateCondition(section.show_if, currentValues);
+    console.log(`[FormSubmissionState/processSection] Processing section "${section.section_title}"`);
     
-    // Only log visibility changes or in debug mode (reduced frequency)
-    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
-      console.log(`[FormSubmissionState] Section "${section.section_title}" visible: ${shouldShowSection}`);
-    }
+    const shouldShowSection = evaluateCondition(section.show_if, currentValues);
+    console.log(`[FormSubmissionState/processSection] Section "${section.section_title}" visible: ${shouldShowSection}`);
     
     if (!shouldShowSection) {
       // Remove any existing data for this section
@@ -72,9 +68,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       );
       
       if (sectionIndex !== -1) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[FormSubmissionState] Removing hidden section: ${section.section_title}`);
-        }
+        console.log(`[FormSubmissionState/processSection] Removing hidden section: ${section.section_title}`);
         submissionDataRef.current.answeredSections.splice(sectionIndex, 1);
       }
       return;
@@ -97,11 +91,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   ) => {
     try {
       const shouldShowQuestion = evaluateCondition(question.show_if, currentValues);
-      
-      // Very limited logging - only for development
-      if (process.env.NODE_ENV === 'development' && Math.random() < 0.05) {
-        console.log(`[FormSubmissionState] Question "${question.id}" visible: ${shouldShowQuestion}`);
-      }
+      console.log(`[FormSubmissionState/processQuestion] Question "${question.id}" visible: ${shouldShowQuestion}`);
       
       // Find the section in our data
       let sectionIndex = submissionDataRef.current.answeredSections.findIndex(
@@ -128,9 +118,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         );
         
         if (questionIndex !== -1) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[FormSubmissionState] Removing hidden question: ${question.id}`);
-          }
+          console.log(`[FormSubmissionState/processQuestion] Removing hidden question: ${question.id}`);
           submissionDataRef.current.answeredSections[sectionIndex].responses.splice(questionIndex, 1);
           
           // Also remove any associated "other" fields
@@ -157,6 +145,9 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         answer === null || 
         (typeof answer === 'string' && answer.trim() === '');
       
+      // For debugging, log the question and its answer
+      console.log(`[FormSubmissionState/processQuestion] Question: ${question.id}, Answer: ${isEmpty ? 'empty' : answer}`);
+      
       // Update or remove the answer
       const existingResponseIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
         r => r.id === question.id
@@ -165,26 +156,20 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       if (isEmpty) {
         // Remove the answer if it exists but is now empty
         if (existingResponseIndex !== -1) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[FormSubmissionState] Removing empty answer for: ${question.id}`);
-          }
+          console.log(`[FormSubmissionState/processQuestion] Removing empty answer for: ${question.id}`);
           submissionDataRef.current.answeredSections[sectionIndex].responses.splice(existingResponseIndex, 1);
         }
       } else {
         // Add or update the answer
         if (existingResponseIndex !== -1) {
           submissionDataRef.current.answeredSections[sectionIndex].responses[existingResponseIndex].answer = answer;
-          if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
-            console.log(`[FormSubmissionState] Updated answer for: ${question.id}`);
-          }
+          console.log(`[FormSubmissionState/processQuestion] Updated answer for: ${question.id}`);
         } else {
           submissionDataRef.current.answeredSections[sectionIndex].responses.push({
             id: question.id,
             answer
           });
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[FormSubmissionState] Added new answer for: ${question.id}`);
-          }
+          console.log(`[FormSubmissionState/processQuestion] Added new answer for: ${question.id}`);
         }
         
         // Handle "Other" option for radio buttons and dropdowns
@@ -209,17 +194,13 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
             
             if (otherResponseIndex !== -1) {
               submissionDataRef.current.answeredSections[sectionIndex].responses[otherResponseIndex].answer = otherAnswer;
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`[FormSubmissionState] Updated "other" answer for: ${otherFieldIdToUse}`);
-              }
+              console.log(`[FormSubmissionState/processQuestion] Updated "other" answer for: ${otherFieldIdToUse}`);
             } else {
               submissionDataRef.current.answeredSections[sectionIndex].responses.push({
                 id: otherFieldIdToUse,
                 answer: otherAnswer
               });
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`[FormSubmissionState] Added new "other" answer for: ${otherFieldIdToUse}`);
-              }
+              console.log(`[FormSubmissionState/processQuestion] Added new "other" answer for: ${otherFieldIdToUse}`);
             }
           }
         }
@@ -241,8 +222,8 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     );
     
     const removedCount = initialCount - submissionDataRef.current.answeredSections.length;
-    if (removedCount > 0 && process.env.NODE_ENV === 'development') {
-      console.log(`[FormSubmissionState] Removed ${removedCount} empty sections`);
+    if (removedCount > 0) {
+      console.log(`[FormSubmissionState/cleanEmptySections] Removed ${removedCount} empty sections`);
     }
   }, []);
 
@@ -262,6 +243,8 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     // Update last processed values
     lastProcessedValuesRef.current = valuesHash;
     
+    console.log(`[FormSubmissionState/processSectionsWithDebounce] Processing ${sections.length} sections`);
+    
     // Clear any existing timer
     if (processingTimerRef.current !== null) {
       clearTimeout(processingTimerRef.current);
@@ -277,6 +260,9 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         processSection(section, currentValues);
       });
       
+      console.log(`[FormSubmissionState/processSectionsWithDebounce] Current submission data:`, 
+        JSON.stringify(submissionDataRef.current, null, 2));
+      
       processingTimerRef.current = null;
     }, 100); // 100ms debounce
   }, [processSection]);
@@ -284,6 +270,10 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Update the timestamp before final submission
   const finalizeSubmissionData = useCallback((): SubmissionData => {
     submissionDataRef.current.submissionTimestamp = new Date().toISOString();
+    
+    console.log(`[FormSubmissionState/finalizeSubmissionData] Final submission data:`, 
+      JSON.stringify(submissionDataRef.current, null, 2));
+    
     return {
       formattedAnswers: { ...submissionDataRef.current },
       rawAnswers: { /* Will be filled by the form submission hook */ },

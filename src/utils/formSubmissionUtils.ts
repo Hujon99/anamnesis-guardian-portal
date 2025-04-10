@@ -41,14 +41,14 @@ export const prepareFormSubmission = (
   isOpticianMode?: boolean
 ): Record<string, any> => {
   console.log("[formSubmissionUtils/prepareFormSubmission]: Called with isOpticianMode:", isOpticianMode);
+  console.log("[formSubmissionUtils/prepareFormSubmission]: Initial formatted answers:", formattedAnswers);
   
-  // Process the formatted answers if provided
-  let processedAnswers = formattedAnswers;
+  // Clone the formatted answers to avoid mutation
+  let processedAnswers = formattedAnswers ? JSON.parse(JSON.stringify(formattedAnswers)) : null;
   
   // If we're in optician mode, make sure to mark it in the formatted answers
   if (isOpticianMode && processedAnswers) {
-    // Clone the formatted answers to avoid mutation
-    processedAnswers = { ...formattedAnswers };
+    console.log("[formSubmissionUtils/prepareFormSubmission]: Marking submission as optician mode");
     
     // Mark this as an optician submission
     if (processedAnswers.formattedAnswers) {
@@ -63,6 +63,19 @@ export const prepareFormSubmission = (
   // If formattedAnswers is provided, use it directly (new approach)
   if (processedAnswers) {
     console.log("[formSubmissionUtils/prepareFormSubmission]: Using pre-processed formattedAnswers");
+    console.log("[formSubmissionUtils/prepareFormSubmission]: Formatted answers structure:", 
+      JSON.stringify(processedAnswers, null, 2));
+    
+    // Extract formatted answers for inspection
+    const formattedAnswersData = processedAnswers.formattedAnswers || processedAnswers;
+    
+    // Verify and log if we have actual answers
+    if (formattedAnswersData.answeredSections && formattedAnswersData.answeredSections.length > 0) {
+      console.log("[formSubmissionUtils/prepareFormSubmission]: Found answeredSections with responses:", 
+        formattedAnswersData.answeredSections.reduce((total, section) => total + section.responses.length, 0));
+    } else {
+      console.warn("[formSubmissionUtils/prepareFormSubmission]: No answeredSections or empty answeredSections found");
+    }
     
     // Return an object structure suitable for API submission
     return {
@@ -83,7 +96,7 @@ export const prepareFormSubmission = (
       // Add general metadata
       metadata: {
         formTemplateId: formTemplate?.title || "Unknown Form",
-        submittedAt: processedAnswers.formattedAnswers?.submissionTimestamp || new Date().toISOString(),
+        submittedAt: formattedAnswersData?.submissionTimestamp || new Date().toISOString(),
         version: isOpticianMode ? "2.1" : "2.0"
       }
     };
@@ -210,6 +223,10 @@ export const prepareFormSubmission = (
       formattedAnswer.isOpticianSubmission = true;
       console.log("[formSubmissionUtils/prepareFormSubmission]: Marked formattedAnswer as optician submission");
     }
+    
+    // Log the final formatted answer
+    console.log("[formSubmissionUtils/prepareFormSubmission]: Manually processed formatted answers:", 
+      JSON.stringify(formattedAnswer, null, 2));
     
     return {
       // Include the formatted answers 

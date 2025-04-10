@@ -1,4 +1,3 @@
-
 /**
  * This component handles the structural layout of the form, including the header,
  * content area, and footer with navigation controls. It uses the form context
@@ -12,7 +11,14 @@ import FormNavigation from "@/components/PatientForm/FormNavigation";
 import FormStepContent from "@/components/PatientForm/FormStepContent";
 import { useFormContext } from "@/contexts/FormContext";
 
-export const FormLayout: React.FC = () => {
+// 1. Add isSubmitting to the props interface (if using one) or just expect it
+interface FormLayoutProps {
+  isSubmitting: boolean; // Add this prop
+  onSubmitTrigger: () => void; // Add a prop to trigger the actual submission
+}
+
+// Make FormLayout accept props
+export const FormLayout: React.FC<FormLayoutProps> = ({ isSubmitting, onSubmitTrigger }) => {
   const { 
     currentStep, 
     totalSections, 
@@ -23,8 +29,6 @@ export const FormLayout: React.FC = () => {
     isLastStep,
     nextStep,
     previousStep,
-    isSubmitting,
-    handleSubmit,
     form,
     isOpticianMode,
     finalizeSubmissionData  // Add this to access the function that prepares the formatted answers
@@ -74,27 +78,13 @@ export const FormLayout: React.FC = () => {
       </CardContent>
       
       <CardFooter className="flex flex-col gap-4">
-        <FormNavigation 
+        <FormNavigation
           isFirstStep={isFirstStep}
           isLastStep={isLastStep}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting} // 2. Pass the prop here
           onNext={nextStep}
           onPrevious={previousStep}
-          onSubmit={() => {
-            console.log("[FormLayout]: Submit button clicked, triggering form submission");
-            console.log("[FormLayout]: isOpticianMode:", isOpticianMode);
-            
-            // Get the finalized formatted answers before submission
-            const formattedSubmissionData = finalizeSubmissionData();
-            console.log("[FormLayout/onSubmit]: Prepared formatted answers for submission:", 
-              JSON.stringify(formattedSubmissionData, null, 2));
-            
-            form.handleSubmit((data) => {
-              console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
-              // Pass both the form data and the formatted answers to the submission handler
-              handleSubmit()(data, formattedSubmissionData);
-            })();
-          }}
+          onSubmit={onSubmitTrigger} // Use the passed trigger function
         />
         
         <p className="text-sm text-muted-foreground text-center">

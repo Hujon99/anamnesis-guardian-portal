@@ -4,25 +4,33 @@
  * that the form is submitted with the appropriate optician flags.
  */
 
-import React from "react";
-import { FormTemplate } from "@/types/anamnesis";
+import React, { useState } from "react";
+import { FormTemplate, FormattedAnswerData } from "@/types/anamnesis";
 import FormContainer from "@/components/PatientForm/FormContainer";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { useFormContext } from "@/contexts/FormContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 interface OpticianFormContainerProps {
   formTemplate: FormTemplate;
-  onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
-  isSubmitting: boolean;
-  onRetry: () => void;
+  token: string;
+  onRetry?: () => void;
+  onSuccess?: (data: any) => void;
 }
 
 const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
   formTemplate,
-  onSubmit,
-  isSubmitting,
-  onRetry
+  token,
+  onRetry,
+  onSuccess
 }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { finalizeSubmissionData, form } = useFormContext();
+  const { handleSubmit: RHFhandleSubmit } = form;
+
   if (!formTemplate) {
     return (
       <Card className="p-4">
@@ -34,40 +42,71 @@ const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
     );
   }
 
-  // This wrapper ensures that the form is submitted with the optician flag
-  const handleOpticianSubmit = async (values: any, formattedAnswers?: any) => {
-    console.log("[OpticianFormContainer/handleOpticianSubmit]: Submitting form with values:", values);
-    console.log("[OpticianFormContainer/handleOpticianSubmit]: Initial formatted answers:", 
-      formattedAnswers ? JSON.stringify(formattedAnswers, null, 2) : "none provided");
-    
-    // Make sure we're working with a valid formatted answers object
-    if (formattedAnswers) {
-      // Set the flag in the appropriate location
-      if (formattedAnswers.formattedAnswers) {
-        console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag in nested structure");
-        formattedAnswers.formattedAnswers.isOpticianSubmission = true;
-      } else {
-        // Add isOpticianSubmission flag if formattedAnswers doesn't have the nested structure
-        console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag at root level");
-        formattedAnswers.isOpticianSubmission = true;
-      }
-    } else {
-      console.error("[OpticianFormContainer/handleOpticianSubmit]: No formatted answers provided!");
+  const handleValidSubmit = async () => {
+    console.log("[OpticianFormContainer/handleValidSubmit]: Form validated, preparing submission.");
+    setIsSubmitting(true);
+    setError(null);
+
+    if (!token) {
+        console.error("[OpticianFormContainer/handleValidSubmit]: No token available!");
+        setError("Autentiseringstoken saknas.");
+        setIsSubmitting(false);
+        toast({ title: "Fel", description: "Autentiseringstoken saknas.", variant: "destructive" });
+        return;
     }
-    
-    console.log("[OpticianFormContainer/handleOpticianSubmit]: Final formatted answers to be submitted:", 
-      formattedAnswers ? JSON.stringify(formattedAnswers, null, 2) : "none provided");
-    
-    // Also add metadata for the edge function to the values object
-    const processedValues = {
-      ...values,
-      _metadata: {
-        submittedBy: 'optician',
-        autoSetStatus: 'ready'
+
+    try {
+      const formattedAnswers = finalizeSubmissionData();
+
+      const finalData: FormattedAnswerData & { _metadata?: any } = {
+          ...formattedAnswers,
+          isOpticianSubmission: true,
+          _metadata: {
+              submittedBy: 'optician',
+              autoSetStatus: 'ready'
+          }
+      };
+
+      console.log("[OpticianFormContainer/handleValidSubmit]: Final data for edge function:",
+        JSON.stringify(finalData, null, 2));
+
+      const { data, error: functionError } = await supabase.functions.invoke('submit-form', {
+        body: {
+          token,
+          formattedAnswers: finalData
+        }
+      });
+
+      if (functionError) {
+        console.error("[OpticianFormContainer/handleValidSubmit]: Edge function error:", functionError);
+        throw new Error(functionError.message || "Ett fel uppstod vid anrop till servern.");
       }
-    };
-    
-    return onSubmit(processedValues, formTemplate, formattedAnswers);
+
+      console.log("[OpticianFormContainer/handleValidSubmit]: Submission successful:", data);
+      toast({
+        title: "Tack för dina svar!",
+        description: "Formuläret har sparats och markerats som färdigt.",
+      });
+      if (onSuccess) {
+        onSuccess(data);
+      }
+
+    } catch (err: any) {
+      console.error("[OpticianFormContainer/handleValidSubmit]: Submission error:", err);
+      setError(err.message || "Ett oväntat fel inträffade.");
+      toast({
+        title: "Det gick inte att skicka in formuläret",
+        description: err.message || "Ett oväntat fel uppstod.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const triggerSubmit = () => {
+      console.log("[OpticianFormContainer/triggerSubmit]: Triggering RHF validation and submit.");
+      RHFhandleSubmit(handleValidSubmit)();
   };
 
   return (
@@ -80,12 +119,13 @@ const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
         </p>
       </Card>
       
-      <FormContainer 
+      <FormContainer
         formTemplate={formTemplate}
-        onSubmit={handleOpticianSubmit}
+        onSubmit={triggerSubmit}
         isSubmitting={isSubmitting}
         isOpticianMode={true}
       />
+      {error && <p className="text-red-500 text-sm mt-2">Fel: {error}</p>}
     </div>
   );
 };

@@ -44,11 +44,11 @@ const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
     if (formattedAnswers) {
       // Set the flag in the appropriate location
       if (formattedAnswers.formattedAnswers) {
-        console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag in nested structure");
+        // console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag in nested structure");
         formattedAnswers.formattedAnswers.isOpticianSubmission = true;
       } else {
         // Add isOpticianSubmission flag if formattedAnswers doesn't have the nested structure
-        console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag at root level");
+        // console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag at root level");
         formattedAnswers.isOpticianSubmission = true;
       }
     } else {

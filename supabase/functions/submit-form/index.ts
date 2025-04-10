@@ -1,4 +1,3 @@
-
 /**
  * Submit Form Edge Function (v9)
  * 
@@ -19,7 +18,7 @@ import { validateToken } from "../utils/validationUtils.ts";
 import { createSupabaseClient } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v9.2";
+const FUNCTION_VERSION = "v9.3";
 const FUNCTION_NAME = "submit-form";
 
 serve(async (req) => {
@@ -56,7 +55,19 @@ serve(async (req) => {
       answers = requestData.answers;
       formData = requestData.formData;
       
-      console.log(`[${FUNCTION_NAME}]: Full request data:`, JSON.stringify(requestData, null, 2));
+      console.log(`[${FUNCTION_NAME}]: Request data parsing complete`);
+      console.log(`[${FUNCTION_NAME}]: Token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
+      console.log(`[${FUNCTION_NAME}]: Answers structure:`, Object.keys(answers || {}));
+      
+      // Detailed logging for formatted answers structure
+      if (answers?.formattedAnswers) {
+        console.log(`[${FUNCTION_NAME}]: Found formattedAnswers structure`);
+        const sections = answers.formattedAnswers.answeredSections || [];
+        console.log(`[${FUNCTION_NAME}]: formattedAnswers contains ${sections.length} sections`);
+        if (sections.length > 0) {
+          console.log(`[${FUNCTION_NAME}]: First section title: "${sections[0].section_title}" with ${sections[0].responses?.length || 0} responses`);
+        }
+      }
       
       // Parse metadata from multiple possible locations in the answers object
       
@@ -79,10 +90,6 @@ serve(async (req) => {
         autoSetStatus = 'ready'; // Default for optician
       }
       
-      console.log(`[${FUNCTION_NAME}]: Request data parsed successfully`);
-      console.log(`[${FUNCTION_NAME}]: Token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
-      console.log(`[${FUNCTION_NAME}]: Answers received: ${answers ? 'yes' : 'no'}`);
-      console.log(`[${FUNCTION_NAME}]: Form metadata received: ${formData ? 'yes' : 'no'}`);
       console.log(`[${FUNCTION_NAME}]: isOpticianSubmission: ${isOpticianSubmission ? 'yes' : 'no'}`);
       console.log(`[${FUNCTION_NAME}]: autoSetStatus: ${autoSetStatus || 'not specified'}`);
       

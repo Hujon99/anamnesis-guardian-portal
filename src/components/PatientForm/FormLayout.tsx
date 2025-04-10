@@ -26,7 +26,8 @@ export const FormLayout: React.FC = () => {
     isSubmitting,
     handleSubmit,
     form,
-    isOpticianMode
+    isOpticianMode,
+    finalizeSubmissionData  // Add this to access the function that prepares the formatted answers
   } = useFormContext();
 
   console.log("[FormLayout]: Rendering with isOpticianMode:", isOpticianMode);
@@ -83,11 +84,15 @@ export const FormLayout: React.FC = () => {
             console.log("[FormLayout]: Submit button clicked, triggering form submission");
             console.log("[FormLayout]: isOpticianMode:", isOpticianMode);
             
+            // Get the finalized formatted answers before submission
+            const formattedSubmissionData = finalizeSubmissionData();
+            console.log("[FormLayout/onSubmit]: Prepared formatted answers for submission:", 
+              JSON.stringify(formattedSubmissionData, null, 2));
+            
             form.handleSubmit((data) => {
               console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
-              // Call the submission handler from context with the current data
-              // The context will take care of finalizing the formatted answers
-              handleSubmit()(data);
+              // Pass both the form data and the formatted answers to the submission handler
+              handleSubmit()(data, formattedSubmissionData);
             })();
           }}
         />

@@ -25,6 +25,9 @@ export const useFormSubmission = () => {
   ): Promise<boolean> => {
     console.log("[useFormSubmission/submitForm]: Starting form submission");
     console.log("[useFormSubmission/submitForm]: isOpticianMode:", isOpticianMode);
+    console.log("[useFormSubmission/submitForm]: Has preProcessedFormattedAnswers:", 
+      preProcessedFormattedAnswers ? "yes" : "no");
+    
     setIsSubmitting(true);
     setError(null);
 
@@ -37,7 +40,8 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, values, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: values }; // Fallback for backward compatibility
 
-      console.log("[useFormSubmission/submitForm]: Submitting form with data:", JSON.stringify(submissionData, null, 2));
+      console.log("[useFormSubmission/submitForm]: Submitting form with data:", 
+        JSON.stringify(submissionData, null, 2));
       console.log("[useFormSubmission/submitForm]: Token:", token);
       console.log("[useFormSubmission/submitForm]: isOpticianSubmission:", isOpticianSubmission);
       

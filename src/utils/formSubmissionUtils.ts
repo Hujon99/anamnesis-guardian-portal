@@ -1,4 +1,3 @@
-
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -41,7 +40,8 @@ export const prepareFormSubmission = (
   isOpticianMode?: boolean
 ): Record<string, any> => {
   console.log("[formSubmissionUtils/prepareFormSubmission]: Called with isOpticianMode:", isOpticianMode);
-  console.log("[formSubmissionUtils/prepareFormSubmission]: Initial formatted answers:", formattedAnswers);
+  console.log("[formSubmissionUtils/prepareFormSubmission]: Initial formatted answers:", 
+    formattedAnswers ? JSON.stringify(formattedAnswers, null, 2) : "null");
   
   // Clone the formatted answers to avoid mutation
   let processedAnswers = formattedAnswers ? JSON.parse(JSON.stringify(formattedAnswers)) : null;
@@ -63,8 +63,6 @@ export const prepareFormSubmission = (
   // If formattedAnswers is provided, use it directly (new approach)
   if (processedAnswers) {
     console.log("[formSubmissionUtils/prepareFormSubmission]: Using pre-processed formattedAnswers");
-    console.log("[formSubmissionUtils/prepareFormSubmission]: Formatted answers structure:", 
-      JSON.stringify(processedAnswers, null, 2));
     
     // Extract formatted answers for inspection
     const formattedAnswersData = processedAnswers.formattedAnswers || processedAnswers;
@@ -77,13 +75,10 @@ export const prepareFormSubmission = (
       console.warn("[formSubmissionUtils/prepareFormSubmission]: No answeredSections or empty answeredSections found");
     }
     
-    // Return an object structure suitable for API submission
+    // Return an object structure suitable for API submission - without rawAnswers
     return {
       // Include the formatted answers
       ...processedAnswers,
-      
-      // Also include the raw answers for backward compatibility
-      rawAnswers: { ...userInputs },
       
       // Add metadata for optician submissions if applicable
       ...(isOpticianMode && {
@@ -108,14 +103,13 @@ export const prepareFormSubmission = (
     if (!formTemplate) {
       console.error("[formSubmissionUtils/prepareFormSubmission]: No form template provided for processing");
       
-      // Return a minimal valid structure with the raw answers
+      // Return a minimal valid structure
       return {
         formattedAnswers: {
           formTitle: "Unknown Form",
           submissionTimestamp: new Date().toISOString(),
           answeredSections: []
         },
-        rawAnswers: { ...userInputs },
         ...(isOpticianMode && {
           _metadata: {
             submittedBy: 'optician',
@@ -228,12 +222,10 @@ export const prepareFormSubmission = (
     console.log("[formSubmissionUtils/prepareFormSubmission]: Manually processed formatted answers:", 
       JSON.stringify(formattedAnswer, null, 2));
     
+    // Return without rawAnswers
     return {
       // Include the formatted answers 
       formattedAnswers: formattedAnswer,
-      
-      // Also include the raw answers for backward compatibility
-      rawAnswers: { ...userInputs },
       
       // Add metadata for optician submissions if applicable
       ...(isOpticianMode && {
@@ -347,4 +339,3 @@ export const processFormAnswers = (
 
   return formattedAnswer;
 };
-

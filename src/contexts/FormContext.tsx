@@ -1,4 +1,3 @@
-
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
@@ -31,6 +30,7 @@ type FormContextValue = {
   isSubmitting: boolean;
   handleSubmit: (callback?: (values: any, formattedAnswers?: any) => Promise<any>) => (values?: any, formattedAnswers?: any) => void;
   isOpticianMode: boolean;
+  finalizeSubmissionData: () => SubmissionData; // Expose the finalizeSubmissionData function
 };
 
 const FormContext = createContext<FormContextValue | undefined>(undefined);
@@ -190,37 +190,25 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       // Get the current form values if not provided
       const currentValues = values || form.getValues();
       
-      // Finalize the formatted answers
-      console.log("[FormContext/handleFormSubmit]: Finalizing submission data with isOpticianMode:", isOpticianMode);
-      const formattedSubmissionData = finalizeSubmissionData();
-      
-      // Add optician flags to the formatted answers
-      if (isOpticianMode && formattedSubmissionData) {
-        console.log("[FormContext/handleFormSubmit]: Adding optician mode flags to submission data");
-        
-        if (formattedSubmissionData.formattedAnswers) {
-          formattedSubmissionData.formattedAnswers.isOpticianSubmission = true;
-          console.log("[FormContext/handleFormSubmit]: Added isOpticianSubmission flag to formattedAnswers");
-        }
-        
-        // Also add the metadata to the values object for the edge function
-        currentValues._metadata = {
-          submittedBy: 'optician',
-          autoSetStatus: 'ready'
-        };
+      // Use the provided formatted answers or generate them if not provided
+      let submissionData = formattedAnswers;
+      if (!submissionData) {
+        console.log("[FormContext/handleFormSubmit]: No formatted answers provided, generating now");
+        submissionData = finalizeSubmissionData();
       }
       
       console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
-      console.log("[FormContext/handleFormSubmit]: Formatted submission data:", formattedSubmissionData);
+      console.log("[FormContext/handleFormSubmit]: Using formatted data:", 
+        JSON.stringify(submissionData, null, 2));
       
       // If a callback was provided, call it with the form values and formatted answers
       if (callback) {
         console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
-        return callback(currentValues, formattedSubmissionData);
+        return callback(currentValues, submissionData);
       } else if (onSubmit) {
         // Fall back to the onSubmit prop if no specific callback was provided
         console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
-        return onSubmit(currentValues, formattedSubmissionData);
+        return onSubmit(currentValues, submissionData);
       } else {
         console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
         return Promise.resolve();
@@ -242,7 +230,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     previousStep,
     isSubmitting,
     handleSubmit: handleFormSubmit,
-    isOpticianMode
+    isOpticianMode,
+    finalizeSubmissionData // Add this to the context value
   }), [
     form,
     currentStep,
@@ -254,7 +243,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     calculateProgress,
     isSubmitting,
     handleFormSubmit,
-    isOpticianMode
+    isOpticianMode,
+    finalizeSubmissionData // Add this to the dependencies
   ]);
 
   // Keyboard shortcuts for navigation

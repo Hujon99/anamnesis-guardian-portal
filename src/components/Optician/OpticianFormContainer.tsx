@@ -38,22 +38,26 @@ const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
   // This wrapper ensures that the form is submitted with the optician flag
   const handleOpticianSubmit = async (values: any, formattedAnswers?: any) => {
     console.log("[OpticianFormContainer/handleOpticianSubmit]: Submitting form with values:", values);
-    console.log("[OpticianFormContainer/handleOpticianSubmit]: Initial formatted answers:", formattedAnswers);
+    console.log("[OpticianFormContainer/handleOpticianSubmit]: Initial formatted answers:", 
+      formattedAnswers ? JSON.stringify(formattedAnswers, null, 2) : "none provided");
     
     // Make sure we're working with a valid formatted answers object
-    const processedFormattedAnswers = formattedAnswers || {};
-    
-    // Set the flag in the appropriate location
-    if (processedFormattedAnswers.formattedAnswers) {
-      console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag in nested structure");
-      processedFormattedAnswers.formattedAnswers.isOpticianSubmission = true;
+    if (formattedAnswers) {
+      // Set the flag in the appropriate location
+      if (formattedAnswers.formattedAnswers) {
+        console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag in nested structure");
+        formattedAnswers.formattedAnswers.isOpticianSubmission = true;
+      } else {
+        // Add isOpticianSubmission flag if formattedAnswers doesn't have the nested structure
+        console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag at root level");
+        formattedAnswers.isOpticianSubmission = true;
+      }
     } else {
-      // Add isOpticianSubmission flag if formattedAnswers doesn't have the nested structure
-      console.log("[OpticianFormContainer/handleOpticianSubmit]: Setting isOpticianSubmission flag at root level");
-      processedFormattedAnswers.isOpticianSubmission = true;
+      console.error("[OpticianFormContainer/handleOpticianSubmit]: No formatted answers provided!");
     }
     
-    console.log("[OpticianFormContainer/handleOpticianSubmit]: Final formatted answers to be submitted:", processedFormattedAnswers);
+    console.log("[OpticianFormContainer/handleOpticianSubmit]: Final formatted answers to be submitted:", 
+      formattedAnswers ? JSON.stringify(formattedAnswers, null, 2) : "none provided");
     
     // Also add metadata for the edge function to the values object
     const processedValues = {
@@ -64,7 +68,7 @@ const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
       }
     };
     
-    return onSubmit(processedValues, processedFormattedAnswers);
+    return onSubmit(processedValues, formattedAnswers);
   };
 
   return (

@@ -27,7 +27,8 @@ const FormContainer: React.FC<FormContainerProps> = ({
   const handleSubmit = async (values: any, formattedAnswers?: any) => {
     console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
     console.log("[FormContainer/handleSubmit]: Form values:", values);
-    console.log("[FormContainer/handleSubmit]: Formatted answers before submission:", formattedAnswers);
+    console.log("[FormContainer/handleSubmit]: Formatted answers before submission:", 
+      formattedAnswers ? JSON.stringify(formattedAnswers, null, 2) : "none provided");
     console.log("[FormContainer/handleSubmit]: isOpticianMode:", isOpticianMode);
     
     try {

@@ -1,4 +1,3 @@
-
 /**
  * This file contains types for the anamnesis forms and entries in the system.
  * These types define the structure of form templates and the patient data entries.
@@ -63,14 +62,19 @@ export type AnamnesForm = {
 export interface FormattedAnswerData {
   formTitle: string;
   submissionTimestamp: string;
-  answeredSections: {
+  answeredSections: Array<{
     section_title: string;
-    responses: {
+    responses: Array<{
       id: string;
-      answer: any;
-    }[];
-  }[];
-  isOpticianSubmission?: boolean;
+      question_text?: string; // Optional: Include original question text
+      answer: string | string[] | number | boolean | null;
+    }>;
+  }>;
+  isOpticianSubmission?: boolean; // Keep this optional flag
+  _metadata?: { // Add this optional property
+    submittedBy: 'optician' | 'patient'; // Define possible values
+    autoSetStatus?: 'ready'; // Define possible values, make optional
+  };
 }
 
 // Add a type for the submission data structure

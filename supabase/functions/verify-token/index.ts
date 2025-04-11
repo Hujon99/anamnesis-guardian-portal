@@ -33,7 +33,7 @@ import {
 } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v8.1";
+const FUNCTION_VERSION = "v8.2";
 const FUNCTION_NAME = "verify-token";
 
 serve(async (req: Request) => {

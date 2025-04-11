@@ -15,6 +15,7 @@ interface FormContainerProps {
   isSubmitting: boolean;
   isOpticianMode?: boolean;
   initialValues?: Record<string, any> | null;
+  createdByName?: string | null;
 }
 
 const FormContainer: React.FC<FormContainerProps> = ({ 
@@ -22,10 +23,12 @@ const FormContainer: React.FC<FormContainerProps> = ({
   onSubmit, 
   isSubmitting,
   isOpticianMode = false,
-  initialValues = null
+  initialValues = null,
+  createdByName = null
 }) => {
   console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
   console.log("[FormContainer]: Initializing with values:", initialValues);
+  console.log("[FormContainer]: Created by:", createdByName);
   
   const handleSubmit = async (values: any, formattedAnswers?: any) => {
     console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
@@ -49,6 +52,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
         isSubmitting={isSubmitting}
         isOpticianMode={isOpticianMode}
         initialValues={initialValues}
+        createdByName={createdByName}
       />
       <Toaster />
     </>

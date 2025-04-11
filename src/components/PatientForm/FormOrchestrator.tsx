@@ -17,6 +17,7 @@ interface FormOrchestratorProps {
   isSubmitting: boolean;
   isOpticianMode?: boolean;
   initialValues?: Record<string, any> | null;
+  createdByName?: string | null;
 }
 
 export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
@@ -24,7 +25,8 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
   onSubmit,
   isSubmitting,
   isOpticianMode = false,
-  initialValues = null
+  initialValues = null,
+  createdByName = null
 }) => {
   return (
     <FormContextProvider 
@@ -35,7 +37,7 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
       initialValues={initialValues}
     >
       <Card>
-        <FormLayout />
+        <FormLayout createdByName={createdByName} />
       </Card>
     </FormContextProvider>
   );

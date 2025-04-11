@@ -1,3 +1,4 @@
+
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
@@ -26,6 +27,7 @@ const PatientFormPage = () => {
     expired, 
     submitted,
     formTemplate,
+    entryData,
     handleRetry 
   } = useTokenVerification(token);
   
@@ -41,6 +43,9 @@ const PatientFormPage = () => {
     if (!token) return;
     await submitForm(token, values, formTemplate, formattedAnswers);
   };
+
+  // Get the responsible optician's name
+  const createdByName = entryData?.created_by_name || null;
 
   // Render different UI states based on the form status
   
@@ -87,6 +92,7 @@ const PatientFormPage = () => {
       formTemplate={formTemplate}
       onSubmit={handleFormSubmit}
       isSubmitting={isSubmitting}
+      createdByName={createdByName}
     />
   );
 };

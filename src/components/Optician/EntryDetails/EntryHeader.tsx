@@ -33,7 +33,8 @@ import {
   FileText, 
   Link, 
   Printer, 
-  Send 
+  Send,
+  User 
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
@@ -124,6 +125,12 @@ export const EntryHeader = ({
                   Giltig till: {formatDate(entry.expires_at)}
                   {isExpired && " (Utgången)"}
                 </span>
+              </div>
+            )}
+            {entry.created_by_name && (
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span>Ansvarig optiker: {entry.created_by_name}</span>
               </div>
             )}
           </CardDescription>

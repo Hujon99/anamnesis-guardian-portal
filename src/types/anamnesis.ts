@@ -1,4 +1,3 @@
-
 /**
  * This file contains types for the anamnesis forms and entries in the system.
  * These types define the structure of form templates and the patient data entries.
@@ -17,6 +16,7 @@ export type AnamnesesEntry = {
   patient_identifier: string | null; // Updated from patient_email to patient_identifier
   sent_at: string | null;
   created_by: string | null;
+  created_by_name: string | null; // Add the creator's name
   updated_at: string | null;
   ai_summary: string | null;
   // internal_notes is deprecated and will be removed in future

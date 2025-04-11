@@ -16,7 +16,8 @@ import {
   Copy, 
   Printer, 
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  User
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
@@ -86,13 +87,22 @@ export function ModalHeader({
         </div>
       </div>
       
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Calendar className="h-4 w-4" />
-        <span>
-          Skapad: {entry.sent_at 
-            ? format(new Date(entry.sent_at), "yyyy-MM-dd HH:mm") 
-            : "Datum saknas"}
-        </span>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4" />
+          <span>
+            Skapad: {entry.sent_at 
+              ? format(new Date(entry.sent_at), "yyyy-MM-dd HH:mm") 
+              : "Datum saknas"}
+          </span>
+        </div>
+        
+        {entry.created_by_name && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User className="h-4 w-4" />
+            <span>Ansvarig optiker: {entry.created_by_name}</span>
+          </div>
+        )}
       </div>
       
       {entry.access_token && (

@@ -1,40 +1,74 @@
 
 /**
- * This component provides functionality for generating patient links.
- * It allows opticians to create new links, enter patient identifiers, and copy 
- * generated links to the clipboard for sharing with patients.
+ * This component provides functionality for generating and sending personalized
+ * anamnesis links to patients. It handles the collection of patient information,
+ * form creation, and notification to users about the process status.
  */
 
-import { useState } from "react";
-import { useOrganization, useUser } from "@clerk/clerk-react";
+import React, { useState } from "react";
+import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Copy, Loader2, Plus, Link as LinkIcon, CheckCircle2 } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Link, Loader2, Plus } from "lucide-react";
+
+// Form schema with validation for patient info
+const formSchema = z.object({
+  patientIdentifier: z.string().min(2, { message: "Patientinformation måste vara minst 2 tecken" }),
+});
 
 export function LinkGenerator() {
   const { organization } = useOrganization();
   const { user } = useUser();
+  const { sessionClaims } = useAuth();
   const { supabase } = useSupabaseClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [patientIdentifier, setPatientIdentifier] = useState("");
-  const [generatedLink, setGeneratedLink] = useState("");
-  const [hasCopied, setHasCopied] = useState(false);
-  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const createAnamnesisEntry = useMutation({
-    mutationFn: async (identifier: string) => {
+  // Get the creator's name from session claims
+  const creatorName = sessionClaims?.full_name as string || user?.fullName || user?.id || "Okänd";
+
+  // Create form with validation
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      patientIdentifier: "",
+    },
+  });
+
+  // Mutation for creating and sending a link
+  const sendLinkMutation = useMutation({
+    mutationFn: async ({ patientIdentifier }: { patientIdentifier: string }) => {
       if (!organization?.id) {
         throw new Error("Organisation saknas");
       }
 
-      console.log("Creating entry with organization ID:", organization.id);
-      console.log("Current user ID:", user?.id || null);
+      console.log("Creating anamnesis entry with patient identifier:", patientIdentifier);
+      console.log("Organization ID:", organization.id);
+      console.log("Creator:", creatorName);
 
+      // Create a new anamnesis entry
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
@@ -43,158 +77,116 @@ export function LinkGenerator() {
           status: "sent",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
           form_id: crypto.randomUUID(),
-          patient_identifier: identifier.trim() || null,
+          patient_identifier: patientIdentifier,
           created_by: user?.id || null,
+          created_by_name: creatorName,
           sent_at: new Date().toISOString()
         })
         .select()
         .single();
 
       if (error) {
-        console.error("Error creating entry:", error);
+        console.error("Error creating anamnesis entry:", error);
         throw error;
       }
+
       return data;
     },
     onSuccess: (data) => {
-      const baseUrl = window.location.origin;
-      const link = `${baseUrl}/patient-form?token=${data.access_token}`;
-      setGeneratedLink(link);
-      
-      queryClient.invalidateQueries({ queryKey: ["anamnes-entries"] });
+      console.log("Anamnesis entry created successfully:", data);
       
       toast({
-        title: "Länk skapad",
-        description: "Länken har skapats för patienten",
+        title: "Formulär skapat",
+        description: "Formuläret har skapats och kan nu skickas till patienten",
       });
+      
+      form.reset();
+      setOpen(false);
     },
     onError: (error: any) => {
-      console.error("Mutation error:", error);
+      console.error("Error creating anamnesis entry:", error);
+      
       toast({
-        title: "Fel vid skapande av länk",
-        description: error.message,
+        title: "Fel vid skapande av formulär",
+        description: error.message || "Ett oväntat fel uppstod",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      setIsLoading(false);
     }
   });
 
-  const handleCreateLink = () => {
-    createAnamnesisEntry.mutate(patientIdentifier);
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedLink)
-      .then(() => {
-        setHasCopied(true);
-        toast({
-          title: "Kopierad!",
-          description: "Länken har kopierats till urklipp",
-        });
-        
-        // Reset the copied state after 2 seconds
-        setTimeout(() => {
-          setHasCopied(false);
-        }, 2000);
-      })
-      .catch((error) => {
-        console.error("Error copying link:", error);
-        toast({
-          title: "Kunde inte kopiera",
-          description: "Det gick inte att kopiera länken. Försök igen.",
-          variant: "destructive",
-        });
-      });
+  // Handle form submission
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
+    sendLinkMutation.mutate({ patientIdentifier: values.patientIdentifier });
   };
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Skapa patientlänk
+        <Button variant="outline" className="flex items-center gap-2 whitespace-nowrap">
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Skapa</span> anamneslänk
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md p-6">
-        <DialogHeader className="mb-4">
-          <DialogTitle className="text-xl">Skapa ny patientlänk</DialogTitle>
-          <DialogDescription className="text-base mt-2">
-            Skapa en unik länk för patienten som kommer vara giltig i 7 dagar.
+      
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Skapa anamneslänk</DialogTitle>
+          <DialogDescription>
+            Skapa en anamneslänk som kan skickas till en patient för att fylla i sin anamnes.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-6 py-4">
-          <div className="grid gap-3">
-            <Label htmlFor="patientIdentifier" className="text-sm font-medium">Patient (namn/nummer)</Label>
-            <Input
-              id="patientIdentifier"
-              placeholder="T.ex. Anna Andersson eller P12345"
-              value={patientIdentifier}
-              onChange={(e) => setPatientIdentifier(e.target.value)}
-              className="p-3"
-            />
-          </div>
-          
-          {generatedLink && (
-            <div className="grid gap-3 pt-2">
-              <Label htmlFor="link" className="text-sm font-medium">Patientlänk</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="link"
-                  value={generatedLink}
-                  readOnly
-                  className="flex-1 p-3 bg-gray-50"
-                />
-                <Button 
-                  onClick={copyToClipboard} 
-                  className="min-w-[110px] transition-all duration-300"
-                  variant={hasCopied ? "secondary" : "default"}
-                >
-                  {hasCopied ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Kopierad
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Kopiera
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <DialogFooter className="mt-2">
-          {!generatedLink ? (
-            <Button 
-              onClick={handleCreateLink}
-              disabled={createAnamnesisEntry.isPending}
-              className="w-full sm:w-auto"
-            >
-              {createAnamnesisEntry.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <LinkIcon className="h-4 w-4 mr-2" />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="patientIdentifier"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Patientinformation</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ange personens namn eller annan identifierare" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              Skapa länk
-            </Button>
-          ) : (
-            <Button 
-              onClick={() => {
-                setIsDialogOpen(false);
-                setGeneratedLink("");
-                setPatientIdentifier("");
-                setHasCopied(false);
-              }}
-              variant="outline"
-              className="w-full sm:w-auto"
-            >
-              Stäng
-            </Button>
-          )}
-        </DialogFooter>
+            />
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setOpen(false)}
+              >
+                Avbryt
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="flex items-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Skapar...
+                  </>
+                ) : (
+                  <>
+                    <Link className="h-4 w-4" />
+                    Skapa länk
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

@@ -1,3 +1,4 @@
+
 /**
  * Dashboard page that serves as the main landing page after authentication.
  * It now displays the anamnesis list directly for better usability,

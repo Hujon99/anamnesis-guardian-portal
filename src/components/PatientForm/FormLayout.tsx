@@ -12,7 +12,11 @@ import FormNavigation from "@/components/PatientForm/FormNavigation";
 import FormStepContent from "@/components/PatientForm/FormStepContent";
 import { useFormContext } from "@/contexts/FormContext";
 
-export const FormLayout: React.FC = () => {
+interface FormLayoutProps {
+  createdByName?: string | null;
+}
+
+export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
   const { 
     currentStep, 
     totalSections, 
@@ -52,6 +56,7 @@ export const FormLayout: React.FC = () => {
         currentStep={currentStep}
         totalSteps={totalSections}
         progress={progress}
+        createdByName={createdByName}
       />
       
       <CardContent>

@@ -38,6 +38,7 @@ const OpticianFormPage = () => {
     expired, 
     submitted,
     formTemplate,
+    entryData,
     handleRetry 
   } = useTokenVerification(token);
   
@@ -48,6 +49,9 @@ const OpticianFormPage = () => {
     localSubmitted,
     handleFormSubmit
   } = useOpticianFormSubmission(token);
+
+  // Get the responsible optician's name
+  const createdByName = entryData?.created_by_name || null;
 
   // If not in optician mode, redirect to dashboard
   useEffect(() => {
@@ -129,6 +133,7 @@ const OpticianFormPage = () => {
       isSubmitting={isSubmitting}
       onRetry={handleRetry}
       initialValues={storedFormValues}
+      createdByName={createdByName}
     />
   );
 };

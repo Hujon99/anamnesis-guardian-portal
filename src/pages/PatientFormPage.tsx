@@ -4,32 +4,43 @@
  * using a modular approach with dedicated components and hooks.
  */
 
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
+import { useFormSubmission } from "@/hooks/useFormSubmission";
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import SubmittedCard from "@/components/PatientForm/StatusCards/SubmittedCard";
 import FormContainer from "@/components/PatientForm/FormContainer";
-import { useState } from "react";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
-  const navigate = useNavigate();
-  const [localSubmitted, setLocalSubmitted] = useState(false);
-
-  // Use custom hooks to handle token verification
-  const {
-    loading,
-    error,
-    errorCode,
-    diagnosticInfo,
-    expired,
+  
+  // Use custom hooks to handle token verification and form submission
+  const { 
+    loading, 
+    error, 
+    errorCode, 
+    diagnosticInfo, 
+    expired, 
     submitted,
     formTemplate,
-    handleRetry
+    handleRetry 
   } = useTokenVerification(token);
+  
+  const { 
+    isSubmitting, 
+    error: submissionError, 
+    isSubmitted, 
+    submitForm 
+  } = useFormSubmission();
+
+  // Handle form submission with form template
+  const handleFormSubmit = async (values: any, formattedAnswers?: any) => {
+    if (!token) return;
+    await submitForm(token, values, formTemplate, formattedAnswers);
+  };
 
   // Render different UI states based on the form status
   
@@ -55,25 +66,27 @@ const PatientFormPage = () => {
     );
   }
 
-  // Use 'submitted' from token verification OR local state after successful submission
-  if (submitted || localSubmitted) {
+  // Form already submitted state
+  if (submitted || isSubmitted) {
     return <SubmittedCard />;
   }
 
-  // Ensure token exists before rendering FormContainer
-  if (!token) {
-    return <ErrorCard error="Token saknas i URL:en" errorCode="MISSING_TOKEN" onRetry={() => window.location.reload()} />;
+  // Submission error state
+  if (submissionError) {
+    return (
+      <ErrorCard 
+        error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
+        onRetry={() => handleFormSubmit({})} 
+      />
+    );
   }
 
-  // Form display state - Pass token and onSuccess handler
+  // Form display state - default state
   return (
     <FormContainer
       formTemplate={formTemplate}
-      token={token}
-      onSuccess={() => {
-        console.log("Patient submission successful");
-        setLocalSubmitted(true);
-      }}
+      onSubmit={handleFormSubmit}
+      isSubmitting={isSubmitting}
     />
   );
 };

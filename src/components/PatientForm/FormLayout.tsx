@@ -1,3 +1,4 @@
+
 /**
  * This component handles the structural layout of the form, including the header,
  * content area, and footer with navigation controls. It uses the form context
@@ -11,14 +12,7 @@ import FormNavigation from "@/components/PatientForm/FormNavigation";
 import FormStepContent from "@/components/PatientForm/FormStepContent";
 import { useFormContext } from "@/contexts/FormContext";
 
-// 1. Add isSubmitting to the props interface (if using one) or just expect it
-interface FormLayoutProps {
-  isSubmitting: boolean; // Add this prop
-  onSubmitTrigger: () => void; // Add a prop to trigger the actual submission
-}
-
-// Make FormLayout accept props
-export const FormLayout: React.FC<FormLayoutProps> = ({ isSubmitting, onSubmitTrigger }) => {
+export const FormLayout: React.FC = () => {
   const { 
     currentStep, 
     totalSections, 
@@ -29,12 +23,10 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ isSubmitting, onSubmitTr
     isLastStep,
     nextStep,
     previousStep,
-    form,
-    isOpticianMode,
-    finalizeSubmissionData  // Add this to access the function that prepares the formatted answers
+    isSubmitting,
+    handleSubmit,
+    form
   } = useFormContext();
-
-  // console.log("[FormLayout]: Rendering with isOpticianMode:", isOpticianMode);
 
   // The onSubmit handler now only prevents default behavior but doesn't trigger submission
   // This prevents automatic form submission when pressing Enter or when the form is naturally submitted
@@ -78,13 +70,20 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ isSubmitting, onSubmitTr
       </CardContent>
       
       <CardFooter className="flex flex-col gap-4">
-        <FormNavigation
+        <FormNavigation 
           isFirstStep={isFirstStep}
           isLastStep={isLastStep}
-          isSubmitting={isSubmitting} // 2. Pass the prop here
+          isSubmitting={isSubmitting}
           onNext={nextStep}
           onPrevious={previousStep}
-          onSubmit={onSubmitTrigger} // Use the passed trigger function
+          onSubmit={() => {
+            console.log("[FormLayout]: Submit button clicked, triggering form submission");
+            form.handleSubmit((data) => {
+              console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
+              // Call the submission handler from context with the current data
+              handleSubmit()(data);
+            })();
+          }}
         />
         
         <p className="text-sm text-muted-foreground text-center">

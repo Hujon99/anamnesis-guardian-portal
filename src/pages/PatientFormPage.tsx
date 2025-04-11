@@ -19,14 +19,15 @@ const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   
-  // For debugging purposes
+  // Enhanced debugging
   useEffect(() => {
     console.log("PatientFormPage rendered with token:", token ? `${token.substring(0, 6)}...` : 'null');
     
     // Check if we're on the correct path
     console.log("Current path:", window.location.pathname);
     console.log("Complete URL:", window.location.href);
-  }, [token]);
+    console.log("Search params:", Object.fromEntries([...searchParams.entries()]));
+  }, [token, searchParams]);
   
   // Use custom hooks to handle token verification and form submission
   const { 
@@ -61,13 +62,14 @@ const PatientFormPage = () => {
   // Get the responsible optician's name
   const createdByName = entryData?.created_by_name || null;
 
-  // Render different UI states based on the form status
-  
   // Debug info
-  console.log("Form state:", { 
-    loading, error, errorCode, expired, submitted, isSubmitted, 
-    hasFormTemplate: !!formTemplate
-  });
+  useEffect(() => {
+    console.log("Form state:", { 
+      loading, error, errorCode, expired, submitted, isSubmitted, 
+      hasFormTemplate: !!formTemplate,
+      entryData: entryData ? `ID: ${entryData.id.substring(0, 8)}...` : null
+    });
+  }, [loading, error, errorCode, expired, submitted, isSubmitted, formTemplate, entryData]);
   
   // Loading state
   if (loading) {

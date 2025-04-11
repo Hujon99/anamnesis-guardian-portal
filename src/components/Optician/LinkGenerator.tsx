@@ -1,4 +1,3 @@
-
 /**
  * This component provides functionality for generating and sending personalized
  * anamnesis links to patients. It handles the collection of patient information,
@@ -68,12 +67,15 @@ export function LinkGenerator() {
       console.log("Organization ID:", organization.id);
       console.log("Creator:", creatorName);
 
-      // Create a new anamnesis entry
+      // Create a new anamnesis entry with a unique access token
+      const accessToken = crypto.randomUUID();
+      console.log("Generated access token:", accessToken.substring(0, 6) + "...");
+
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
           organization_id: organization.id,
-          access_token: crypto.randomUUID(),
+          access_token: accessToken,
           status: "sent",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
           form_id: crypto.randomUUID(),
@@ -89,6 +91,10 @@ export function LinkGenerator() {
         console.error("Error creating anamnesis entry:", error);
         throw error;
       }
+
+      // Log the URL that will be generated for debugging
+      const baseUrl = window.location.origin;
+      console.log("Patient form URL will be:", `${baseUrl}/patient-form?token=${accessToken}`);
 
       return data;
     },

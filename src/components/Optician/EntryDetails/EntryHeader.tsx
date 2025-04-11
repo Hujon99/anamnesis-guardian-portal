@@ -1,4 +1,3 @@
-
 /**
  * This component renders the header section of an anamnesis entry detail view.
  * It displays entry metadata, status, and action buttons for printing and exporting.
@@ -82,6 +81,8 @@ export function EntryHeader({
 
     const baseUrl = window.location.origin;
     const patientLink = `${baseUrl}/patient-form?token=${entry.access_token}`;
+    
+    console.log("Copying patient link to clipboard:", patientLink);
     
     navigator.clipboard.writeText(patientLink)
       .then(() => {

@@ -39,11 +39,15 @@ export function DirectFormButton() {
       // Use a fixed identifier for direct in-store forms
       const patientIdentifier = "Direkt ifyllning i butik";
 
+      // Generate a unique access token
+      const accessToken = crypto.randomUUID();
+      console.log("Generated access token:", accessToken.substring(0, 6) + "...");
+
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
           organization_id: organization.id,
-          access_token: crypto.randomUUID(),
+          access_token: accessToken,
           status: "sent",
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
           form_id: crypto.randomUUID(),
@@ -59,6 +63,11 @@ export function DirectFormButton() {
         console.error("Error creating direct form entry:", error);
         throw error;
       }
+      
+      // Log the URL that will be used for navigation
+      const baseUrl = window.location.origin;
+      console.log("Will navigate to:", `${baseUrl}/optician-form?token=${accessToken}&mode=optician`);
+      
       return data;
     },
     onSuccess: (data) => {
@@ -80,6 +89,9 @@ export function DirectFormButton() {
         description: error.message || "Ett oväntat fel uppstod",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      setIsLoading(false);
     }
   });
 

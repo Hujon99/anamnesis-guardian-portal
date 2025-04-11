@@ -75,6 +75,10 @@ export async function validateRequestAndExtractToken(request: Request): Promise<
     
     // Check if the token is in the URL query parameters
     const url = new URL(request.url);
+    console.log("Validating request URL:", url.toString());
+    console.log("URL path:", url.pathname);
+    console.log("URL query parameters:", url.searchParams.toString());
+    
     const queryToken = url.searchParams.get('token');
     
     if (queryToken) {
@@ -96,11 +100,15 @@ export async function validateRequestAndExtractToken(request: Request): Promise<
     // Parse request body as JSON
     // Clone the request to avoid consuming the body which can only be read once
     const requestClone = request.clone();
-    const requestData = await requestClone.json()
-      .catch(err => {
-        console.log('Could not parse request body as JSON:', err.message);
-        return {};
-      });
+    let requestData;
+    
+    try {
+      requestData = await requestClone.json();
+      console.log('Request body parsed successfully');
+    } catch (err) {
+      console.log('Could not parse request body as JSON:', err instanceof Error ? err.message : 'Unknown error');
+      requestData = {};
+    }
       
     console.log('Request data received:', Object.keys(requestData).join(', '));
     

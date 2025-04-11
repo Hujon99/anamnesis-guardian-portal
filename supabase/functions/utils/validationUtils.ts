@@ -73,6 +73,24 @@ export async function validateRequestAndExtractToken(request: Request): Promise<
     // Log request method and content type
     console.log(`Request validation: Method: ${request.method}, Content-Type: ${request.headers.get('content-type')}`);
     
+    // Check if the token is in the URL query parameters (support both methods for flexibility)
+    const url = new URL(request.url);
+    const queryToken = url.searchParams.get('token');
+    
+    if (queryToken) {
+      console.log('Token found in query parameters');
+      const tokenValidation = validateToken(queryToken);
+      if (tokenValidation.isValid) {
+        return { 
+          token: queryToken, 
+          isValid: true 
+        };
+      }
+    }
+    
+    // If no token in query params or it's invalid, try the request body
+    console.log('No valid token in query params, trying request body...');
+    
     // Parse request body as JSON
     const requestData = await request.json();
     console.log('Request data received:', Object.keys(requestData).join(', '));
@@ -82,9 +100,9 @@ export async function validateRequestAndExtractToken(request: Request): Promise<
     // Log token information (safely)
     if (token) {
       const tokenLength = typeof token === 'string' ? token.length : 'not a string';
-      console.log(`Extracted token from request: Length: ${tokenLength}`);
+      console.log(`Extracted token from request body: Length: ${tokenLength}`);
     } else {
-      console.error('No token found in request data');
+      console.error('No token found in request body data');
     }
     
     // Validate token

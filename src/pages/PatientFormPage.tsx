@@ -13,10 +13,16 @@ import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import SubmittedCard from "@/components/PatientForm/StatusCards/SubmittedCard";
 import FormContainer from "@/components/PatientForm/FormContainer";
+import { useEffect } from "react";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
+  
+  // For debugging purposes
+  useEffect(() => {
+    console.log("PatientFormPage rendered with token:", token ? `${token.substring(0, 6)}...` : 'null');
+  }, [token]);
   
   // Use custom hooks to handle token verification and form submission
   const { 
@@ -40,7 +46,11 @@ const PatientFormPage = () => {
 
   // Handle form submission with form template
   const handleFormSubmit = async (values: any, formattedAnswers?: any) => {
-    if (!token) return;
+    if (!token) {
+      console.error("Cannot submit form: No token provided");
+      return;
+    }
+    console.log("Submitting form with token:", token.substring(0, 6) + "...");
     await submitForm(token, values, formTemplate, formattedAnswers);
   };
 
@@ -48,6 +58,12 @@ const PatientFormPage = () => {
   const createdByName = entryData?.created_by_name || null;
 
   // Render different UI states based on the form status
+  
+  // Debug info
+  console.log("Form state:", { 
+    loading, error, errorCode, expired, submitted, isSubmitted, 
+    hasFormTemplate: !!formTemplate
+  });
   
   // Loading state
   if (loading) {
@@ -82,6 +98,18 @@ const PatientFormPage = () => {
       <ErrorCard 
         error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
         onRetry={() => handleFormSubmit({})} 
+      />
+    );
+  }
+
+  // Missing token state
+  if (!token) {
+    return (
+      <ErrorCard 
+        error="Ingen åtkomsttoken hittades i URL:en" 
+        errorCode="missing_token"
+        diagnosticInfo="Token parameter saknas i URL:en"
+        onRetry={() => window.location.href = "/"}
       />
     );
   }

@@ -18,7 +18,7 @@ interface VerificationResult {
   expired: boolean;
   submitted: boolean;
   formTemplate: FormTemplate | null;
-  entryData: AnamnesesEntry | null; // Add entryData to the result
+  entryData: AnamnesesEntry | null;
   handleRetry: () => void;
 }
 
@@ -51,7 +51,7 @@ export function useTokenVerification(token: string | null): VerificationResult {
       
       console.log(`Verifying token: ${token.substring(0, 6)}...`);
       
-      // Call the verify-token edge function
+      // Call the verify-token edge function with the token in the request body
       const { data, error } = await supabase.functions.invoke("verify-token", {
         body: { token }
       });
@@ -72,6 +72,8 @@ export function useTokenVerification(token: string | null): VerificationResult {
         setLoading(false);
         return;
       }
+      
+      console.log("Verify token response:", data);
       
       // Handle edge function response status
       if (data.status === 'expired') {
@@ -128,6 +130,11 @@ export function useTokenVerification(token: string | null): VerificationResult {
   useEffect(() => {
     if (token && isReady) {
       verifyToken();
+    } else if (!token) {
+      // Handle missing token case
+      setError("Token saknas i URL");
+      setErrorCode("missing_token");
+      setLoading(false);
     }
   }, [token, isReady]);
 

@@ -47,14 +47,14 @@ interface EntryHeaderProps {
   exportToPDF: () => void;
 }
 
-export const EntryHeader = ({ 
+export function EntryHeader({ 
   entry, 
   hasAnswers, 
   isExpired, 
   getSummary, 
   printForm, 
   exportToPDF 
-}: EntryHeaderProps) => {
+}: EntryHeaderProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "sent":

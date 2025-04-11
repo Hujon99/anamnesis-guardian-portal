@@ -4,10 +4,11 @@
  * and submission state, making these available throughout the form components.
  */
 
-import React, { createContext, useContext, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useMemo, useCallback, useEffect } from "react";
 import { FormTemplate, FormattedAnswerData, SubmissionData } from "@/types/anamnesis";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "@/components/ui/use-toast";
 
 // Custom hooks
 import { useFormValidation } from "@/hooks/useFormValidation";
@@ -48,6 +49,7 @@ interface FormContextProviderProps {
   onSubmit: (values: any, formattedAnswers?: any) => Promise<any>;
   isSubmitting: boolean;
   isOpticianMode?: boolean;
+  initialValues?: Record<string, any> | null;
 }
 
 export const FormContextProvider: React.FC<FormContextProviderProps> = ({
@@ -55,10 +57,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   formTemplate,
   onSubmit,
   isSubmitting,
-  isOpticianMode = false
+  isOpticianMode = false,
+  initialValues = null
 }) => {
   // Initialize form with default values
-  const generateDefaultValues = (template: FormTemplate) => {
+  const generateDefaultValues = (template: FormTemplate, initialVals: Record<string, any> | null) => {
     const defaultValues: Record<string, any> = {};
     
     template.sections.forEach(section => {
@@ -68,6 +71,14 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
           return;
         }
         
+        // First check if we have an initial value for this field
+        if (initialVals && initialVals[question.id] !== undefined) {
+          defaultValues[question.id] = initialVals[question.id];
+          console.log(`[FormContext]: Using initial value for ${question.id}:`, initialVals[question.id]);
+          return;
+        }
+        
+        // Otherwise use the default value based on field type
         switch (question.type) {
           case "checkbox":
             defaultValues[question.id] = false;
@@ -81,10 +92,25 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       });
     });
     
+    // If we have an "other" field in the initial values, add it too
+    if (initialVals) {
+      Object.keys(initialVals).forEach(key => {
+        if (key.endsWith('_other') || key.endsWith('_övrigt')) {
+          if (!(key in defaultValues)) {
+            defaultValues[key] = initialVals[key];
+            console.log(`[FormContext]: Added other field ${key} with value:`, initialVals[key]);
+          }
+        }
+      });
+    }
+    
     return defaultValues;
   };
   
-  const defaultValues = generateDefaultValues(formTemplate);
+  const defaultValues = generateDefaultValues(formTemplate, initialValues);
+  
+  console.log("[FormContext]: Generated default values with initialValues:", 
+    initialValues ? "present" : "not present", defaultValues);
   
   // Custom hooks for form functionality
   const { validationSchema, getFieldsToValidate } = useFormValidation(formTemplate, defaultValues);
@@ -96,8 +122,35 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     resolver: validationSchema ? zodResolver(validationSchema) : undefined
   });
   
-  const { watch, handleSubmit, trigger } = form;
+  const { watch, handleSubmit, trigger, formState, reset } = form;
   const watchedValues = watch();
+  
+  // Reset form with initial values if provided later (e.g., after an error)
+  useEffect(() => {
+    if (initialValues && Object.keys(initialValues).length > 0) {
+      // Only reset if we have different values than what's already in the form
+      const currentValues = form.getValues();
+      let needsReset = false;
+      
+      // Check if any values differ
+      Object.keys(initialValues).forEach(key => {
+        if (initialValues[key] !== currentValues[key]) {
+          needsReset = true;
+        }
+      });
+      
+      if (needsReset) {
+        console.log("[FormContext]: Resetting form with stored values", initialValues);
+        reset(initialValues);
+        
+        // Show toast notification
+        toast({
+          title: "Formulärdata återställd",
+          description: "Dina tidigare ifyllda svar har återställts.",
+        });
+      }
+    }
+  }, [initialValues, reset, form]);
   
   // Initialize hooks for form state
   // Pass isOpticianMode to ensure fields are properly filtered
@@ -169,9 +222,9 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     window.scrollTo(0, 0); // Scroll to top for the new step
   };
 
-  // Handle form submission
+  // Enhanced submit handler with better error handling
   const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<any>) => {
-    return (values?: any, formattedAnswers?: any) => {
+    return async (values?: any, formattedAnswers?: any) => {
       console.log("[FormContext/handleFormSubmit]: Submission handler called");
       console.log("[FormContext/handleFormSubmit]: isLastStep:", isLastStep);
       
@@ -207,17 +260,23 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         console.log("[FormContext/handleFormSubmit]: Added optician mode metadata to submission");
       }
       
-      // If a callback was provided, call it with the form values and formatted answers
-      if (callback) {
-        console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
-        return callback(currentValues, formattedSubmissionData);
-      } else if (onSubmit) {
-        // Fall back to the onSubmit prop if no specific callback was provided
-        console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
-        return onSubmit(currentValues, formattedSubmissionData);
-      } else {
-        console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
-        return Promise.resolve();
+      try {
+        // If a callback was provided, call it with the form values and formatted answers
+        if (callback) {
+          console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
+          return await callback(currentValues, formattedSubmissionData);
+        } else if (onSubmit) {
+          // Fall back to the onSubmit prop if no specific callback was provided
+          console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
+          return await onSubmit(currentValues, formattedSubmissionData);
+        } else {
+          console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
+          return Promise.resolve();
+        }
+      } catch (error) {
+        console.error("[FormContext/handleFormSubmit]: Error during form submission:", error);
+        // Propagate the error so it can be handled by the caller
+        throw error;
       }
     };
   }, [form, isLastStep, isOpticianMode, finalizeSubmissionData, onSubmit]);

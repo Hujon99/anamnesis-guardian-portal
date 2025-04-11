@@ -13,18 +13,24 @@ interface FormWrapperProps {
   formTemplate: FormTemplate;
   onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
   isSubmitting: boolean;
+  initialValues?: Record<string, any> | null;
+  isOpticianMode?: boolean;
 }
 
 export const FormWrapper: React.FC<FormWrapperProps> = ({
   formTemplate,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  initialValues = null,
+  isOpticianMode = false
 }) => {
   return (
     <FormOrchestrator
       formTemplate={formTemplate}
       onSubmit={onSubmit}
       isSubmitting={isSubmitting}
+      initialValues={initialValues}
+      isOpticianMode={isOpticianMode}
     />
   );
 };

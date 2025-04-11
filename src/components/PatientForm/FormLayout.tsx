@@ -5,7 +5,7 @@
  * to access form state and functions.
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import FormHeader from "@/components/PatientForm/FormHeader";
 import FormNavigation from "@/components/PatientForm/FormNavigation";
@@ -37,6 +37,15 @@ export const FormLayout: React.FC = () => {
     // The actual submission will only happen when the user clicks the Submit button
   };
 
+  // Ensure form re-validation when values change
+  useEffect(() => {
+    if (isLastStep && !isSubmitting) {
+      // Trigger validation for all current step fields
+      console.log("[FormLayout]: On last step, re-validating fields");
+      form.trigger();
+    }
+  }, [isLastStep, form, isSubmitting]);
+
   return (
     <>
       <FormHeader 
@@ -56,6 +65,7 @@ export const FormLayout: React.FC = () => {
           <div 
             id="step-info" 
             className="sr-only" 
+            aria-live="polite"
           >
             Steg {currentStep + 1} av {totalSections}
           </div>
@@ -78,6 +88,10 @@ export const FormLayout: React.FC = () => {
           onPrevious={previousStep}
           onSubmit={() => {
             console.log("[FormLayout]: Submit button clicked, triggering form submission");
+            // Get all current form values
+            const formValues = form.getValues();
+            console.log("[FormLayout/onSubmit]: Current form values for submission:", formValues);
+            
             form.handleSubmit((data) => {
               console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
               // Call the submission handler from context with the current data

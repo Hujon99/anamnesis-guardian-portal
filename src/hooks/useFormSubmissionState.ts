@@ -1,3 +1,4 @@
+
 /**
  * This hook manages the incremental construction of form submission data.
  * It tracks visible sections and questions in real-time as the user navigates
@@ -267,7 +268,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       clearTimeout(processingTimerRef.current);
     }
     
-    // Set a new timer for processing (debounce)
+    // Set a new timer for processing (debounce) - reduced from 100ms to 50ms for submission
     processingTimerRef.current = window.setTimeout(() => {
       // Update counter for debugging
       setProcessingCount(prev => prev + 1);
@@ -278,12 +279,32 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       });
       
       processingTimerRef.current = null;
-    }, 100); // 100ms debounce
+    }, 50); // 50ms debounce, reduced from 100ms
+  }, [processSection]);
+
+  // Immediately process sections without debouncing for submission
+  const processAllSectionsImmediately = useCallback((
+    sections: Array<FormSection[]>,
+    currentValues: Record<string, any>
+  ) => {
+    console.log('[FormSubmissionState] Processing all sections immediately for submission');
+    
+    // Process each section in each step
+    sections.forEach(stepSections => {
+      stepSections.forEach(section => {
+        processSection(section, currentValues);
+      });
+    });
+    
+    return submissionDataRef.current;
   }, [processSection]);
 
   // Update the timestamp before final submission
   const finalizeSubmissionData = useCallback((): SubmissionData => {
+    console.log('[FormSubmissionState] Finalizing submission data');
+    
     submissionDataRef.current.submissionTimestamp = new Date().toISOString();
+    
     return {
       formattedAnswers: { ...submissionDataRef.current },
       rawAnswers: { /* Will be filled by the form submission hook */ },
@@ -319,6 +340,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     processSection,
     processQuestion,
     processSectionsWithDebounce,
+    processAllSectionsImmediately,
     setCurrentStep,
     finalizeSubmissionData,
     getProcessingCount

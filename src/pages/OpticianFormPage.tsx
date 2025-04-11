@@ -13,13 +13,18 @@ import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import OpticianFormContainer from "@/components/Optician/OpticianFormContainer";
 import OpticianSubmittedView from "@/components/Optician/OpticianSubmittedView";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { FormTemplate } from "@/types/anamnesis";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const mode = searchParams.get("mode");
   const navigate = useNavigate();
+  
+  // State to persist form values between submission attempts
+  const [storedFormValues, setStoredFormValues] = useState<Record<string, any> | null>(null);
+  const [storedFormattedAnswers, setStoredFormattedAnswers] = useState<any | null>(null);
   
   // Verify that this is indeed an optician mode form
   const isOpticianMode = mode === "optician";
@@ -50,6 +55,32 @@ const OpticianFormPage = () => {
       navigate("/dashboard");
     }
   }, [isOpticianMode, loading, navigate]);
+
+  // Handler for form submission that stores the form values for potential retries
+  const handleSubmitWithPersistence = async (values: any, formattedAnswers?: any) => {
+    console.log("[OpticianFormPage/handleSubmitWithPersistence]: Storing form values for potential retry", values);
+    
+    // Store the values and formatted answers for potential retries
+    setStoredFormValues(values);
+    setStoredFormattedAnswers(formattedAnswers);
+    
+    // Proceed with submission
+    return handleFormSubmit(values, formTemplate, formattedAnswers);
+  };
+  
+  // Handle retry with stored form values
+  const handleSubmissionRetry = () => {
+    console.log("[OpticianFormPage/handleSubmissionRetry]: Attempting retry with stored values", storedFormValues);
+    
+    if (storedFormValues) {
+      // If we have stored values, use them for the retry
+      return handleFormSubmit(storedFormValues, formTemplate, storedFormattedAnswers);
+    } else {
+      // If no stored values (unlikely), reset the process
+      console.warn("[OpticianFormPage/handleSubmissionRetry]: No stored form values for retry, resetting");
+      handleRetry();
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -85,7 +116,7 @@ const OpticianFormPage = () => {
         error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
         errorCode="" 
         diagnosticInfo="" 
-        onRetry={() => handleFormSubmit({}, formTemplate)} 
+        onRetry={handleSubmissionRetry} 
       />
     );
   }
@@ -94,9 +125,10 @@ const OpticianFormPage = () => {
   return (
     <OpticianFormContainer
       formTemplate={formTemplate}
-      onSubmit={handleFormSubmit}
+      onSubmit={handleSubmitWithPersistence}
       isSubmitting={isSubmitting}
       onRetry={handleRetry}
+      initialValues={storedFormValues}
     />
   );
 };

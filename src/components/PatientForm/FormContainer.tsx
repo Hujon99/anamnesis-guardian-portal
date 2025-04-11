@@ -3,6 +3,7 @@
  * This component renders the form container, including the Toaster component
  * to ensure toast messages are properly displayed. It also adds additional
  * validation of the form template structure to prevent rendering errors.
+ * Enhanced to handle the new template structure with dynamic follow-up questions.
  */
 
 import React from "react";
@@ -54,6 +55,9 @@ const FormContainer: React.FC<FormContainerProps> = ({
       console.error("[FormContainer]: Form template has no questions in any section!");
       return false;
     }
+    
+    // Success - template structure is valid
+    console.log("[FormContainer]: Template structure validation passed!");
     
     return true;
   }, [formTemplate]);

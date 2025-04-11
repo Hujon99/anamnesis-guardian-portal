@@ -1,10 +1,12 @@
+
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
  * consistent structure based on the form template that was used.
+ * Enhanced to handle checkbox arrays and dynamic follow-up questions.
  */
 
-import { FormTemplate } from "@/types/anamnesis";
+import { FormTemplate, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
 
 /**
  * Interface for the structured answer format
@@ -22,6 +24,52 @@ export interface FormattedAnswer {
   isOpticianSubmission?: boolean;
 }
 
+/**
+ * Helper function to get the original question ID from a runtime ID
+ * For example: "operation_type_for_Grå_starr" -> "operation_type"
+ */
+const getOriginalQuestionId = (runtimeId: string): string => {
+  if (runtimeId.includes('_for_')) {
+    return runtimeId.split('_for_')[0];
+  }
+  return runtimeId;
+};
+
+/**
+ * Helper function to get the parent value from a runtime ID
+ * For example: "operation_type_for_Grå_starr" -> "Grå starr"
+ */
+const getParentValueFromRuntimeId = (runtimeId: string): string => {
+  if (runtimeId.includes('_for_')) {
+    return runtimeId.split('_for_')[1].replace(/_/g, ' ');
+  }
+  return '';
+};
+
+/**
+ * Groups dynamic follow-up questions by their parent questions
+ */
+const groupDynamicQuestions = (
+  userInputs: Record<string, any>
+): Record<string, Record<string, any>> => {
+  const dynamicQuestions: Record<string, Record<string, any>> = {};
+  
+  // Identify dynamic follow-up questions (those with _for_ in their ID)
+  Object.keys(userInputs).forEach(key => {
+    if (key.includes('_for_')) {
+      const originalId = getOriginalQuestionId(key);
+      const parentValue = getParentValueFromRuntimeId(key);
+      
+      if (!dynamicQuestions[originalId]) {
+        dynamicQuestions[originalId] = {};
+      }
+      
+      dynamicQuestions[originalId][parentValue] = userInputs[key];
+    }
+  });
+  
+  return dynamicQuestions;
+};
 
 /**
  * Prepares form answers for submission to the API.
@@ -87,92 +135,10 @@ export const prepareFormSubmission = (
       }
     };
   } else {
-    // Fallback to legacy approach (should not be used anymore)
-    console.warn("[formSubmissionUtils/prepareFormSubmission]: WARNING: Using legacy processFormAnswers approach");
+    console.log("[formSubmissionUtils/prepareFormSubmission]: Using enhanced processFormAnswers approach");
     
-    // Initialize the structured answer object
-  const formattedAnswer: FormattedAnswer = {
-    formTitle: formTemplate.title,
-    submissionTimestamp: new Date().toISOString(),
-    answeredSections: []
-  };
-
-  // Function to evaluate show_if conditions
-  const evaluateCondition = (
-    condition: { question: string; equals: string | string[] } | undefined
-  ): boolean => {
-    if (!condition) return true;
-
-    const { question, equals } = condition;
-    const dependentValue = userInputs[question];
-
-    if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
-    }
-
-    return dependentValue === equals;
-  };
-
-  // Process each section in the template
-  formTemplate.sections.forEach(section => {
-    // Create a new section for the formatted answer
-    const formattedSection = {
-      section_title: section.section_title,
-      responses: []
-    };
-
-    // Process each question in the section
-    section.questions.forEach(question => {
-      // Skip questions that shouldn't be shown based on conditions
-      if (!evaluateCondition(question.show_if)) {
-        return;
-      }
-
-      const userAnswer = userInputs[question.id];
-
-      // Skip if question wasn't answered (undefined, null, or empty string)
-      // Note: we include false and 0 as valid answers
-      if (
-        userAnswer === undefined || 
-        userAnswer === null || 
-        (typeof userAnswer === 'string' && userAnswer.trim() === '')
-      ) {
-        return;
-      }
-
-      // Add the answer to the formatted section
-      formattedSection.responses.push({
-        id: question.id,
-        answer: userAnswer
-      });
-
-      // Handle "Other" option for radio buttons and dropdowns
-      if (
-        (question.type === 'radio' || question.type === 'dropdown') &&
-        question.options && 
-        question.options.includes('Övrigt') &&
-        userAnswer === 'Övrigt'
-      ) {
-        // Look for the associated "other" text input (usually has _other or _övrigt suffix)
-        const otherFieldId = `${question.id}_other`;
-        const alternativeOtherFieldId = `${question.id}_övrigt`;
-        
-        const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
-        
-        if (otherAnswer) {
-          formattedSection.responses.push({
-            id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
-            answer: otherAnswer
-          });
-        }
-      }
-    });
-
-    // Only include sections that have responses
-    if (formattedSection.responses.length > 0) {
-      formattedAnswer.answeredSections.push(formattedSection);
-    }
-  });
+    // Use enhanced form processing for the new template structure
+    const formattedAnswer = enhancedProcessFormAnswers(formTemplate, userInputs);
     
     return {
       // Include the formatted answers 
@@ -193,14 +159,181 @@ export const prepareFormSubmission = (
       metadata: {
         formTemplateId: formTemplate.title,
         submittedAt: new Date().toISOString(),
-        version: isOpticianMode ? "2.1" : "1.0"
+        version: isOpticianMode ? "2.1" : "2.0"
       }
     };
   }
 };
 
 /**
- * @deprecated Use the useFormSubmissionState hook instead
+ * Enhanced version that handles the new template structure with checkbox arrays
+ * and dynamic follow-up questions
+ */
+export const enhancedProcessFormAnswers = (
+  formTemplate: FormTemplate,
+  userInputs: Record<string, any>
+): FormattedAnswer => {
+  // Initialize the structured answer object
+  const formattedAnswer: FormattedAnswer = {
+    formTitle: formTemplate.title,
+    submissionTimestamp: new Date().toISOString(),
+    answeredSections: []
+  };
+
+  // Find dynamic follow-up questions and group them by their parent
+  const dynamicQuestionGroups = groupDynamicQuestions(userInputs);
+  
+  console.log("[formSubmissionUtils/enhancedProcessFormAnswers]: Dynamic question groups:", dynamicQuestionGroups);
+
+  // Function to evaluate show_if conditions
+  const evaluateCondition = (
+    condition: { question: string; equals?: string | string[]; contains?: string; } | undefined,
+    values: Record<string, any>
+  ): boolean => {
+    if (!condition) return true;
+
+    const { question, equals, contains } = condition;
+    const dependentValue = values[question];
+
+    if (contains !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        return dependentValue.includes(contains);
+      }
+      return dependentValue === contains;
+    }
+
+    if (equals !== undefined) {
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
+      }
+      return dependentValue === equals;
+    }
+
+    return !!dependentValue;
+  };
+
+  // Process each section in the template
+  formTemplate.sections.forEach(section => {
+    // Create a new section for the formatted answer
+    const formattedSection = {
+      section_title: section.section_title,
+      responses: []
+    };
+
+    // Process each question in the section
+    section.questions.forEach(question => {
+      // Skip follow-up templates - they'll be processed as dynamic instances
+      if (question.is_followup_template) return;
+      
+      // Skip questions that shouldn't be shown based on conditions
+      if (!evaluateCondition(question.show_if, userInputs)) {
+        return;
+      }
+
+      const userAnswer = userInputs[question.id];
+
+      // Skip if question wasn't answered (undefined, null, or empty string)
+      // But include false, 0, and empty arrays as valid answers
+      if (
+        userAnswer === undefined || 
+        userAnswer === null || 
+        (typeof userAnswer === 'string' && userAnswer.trim() === '') ||
+        (Array.isArray(userAnswer) && userAnswer.length === 0)
+      ) {
+        return;
+      }
+
+      // Add the answer to the formatted section
+      formattedSection.responses.push({
+        id: question.id,
+        answer: userAnswer
+      });
+
+      // Handle dynamic follow-up questions for this parent question
+      if (dynamicQuestionGroups[question.id]) {
+        const followupGroup = dynamicQuestionGroups[question.id];
+        
+        // For each selected value that triggered follow-ups
+        Object.entries(followupGroup).forEach(([parentValue, followupAnswer]) => {
+          // Skip if the follow-up wasn't answered
+          if (
+            followupAnswer === undefined || 
+            followupAnswer === null || 
+            (typeof followupAnswer === 'string' && followupAnswer.trim() === '') ||
+            (Array.isArray(followupAnswer) && followupAnswer.length === 0)
+          ) {
+            return;
+          }
+          
+          // Identify which template this is from
+          const templateId = getOriginalQuestionId(
+            Object.keys(userInputs).find(key => 
+              key.includes(`_for_${parentValue.replace(/\s+/g, '_')}`)
+            ) || ''
+          );
+          
+          // Add a structured response for the follow-up
+          formattedSection.responses.push({
+            id: `${templateId}_for_${parentValue.replace(/\s+/g, '_')}`,
+            answer: {
+              parent_question: question.id,
+              parent_value: parentValue,
+              value: followupAnswer
+            }
+          });
+        });
+      }
+
+      // Handle "Övrigt" option for radio buttons, dropdowns, and checkboxes
+      if (
+        (question.type === 'radio' || question.type === 'dropdown') &&
+        question.options && 
+        typeof userAnswer === 'string' &&
+        userAnswer === 'Övrigt'
+      ) {
+        // Look for the associated "other" text input (usually has _other or _övrigt suffix)
+        const otherFieldId = `${question.id}_other`;
+        const alternativeOtherFieldId = `${question.id}_övrigt`;
+        
+        const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
+        
+        if (otherAnswer) {
+          formattedSection.responses.push({
+            id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
+            answer: otherAnswer
+          });
+        }
+      } else if (
+        question.type === 'checkbox' &&
+        Array.isArray(userAnswer) &&
+        userAnswer.includes('Övrigt')
+      ) {
+        // For checkbox arrays with "Övrigt" selected
+        const otherFieldId = `${question.id}_other`;
+        const alternativeOtherFieldId = `${question.id}_övrigt`;
+        
+        const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
+        
+        if (otherAnswer) {
+          formattedSection.responses.push({
+            id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
+            answer: otherAnswer
+          });
+        }
+      }
+    });
+
+    // Only include sections that have responses
+    if (formattedSection.responses.length > 0) {
+      formattedAnswer.answeredSections.push(formattedSection);
+    }
+  });
+
+  return formattedAnswer;
+};
+
+/**
+ * @deprecated Use enhancedProcessFormAnswers instead
  * This function is kept for backward compatibility.
  */
 export const processFormAnswers = (
@@ -216,18 +349,28 @@ export const processFormAnswers = (
 
   // Function to evaluate show_if conditions
   const evaluateCondition = (
-    condition: { question: string; equals: string | string[] } | undefined
+    condition: { question: string; equals?: string | string[]; contains?: string; } | undefined
   ): boolean => {
     if (!condition) return true;
 
-    const { question, equals } = condition;
+    const { question, equals, contains } = condition;
     const dependentValue = userInputs[question];
 
-    if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
+    if (contains !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        return dependentValue.includes(contains);
+      }
+      return dependentValue === contains;
     }
 
-    return dependentValue === equals;
+    if (equals !== undefined) {
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
+      }
+      return dependentValue === equals;
+    }
+
+    return !!dependentValue;
   };
 
   // Process each section in the template

@@ -134,6 +134,21 @@ export function useTokenVerification(token: string | null): VerificationResult {
         sections: rawTemplate.schema.sections || []
       };
       
+      // Pre-process the options in any question to convert string arrays to object arrays if needed
+      processedTemplate.sections.forEach(section => {
+        if (section.questions) {
+          section.questions.forEach(question => {
+            // Handle checkbox type questions with options that might trigger follow-up questions
+            if ((question.type === "checkbox" || question.type === "radio") && 
+                question.options && Array.isArray(question.options)) {
+              
+              // No need to transform plain string options
+              console.log(`Processing options for question ${question.id}:`, question.options);
+            }
+          });
+        }
+      });
+      
       return processedTemplate;
     }
     

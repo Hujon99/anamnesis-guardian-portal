@@ -49,6 +49,27 @@ const PatientFormPage = () => {
     submitForm 
   } = useFormSubmission();
 
+  // Add additional debug logging for the form template
+  useEffect(() => {
+    console.log("PatientFormPage: Form template received:", formTemplate);
+    if (formTemplate) {
+      console.log("PatientFormPage: Template title:", formTemplate.title);
+      console.log("PatientFormPage: Template sections count:", formTemplate.sections?.length || 0);
+      
+      // Log detailed information about sections
+      if (formTemplate.sections && formTemplate.sections.length > 0) {
+        formTemplate.sections.forEach((section, idx) => {
+          console.log(`PatientFormPage: Section ${idx + 1}: ${section.section_title}`);
+          console.log(`PatientFormPage: Section ${idx + 1} questions count:`, section.questions?.length || 0);
+        });
+      } else {
+        console.warn("PatientFormPage: Template has no sections!");
+      }
+    } else {
+      console.warn("PatientFormPage: Template is null or undefined!");
+    }
+  }, [formTemplate]);
+
   // Handle form submission with form template
   const handleFormSubmit = async (values: any, formattedAnswers?: any) => {
     if (!token) {

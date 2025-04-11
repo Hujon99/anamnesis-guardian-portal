@@ -1,13 +1,15 @@
 
 /**
  * This component renders the form container, including the Toaster component
- * to ensure toast messages are properly displayed.
+ * to ensure toast messages are properly displayed. It also adds additional
+ * validation of the form template structure to prevent rendering errors.
  */
 
 import React from "react";
 import { FormTemplate } from "@/types/anamnesis";
 import { FormOrchestrator } from "./FormOrchestrator";
 import { Toaster } from "@/components/ui/toaster";
+import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 
 interface FormContainerProps {
   formTemplate: FormTemplate;
@@ -29,6 +31,32 @@ const FormContainer: React.FC<FormContainerProps> = ({
   console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
   console.log("[FormContainer]: Initializing with values:", initialValues);
   console.log("[FormContainer]: Created by:", createdByName);
+  console.log("[FormContainer]: Form template:", formTemplate);
+  
+  // Validate the form template structure before rendering
+  const isValidTemplate = React.useMemo(() => {
+    if (!formTemplate) {
+      console.error("[FormContainer]: Form template is null or undefined!");
+      return false;
+    }
+    
+    if (!formTemplate.sections || !Array.isArray(formTemplate.sections)) {
+      console.error("[FormContainer]: Form template has no sections array or sections is not an array!");
+      return false;
+    }
+    
+    // Check if any sections have questions
+    const hasQuestions = formTemplate.sections.some(section => 
+      section.questions && Array.isArray(section.questions) && section.questions.length > 0
+    );
+    
+    if (!hasQuestions) {
+      console.error("[FormContainer]: Form template has no questions in any section!");
+      return false;
+    }
+    
+    return true;
+  }, [formTemplate]);
   
   const handleSubmit = async (values: any, formattedAnswers?: any) => {
     console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
@@ -43,6 +71,18 @@ const FormContainer: React.FC<FormContainerProps> = ({
       throw error;
     }
   };
+  
+  // If the template is not valid, show an error
+  if (!isValidTemplate) {
+    return (
+      <ErrorCard 
+        error="Formulärstrukturen är ogiltig" 
+        errorCode="invalid_template"
+        diagnosticInfo={`Template: ${JSON.stringify(formTemplate, null, 2)}`}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
   
   return (
     <>

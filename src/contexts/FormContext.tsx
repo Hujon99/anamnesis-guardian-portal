@@ -60,11 +60,66 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   isOpticianMode = false,
   initialValues = null
 }) => {
+  // Add defensive check for form template structure
+  const safeFormTemplate = useMemo(() => {
+    // Log the raw form template for debugging
+    console.log("[FormContext]: Received formTemplate:", formTemplate);
+    
+    // Check if we have a valid form template
+    if (!formTemplate) {
+      console.error("[FormContext]: Form template is null or undefined!");
+      // Return a minimal valid template to prevent errors
+      return {
+        title: "Fel vid inläsning av formulär",
+        sections: []
+      };
+    }
+    
+    // Check if sections exist
+    if (!formTemplate.sections) {
+      console.error("[FormContext]: Form template has no sections array!");
+      // Provide a placeholder sections array
+      return {
+        ...formTemplate,
+        sections: []
+      };
+    }
+    
+    // Check if each section has a questions array
+    const validatedSections = formTemplate.sections.map(section => {
+      if (!section.questions) {
+        console.error(`[FormContext]: Section "${section.section_title}" has no questions array!`);
+        return {
+          ...section,
+          questions: []
+        };
+      }
+      return section;
+    });
+    
+    return {
+      ...formTemplate,
+      sections: validatedSections
+    };
+  }, [formTemplate]);
+  
   // Initialize form with default values
   const generateDefaultValues = (template: FormTemplate, initialVals: Record<string, any> | null) => {
     const defaultValues: Record<string, any> = {};
     
+    // Check if template and sections exist before trying to iterate
+    if (!template || !template.sections) {
+      console.error("[FormContext]: Cannot generate default values - invalid template structure");
+      return defaultValues;
+    }
+    
     template.sections.forEach(section => {
+      // Check if questions exist before trying to iterate
+      if (!section.questions) {
+        console.error(`[FormContext]: Section "${section.section_title}" has no questions array`);
+        return;
+      }
+      
       section.questions.forEach(question => {
         // Skip questions that are only for opticians if we're not in optician mode
         if (question.show_in_mode === "optician" && !isOpticianMode) {
@@ -107,13 +162,14 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     return defaultValues;
   };
   
-  const defaultValues = generateDefaultValues(formTemplate, initialValues);
+  // Use the safeFormTemplate instead of the raw formTemplate
+  const defaultValues = generateDefaultValues(safeFormTemplate, initialValues);
   
   console.log("[FormContext]: Generated default values with initialValues:", 
     initialValues ? "present" : "not present", defaultValues);
   
   // Custom hooks for form functionality
-  const { validationSchema, getFieldsToValidate } = useFormValidation(formTemplate, defaultValues);
+  const { validationSchema, getFieldsToValidate } = useFormValidation(safeFormTemplate, defaultValues);
   
   // Initialize form with validation schema
   const form = useForm({
@@ -152,9 +208,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     }
   }, [initialValues, reset, form]);
   
-  // Initialize hooks for form state
-  // Pass isOpticianMode to ensure fields are properly filtered
-  const { visibleSections, totalSections } = useConditionalFields(formTemplate, watchedValues, isOpticianMode);
+  // Initialize hooks for form state - use safeFormTemplate instead of raw formTemplate
+  const { visibleSections, totalSections } = useConditionalFields(safeFormTemplate, watchedValues, isOpticianMode);
   
   const { 
     currentStep, 
@@ -170,7 +225,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     processSectionsWithDebounce,
     setCurrentStep: setSubmissionStateCurrentStep,
     finalizeSubmissionData
-  } = useFormSubmissionState(formTemplate);
+  } = useFormSubmissionState(safeFormTemplate);
 
   // Process sections when values change (with debounce)
   React.useEffect(() => {

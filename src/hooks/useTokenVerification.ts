@@ -94,10 +94,14 @@ export function useTokenVerification(token: string | null): VerificationResult {
       if (data.entry && data.formTemplate) {
         console.log("Token verified successfully", data);
         
-        // Store both the form template and the entry data
-        setFormTemplate(data.formTemplate as FormTemplate);
+        // Store the entry data
         setEntryData(data.entry as AnamnesesEntry);
         
+        // Process the form template structure - this is the critical part
+        const processedTemplate = processFormTemplate(data.formTemplate);
+        console.log("Processed form template:", processedTemplate);
+        
+        setFormTemplate(processedTemplate);
         setError(null);
         setErrorCode(null);
       } else {
@@ -114,6 +118,31 @@ export function useTokenVerification(token: string | null): VerificationResult {
     } finally {
       setLoading(false);
     }
+  };
+
+  // This function processes the form template data to match the expected structure in FormContext
+  const processFormTemplate = (rawTemplate: any): FormTemplate => {
+    console.log("Processing form template:", rawTemplate);
+    
+    // Check if we have a "schema" property which contains the actual template
+    if (rawTemplate.schema) {
+      console.log("Template has schema property, unwrapping it");
+      
+      // Extract the needed values from schema
+      const processedTemplate: FormTemplate = {
+        title: rawTemplate.schema.title || rawTemplate.title || "Patientformulär",
+        sections: rawTemplate.schema.sections || []
+      };
+      
+      return processedTemplate;
+    }
+    
+    // If we don't have a schema property, use the raw template as is
+    // but ensure it has the expected structure
+    return {
+      title: rawTemplate.title || "Patientformulär",
+      sections: rawTemplate.sections || []
+    };
   };
 
   const handleRetry = () => {

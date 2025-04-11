@@ -22,6 +22,10 @@ const PatientFormPage = () => {
   // For debugging purposes
   useEffect(() => {
     console.log("PatientFormPage rendered with token:", token ? `${token.substring(0, 6)}...` : 'null');
+    
+    // Check if we're on the correct path
+    console.log("Current path:", window.location.pathname);
+    console.log("Complete URL:", window.location.href);
   }, [token]);
   
   // Use custom hooks to handle token verification and form submission

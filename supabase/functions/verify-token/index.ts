@@ -1,6 +1,6 @@
 
 /**
- * Verify Token Edge Function (v8.1)
+ * Verify Token Edge Function (v8.2)
  * 
  * This edge function verifies patient access tokens for anamnes forms.
  * It handles token validation, checks expiration, and verifies form status
@@ -33,7 +33,7 @@ import {
 } from "../utils/databaseUtils.ts";
 
 // Version tracking for logs
-const FUNCTION_VERSION = "v8.1";
+const FUNCTION_VERSION = "v8.2";
 const FUNCTION_NAME = "verify-token";
 
 serve(async (req: Request) => {
@@ -45,6 +45,10 @@ serve(async (req: Request) => {
     // Log function start with more details
     logFunctionStart(FUNCTION_NAME, FUNCTION_VERSION, req);
     console.log(`Request headers:`, Object.fromEntries([...req.headers.entries()]));
+    
+    // Extra logging for debugging URL
+    const url = new URL(req.url);
+    console.log(`Request URL: ${url.pathname}${url.search}`);
     
     // Validate request and extract token
     console.log(`Extracting and validating token from request...`);

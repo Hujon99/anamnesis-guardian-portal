@@ -19,12 +19,14 @@ export const AnswerDisplayHelper: React.FC<AnswerDisplayHelperProps> = ({
   // Extract value from nested object structure
   const extractValue = (val: any): any => {
     // Handle undefined/null
+    console.log(val)
     if (val === undefined || val === null) {
       return val;
     }
 
     // If it's an object, try to extract the value
     if (typeof val === 'object') {
+      console.log("val is an object: ", val)
       // Handle dynamic follow-up answer format
       if ('value' in val) {
         return val.value;

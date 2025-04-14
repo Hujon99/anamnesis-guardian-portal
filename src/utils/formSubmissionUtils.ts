@@ -1,3 +1,4 @@
+
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -186,6 +187,17 @@ export const enhancedProcessFormAnswers = (
   
   console.log("[formSubmissionUtils/enhancedProcessFormAnswers]: Dynamic question groups:", dynamicQuestionGroups);
 
+  // Create a map to track which dynamic questions belong to which section
+  const dynamicQuestionSectionMap: Record<string, string> = {};
+  
+  // First pass - find the section for each base question that might have dynamic follow-ups
+  formTemplate.sections.forEach(section => {
+    section.questions.forEach(question => {
+      // Map the original question ID to its section
+      dynamicQuestionSectionMap[question.id] = section.section_title;
+    });
+  });
+
   // Function to evaluate show_if conditions
   const evaluateCondition = (
     condition: { question: string; equals?: string | string[]; contains?: string; } | undefined,
@@ -292,54 +304,57 @@ export const enhancedProcessFormAnswers = (
       }
     });
 
-    // Now process any dynamic follow-up questions
+    // Look for dynamic follow-up questions that belong to this section
     Object.keys(userInputs).forEach(key => {
-      // Only look at dynamic follow-up questions (with runtime IDs)
       if (key.includes('_for_') && !processedRuntimeIds.has(key)) {
-        const userAnswer = userInputs[key];
-        
-        // Skip if no answer
-        if (
-          userAnswer === undefined || 
-          userAnswer === null || 
-          (typeof userAnswer === 'string' && userAnswer.trim() === '') ||
-          (Array.isArray(userAnswer) && userAnswer.length === 0)
-        ) {
-          return;
-        }
-        
-        // Get the base template ID and parent value from the runtime ID
         const originalId = getOriginalQuestionId(key);
-        const parentValue = getParentValueFromRuntimeId(key);
         
-        // Add the formatted follow-up response
-        formattedSection.responses.push({
-          id: key, // Use the full runtime ID as the answer identifier
-          answer: {
-            parent_question: originalId,
-            parent_value: parentValue,
-            value: userAnswer
+        // Only include this dynamic question if its parent belongs to this section
+        if (dynamicQuestionSectionMap[originalId] === section.section_title) {
+          const userAnswer = userInputs[key];
+          
+          // Skip if no answer
+          if (
+            userAnswer === undefined || 
+            userAnswer === null || 
+            (typeof userAnswer === 'string' && userAnswer.trim() === '') ||
+            (Array.isArray(userAnswer) && userAnswer.length === 0)
+          ) {
+            return;
           }
-        });
-        
-        // Mark this runtime ID as processed
-        processedRuntimeIds.add(key);
-        
-        // Also handle "Övrigt" option for follow-up questions
-        if (
-          (typeof userAnswer === 'string' && userAnswer === 'Övrigt') ||
-          (Array.isArray(userAnswer) && userAnswer.includes('Övrigt'))
-        ) {
-          const otherFieldId = `${key}_other`;
-          const alternativeOtherFieldId = `${key}_övrigt`;
           
-          const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
+          // Get the parent value from the runtime ID
+          const parentValue = getParentValueFromRuntimeId(key);
           
-          if (otherAnswer) {
-            formattedSection.responses.push({
-              id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
-              answer: otherAnswer
-            });
+          // Add the formatted follow-up response
+          formattedSection.responses.push({
+            id: key, // Use the full runtime ID as the answer identifier
+            answer: {
+              parent_question: originalId,
+              parent_value: parentValue,
+              value: userAnswer
+            }
+          });
+          
+          // Mark this runtime ID as processed to avoid duplicates
+          processedRuntimeIds.add(key);
+          
+          // Also handle "Övrigt" option for follow-up questions
+          if (
+            (typeof userAnswer === 'string' && userAnswer === 'Övrigt') ||
+            (Array.isArray(userAnswer) && userAnswer.includes('Övrigt'))
+          ) {
+            const otherFieldId = `${key}_other`;
+            const alternativeOtherFieldId = `${key}_övrigt`;
+            
+            const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
+            
+            if (otherAnswer) {
+              formattedSection.responses.push({
+                id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
+                answer: otherAnswer
+              });
+            }
           }
         }
       }

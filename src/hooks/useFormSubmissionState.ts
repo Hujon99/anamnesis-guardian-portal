@@ -26,6 +26,9 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   const processingTimerRef = useRef<number | null>(null);
   const lastProcessedValuesRef = useRef<string>("");
 
+  // Track processed dynamic questions per section to avoid duplicates
+  const processedQuestionsRef = useRef<Record<string, Set<string>>>({});
+
   // Update the current step tracking
   const setCurrentStep = useCallback((step: number) => {
     if (currentStepRef.current !== step) {
@@ -60,51 +63,71 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Process a section's visibility and its questions
   const processSection = useCallback((section: FormSection, currentValues: Record<string, any>) => {
     const shouldShowSection = evaluateCondition(section.show_if, currentValues);
+    const sectionTitle = section.section_title;
     
     // Only log visibility changes or in debug mode (reduced frequency)
     if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
-      console.log(`[FormSubmissionState] Section "${section.section_title}" visible: ${shouldShowSection}`);
+      console.log(`[FormSubmissionState] Section "${sectionTitle}" visible: ${shouldShowSection}`);
     }
     
     if (!shouldShowSection) {
       // Remove any existing data for this section
       const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
-        s => s.section_title === section.section_title
+        s => s.section_title === sectionTitle
       );
       
       if (sectionIndex !== -1) {
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[FormSubmissionState] Removing hidden section: ${section.section_title}`);
+          console.log(`[FormSubmissionState] Removing hidden section: ${sectionTitle}`);
         }
         submissionDataRef.current.answeredSections.splice(sectionIndex, 1);
       }
       return;
     }
     
-    // Find or create section in our submission data
-    findOrCreateSection(section.section_title);
+    // Create or find this section in our submission data
+    findOrCreateSection(sectionTitle);
+    
+    // Clear any previous tracking of processed dynamic questions for this section
+    if (!processedQuestionsRef.current[sectionTitle]) {
+      processedQuestionsRef.current[sectionTitle] = new Set<string>();
+    } else {
+      processedQuestionsRef.current[sectionTitle].clear();
+    }
     
     // Process each question in the section
     section.questions.forEach(question => {
-      processQuestion(question, section.section_title, currentValues);
+      processQuestion(question, sectionTitle, currentValues);
     });
 
-    // Also look for dynamic follow-up questions with runtime IDs
+    // Look for dynamic follow-up questions that belong to this section only
     Object.keys(currentValues).forEach(key => {
       if (key.includes('_for_')) {
-        // This is a dynamic follow-up question
-        // Create a synthetic question object to process it
-        const dynamicQuestion: DynamicFollowupQuestion = {
-          id: key.split('_for_')[0],
-          runtimeId: key,
-          label: `Dynamic Question ${key}`, // This doesn't matter for processing
-          type: 'text', // Default type, doesn't matter for processing
-          parentId: key.split('_for_')[0],
-          parentValue: key.split('_for_')[1].replace(/_/g, ' '),
-          originalId: key.split('_for_')[0],
-        };
+        // Check if this dynamic question belongs to a question in this section
+        const baseQuestionId = key.split('_for_')[0];
+        let belongsToThisSection = false;
         
-        processQuestion(dynamicQuestion, section.section_title, currentValues);
+        // Check if the parent question is in this section
+        section.questions.forEach(q => {
+          if (q.id === baseQuestionId) {
+            belongsToThisSection = true;
+          }
+        });
+        
+        // Only process if this dynamic question belongs to this section
+        if (belongsToThisSection) {
+          const dynamicQuestion: DynamicFollowupQuestion = {
+            id: key.split('_for_')[0],
+            runtimeId: key,
+            label: `Dynamic Question ${key}`, // This doesn't matter for processing
+            type: 'text', // Default type, doesn't matter for processing
+            parentId: key.split('_for_')[0],
+            parentValue: key.split('_for_')[1].replace(/_/g, ' '),
+            originalId: key.split('_for_')[0],
+          };
+          
+          processQuestion(dynamicQuestion, sectionTitle, currentValues);
+        }
       }
     });
   }, [findOrCreateSection]);
@@ -119,6 +142,20 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       // Check if this is a dynamic question with a runtime ID
       const isDynamicQuestion = 'runtimeId' in question;
       const questionId = isDynamicQuestion ? (question as DynamicFollowupQuestion).runtimeId : question.id;
+      
+      // For dynamic questions, check if we've already processed this one in the current section
+      if (isDynamicQuestion) {
+        const sectionTracker = processedQuestionsRef.current[sectionTitle];
+        if (sectionTracker && sectionTracker.has(questionId)) {
+          // We've already processed this dynamic question in this section
+          return;
+        }
+        
+        // Mark this dynamic question as processed for this section
+        if (sectionTracker) {
+          sectionTracker.add(questionId);
+        }
+      }
       
       // For dynamic questions, we always want to include them if they have a value
       const shouldShowQuestion = isDynamicQuestion ? true : evaluateCondition(question.show_if, currentValues);
@@ -265,7 +302,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         }
       }
     } catch (error) {
-      // Fixed the error - Properly define isDynamicQuestion before using it
+      // Properly define isDynamicQuestion before using it
       const isDynamicQuestion = 'runtimeId' in question;
       console.error(`Error processing question ${isDynamicQuestion ? (question as DynamicFollowupQuestion).runtimeId : question.id} in section ${sectionTitle}:`, error);
     }
@@ -331,9 +368,15 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     console.log('[FormSubmissionState] Processing all sections immediately for submission');
     console.log('[FormSubmissionState] Current form values:', currentValues);
     
+    // Reset the processed questions tracker to ensure fresh processing
+    processedQuestionsRef.current = {};
+    
     // Process each section in each step
     sections.forEach(stepSections => {
       stepSections.forEach(section => {
+        // Create or empty the set for this section
+        processedQuestionsRef.current[section.section_title] = new Set<string>();
+        // Process the section
         processSection(section, currentValues);
       });
     });

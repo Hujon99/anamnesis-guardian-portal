@@ -316,21 +316,41 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     };
   }, [formTemplate.title]);
 
-  // Helper function to evaluate show_if conditions
+  // Updated helper function to evaluate show_if conditions with the new type definition
   const evaluateCondition = (
-    condition: { question: string; equals: string | string[] } | undefined,
+    condition: { question: string; equals?: string | string[]; contains?: string; } | undefined,
     currentValues: Record<string, any>
   ): boolean => {
+    // If no condition is provided, always show the element
     if (!condition) return true;
 
-    const { question, equals } = condition;
+    // Check if the dependent question exists in the current values
+    const { question, equals, contains } = condition;
     const dependentValue = currentValues[question];
-
-    if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
+    
+    // Handle "contains" condition for checkbox array values
+    if (contains !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        return dependentValue.includes(contains);
+      }
+      // For non-array values, check equality
+      return dependentValue === contains;
     }
-
-    return dependentValue === equals;
+    
+    // Handle "equals" condition
+    if (equals !== undefined) {
+      // Handle array of possible values
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
+      }
+      
+      // Handle single value
+      return dependentValue === equals;
+    }
+    
+    // If no specific condition (equals/contains) is provided but the question is specified,
+    // show the element if the value is truthy
+    return !!dependentValue;
   };
 
   // For debugging - return the current processing count

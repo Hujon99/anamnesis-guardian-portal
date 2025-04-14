@@ -11,83 +11,8 @@ import { z } from "zod";
 import { FormTemplate, DynamicFollowupQuestion } from "@/types/anamnesis";
 
 export function useFormValidation(formTemplate: FormTemplate, currentValues: Record<string, any>) {
-  // Create a dynamic validation schema based on visible questions
-  const validationSchema = useMemo(() => {
-    const schemaMap: Record<string, any> = {};
-    
-    // Validate regular template fields first
-    processTemplateForValidation(formTemplate, currentValues, schemaMap);
-    
-    // Check for dynamic follow-up fields and validate them
-    Object.keys(currentValues).forEach(key => {
-      // Check if this is a runtime ID for a dynamic field (format: originalId_for_value)
-      if (key.includes('_for_')) {
-        const [originalId] = key.split('_for_');
-        
-        // Find the original question in the template to get its validation rules
-        let originalQuestion: any = null;
-        
-        formTemplate.sections.forEach(section => {
-          section.questions.forEach(question => {
-            if (question.id === originalId) {
-              originalQuestion = question;
-            }
-          });
-        });
-        
-        // If we found the original question, apply its validation rules to the dynamic instance
-        if (originalQuestion) {
-          if (originalQuestion.required) {
-            switch (originalQuestion.type) {
-              case "text":
-                schemaMap[key] = z.string().min(1, { message: "Detta fält måste fyllas i" });
-                break;
-              case "number":
-                schemaMap[key] = z.number().or(z.string().min(1, { message: "Detta fält måste fyllas i" }));
-                break;
-              case "radio":
-              case "dropdown":
-                schemaMap[key] = z.string().min(1, { message: "Du måste välja ett alternativ" });
-                break;
-              case "checkbox":
-                // For multi-select checkboxes
-                if (originalQuestion.options && originalQuestion.options.length > 0) {
-                  schemaMap[key] = z.array(z.string()).min(1, { message: "Du måste välja minst ett alternativ" });
-                } else {
-                  // For boolean checkboxes
-                  schemaMap[key] = z.boolean().refine(val => val, { message: "Detta måste kryssas i" });
-                }
-                break;
-              default:
-                schemaMap[key] = z.string().min(1, { message: "Detta fält måste fyllas i" });
-            }
-          } else {
-            // Not required fields
-            switch (originalQuestion.type) {
-              case "number":
-                schemaMap[key] = z.number().or(z.string()).optional();
-                break;
-              case "checkbox":
-                // For multi-select checkboxes
-                if (originalQuestion.options && originalQuestion.options.length > 0) {
-                  schemaMap[key] = z.array(z.string()).optional();
-                } else {
-                  // For boolean checkboxes
-                  schemaMap[key] = z.boolean().optional();
-                }
-                break;
-              default:
-                schemaMap[key] = z.string().optional();
-            }
-          }
-        }
-      }
-    });
-    
-    return Object.keys(schemaMap).length > 0 ? z.object(schemaMap) : null;
-  }, [formTemplate, currentValues]);
-
   // Helper function to recursively process the template for validation
+  // Define this function before it's used in validationSchema
   const processTemplateForValidation = (
     template: FormTemplate,
     values: Record<string, any>,
@@ -197,6 +122,82 @@ export function useFormValidation(formTemplate: FormTemplate, currentValues: Rec
       });
     });
   };
+
+  // Create a dynamic validation schema based on visible questions
+  const validationSchema = useMemo(() => {
+    const schemaMap: Record<string, any> = {};
+    
+    // Validate regular template fields first
+    processTemplateForValidation(formTemplate, currentValues, schemaMap);
+    
+    // Check for dynamic follow-up fields and validate them
+    Object.keys(currentValues).forEach(key => {
+      // Check if this is a runtime ID for a dynamic field (format: originalId_for_value)
+      if (key.includes('_for_')) {
+        const [originalId] = key.split('_for_');
+        
+        // Find the original question in the template to get its validation rules
+        let originalQuestion: any = null;
+        
+        formTemplate.sections.forEach(section => {
+          section.questions.forEach(question => {
+            if (question.id === originalId) {
+              originalQuestion = question;
+            }
+          });
+        });
+        
+        // If we found the original question, apply its validation rules to the dynamic instance
+        if (originalQuestion) {
+          if (originalQuestion.required) {
+            switch (originalQuestion.type) {
+              case "text":
+                schemaMap[key] = z.string().min(1, { message: "Detta fält måste fyllas i" });
+                break;
+              case "number":
+                schemaMap[key] = z.number().or(z.string().min(1, { message: "Detta fält måste fyllas i" }));
+                break;
+              case "radio":
+              case "dropdown":
+                schemaMap[key] = z.string().min(1, { message: "Du måste välja ett alternativ" });
+                break;
+              case "checkbox":
+                // For multi-select checkboxes
+                if (originalQuestion.options && originalQuestion.options.length > 0) {
+                  schemaMap[key] = z.array(z.string()).min(1, { message: "Du måste välja minst ett alternativ" });
+                } else {
+                  // For boolean checkboxes
+                  schemaMap[key] = z.boolean().refine(val => val, { message: "Detta måste kryssas i" });
+                }
+                break;
+              default:
+                schemaMap[key] = z.string().min(1, { message: "Detta fält måste fyllas i" });
+            }
+          } else {
+            // Not required fields
+            switch (originalQuestion.type) {
+              case "number":
+                schemaMap[key] = z.number().or(z.string()).optional();
+                break;
+              case "checkbox":
+                // For multi-select checkboxes
+                if (originalQuestion.options && originalQuestion.options.length > 0) {
+                  schemaMap[key] = z.array(z.string()).optional();
+                } else {
+                  // For boolean checkboxes
+                  schemaMap[key] = z.boolean().optional();
+                }
+                break;
+              default:
+                schemaMap[key] = z.string().optional();
+            }
+          }
+        }
+      }
+    });
+    
+    return Object.keys(schemaMap).length > 0 ? z.object(schemaMap) : null;
+  }, [formTemplate, currentValues]);
 
   // Function to get all field IDs that should be validated in a specific section
   const getFieldsToValidate = useCallback((sections: Array<any>): string[] => {

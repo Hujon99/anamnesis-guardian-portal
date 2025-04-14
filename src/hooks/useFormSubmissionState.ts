@@ -1,3 +1,4 @@
+
 /**
  * This hook manages the incremental construction of form submission data.
  * It tracks visible sections and questions in real-time as the user navigates
@@ -264,6 +265,8 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         }
       }
     } catch (error) {
+      // Fixed the error - Properly define isDynamicQuestion before using it
+      const isDynamicQuestion = 'runtimeId' in question;
       console.error(`Error processing question ${isDynamicQuestion ? (question as DynamicFollowupQuestion).runtimeId : question.id} in section ${sectionTitle}:`, error);
     }
     

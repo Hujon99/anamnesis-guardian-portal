@@ -11,6 +11,7 @@ import FormHeader from "@/components/PatientForm/FormHeader";
 import FormNavigation from "@/components/PatientForm/FormNavigation";
 import FormStepContent from "@/components/PatientForm/FormStepContent";
 import { useFormContext } from "@/contexts/FormContext";
+import { toast } from "sonner";
 
 interface FormLayoutProps {
   createdByName?: string | null;
@@ -31,6 +32,21 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     handleSubmit,
     form
   } = useFormContext();
+
+  // Log when dynamic values change to help debug follow-up questions
+  useEffect(() => {
+    // Log any values that might be follow-up questions (with _for_ in the key)
+    const dynamicValues = Object.entries(watchedValues || {})
+      .filter(([key]) => key.includes('_for_'))
+      .reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, any>);
+      
+    if (Object.keys(dynamicValues).length > 0) {
+      console.log("[FormLayout] Dynamic follow-up values:", dynamicValues);
+    }
+  }, [watchedValues]);
 
   // The onSubmit handler now only prevents default behavior but doesn't trigger submission
   // This prevents automatic form submission when pressing Enter or when the form is naturally submitted
@@ -97,8 +113,17 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
             const formValues = form.getValues();
             console.log("[FormLayout/onSubmit]: Current form values for submission:", formValues);
             
+            // Count dynamic follow-up values
+            const dynamicValues = Object.keys(formValues).filter(key => key.includes('_for_'));
+            if (dynamicValues.length > 0) {
+              console.log("[FormLayout/onSubmit]: Found", dynamicValues.length, "dynamic follow-up values");
+            } else {
+              console.warn("[FormLayout/onSubmit]: No dynamic follow-up values found! Check if they're being captured correctly");
+            }
+            
             form.handleSubmit((data) => {
               console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
+              toast.info("Skickar in dina svar...");
               // Call the submission handler from context with the current data
               handleSubmit()(data);
             })();

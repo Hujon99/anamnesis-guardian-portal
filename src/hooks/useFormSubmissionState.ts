@@ -1,4 +1,3 @@
-
 /**
  * This hook manages the incremental construction of form submission data.
  * It tracks visible sections and questions in real-time as the user navigates
@@ -6,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData, SubmissionData } from "@/types/anamnesis";
+import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData, SubmissionData, DynamicFollowupQuestion } from "@/types/anamnesis";
 
 export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Use ref for mutable submission data to avoid unnecessary re-renders
@@ -88,20 +87,44 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     section.questions.forEach(question => {
       processQuestion(question, section.section_title, currentValues);
     });
+
+    // Also look for dynamic follow-up questions with runtime IDs
+    Object.keys(currentValues).forEach(key => {
+      if (key.includes('_for_')) {
+        // This is a dynamic follow-up question
+        // Create a synthetic question object to process it
+        const dynamicQuestion: DynamicFollowupQuestion = {
+          id: key.split('_for_')[0],
+          runtimeId: key,
+          label: `Dynamic Question ${key}`, // This doesn't matter for processing
+          type: 'text', // Default type, doesn't matter for processing
+          parentId: key.split('_for_')[0],
+          parentValue: key.split('_for_')[1].replace(/_/g, ' '),
+          originalId: key.split('_for_')[0],
+        };
+        
+        processQuestion(dynamicQuestion, section.section_title, currentValues);
+      }
+    });
   }, [findOrCreateSection]);
 
   // Process a single question's visibility and answer
   const processQuestion = useCallback((
-    question: FormQuestion, 
+    question: FormQuestion | DynamicFollowupQuestion, 
     sectionTitle: string, 
     currentValues: Record<string, any>
   ) => {
     try {
-      const shouldShowQuestion = evaluateCondition(question.show_if, currentValues);
+      // Check if this is a dynamic question with a runtime ID
+      const isDynamicQuestion = 'runtimeId' in question;
+      const questionId = isDynamicQuestion ? (question as DynamicFollowupQuestion).runtimeId : question.id;
+      
+      // For dynamic questions, we always want to include them if they have a value
+      const shouldShowQuestion = isDynamicQuestion ? true : evaluateCondition(question.show_if, currentValues);
       
       // Very limited logging - only for development
       if (process.env.NODE_ENV === 'development' && Math.random() < 0.05) {
-        console.log(`[FormSubmissionState] Question "${question.id}" visible: ${shouldShowQuestion}`);
+        console.log(`[FormSubmissionState] Question "${questionId}" visible: ${shouldShowQuestion}`);
       }
       
       // Find the section in our data
@@ -125,18 +148,18 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       // If question shouldn't be shown, remove any existing data
       if (!shouldShowQuestion) {
         const questionIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
-          r => r.id === question.id
+          r => r.id === questionId
         );
         
         if (questionIndex !== -1) {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`[FormSubmissionState] Removing hidden question: ${question.id}`);
+            console.log(`[FormSubmissionState] Removing hidden question: ${questionId}`);
           }
           submissionDataRef.current.answeredSections[sectionIndex].responses.splice(questionIndex, 1);
           
           // Also remove any associated "other" fields
-          const otherFieldId = `${question.id}_other`;
-          const alternativeOtherFieldId = `${question.id}_övrigt`;
+          const otherFieldId = `${questionId}_other`;
+          const alternativeOtherFieldId = `${questionId}_övrigt`;
           
           const otherIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
             r => r.id === otherFieldId || r.id === alternativeOtherFieldId
@@ -150,41 +173,54 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       }
       
       // Get the answer for this question
-      const answer = currentValues[question.id];
+      const answer = currentValues[questionId];
       
       // Skip if answer is undefined, null, or empty string (but keep false and 0)
       const isEmpty = 
         answer === undefined || 
         answer === null || 
-        (typeof answer === 'string' && answer.trim() === '');
+        (typeof answer === 'string' && answer.trim() === '') ||
+        (Array.isArray(answer) && answer.length === 0);
       
       // Update or remove the answer
       const existingResponseIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
-        r => r.id === question.id
+        r => r.id === questionId
       );
       
       if (isEmpty) {
         // Remove the answer if it exists but is now empty
         if (existingResponseIndex !== -1) {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`[FormSubmissionState] Removing empty answer for: ${question.id}`);
+            console.log(`[FormSubmissionState] Removing empty answer for: ${questionId}`);
           }
           submissionDataRef.current.answeredSections[sectionIndex].responses.splice(existingResponseIndex, 1);
         }
       } else {
+        // For dynamic questions, format the answer differently
+        let processedAnswer = answer;
+        
+        if (isDynamicQuestion) {
+          const dynamicQuestion = question as DynamicFollowupQuestion;
+          processedAnswer = {
+            parent_question: dynamicQuestion.parentId,
+            parent_value: dynamicQuestion.parentValue,
+            value: answer
+          };
+        }
+        
         // Add or update the answer
         if (existingResponseIndex !== -1) {
-          submissionDataRef.current.answeredSections[sectionIndex].responses[existingResponseIndex].answer = answer;
+          submissionDataRef.current.answeredSections[sectionIndex].responses[existingResponseIndex].answer = processedAnswer;
           if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
-            console.log(`[FormSubmissionState] Updated answer for: ${question.id}`);
+            console.log(`[FormSubmissionState] Updated answer for: ${questionId}`);
           }
         } else {
           submissionDataRef.current.answeredSections[sectionIndex].responses.push({
-            id: question.id,
-            answer
+            id: questionId,
+            answer: processedAnswer
           });
           if (process.env.NODE_ENV === 'development') {
-            console.log(`[FormSubmissionState] Added new answer for: ${question.id}`);
+            console.log(`[FormSubmissionState] Added new answer for: ${questionId}`);
           }
         }
         
@@ -192,12 +228,14 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         if (
           (question.type === 'radio' || question.type === 'dropdown') &&
           question.options && 
-          question.options.includes('Övrigt') &&
-          answer === 'Övrigt'
+          (
+            (typeof answer === 'string' && answer === 'Övrigt') || 
+            (Array.isArray(answer) && answer.includes('Övrigt'))
+          )
         ) {
           // Look for the associated "other" text input
-          const otherFieldId = `${question.id}_other`;
-          const alternativeOtherFieldId = `${question.id}_övrigt`;
+          const otherFieldId = `${questionId}_other`;
+          const alternativeOtherFieldId = `${questionId}_övrigt`;
           
           const otherAnswer = currentValues[otherFieldId] || currentValues[alternativeOtherFieldId];
           const otherFieldIdToUse = otherFieldId in currentValues ? otherFieldId : alternativeOtherFieldId;
@@ -226,7 +264,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         }
       }
     } catch (error) {
-      console.error(`Error processing question ${question.id} in section ${sectionTitle}:`, error);
+      console.error(`Error processing question ${isDynamicQuestion ? (question as DynamicFollowupQuestion).runtimeId : question.id} in section ${sectionTitle}:`, error);
     }
     
     // Clean up empty sections
@@ -288,6 +326,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     currentValues: Record<string, any>
   ) => {
     console.log('[FormSubmissionState] Processing all sections immediately for submission');
+    console.log('[FormSubmissionState] Current form values:', currentValues);
     
     // Process each section in each step
     sections.forEach(stepSections => {

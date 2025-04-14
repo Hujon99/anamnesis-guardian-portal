@@ -1,4 +1,3 @@
-
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -68,6 +67,7 @@ const groupDynamicQuestions = (
     }
   });
   
+  console.log("Grouped dynamic questions:", dynamicQuestions);
   return dynamicQuestions;
 };
 
@@ -88,6 +88,7 @@ export const prepareFormSubmission = (
   isOpticianMode?: boolean
 ): Record<string, any> => {
   console.log("[formSubmissionUtils/prepareFormSubmission]: Called with isOpticianMode:", isOpticianMode);
+  console.log("[formSubmissionUtils/prepareFormSubmission]: Raw userInputs:", userInputs);
   
   // Process the formatted answers if provided
   let processedAnswers = formattedAnswers;
@@ -212,6 +213,9 @@ export const enhancedProcessFormAnswers = (
     return !!dependentValue;
   };
 
+  // Track runtime IDs already processed to avoid duplicates
+  const processedRuntimeIds = new Set<string>();
+
   // Process each section in the template
   formTemplate.sections.forEach(section => {
     // Create a new section for the formatted answer
@@ -220,7 +224,7 @@ export const enhancedProcessFormAnswers = (
       responses: []
     };
 
-    // Process each question in the section
+    // First, collect all direct answers (non-dynamic questions)
     section.questions.forEach(question => {
       // Skip follow-up templates - they'll be processed as dynamic instances
       if (question.is_followup_template) return;
@@ -248,41 +252,6 @@ export const enhancedProcessFormAnswers = (
         id: question.id,
         answer: userAnswer
       });
-
-      // Handle dynamic follow-up questions for this parent question
-      if (dynamicQuestionGroups[question.id]) {
-        const followupGroup = dynamicQuestionGroups[question.id];
-        
-        // For each selected value that triggered follow-ups
-        Object.entries(followupGroup).forEach(([parentValue, followupAnswer]) => {
-          // Skip if the follow-up wasn't answered
-          if (
-            followupAnswer === undefined || 
-            followupAnswer === null || 
-            (typeof followupAnswer === 'string' && followupAnswer.trim() === '') ||
-            (Array.isArray(followupAnswer) && followupAnswer.length === 0)
-          ) {
-            return;
-          }
-          
-          // Identify which template this is from
-          const templateId = getOriginalQuestionId(
-            Object.keys(userInputs).find(key => 
-              key.includes(`_for_${parentValue.replace(/\s+/g, '_')}`)
-            ) || ''
-          );
-          
-          // Add a structured response for the follow-up
-          formattedSection.responses.push({
-            id: `${templateId}_for_${parentValue.replace(/\s+/g, '_')}`,
-            answer: {
-              parent_question: question.id,
-              parent_value: parentValue,
-              value: followupAnswer
-            }
-          });
-        });
-      }
 
       // Handle "Övrigt" option for radio buttons, dropdowns, and checkboxes
       if (
@@ -323,12 +292,66 @@ export const enhancedProcessFormAnswers = (
       }
     });
 
+    // Now process any dynamic follow-up questions
+    Object.keys(userInputs).forEach(key => {
+      // Only look at dynamic follow-up questions (with runtime IDs)
+      if (key.includes('_for_') && !processedRuntimeIds.has(key)) {
+        const userAnswer = userInputs[key];
+        
+        // Skip if no answer
+        if (
+          userAnswer === undefined || 
+          userAnswer === null || 
+          (typeof userAnswer === 'string' && userAnswer.trim() === '') ||
+          (Array.isArray(userAnswer) && userAnswer.length === 0)
+        ) {
+          return;
+        }
+        
+        // Get the base template ID and parent value from the runtime ID
+        const originalId = getOriginalQuestionId(key);
+        const parentValue = getParentValueFromRuntimeId(key);
+        
+        // Add the formatted follow-up response
+        formattedSection.responses.push({
+          id: key, // Use the full runtime ID as the answer identifier
+          answer: {
+            parent_question: originalId,
+            parent_value: parentValue,
+            value: userAnswer
+          }
+        });
+        
+        // Mark this runtime ID as processed
+        processedRuntimeIds.add(key);
+        
+        // Also handle "Övrigt" option for follow-up questions
+        if (
+          (typeof userAnswer === 'string' && userAnswer === 'Övrigt') ||
+          (Array.isArray(userAnswer) && userAnswer.includes('Övrigt'))
+        ) {
+          const otherFieldId = `${key}_other`;
+          const alternativeOtherFieldId = `${key}_övrigt`;
+          
+          const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
+          
+          if (otherAnswer) {
+            formattedSection.responses.push({
+              id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
+              answer: otherAnswer
+            });
+          }
+        }
+      }
+    });
+
     // Only include sections that have responses
     if (formattedSection.responses.length > 0) {
       formattedAnswer.answeredSections.push(formattedSection);
     }
   });
 
+  console.log("[formSubmissionUtils/enhancedProcessFormAnswers]: Formatted answer:", formattedAnswer);
   return formattedAnswer;
 };
 
@@ -340,99 +363,6 @@ export const processFormAnswers = (
   formTemplate: FormTemplate,
   userInputs: Record<string, any>
 ): FormattedAnswer => {
-  // Initialize the structured answer object
-  const formattedAnswer: FormattedAnswer = {
-    formTitle: formTemplate.title,
-    submissionTimestamp: new Date().toISOString(),
-    answeredSections: []
-  };
-
-  // Function to evaluate show_if conditions
-  const evaluateCondition = (
-    condition: { question: string; equals?: string | string[]; contains?: string; } | undefined
-  ): boolean => {
-    if (!condition) return true;
-
-    const { question, equals, contains } = condition;
-    const dependentValue = userInputs[question];
-
-    if (contains !== undefined) {
-      if (Array.isArray(dependentValue)) {
-        return dependentValue.includes(contains);
-      }
-      return dependentValue === contains;
-    }
-
-    if (equals !== undefined) {
-      if (Array.isArray(equals)) {
-        return equals.includes(dependentValue);
-      }
-      return dependentValue === equals;
-    }
-
-    return !!dependentValue;
-  };
-
-  // Process each section in the template
-  formTemplate.sections.forEach(section => {
-    // Create a new section for the formatted answer
-    const formattedSection = {
-      section_title: section.section_title,
-      responses: []
-    };
-
-    // Process each question in the section
-    section.questions.forEach(question => {
-      // Skip questions that shouldn't be shown based on conditions
-      if (!evaluateCondition(question.show_if)) {
-        return;
-      }
-
-      const userAnswer = userInputs[question.id];
-
-      // Skip if question wasn't answered (undefined, null, or empty string)
-      // Note: we include false and 0 as valid answers
-      if (
-        userAnswer === undefined || 
-        userAnswer === null || 
-        (typeof userAnswer === 'string' && userAnswer.trim() === '')
-      ) {
-        return;
-      }
-
-      // Add the answer to the formatted section
-      formattedSection.responses.push({
-        id: question.id,
-        answer: userAnswer
-      });
-
-      // Handle "Other" option for radio buttons and dropdowns
-      if (
-        (question.type === 'radio' || question.type === 'dropdown') &&
-        question.options && 
-        question.options.includes('Övrigt') &&
-        userAnswer === 'Övrigt'
-      ) {
-        // Look for the associated "other" text input (usually has _other or _övrigt suffix)
-        const otherFieldId = `${question.id}_other`;
-        const alternativeOtherFieldId = `${question.id}_övrigt`;
-        
-        const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
-        
-        if (otherAnswer) {
-          formattedSection.responses.push({
-            id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
-            answer: otherAnswer
-          });
-        }
-      }
-    });
-
-    // Only include sections that have responses
-    if (formattedSection.responses.length > 0) {
-      formattedAnswer.answeredSections.push(formattedSection);
-    }
-  });
-
-  return formattedAnswer;
+  // ... keep existing code (legacy form processing function)
+  return enhancedProcessFormAnswers(formTemplate, userInputs);
 };

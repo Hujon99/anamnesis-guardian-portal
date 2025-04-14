@@ -22,8 +22,14 @@ export const AnswerDisplayHelper: React.FC<AnswerDisplayHelperProps> = ({
   }
 
   // Handle dynamic follow-up questions (object with value property)
-  if (typeof answer === 'object' && !Array.isArray(answer) && answer.value !== undefined) {
-    return <span className={className}>{answer.value}</span>;
+  if (typeof answer === 'object' && !Array.isArray(answer)) {
+    // First check if it has a direct 'value' property
+    if (answer.value !== undefined) {
+      return <span className={className}>{answer.value}</span>;
+    }
+    
+    // For other objects, show as complex object
+    return <span className={`text-amber-600 ${className}`}>[Komplext objekt]</span>;
   }
 
   // Handle arrays (like checkbox answers)
@@ -36,11 +42,6 @@ export const AnswerDisplayHelper: React.FC<AnswerDisplayHelperProps> = ({
     return <span className={className}>{answer ? 'Ja' : 'Nej'}</span>;
   }
 
-  // Handle objects that don't have a 'value' property
-  if (typeof answer === 'object' && !Array.isArray(answer)) {
-    return <span className={`text-muted-foreground italic ${className}`}>[Komplext objekt]</span>;
-  }
-
   // Default case: display as string
-  return <span className={className}>{answer.toString()}</span>;
+  return <span className={className}>{String(answer)}</span>;
 };

@@ -1,4 +1,3 @@
-
 /**
  * This component renders a form field based on its type.
  * It supports various input types like text, radio, dropdown, checkbox, and number.
@@ -49,12 +48,20 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   // Handle special formatting for dynamic follow-up questions with nested values
   useEffect(() => {
     // Check if this field has a nested object value structure
-    if (fieldValue && typeof fieldValue === 'object' && 'value' in fieldValue) {
-      // Extract just the actual value from the nested structure
-      setValue(fieldName, fieldValue.value);
-      console.log(`Extracted value ${fieldValue.value} from nested structure for ${fieldName}`);
+    if (fieldValue && typeof fieldValue === 'object') {
+      // Check for direct value property
+      if ('value' in fieldValue) {
+        // Extract just the actual value from the nested structure
+        setValue(fieldName, fieldValue.value);
+        console.log(`Extracted value ${fieldValue.value} from nested structure for ${fieldName}`);
+      }
+      // Check for dynamic answer object format
+      else if ('parent_value' in fieldValue && 'parent_question' in fieldValue && 'value' in fieldValue) {
+        setValue(fieldName, fieldValue.value);
+        console.log(`Extracted value from dynamic answer object for ${fieldName}`);
+      }
     }
-  }, []);
+  }, [fieldValue, fieldName, setValue]);
   
   const getOptionValue = (option: FormQuestionOption): string => {
     return typeof option === 'string' ? option : option.value;

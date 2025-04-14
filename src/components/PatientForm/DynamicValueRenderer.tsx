@@ -12,10 +12,24 @@ interface DynamicValueRendererProps {
 }
 
 export const DynamicValueRenderer: React.FC<DynamicValueRendererProps> = ({ value }) => {
-  // Check if this is a dynamic follow-up answer object
-  if (value && typeof value === 'object' && 'value' in value) {
-    // Extract and return just the value from the nested structure
-    return <>{value.value}</>;
+  // Check if this is a dynamic follow-up answer object with a nested structure
+  if (value && typeof value === 'object') {
+    // First, check if it has a direct 'value' property (most common case)
+    if ('value' in value) {
+      return <>{value.value}</>;
+    }
+    
+    // If it's an answer object with parent_question, parent_value, and value
+    if ('parent_value' in value && 'parent_question' in value && 'value' in value) {
+      return <>{value.value}</>;
+    }
+    
+    // For other objects, try to stringify them
+    try {
+      return <span className="text-amber-600">[Komplext objekt]</span>;
+    } catch (e) {
+      return <span className="text-red-500">[Oläsligt objekt]</span>;
+    }
   }
   
   // For arrays, join them with commas

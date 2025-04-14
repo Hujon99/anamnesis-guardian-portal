@@ -1,43 +1,38 @@
 
 /**
- * This component renders the content for the current form step,
- * including all visible sections and their questions.
- * Enhanced with accessibility attributes for better screen reader support.
+ * This component renders the content for the current form step.
+ * It displays the appropriate sections and their questions based on 
+ * the current step in the form flow.
  */
 
-import React from "react";
-import { FormSection } from "@/components/PatientForm/FormSection";
+import React, { useEffect } from "react";
+import { FormSection as FormSectionType } from "@/types/anamnesis";
+import { FormSection } from "./FormSection";
+import { useFormContext } from "@/contexts/FormContext";
 
 interface FormStepContentProps {
-  sections: Array<any>;
+  sections: FormSectionType[];
   currentValues: Record<string, any>;
 }
 
-const FormStepContent: React.FC<FormStepContentProps> = ({
+export const FormStepContent: React.FC<FormStepContentProps> = ({
   sections,
   currentValues
 }) => {
-  if (!sections || sections.length === 0) {
-    return (
-      <div 
-        className="text-center py-4 text-gray-500"
-        role="status"
-        aria-live="polite"
-      >
-        Inga frågor att visa i detta steg.
-      </div>
-    );
-  }
+  const { processSectionsWithDebounce } = useFormContext();
+  
+  // Update the form submission state when sections or values change
+  useEffect(() => {
+    // Process the current sections with the current form values
+    processSectionsWithDebounce(sections, currentValues);
+  }, [sections, currentValues, processSectionsWithDebounce]);
 
   return (
     <div className="space-y-8">
-      <div className="sr-only" role="status">
-        Visar {sections.length} sektion(er) i detta steg.
-      </div>
-      {sections.map((section, idx) => (
+      {sections.map((section) => (
         <FormSection 
-          key={`${section.section_title}-${idx}`} 
-          section={section}
+          key={section.section_title} 
+          section={section} 
           currentValues={currentValues}
         />
       ))}

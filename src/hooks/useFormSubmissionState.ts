@@ -1,4 +1,3 @@
-
 /**
  * This hook manages the incremental construction of form submission data.
  * It tracks visible sections and questions in real-time as the user navigates
@@ -211,7 +210,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       }
       
       // Get the answer for this question
-      const answer = currentValues[questionId];
+      let answer = currentValues[questionId];
       
       // Skip if answer is undefined, null, or empty string (but keep false and 0)
       const isEmpty = 
@@ -239,11 +238,18 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         
         if (isDynamicQuestion) {
           const dynamicQuestion = question as DynamicFollowupQuestion;
+          
+          // Format the dynamic answer with parent question info
           processedAnswer = {
             parent_question: dynamicQuestion.parentId,
             parent_value: dynamicQuestion.parentValue,
             value: answer
           };
+          
+          // Log dynamic follow-up formatting
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[FormSubmissionState] Formatted dynamic answer for ${questionId}:`, processedAnswer);
+          }
         }
         
         // Add or update the answer
@@ -302,7 +308,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         }
       }
     } catch (error) {
-      // Properly define isDynamicQuestion before using it
+      // Define isDynamicQuestion here to avoid reference error
       const isDynamicQuestion = 'runtimeId' in question;
       console.error(`Error processing question ${isDynamicQuestion ? (question as DynamicFollowupQuestion).runtimeId : question.id} in section ${sectionTitle}:`, error);
     }

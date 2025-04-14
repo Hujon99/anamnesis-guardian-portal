@@ -1,4 +1,3 @@
-
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -137,7 +136,7 @@ export const prepareFormSubmission = (
       }
     };
   } else {
-    console.log("[formSubmissionUtils/prepareFormSubmission]: Using enhanced processFormAnswers approach");
+    console.log("[formSubmissionUtils/prepareFormSubmission]: Using enhancedProcessFormAnswers approach");
     
     // Use enhanced form processing for the new template structure
     const formattedAnswer = enhancedProcessFormAnswers(formTemplate, userInputs);
@@ -304,14 +303,22 @@ export const enhancedProcessFormAnswers = (
       }
     });
 
-    // Look for dynamic follow-up questions that belong to this section
+    // Look for dynamic follow-up questions that belong to this section only
     Object.keys(userInputs).forEach(key => {
       if (key.includes('_for_') && !processedRuntimeIds.has(key)) {
         const originalId = getOriginalQuestionId(key);
         
         // Only include this dynamic question if its parent belongs to this section
         if (dynamicQuestionSectionMap[originalId] === section.section_title) {
-          const userAnswer = userInputs[key];
+          // Get the answer and normalize it if needed
+          let userAnswer = userInputs[key];
+          
+          // If the answer is an object with a 'value' property (as sometimes happens in form state),
+          // extract just the value
+          if (userAnswer && typeof userAnswer === 'object' && 'value' in userAnswer) {
+            console.log(`[formSubmissionUtils]: Extracting value from nested object for ${key}`);
+            userAnswer = userAnswer.value;
+          }
           
           // Skip if no answer
           if (
@@ -378,6 +385,5 @@ export const processFormAnswers = (
   formTemplate: FormTemplate,
   userInputs: Record<string, any>
 ): FormattedAnswer => {
-  // ... keep existing code (legacy form processing function)
   return enhancedProcessFormAnswers(formTemplate, userInputs);
 };

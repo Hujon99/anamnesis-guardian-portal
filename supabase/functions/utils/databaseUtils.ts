@@ -1,4 +1,3 @@
-
 /**
  * This utility module provides database operations for edge functions.
  * It includes functions for creating Supabase clients and common database queries.
@@ -12,7 +11,7 @@ import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-
  */
 export function createSupabaseClient(): SupabaseClient | null {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
+  const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY'); // Using anon key for public access
   
   if (!supabaseUrl || !supabaseKey) {
     console.error('Missing Supabase credentials:', { 
@@ -23,7 +22,12 @@ export function createSupabaseClient(): SupabaseClient | null {
   }
   
   console.log('Creating Supabase client with URL:', supabaseUrl.substring(0, 15) + '...');
-  return createClient(supabaseUrl, supabaseKey);
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false, // Disable session persistence for edge functions
+      autoRefreshToken: false
+    }
+  });
 }
 
 /**

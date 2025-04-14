@@ -1,4 +1,3 @@
-
 /**
  * This utility module provides database operations for edge functions.
  * It includes functions for creating Supabase clients and common database queries.
@@ -66,7 +65,7 @@ export async function fetchEntryByToken(supabase: SupabaseClient, token: string)
 }
 
 /**
- * Fetches a form template for an organization
+ * Fetches a form template for an organization, falling back to default template if none exists
  * @param supabase Supabase client
  * @param organizationId Organization ID
  * @returns Object containing the form data or error information
@@ -80,11 +79,15 @@ export async function fetchFormTemplate(supabase: SupabaseClient, organizationId
   
   try {
     console.log('Executing query to fetch form template...');
-    const { data: formTemplate, error } = await supabase
+    
+    // First try to find organization-specific template
+    let { data: formTemplate, error } = await supabase
       .from('anamnes_forms')
       .select('*')
-      .eq('organization_id', organizationId)
-      .maybeSingle();
+      .or(`organization_id.eq.${organizationId},organization_id.is.null`)
+      .order('organization_id', { ascending: false }) // Organization-specific first, then null (default)
+      .limit(1)
+      .single();
 
     if (error) {
       console.error('Database error:', error);
@@ -92,11 +95,12 @@ export async function fetchFormTemplate(supabase: SupabaseClient, organizationId
     }
 
     if (!formTemplate) {
-      console.log('No form template found for organization');
+      console.log('No form template found');
       return { notFound: true };
     }
 
     console.log('Form template found with ID:', formTemplate.id);
+    console.log('Template organization_id:', formTemplate.organization_id || 'default (null)');
     return { formTemplate };
   } catch (error) {
     console.error('Unexpected error in fetchFormTemplate:', error);

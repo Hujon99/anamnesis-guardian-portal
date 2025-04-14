@@ -1,3 +1,4 @@
+
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
@@ -5,7 +6,7 @@
  */
 
 import React, { createContext, useContext, useMemo, useCallback, useEffect } from "react";
-import { FormTemplate, FormattedAnswerData, SubmissionData } from "@/types/anamnesis";
+import { FormTemplate, FormattedAnswerData, SubmissionData, FormSection } from "@/types/anamnesis";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/components/ui/use-toast";
@@ -31,6 +32,7 @@ type FormContextValue = {
   isSubmitting: boolean;
   handleSubmit: (callback?: (values: any, formattedAnswers?: any) => Promise<any>) => (values?: any, formattedAnswers?: any) => void;
   isOpticianMode: boolean;
+  processSectionsWithDebounce: (sections: FormSection[], currentValues: Record<string, any>) => void;
 };
 
 const FormContext = createContext<FormContextValue | undefined>(undefined);
@@ -350,7 +352,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     previousStep,
     isSubmitting,
     handleSubmit: handleFormSubmit,
-    isOpticianMode
+    isOpticianMode,
+    processSectionsWithDebounce
   }), [
     form,
     currentStep,
@@ -362,7 +365,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     calculateProgress,
     isSubmitting,
     handleFormSubmit,
-    isOpticianMode
+    isOpticianMode,
+    processSectionsWithDebounce
   ]);
 
   // Keyboard shortcuts for navigation

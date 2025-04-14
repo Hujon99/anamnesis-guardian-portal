@@ -65,7 +65,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Add defensive check for form template structure
   const safeFormTemplate = useMemo(() => {
     // Log the raw form template for debugging
-    console.log("[FormContext]: Received formTemplate:", formTemplate);
+    // console.log("[FormContext]: Received formTemplate:", formTemplate);
     
     // Check if we have a valid form template
     if (!formTemplate) {
@@ -131,7 +131,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         // First check if we have an initial value for this field
         if (initialVals && initialVals[question.id] !== undefined) {
           defaultValues[question.id] = initialVals[question.id];
-          console.log(`[FormContext]: Using initial value for ${question.id}:`, initialVals[question.id]);
+          // console.log(`[FormContext]: Using initial value for ${question.id}:`, initialVals[question.id]);
           return;
         }
         
@@ -155,7 +155,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         if (key.endsWith('_other') || key.endsWith('_övrigt')) {
           if (!(key in defaultValues)) {
             defaultValues[key] = initialVals[key];
-            console.log(`[FormContext]: Added other field ${key} with value:`, initialVals[key]);
+            // console.log(`[FormContext]: Added other field ${key} with value:`, initialVals[key]);
           }
         }
       });
@@ -198,7 +198,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       });
       
       if (needsReset) {
-        console.log("[FormContext]: Resetting form with stored values", initialValues);
+        // console.log("[FormContext]: Resetting form with stored values", initialValues);
         reset(initialValues);
         
         // Show toast notification
@@ -243,7 +243,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Handle next step with validation
   const nextStep = async () => {
     if (isLastStep) {
-      console.log("[FormContext/nextStep]: On last step, not proceeding to next");
+      // console.log("[FormContext/nextStep]: On last step, not proceeding to next");
       return;
     }
     
@@ -252,7 +252,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     const isValid = await trigger(fieldsToValidate);
     
     if (isValid) {
-      console.log("[FormContext/nextStep]: Step validation successful, moving to next step");
+      // console.log("[FormContext/nextStep]: Step validation successful, moving to next step");
       goToNextStep();
       // Announce step change to screen readers
       const stepInfo = document.getElementById('step-info');
@@ -263,7 +263,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         }, 1000);
       }
     } else {
-      console.log("[FormContext/nextStep]: Step validation failed");
+      // console.log("[FormContext/nextStep]: Step validation failed");
       // Announce validation errors to screen readers
       const firstErrorEl = document.querySelector('[aria-invalid="true"]');
       if (firstErrorEl) {
@@ -274,7 +274,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
 
   // Handle previous step
   const previousStep = () => {
-    console.log("[FormContext/previousStep]: Moving to previous step");
+    // console.log("[FormContext/previousStep]: Moving to previous step");
     goToPreviousStep();
     window.scrollTo(0, 0); // Scroll to top for the new step
   };
@@ -282,15 +282,15 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Enhanced submit handler with better error handling
   const handleFormSubmit = useCallback((callback?: (values: any, formattedAnswers?: any) => Promise<any>) => {
     return async (values?: any, formattedAnswers?: any) => {
-      console.log("[FormContext/handleFormSubmit]: Submission handler called");
-      console.log("[FormContext/handleFormSubmit]: isLastStep:", isLastStep);
+      // console.log("[FormContext/handleFormSubmit]: Submission handler called");
+      // console.log("[FormContext/handleFormSubmit]: isLastStep:", isLastStep);
       
       if (!isLastStep) {
-        console.log("[FormContext/handleFormSubmit]: Not on last step, submission prevented");
+        // console.log("[FormContext/handleFormSubmit]: Not on last step, submission prevented");
         return Promise.resolve();
       }
       
-      console.log("[FormContext/handleFormSubmit]: On last step, proceeding with submission");
+      // console.log("[FormContext/handleFormSubmit]: On last step, proceeding with submission");
       
       // Get the current form values if not provided
       const currentValues = values || form.getValues();
@@ -298,8 +298,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       // Finalize the formatted answers and submit
       const formattedSubmissionData = finalizeSubmissionData() as SubmissionData;
       
-      console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
-      console.log("[FormContext/handleFormSubmit]: Formatted submission data:", formattedSubmissionData);
+      // console.log("[FormContext/handleFormSubmit]: Form submission triggered with values:", currentValues);
+      // console.log("[FormContext/handleFormSubmit]: Formatted submission data:", formattedSubmissionData);
       
       // Add optician flag directly to the formatted data if applicable
       if (isOpticianMode && formattedSubmissionData) {
@@ -314,24 +314,24 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
           autoSetStatus: 'ready'
         };
         
-        console.log("[FormContext/handleFormSubmit]: Added optician mode metadata to submission");
+        // console.log("[FormContext/handleFormSubmit]: Added optician mode metadata to submission");
       }
       
       try {
         // If a callback was provided, call it with the form values and formatted answers
         if (callback) {
-          console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
+          // console.log("[FormContext/handleFormSubmit]: Using provided callback for submission");
           return await callback(currentValues, formattedSubmissionData);
         } else if (onSubmit) {
           // Fall back to the onSubmit prop if no specific callback was provided
-          console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
+          // console.log("[FormContext/handleFormSubmit]: Using default onSubmit handler from props");
           return await onSubmit(currentValues, formattedSubmissionData);
         } else {
-          console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
+          // console.warn("[FormContext/handleFormSubmit]: No submission handler provided");
           return Promise.resolve();
         }
       } catch (error) {
-        console.error("[FormContext/handleFormSubmit]: Error during form submission:", error);
+        // console.error("[FormContext/handleFormSubmit]: Error during form submission:", error);
         // Propagate the error so it can be handled by the caller
         throw error;
       }

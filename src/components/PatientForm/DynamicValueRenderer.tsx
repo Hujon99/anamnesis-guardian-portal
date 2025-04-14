@@ -14,16 +14,23 @@ interface DynamicValueRendererProps {
 export const DynamicValueRenderer: React.FC<DynamicValueRendererProps> = ({ value }) => {
   // Extract value from nested object structure
   const extractValue = (val: any): any => {
-    if (val && typeof val === 'object') {
-      // Handle answer object with nested value structure
-      if ('answer' in val && typeof val.answer === 'object') {
-        return extractValue(val.answer);
-      }
-      // Handle direct value property
+    // Handle undefined/null
+    if (val === undefined || val === null) {
+      return val;
+    }
+
+    // If it's an object, try to extract the value
+    if (typeof val === 'object') {
+      // Handle dynamic follow-up answer format
       if ('value' in val) {
         return val.value;
       }
+      // Handle legacy answer format
+      if ('answer' in val) {
+        return extractValue(val.answer);
+      }
     }
+
     return val;
   };
 

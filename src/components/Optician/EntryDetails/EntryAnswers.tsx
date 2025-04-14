@@ -1,9 +1,7 @@
-
 /**
  * This component displays the answers provided by the patient in the anamnesis form.
- * It renders the answers in a table format, showing the question and corresponding answer.
- * It also handles the case when no answers are available yet and provides visual indicators
- * for scrolling and content boundaries.
+ * It properly handles both simple answers and dynamic follow-up questions with nested
+ * answer structures, ensuring correct display of all answer types.
  */
 
 import { FileText, MessageCircle } from "lucide-react";
@@ -16,10 +14,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { AnswerDisplayHelper } from "./AnswerDisplayHelper";
 
 interface FormattedAnswer {
   id: string;
-  answer: string | number | boolean;
+  answer: string | number | boolean | {
+    value: string;
+    parent_value?: string;
+    parent_question?: string;
+  };
 }
 
 interface AnsweredSection {
@@ -84,9 +87,8 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
     );
   }
 
-  // Function to extract the correct formatted answers data, handling different possible structures
-  const extractFormattedAnswers = (): FormattedAnswersContent | undefined => {
-    // Case 1: New format with double nesting: answers.formattedAnswers.formattedAnswers
+  // Extract formatted answers data
+  const formattedAnswersData = (() => {
     if (
       answers && 
       typeof answers === 'object' && 
@@ -99,7 +101,6 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
       return answers.formattedAnswers.formattedAnswers;
     }
     
-    // Case 2: Single nesting: answers.formattedAnswers
     if (
       answers && 
       typeof answers === 'object' && 
@@ -111,7 +112,6 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
       return answers.formattedAnswers;
     }
     
-    // Case 3: Direct structure: answers.answeredSections
     if (
       answers && 
       typeof answers === 'object' && 
@@ -120,26 +120,25 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
       return answers as unknown as FormattedAnswersContent;
     }
     
-    // No structured answers found
     return undefined;
-  };
+  })();
 
-  // Extract formatted answers data
-  const formattedAnswersData = extractFormattedAnswers();
-  
-  // Check if this was submitted by an optician
-  const isOpticianSubmission = formattedAnswersData?.isOpticianSubmission;
-  
   // If we have structured data, render it accordingly
   if (formattedAnswersData?.answeredSections) {
     return (
       <div className="flex flex-col">
         <h3 className="text-lg font-medium flex items-center mb-4">
           <FileText className="h-5 w-5 mr-2 text-primary" />
-          {isOpticianSubmission ? "Optikerns ifyllda svar" : "Patientens svar"}
-          {formattedAnswersData.formTitle && <span className="text-sm ml-2 text-muted-foreground">({formattedAnswersData.formTitle})</span>}
-          {isOpticianSubmission && (
-            <Badge variant="outline" className="ml-2 bg-primary/10 text-primary">Ifylld av optiker</Badge>
+          {formattedAnswersData.isOpticianSubmission ? "Optikerns ifyllda svar" : "Patientens svar"}
+          {formattedAnswersData.formTitle && 
+            <span className="text-sm ml-2 text-muted-foreground">
+              ({formattedAnswersData.formTitle})
+            </span>
+          }
+          {formattedAnswersData.isOpticianSubmission && (
+            <Badge variant="outline" className="ml-2 bg-primary/10 text-primary">
+              Ifylld av optiker
+            </Badge>
           )}
         </h3>
         
@@ -161,7 +160,6 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                 </TableHeader>
                 <TableBody>
                   {section.responses.map((response, responseIndex) => {
-                    // Determine if this is an optician comment field
                     const isOpticianComment = response.id.includes('_optiker_ovrigt');
                     
                     return (
@@ -179,9 +177,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                           )}
                         </TableCell>
                         <TableCell className="whitespace-pre-wrap break-words py-3">
-                          {response.answer !== null && response.answer !== undefined 
-                            ? String(response.answer) 
-                            : ""}
+                          <AnswerDisplayHelper answer={response.answer} />
                         </TableCell>
                       </TableRow>
                     );
@@ -220,10 +216,10 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                     {questionLabels[questionId] || questionId}
                   </TableCell>
                   <TableCell className="whitespace-pre-wrap break-words py-3">
-                    {answer !== null && answer !== undefined ? String(answer) : ""}
+                    <AnswerDisplayHelper answer={answer} />
                   </TableCell>
                 </TableRow>
-            ))}
+              ))}
           </TableBody>
         </Table>
       </div>

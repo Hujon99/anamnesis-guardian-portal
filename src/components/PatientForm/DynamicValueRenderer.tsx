@@ -12,36 +12,35 @@ interface DynamicValueRendererProps {
 }
 
 export const DynamicValueRenderer: React.FC<DynamicValueRendererProps> = ({ value }) => {
-  // Check if this is a dynamic follow-up answer object with a nested structure
-  if (value && typeof value === 'object') {
-    // First, check if it has a direct 'value' property (most common case)
-    if ('value' in value) {
-      return <>{value.value}</>;
+  // Extract value from nested object structure
+  const extractValue = (val: any): any => {
+    if (val && typeof val === 'object') {
+      // Handle answer object with nested value structure
+      if ('answer' in val && typeof val.answer === 'object') {
+        return extractValue(val.answer);
+      }
+      // Handle direct value property
+      if ('value' in val) {
+        return val.value;
+      }
     }
-    
-    // If it's an answer object with parent_question, parent_value, and value
-    if ('parent_value' in value && 'parent_question' in value && 'value' in value) {
-      return <>{value.value}</>;
-    }
-    
-    // For other objects, try to stringify them
-    try {
-      return <span className="text-amber-600">[Komplext objekt]</span>;
-    } catch (e) {
-      return <span className="text-red-500">[Oläsligt objekt]</span>;
-    }
+    return val;
+  };
+
+  const displayValue = extractValue(value);
+  
+  // Handle different types of values
+  if (Array.isArray(displayValue)) {
+    return <>{displayValue.join(', ')}</>;
   }
   
-  // For arrays, join them with commas
-  if (Array.isArray(value)) {
-    return <>{value.join(', ')}</>;
+  if (typeof displayValue === 'boolean') {
+    return <>{displayValue ? 'Ja' : 'Nej'}</>;
   }
   
-  // For boolean values, convert to Yes/No
-  if (typeof value === 'boolean') {
-    return <>{value ? 'Ja' : 'Nej'}</>;
+  if (displayValue === null || displayValue === undefined) {
+    return <span className="text-muted-foreground italic">Inget svar</span>;
   }
   
-  // For normal values, just return as is
-  return <>{value}</>;
+  return <>{displayValue}</>;
 };

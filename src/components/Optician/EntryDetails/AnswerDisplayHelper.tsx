@@ -16,32 +16,39 @@ export const AnswerDisplayHelper: React.FC<AnswerDisplayHelperProps> = ({
   answer, 
   className = "" 
 }) => {
+  // Extract value from nested object structure
+  const extractValue = (val: any): any => {
+    if (val && typeof val === 'object') {
+      // Handle answer object with nested value structure
+      if ('answer' in val && typeof val.answer === 'object') {
+        return extractValue(val.answer);
+      }
+      // Handle direct value property
+      if ('value' in val) {
+        return val.value;
+      }
+    }
+    return val;
+  };
+
+  // Get the actual value to display
+  const displayValue = extractValue(answer);
+
   // Handle null/undefined
-  if (answer === null || answer === undefined) {
+  if (displayValue === null || displayValue === undefined) {
     return <span className={`text-muted-foreground italic ${className}`}>Inget svar</span>;
   }
 
-  // Handle dynamic follow-up questions (object with value property)
-  if (typeof answer === 'object' && !Array.isArray(answer)) {
-    // First check if it has a direct 'value' property
-    if (answer.value !== undefined) {
-      return <span className={className}>{answer.value}</span>;
-    }
-    
-    // For other objects, show as complex object
-    return <span className={`text-amber-600 ${className}`}>[Komplext objekt]</span>;
-  }
-
-  // Handle arrays (like checkbox answers)
-  if (Array.isArray(answer)) {
-    return <span className={className}>{answer.join(', ')}</span>;
+  // Handle arrays
+  if (Array.isArray(displayValue)) {
+    return <span className={className}>{displayValue.join(', ')}</span>;
   }
 
   // Handle booleans
-  if (typeof answer === 'boolean') {
-    return <span className={className}>{answer ? 'Ja' : 'Nej'}</span>;
+  if (typeof displayValue === 'boolean') {
+    return <span className={className}>{displayValue ? 'Ja' : 'Nej'}</span>;
   }
 
   // Default case: display as string
-  return <span className={className}>{String(answer)}</span>;
+  return <span className={className}>{String(displayValue)}</span>;
 };

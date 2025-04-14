@@ -45,20 +45,28 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   // Watch the current value for this field
   const fieldValue = watch(fieldName);
   
+  // Extract value from nested object structure
+  const extractValue = (val: any): any => {
+    if (val && typeof val === 'object') {
+      // Handle answer object with nested value structure
+      if ('answer' in val && typeof val.answer === 'object') {
+        return extractValue(val.answer);
+      }
+      // Handle direct value property
+      if ('value' in val) {
+        return val.value;
+      }
+    }
+    return val;
+  };
+
   // Handle special formatting for dynamic follow-up questions with nested values
   useEffect(() => {
-    // Check if this field has a nested object value structure
     if (fieldValue && typeof fieldValue === 'object') {
-      // Check for direct value property
-      if ('value' in fieldValue) {
-        // Extract just the actual value from the nested structure
-        setValue(fieldName, fieldValue.value);
-        console.log(`Extracted value ${fieldValue.value} from nested structure for ${fieldName}`);
-      }
-      // Check for dynamic answer object format
-      else if ('parent_value' in fieldValue && 'parent_question' in fieldValue && 'value' in fieldValue) {
-        setValue(fieldName, fieldValue.value);
-        console.log(`Extracted value from dynamic answer object for ${fieldName}`);
+      const extractedValue = extractValue(fieldValue);
+      if (extractedValue !== fieldValue) {
+        setValue(fieldName, extractedValue);
+        console.log(`Extracted value ${extractedValue} for field ${fieldName}`);
       }
     }
   }, [fieldValue, fieldName, setValue]);

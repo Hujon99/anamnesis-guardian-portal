@@ -1,4 +1,3 @@
-
 /**
  * This component renders a form field based on its type.
  * It supports various input types like text, radio, dropdown, checkbox, and number.
@@ -37,31 +36,36 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   const { control, watch } = useFormContext();
   const hasError = error !== undefined;
   
-  // Use the runtime ID for dynamic questions, otherwise use the regular ID
   const fieldId = `field-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
   const descriptionId = `desc-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
   const errorId = `error-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
   
-  // Get the field name to use in the form (runtime ID or regular ID)
   const fieldName = (question as DynamicFollowupQuestion).runtimeId || question.id;
   
-  // Helper function to get the displayed value from an option
   const getOptionValue = (option: FormQuestionOption): string => {
     return typeof option === 'string' ? option : option.value;
   };
   
-  // Helper function to get the display label from an option
   const getOptionLabel = (option: FormQuestionOption): string => {
     return typeof option === 'string' ? option : option.value;
   };
 
-  // Helper to determine if this is a dynamic follow-up question
   const isDynamicQuestion = 'runtimeId' in question;
 
-  // Add a class for dynamic follow-up questions
   const dynamicQuestionClass = isDynamicQuestion 
     ? "pl-6 border-l-2 border-primary-100 mt-4 mb-2" 
     : "";
+
+  const renderFollowUpHeading = () => {
+    if (isDynamicQuestion && (question as DynamicFollowupQuestion).parentValue) {
+      return (
+        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+          Gällande: {(question as DynamicFollowupQuestion).parentValue}
+        </h4>
+      );
+    }
+    return null;
+  };
 
   const renderField = () => {
     switch (question.type) {
@@ -72,6 +76,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={fieldName}
             render={({ field }) => (
               <FormItem className={dynamicQuestionClass}>
+                {renderFollowUpHeading()}
                 <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
@@ -109,6 +114,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={fieldName}
             render={({ field }) => (
               <FormItem className={`space-y-3 ${dynamicQuestionClass}`}>
+                {renderFollowUpHeading()}
                 <FormLabel id={`label-${fieldId}`} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
@@ -151,19 +157,18 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
         );
         
       case "checkbox":
-        // For checkbox type questions with multiple options (new in the updated template)
         if (question.options && question.options.length > 0) {
           return (
             <FormField
               control={control}
               name={fieldName}
               render={({ field }) => {
-                // Ensure field.value is an array
                 const values = Array.isArray(field.value) ? field.value : 
                   field.value ? [field.value] : [];
                 
                 return (
                   <FormItem className={`space-y-3 ${dynamicQuestionClass}`}>
+                    {renderFollowUpHeading()}
                     <FormLabel className={isOpticianField ? "text-primary font-medium" : ""}>
                       {question.label}
                       {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
@@ -176,7 +181,6 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                         const optionLabel = getOptionLabel(option);
                         const optionId = `${fieldId}-${optionValue.replace(/\s+/g, '-').toLowerCase()}`;
                         
-                        // Check if this option is in the selected values
                         const isChecked = values.includes(optionValue);
                         
                         return (
@@ -194,7 +198,6 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                                     id={optionId}
                                     checked={isChecked}
                                     onCheckedChange={(checked) => {
-                                      // Handle the checkbox change by updating the array of values
                                       const newValues = checked 
                                         ? [...values, optionValue] 
                                         : values.filter(val => val !== optionValue);
@@ -222,13 +225,13 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             />
           );
         } else {
-          // For single checkbox (Boolean type)
           return (
             <FormField
               control={control}
               name={fieldName}
               render={({ field }) => (
                 <FormItem className={`flex flex-row items-start space-x-3 space-y-0 ${dynamicQuestionClass}`}>
+                  {renderFollowUpHeading()}
                   <FormControl>
                     <Checkbox
                       id={fieldId}
@@ -262,6 +265,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={fieldName}
             render={({ field }) => (
               <FormItem className={dynamicQuestionClass}>
+                {renderFollowUpHeading()}
                 <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
@@ -307,6 +311,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={fieldName}
             render={({ field }) => (
               <FormItem className={dynamicQuestionClass}>
+                {renderFollowUpHeading()}
                 <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
@@ -339,6 +344,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             name={fieldName}
             render={({ field }) => (
               <FormItem className={dynamicQuestionClass}>
+                {renderFollowUpHeading()}
                 <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}

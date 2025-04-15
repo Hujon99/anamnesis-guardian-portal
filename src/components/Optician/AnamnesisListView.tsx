@@ -16,7 +16,6 @@ import { EntriesSummary } from "./EntriesList/EntriesSummary";
 import { EntriesList } from "./EntriesList/EntriesList";
 import { useAnamnesisList } from "@/hooks/useAnamnesisList";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { DirectFormButton } from "./DirectFormButton";
 
 export function AnamnesisListView() {
   const {
@@ -78,7 +77,7 @@ export function AnamnesisListView() {
         </div>
       </div>
       
-      <div className="flex justify-between items-center mb-4">
+      <div>
         <EntriesSummary
           filteredCount={filteredEntries.length}
           totalCount={entries.length}
@@ -87,14 +86,12 @@ export function AnamnesisListView() {
           lastUpdated={dataLastUpdated}
         />
         
-        <DirectFormButton />
+        <EntriesList
+          entries={filteredEntries}
+          statusFilter={filters.statusFilter}
+          onSelectEntry={setSelectedEntry}
+        />
       </div>
-      
-      <EntriesList
-        entries={filteredEntries}
-        statusFilter={filters.statusFilter}
-        onSelectEntry={setSelectedEntry}
-      />
       
       {selectedEntry && (
         <AnamnesisDetailModal

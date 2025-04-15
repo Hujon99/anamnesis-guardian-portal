@@ -1,3 +1,4 @@
+
 /**
  * This file contains types for the anamnesis forms and entries in the system.
  * These types define the structure of form templates and the patient data entries.
@@ -16,23 +17,34 @@ export type AnamnesesEntry = {
   patient_identifier: string | null; // Updated from patient_email to patient_identifier
   sent_at: string | null;
   created_by: string | null;
+  created_by_name: string | null; // Add the creator's name
   updated_at: string | null;
   ai_summary: string | null;
   // internal_notes is deprecated and will be removed in future
   internal_notes: string | null;
 };
 
+// New type to support enhanced options in checkbox and radio types
+export type FormQuestionOption = string | {
+  value: string;
+  triggers_followups: boolean;
+};
+
 export type FormQuestion = {
   id: string;
   label: string;
   type: "text" | "radio" | "select" | "checkbox" | "dropdown" | "number";
-  options?: string[];
+  options?: FormQuestionOption[];
   required?: boolean;
   show_if?: {
     question: string;
-    equals: string | string[];
+    equals?: string | string[];
+    contains?: string;  // New condition type for array values
   };
-  // New property to indicate this field should only be shown in a specific mode
+  // New properties for dynamic follow-up questions
+  is_followup_template?: boolean;
+  followup_question_ids?: string[];
+  // Property to indicate this field should only be shown in a specific mode
   show_in_mode?: "optician" | "patient";
 };
 
@@ -41,7 +53,8 @@ export type FormSection = {
   questions: FormQuestion[];
   show_if?: {
     question: string;
-    equals: string | string[];
+    equals?: string | string[];
+    contains?: string;  // New condition type for array values
   };
 };
 
@@ -62,19 +75,14 @@ export type AnamnesForm = {
 export interface FormattedAnswerData {
   formTitle: string;
   submissionTimestamp: string;
-  answeredSections: Array<{
+  answeredSections: {
     section_title: string;
-    responses: Array<{
+    responses: {
       id: string;
-      question_text?: string; // Optional: Include original question text
-      answer: string | string[] | number | boolean | null;
-    }>;
-  }>;
-  isOpticianSubmission?: boolean; // Keep this optional flag
-  _metadata?: { // Add this optional property
-    submittedBy: 'optician' | 'patient'; // Define possible values
-    autoSetStatus?: 'ready'; // Define possible values, make optional
-  };
+      answer: any;
+    }[];
+  }[];
+  isOpticianSubmission?: boolean;
 }
 
 // Add a type for the submission data structure
@@ -90,4 +98,12 @@ export interface SubmissionData {
     submittedBy: string;
     autoSetStatus: string;
   };
+}
+
+// Type for dynamic follow-up questions that are generated at runtime
+export interface DynamicFollowupQuestion extends FormQuestion {
+  parentId: string;
+  parentValue: string;
+  runtimeId: string;
+  originalId: string;
 }

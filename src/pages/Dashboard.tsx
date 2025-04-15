@@ -15,6 +15,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEffect } from "react";
 import { LinkGenerator } from "@/components/Optician/LinkGenerator";
+import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -75,7 +76,10 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold">Översikt</h1>
           <p className="text-muted-foreground mt-2">Hantering av anamneslista och patientdata</p>
         </div>
-        <LinkGenerator />
+        <div className="flex flex-col sm:flex-row gap-2">
+          <DirectFormButton />
+          <LinkGenerator />
+        </div>
       </div>
 
       <QueryErrorResetBoundary>

@@ -5,24 +5,14 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData } from "@/types/anamnesis";
-
-// Debounce utility (or import from 'lodash.debounce')
-const debounce = (func: (...args: any[]) => void, wait: number) => {
-  let timeout: ReturnType<typeof setTimeout>;
-  return (...args: any[]) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-};
+import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData, SubmissionData, DynamicFollowupQuestion } from "@/types/anamnesis";
 
 export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Use ref for mutable submission data to avoid unnecessary re-renders
   const submissionDataRef = useRef<FormattedAnswerData>({
     formTitle: formTemplate.title,
-    submissionTimestamp: "", // Will be set on finalization
-    answeredSections: [],
-    // Add isOpticianSubmission flag here if needed globally, or add it later
+    submissionTimestamp: new Date().toISOString(),
+    answeredSections: []
   });
   
   // Debugging state to track processing
@@ -35,39 +25,8 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
   const processingTimerRef = useRef<number | null>(null);
   const lastProcessedValuesRef = useRef<string>("");
 
-  // Helper function to evaluate show_if conditions - MOVED TO THE TOP
-  const evaluateCondition = useCallback(
-    (
-      condition: { question: string; equals: string | string[] } | undefined,
-      currentValues: Record<string, any>
-    ): boolean => {
-      if (!condition) return true;
-
-      const { question, equals } = condition;
-      const dependentValue = currentValues[question];
-
-      if (Array.isArray(equals)) {
-        return equals.includes(dependentValue);
-      }
-
-      return dependentValue === equals;
-    },
-    []
-  );
-
-  // Clean up any sections that no longer have answers
-  const cleanEmptySections = useCallback(() => {
-    const initialCount = submissionDataRef.current.answeredSections.length;
-    
-    submissionDataRef.current.answeredSections = submissionDataRef.current.answeredSections.filter(
-      section => section.responses.length > 0
-    );
-    
-    const removedCount = initialCount - submissionDataRef.current.answeredSections.length;
-    if (removedCount > 0) {
-      // console.log(`[FormSubmissionState/cleanEmptySections] Removed ${removedCount} empty sections`);
-    }
-  }, []);
+  // Track processed dynamic questions per section to avoid duplicates
+  const processedQuestionsRef = useRef<Record<string, Set<string>>>({});
 
   // Update the current step tracking
   const setCurrentStep = useCallback((step: number) => {
@@ -75,7 +34,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       currentStepRef.current = step;
       // Reduced logging frequency
       if (process.env.NODE_ENV === 'development') {
-        // console.log(`[FormSubmissionState] Current step updated to: ${step}`);
+        console.log(`[FormSubmissionState] Current step updated to: ${step}`);
       }
     }
   }, []);
@@ -92,193 +51,398 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         responses: []
       };
       submissionDataRef.current.answeredSections.push(sectionData);
-      // console.log(`[FormSubmissionState] Added new section: ${sectionTitle}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[FormSubmissionState] Added new section: ${sectionTitle}`);
+      }
     }
     
     return sectionData;
   }, []);
 
-  // Process a single question's visibility and answer
-  const processQuestion = useCallback((
-    question: FormQuestion,
-    sectionTitle: string,
-    currentValues: Record<string, any>
-  ) => {
-    try {
-      const shouldShowQuestion = evaluateCondition(question.show_if, currentValues);
-      // console.log(`[FormSubmissionState/processQuestion] Question "${question.id}" visible: ${shouldShowQuestion}`);
-
-      // Find the section in our data
-      const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
-        s => s.section_title === sectionTitle
-      );
-
-      // If section doesn't exist yet, create it
-      let currentSectionIndex = sectionIndex;
-      if (sectionIndex === -1) {
-        // Create new section and get its index
-        const newSection = {
-          section_title: sectionTitle,
-          responses: []
-        };
-        submissionDataRef.current.answeredSections.push(newSection);
-        currentSectionIndex = submissionDataRef.current.answeredSections.length - 1;
-        // console.log(`[FormSubmissionState/processQuestion] Created new section: ${sectionTitle}`);
-      }
-
-      // If question shouldn't be shown, remove any existing data
-      if (!shouldShowQuestion) {
-        if (currentSectionIndex !== -1) {
-          const questionIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
-            r => r.id === question.id
-          );
-
-          if (questionIndex !== -1) {
-            // console.log(`[FormSubmissionState/processQuestion] Removing hidden question: ${question.id}`);
-            submissionDataRef.current.answeredSections[currentSectionIndex].responses.splice(questionIndex, 1);
-          }
-        }
-        return;
-      }
-
-      // Get the answer for this question
-      const answer = currentValues[question.id];
-
-      // Skip if answer is undefined, null, or empty string (but keep false and 0)
-      const isEmpty =
-        answer === undefined ||
-        answer === null ||
-        (typeof answer === 'string' && answer.trim() === '');
-
-      // For debugging, log the question and its answer
-      // console.log(`[FormSubmissionState/processQuestion] Question: ${question.id}, Answer: ${isEmpty ? 'empty' : JSON.stringify(answer)}`);
-
-      // This is critical - force log the current submission data structure
-      // console.log(`[FormSubmissionState/processQuestion] Current submission data structure:`,
-      //   JSON.stringify(submissionDataRef.current, null, 2));
-
-      // Update or remove the answer
-      if (isEmpty) {
-        // Remove the answer if it exists but is now empty
-        if (currentSectionIndex !== -1) {
-          const existingResponseIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
-            r => r.id === question.id
-          );
-
-          if (existingResponseIndex !== -1) {
-            // console.log(`[FormSubmissionState/processQuestion] Removing empty answer for: ${question.id}`);
-            submissionDataRef.current.answeredSections[currentSectionIndex].responses.splice(existingResponseIndex, 1);
-          }
-        }
-      } else {
-        // Add or update the answer - ensure we're working with the right section index
-        if (currentSectionIndex !== -1) {
-          const existingResponseIndex = submissionDataRef.current.answeredSections[currentSectionIndex].responses.findIndex(
-            r => r.id === question.id
-          );
-
-          if (existingResponseIndex !== -1) {
-            submissionDataRef.current.answeredSections[currentSectionIndex].responses[existingResponseIndex].answer = answer;
-            // console.log(`[FormSubmissionState/processQuestion] Updated answer for: ${question.id}`);
-          } else {
-            submissionDataRef.current.answeredSections[currentSectionIndex].responses.push({
-              id: question.id,
-              answer
-            });
-            // console.log(`[FormSubmissionState/processQuestion] Added new answer for: ${question.id}`);
-          }
-        } else {
-          console.error(`[FormSubmissionState/processQuestion] Cannot find section for question: ${question.id}`);
-        }
-      }
-    } catch (error) {
-      console.error(`Error processing question ${question.id} in section ${sectionTitle}:`, error);
-    }
-
-    // Clean up empty sections
-    cleanEmptySections();
-  }, [evaluateCondition, cleanEmptySections]);
-
   // Process a section's visibility and its questions
   const processSection = useCallback((section: FormSection, currentValues: Record<string, any>) => {
-    // console.log(`[FormSubmissionState/processSection] Processing section "${section.section_title}"`);
-
     const shouldShowSection = evaluateCondition(section.show_if, currentValues);
-    // console.log(`[FormSubmissionState/processSection] Section "${section.section_title}" visible: ${shouldShowSection}`);
-
+    const sectionTitle = section.section_title;
+    
+    // Only log visibility changes or in debug mode (reduced frequency)
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+      console.log(`[FormSubmissionState] Section "${sectionTitle}" visible: ${shouldShowSection}`);
+    }
+    
     if (!shouldShowSection) {
       // Remove any existing data for this section
       const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
-        s => s.section_title === section.section_title
+        s => s.section_title === sectionTitle
       );
-
+      
       if (sectionIndex !== -1) {
-        // console.log(`[FormSubmissionState/processSection] Removing hidden section: ${section.section_title}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[FormSubmissionState] Removing hidden section: ${sectionTitle}`);
+        }
         submissionDataRef.current.answeredSections.splice(sectionIndex, 1);
       }
       return;
     }
-
-    // Find or create section in our submission data
-    findOrCreateSection(section.section_title); // Ensure section exists before processing questions
-
+    
+    // Create or find this section in our submission data
+    findOrCreateSection(sectionTitle);
+    
+    // Clear any previous tracking of processed dynamic questions for this section
+    if (!processedQuestionsRef.current[sectionTitle]) {
+      processedQuestionsRef.current[sectionTitle] = new Set<string>();
+    } else {
+      processedQuestionsRef.current[sectionTitle].clear();
+    }
+    
     // Process each question in the section
     section.questions.forEach(question => {
-      processQuestion(question, section.section_title, currentValues); // Now processQuestion is defined
+      processQuestion(question, sectionTitle, currentValues);
     });
-  }, [findOrCreateSection, evaluateCondition, processQuestion]); // processQuestion is now available here
 
-  // Process all sections with debouncing to prevent excessive processing
-  const processSectionsWithDebounce = useCallback(
-    debounce((sections: FormSection[], currentValues: Record<string, any>) => {
-      // Create a hash of the current values to detect changes
-      const valuesHash = JSON.stringify(currentValues);
+    // Look for dynamic follow-up questions that belong to this section only
+    Object.keys(currentValues).forEach(key => {
+      if (key.includes('_for_')) {
+        // Check if this dynamic question belongs to a question in this section
+        const baseQuestionId = key.split('_for_')[0];
+        let belongsToThisSection = false;
+        
+        // Check if the parent question is in this section
+        section.questions.forEach(q => {
+          if (q.id === baseQuestionId) {
+            belongsToThisSection = true;
+          }
+        });
+        
+        // Only process if this dynamic question belongs to this section
+        if (belongsToThisSection) {
+          const dynamicQuestion: DynamicFollowupQuestion = {
+            id: key.split('_for_')[0],
+            runtimeId: key,
+            label: `Dynamic Question ${key}`, // This doesn't matter for processing
+            type: 'text', // Default type, doesn't matter for processing
+            parentId: key.split('_for_')[0],
+            parentValue: key.split('_for_')[1].replace(/_/g, ' '),
+            originalId: key.split('_for_')[0],
+          };
+          
+          processQuestion(dynamicQuestion, sectionTitle, currentValues);
+        }
+      }
+    });
+  }, [findOrCreateSection]);
+
+  // Process a single question's visibility and answer
+  const processQuestion = useCallback((
+    question: FormQuestion | DynamicFollowupQuestion, 
+    sectionTitle: string, 
+    currentValues: Record<string, any>
+  ) => {
+    try {
+      // Check if this is a dynamic question with a runtime ID
+      const isDynamicQuestion = 'runtimeId' in question;
+      const questionId = isDynamicQuestion ? (question as DynamicFollowupQuestion).runtimeId : question.id;
       
-      // Skip processing if values haven't changed
-      if (valuesHash === lastProcessedValuesRef.current) {
+      // For dynamic questions, check if we've already processed this one in the current section
+      if (isDynamicQuestion) {
+        const sectionTracker = processedQuestionsRef.current[sectionTitle];
+        if (sectionTracker && sectionTracker.has(questionId)) {
+          // We've already processed this dynamic question in this section
+          return;
+        }
+        
+        // Mark this dynamic question as processed for this section
+        if (sectionTracker) {
+          sectionTracker.add(questionId);
+        }
+      }
+      
+      // For dynamic questions, we always want to include them if they have a value
+      const shouldShowQuestion = isDynamicQuestion ? true : evaluateCondition(question.show_if, currentValues);
+      
+      // Very limited logging - only for development
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.05) {
+        console.log(`[FormSubmissionState] Question "${questionId}" visible: ${shouldShowQuestion}`);
+      }
+      
+      // Find the section in our data
+      let sectionIndex = submissionDataRef.current.answeredSections.findIndex(
+        s => s.section_title === sectionTitle
+      );
+      
+      // If section doesn't exist yet, create it
+      if (sectionIndex === -1) {
+        findOrCreateSection(sectionTitle);
+        sectionIndex = submissionDataRef.current.answeredSections.findIndex(
+          s => s.section_title === sectionTitle
+        );
+      }
+      
+      // Safety check
+      if (sectionIndex === -1) {
+        throw new Error(`Section "${sectionTitle}" not found in submission data after creation attempt`);
+      }
+      
+      // If question shouldn't be shown, remove any existing data
+      if (!shouldShowQuestion) {
+        const questionIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
+          r => r.id === questionId
+        );
+        
+        if (questionIndex !== -1) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[FormSubmissionState] Removing hidden question: ${questionId}`);
+          }
+          submissionDataRef.current.answeredSections[sectionIndex].responses.splice(questionIndex, 1);
+          
+          // Also remove any associated "other" fields
+          const otherFieldId = `${questionId}_other`;
+          const alternativeOtherFieldId = `${questionId}_övrigt`;
+          
+          const otherIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
+            r => r.id === otherFieldId || r.id === alternativeOtherFieldId
+          );
+          
+          if (otherIndex !== -1) {
+            submissionDataRef.current.answeredSections[sectionIndex].responses.splice(otherIndex, 1);
+          }
+        }
         return;
       }
       
-      // Update last processed values
-      lastProcessedValuesRef.current = valuesHash;
+      // Get the answer for this question
+      let answer = currentValues[questionId];
       
-      // console.log(`[FormSubmissionState/processSectionsWithDebounce] Processing ${sections.length} sections`);
+      // Skip if answer is undefined, null, or empty string (but keep false and 0)
+      const isEmpty = 
+        answer === undefined || 
+        answer === null || 
+        (typeof answer === 'string' && answer.trim() === '') ||
+        (Array.isArray(answer) && answer.length === 0);
       
-      // Clear any existing timer
-      if (processingTimerRef.current !== null) {
-        clearTimeout(processingTimerRef.current);
+      // Update or remove the answer
+      const existingResponseIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
+        r => r.id === questionId
+      );
+      
+      if (isEmpty) {
+        // Remove the answer if it exists but is now empty
+        if (existingResponseIndex !== -1) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[FormSubmissionState] Removing empty answer for: ${questionId}`);
+          }
+          submissionDataRef.current.answeredSections[sectionIndex].responses.splice(existingResponseIndex, 1);
+        }
+      } else {
+        // For dynamic questions, format the answer differently
+        let processedAnswer = answer;
+        
+        if (isDynamicQuestion) {
+          const dynamicQuestion = question as DynamicFollowupQuestion;
+          
+          // Format the dynamic answer with parent question info
+          processedAnswer = {
+            parent_question: dynamicQuestion.parentId,
+            parent_value: dynamicQuestion.parentValue,
+            value: answer
+          };
+          
+          // Log dynamic follow-up formatting
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[FormSubmissionState] Formatted dynamic answer for ${questionId}:`, processedAnswer);
+          }
+        }
+        
+        // Add or update the answer
+        if (existingResponseIndex !== -1) {
+          submissionDataRef.current.answeredSections[sectionIndex].responses[existingResponseIndex].answer = processedAnswer;
+          if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+            console.log(`[FormSubmissionState] Updated answer for: ${questionId}`);
+          }
+        } else {
+          submissionDataRef.current.answeredSections[sectionIndex].responses.push({
+            id: questionId,
+            answer: processedAnswer
+          });
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[FormSubmissionState] Added new answer for: ${questionId}`);
+          }
+        }
+        
+        // Handle "Other" option for radio buttons and dropdowns
+        if (
+          (question.type === 'radio' || question.type === 'dropdown') &&
+          question.options && 
+          (
+            (typeof answer === 'string' && answer === 'Övrigt') || 
+            (Array.isArray(answer) && answer.includes('Övrigt'))
+          )
+        ) {
+          // Look for the associated "other" text input
+          const otherFieldId = `${questionId}_other`;
+          const alternativeOtherFieldId = `${questionId}_övrigt`;
+          
+          const otherAnswer = currentValues[otherFieldId] || currentValues[alternativeOtherFieldId];
+          const otherFieldIdToUse = otherFieldId in currentValues ? otherFieldId : alternativeOtherFieldId;
+          
+          if (otherAnswer) {
+            // Check if we already have this "other" answer
+            const otherResponseIndex = submissionDataRef.current.answeredSections[sectionIndex].responses.findIndex(
+              r => r.id === otherFieldIdToUse
+            );
+            
+            if (otherResponseIndex !== -1) {
+              submissionDataRef.current.answeredSections[sectionIndex].responses[otherResponseIndex].answer = otherAnswer;
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`[FormSubmissionState] Updated "other" answer for: ${otherFieldIdToUse}`);
+              }
+            } else {
+              submissionDataRef.current.answeredSections[sectionIndex].responses.push({
+                id: otherFieldIdToUse,
+                answer: otherAnswer
+              });
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`[FormSubmissionState] Added new "other" answer for: ${otherFieldIdToUse}`);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Define isDynamicQuestion here to avoid reference error
+      const isDynamicQuestion = 'runtimeId' in question;
+      console.error(`Error processing question ${isDynamicQuestion ? (question as DynamicFollowupQuestion).runtimeId : question.id} in section ${sectionTitle}:`, error);
+    }
+    
+    // Clean up empty sections
+    cleanEmptySections();
+  }, [findOrCreateSection]);
+
+  // Clean up any sections that no longer have answers
+  const cleanEmptySections = useCallback(() => {
+    const initialCount = submissionDataRef.current.answeredSections.length;
+    
+    submissionDataRef.current.answeredSections = submissionDataRef.current.answeredSections.filter(
+      section => section.responses.length > 0
+    );
+    
+    const removedCount = initialCount - submissionDataRef.current.answeredSections.length;
+    if (removedCount > 0 && process.env.NODE_ENV === 'development') {
+      console.log(`[FormSubmissionState] Removed ${removedCount} empty sections`);
+    }
+  }, []);
+
+  // Process all sections with debouncing to prevent excessive processing
+  const processSectionsWithDebounce = useCallback((
+    sections: FormSection[], 
+    currentValues: Record<string, any>
+  ) => {
+    // Create a hash of the current values to detect changes
+    const valuesHash = JSON.stringify(currentValues);
+    
+    // Skip processing if values haven't changed
+    if (valuesHash === lastProcessedValuesRef.current) {
+      return;
+    }
+    
+    // Update last processed values
+    lastProcessedValuesRef.current = valuesHash;
+    
+    // Clear any existing timer
+    if (processingTimerRef.current !== null) {
+      clearTimeout(processingTimerRef.current);
+    }
+    
+    // Set a new timer for processing (debounce) - reduced from 100ms to 50ms for submission
+    processingTimerRef.current = window.setTimeout(() => {
+      // Update counter for debugging
+      setProcessingCount(prev => prev + 1);
+      
+      // Process each section
+      sections.forEach(section => {
+        processSection(section, currentValues);
+      });
+      
+      processingTimerRef.current = null;
+    }, 50); // 50ms debounce, reduced from 100ms
+  }, [processSection]);
+
+  // Immediately process sections without debouncing for submission
+  const processAllSectionsImmediately = useCallback((
+    sections: Array<FormSection[]>,
+    currentValues: Record<string, any>
+  ) => {
+    console.log('[FormSubmissionState] Processing all sections immediately for submission');
+    console.log('[FormSubmissionState] Current form values:', currentValues);
+    
+    // Reset the processed questions tracker to ensure fresh processing
+    processedQuestionsRef.current = {};
+    
+    // Process each section in each step
+    sections.forEach(stepSections => {
+      stepSections.forEach(section => {
+        // Create or empty the set for this section
+        processedQuestionsRef.current[section.section_title] = new Set<string>();
+        // Process the section
+        processSection(section, currentValues);
+      });
+    });
+    
+    return submissionDataRef.current;
+  }, [processSection]);
+
+  // Update the timestamp before final submission
+  const finalizeSubmissionData = useCallback((): SubmissionData => {
+    console.log('[FormSubmissionState] Finalizing submission data');
+    
+    submissionDataRef.current.submissionTimestamp = new Date().toISOString();
+    
+    return {
+      formattedAnswers: { ...submissionDataRef.current },
+      rawAnswers: { /* Will be filled by the form submission hook */ },
+      metadata: {
+        formTemplateId: formTemplate.title,
+        submittedAt: submissionDataRef.current.submissionTimestamp,
+        version: "2.0"
+      }
+    };
+  }, [formTemplate.title]);
+
+  // Updated helper function to evaluate show_if conditions with the new type definition
+  const evaluateCondition = (
+    condition: { question: string; equals?: string | string[]; contains?: string; } | undefined,
+    currentValues: Record<string, any>
+  ): boolean => {
+    // If no condition is provided, always show the element
+    if (!condition) return true;
+
+    // Check if the dependent question exists in the current values
+    const { question, equals, contains } = condition;
+    const dependentValue = currentValues[question];
+    
+    // Handle "contains" condition for checkbox array values
+    if (contains !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        return dependentValue.includes(contains);
+      }
+      // For non-array values, check equality
+      return dependentValue === contains;
+    }
+    
+    // Handle "equals" condition
+    if (equals !== undefined) {
+      // Handle array of possible values
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
       }
       
-      // Set a new timer for processing (debounce)
-      processingTimerRef.current = window.setTimeout(() => {
-        // Update counter for debugging
-        setProcessingCount(prev => prev + 1);
-        
-        // Process each section
-        sections.forEach(section => {
-          processSection(section, currentValues);
-        });
-        
-        // console.log(`[FormSubmissionState/processSectionsWithDebounce] Current submission data:`, 
-        //   JSON.stringify(submissionDataRef.current, null, 2));
-        
-        processingTimerRef.current = null;
-      }, 100); // 100ms debounce
-    }, 300), // 300ms debounce time
-    [processSection] // Dependencies for the debounced function
-  );
-
-  // Update the timestamp and return the final data structure
-  const finalizeSubmissionData = useCallback((): FormattedAnswerData => {
-    submissionDataRef.current.submissionTimestamp = new Date().toISOString();
-
-    console.log(`[FormSubmissionState/finalizeSubmissionData] Final formatted data:`,
-      JSON.stringify(submissionDataRef.current, null, 2));
-
-    // Return the ref's current value directly
-    return { ...submissionDataRef.current }; // Return a copy
-
-  }, []);
+      // Handle single value
+      return dependentValue === equals;
+    }
+    
+    // If no specific condition (equals/contains) is provided but the question is specified,
+    // show the element if the value is truthy
+    return !!dependentValue;
+  };
 
   // For debugging - return the current processing count
   const getProcessingCount = useCallback(() => processingCount, [processingCount]);
@@ -287,6 +451,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     processSection,
     processQuestion,
     processSectionsWithDebounce,
+    processAllSectionsImmediately,
     setCurrentStep,
     finalizeSubmissionData,
     getProcessingCount

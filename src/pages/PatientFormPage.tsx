@@ -1,37 +1,96 @@
+
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
  * using a modular approach with dedicated components and hooks.
  */
 
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
+import { useFormSubmission } from "@/hooks/useFormSubmission";
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import SubmittedCard from "@/components/PatientForm/StatusCards/SubmittedCard";
 import FormContainer from "@/components/PatientForm/FormContainer";
-import { useState } from "react";
+import { useEffect } from "react";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
-  const navigate = useNavigate();
-  const [localSubmitted, setLocalSubmitted] = useState(false);
-
-  // Use custom hooks to handle token verification
-  const {
-    loading,
-    error,
-    errorCode,
-    diagnosticInfo,
-    expired,
+  
+  // Enhanced debugging
+  useEffect(() => {
+    console.log("PatientFormPage rendered with token:", token ? `${token.substring(0, 6)}...` : 'null');
+    
+    // Check if we're on the correct path
+    console.log("Current path:", window.location.pathname);
+    console.log("Complete URL:", window.location.href);
+    console.log("Search params:", Object.fromEntries([...searchParams.entries()]));
+  }, [token, searchParams]);
+  
+  // Use custom hooks to handle token verification and form submission
+  const { 
+    loading, 
+    error, 
+    errorCode, 
+    diagnosticInfo, 
+    expired, 
     submitted,
     formTemplate,
-    handleRetry
+    entryData,
+    handleRetry 
   } = useTokenVerification(token);
+  
+  const { 
+    isSubmitting, 
+    error: submissionError, 
+    isSubmitted, 
+    submitForm 
+  } = useFormSubmission();
 
-  // Render different UI states based on the form status
+  // Add additional debug logging for the form template
+  useEffect(() => {
+    console.log("PatientFormPage: Form template received:", formTemplate);
+    if (formTemplate) {
+      console.log("PatientFormPage: Template title:", formTemplate.title);
+      console.log("PatientFormPage: Template sections count:", formTemplate.sections?.length || 0);
+      
+      // Log detailed information about sections
+      if (formTemplate.sections && formTemplate.sections.length > 0) {
+        formTemplate.sections.forEach((section, idx) => {
+          console.log(`PatientFormPage: Section ${idx + 1}: ${section.section_title}`);
+          console.log(`PatientFormPage: Section ${idx + 1} questions count:`, section.questions?.length || 0);
+        });
+      } else {
+        console.warn("PatientFormPage: Template has no sections!");
+      }
+    } else {
+      console.warn("PatientFormPage: Template is null or undefined!");
+    }
+  }, [formTemplate]);
+
+  // Handle form submission with form template
+  const handleFormSubmit = async (values: any, formattedAnswers?: any) => {
+    if (!token) {
+      console.error("Cannot submit form: No token provided");
+      return;
+    }
+    console.log("Submitting form with token:", token.substring(0, 6) + "...");
+    await submitForm(token, values, formTemplate, formattedAnswers);
+  };
+
+  // Get the responsible optician's name
+  const createdByName = entryData?.created_by_name || null;
+
+  // Debug info
+  useEffect(() => {
+    console.log("Form state:", { 
+      loading, error, errorCode, expired, submitted, isSubmitted, 
+      hasFormTemplate: !!formTemplate,
+      entryData: entryData ? `ID: ${entryData.id.substring(0, 8)}...` : null
+    });
+  }, [loading, error, errorCode, expired, submitted, isSubmitted, formTemplate, entryData]);
   
   // Loading state
   if (loading) {
@@ -55,25 +114,40 @@ const PatientFormPage = () => {
     );
   }
 
-  // Use 'submitted' from token verification OR local state after successful submission
-  if (submitted || localSubmitted) {
+  // Form already submitted state
+  if (submitted || isSubmitted) {
     return <SubmittedCard />;
   }
 
-  // Ensure token exists before rendering FormContainer
-  if (!token) {
-    return <ErrorCard error="Token saknas i URL:en" errorCode="MISSING_TOKEN" onRetry={() => window.location.reload()} />;
+  // Submission error state
+  if (submissionError) {
+    return (
+      <ErrorCard 
+        error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
+        onRetry={() => handleFormSubmit({})} 
+      />
+    );
   }
 
-  // Form display state - Pass token and onSuccess handler
+  // Missing token state
+  if (!token) {
+    return (
+      <ErrorCard 
+        error="Ingen åtkomsttoken hittades i URL:en" 
+        errorCode="missing_token"
+        diagnosticInfo="Token parameter saknas i URL:en"
+        onRetry={() => window.location.href = "/"}
+      />
+    );
+  }
+
+  // Form display state - default state
   return (
     <FormContainer
       formTemplate={formTemplate}
-      token={token}
-      onSuccess={() => {
-        console.log("Patient submission successful");
-        setLocalSubmitted(true);
-      }}
+      onSubmit={handleFormSubmit}
+      isSubmitting={isSubmitting}
+      createdByName={createdByName}
     />
   );
 };

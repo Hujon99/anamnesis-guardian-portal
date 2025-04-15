@@ -1,12 +1,12 @@
-
 /**
  * This component renders a form field based on its type.
- * It supports various input types like text, radio, dropdown, and number.
+ * It supports various input types like text, radio, dropdown, checkbox, and number.
  * Enhanced with accessibility attributes for better screen reader support.
+ * Now supports dynamic follow-up questions and the new option structure.
  */
 
-import React from "react";
-import { FormQuestion } from "@/types/anamnesis";
+import React, { useEffect } from "react";
+import { FormQuestion, FormQuestionOption, DynamicFollowupQuestion } from "@/types/anamnesis";
 import { 
   FormField, 
   FormItem, 
@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
 
 interface FormFieldRendererProps {
-  question: FormQuestion;
+  question: FormQuestion | DynamicFollowupQuestion;
   error: any;
   isOpticianField?: boolean;
 }
@@ -33,11 +33,68 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   error,
   isOpticianField = false
 }) => {
-  const { control } = useFormContext();
+  const { control, watch, setValue } = useFormContext();
   const hasError = error !== undefined;
-  const fieldId = `field-${question.id}`;
-  const descriptionId = `desc-${question.id}`;
-  const errorId = `error-${question.id}`;
+  
+  const fieldId = `field-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
+  const descriptionId = `desc-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
+  const errorId = `error-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
+  
+  const fieldName = (question as DynamicFollowupQuestion).runtimeId || question.id;
+  
+  // Watch the current value for this field
+  const fieldValue = watch(fieldName);
+  
+  // Extract value from nested object structure
+  const extractValue = (val: any): any => {
+    if (val && typeof val === 'object') {
+      // Handle answer object with nested value structure
+      if ('answer' in val && typeof val.answer === 'object') {
+        return extractValue(val.answer);
+      }
+      // Handle direct value property
+      if ('value' in val) {
+        return val.value;
+      }
+    }
+    return val;
+  };
+
+  // Handle special formatting for dynamic follow-up questions with nested values
+  useEffect(() => {
+    if (fieldValue && typeof fieldValue === 'object') {
+      const extractedValue = extractValue(fieldValue);
+      if (extractedValue !== fieldValue) {
+        setValue(fieldName, extractedValue);
+        console.log(`Extracted value ${extractedValue} for field ${fieldName}`);
+      }
+    }
+  }, [fieldValue, fieldName, setValue]);
+  
+  const getOptionValue = (option: FormQuestionOption): string => {
+    return typeof option === 'string' ? option : option.value;
+  };
+  
+  const getOptionLabel = (option: FormQuestionOption): string => {
+    return typeof option === 'string' ? option : option.value;
+  };
+
+  const isDynamicQuestion = 'runtimeId' in question;
+
+  const dynamicQuestionClass = isDynamicQuestion 
+    ? "pl-6 border-l-2 border-primary-100 mt-4 mb-2" 
+    : "";
+
+  const renderFollowUpHeading = () => {
+    if (isDynamicQuestion && (question as DynamicFollowupQuestion).parentValue) {
+      return (
+        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+          Gällande: {(question as DynamicFollowupQuestion).parentValue}
+        </h4>
+      );
+    }
+    return null;
+  };
 
   const renderField = () => {
     switch (question.type) {
@@ -45,9 +102,10 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
         return (
           <FormField
             control={control}
-            name={question.id}
+            name={fieldName}
             render={({ field }) => (
-              <FormItem>
+              <FormItem className={dynamicQuestionClass}>
+                {renderFollowUpHeading()}
                 <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
@@ -82,10 +140,11 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
         return (
           <FormField
             control={control}
-            name={question.id}
+            name={fieldName}
             render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel id={`label-${question.id}`} className={isOpticianField ? "text-primary font-medium" : ""}>
+              <FormItem className={`space-y-3 ${dynamicQuestionClass}`}>
+                {renderFollowUpHeading()}
+                <FormLabel id={`label-${fieldId}`} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
@@ -96,21 +155,25 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                     className="flex flex-col space-y-1"
-                    aria-labelledby={`label-${question.id}`}
+                    aria-labelledby={`label-${fieldId}`}
                     aria-required={question.required}
                     aria-invalid={hasError}
                     aria-describedby={hasError ? errorId : undefined}
                   >
                     {question.options?.map(option => {
-                      const optionId = `${question.id}-${option.replace(/\s+/g, '-').toLowerCase()}`;
+                      const optionValue = getOptionValue(option);
+                      const optionLabel = getOptionLabel(option);
+                      const optionId = `${fieldId}-${optionValue.replace(/\s+/g, '-').toLowerCase()}`;
                       return (
-                        <FormItem key={option} className="flex items-center space-x-3 space-y-0">
+                        <FormItem key={optionValue} className="flex items-center space-x-3 space-y-0">
                           <FormControl>
-                            <RadioGroupItem value={option} id={optionId} 
+                            <RadioGroupItem 
+                              value={optionValue} 
+                              id={optionId}
                               className={isOpticianField ? "text-primary border-primary" : ""}
                             />
                           </FormControl>
-                          <FormLabel className="font-normal" htmlFor={optionId}>{option}</FormLabel>
+                          <FormLabel className="font-normal" htmlFor={optionId}>{optionLabel}</FormLabel>
                         </FormItem>
                       );
                     })}
@@ -122,13 +185,116 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           />
         );
         
+      case "checkbox":
+        if (question.options && question.options.length > 0) {
+          return (
+            <FormField
+              control={control}
+              name={fieldName}
+              render={({ field }) => {
+                const values = Array.isArray(field.value) ? field.value : 
+                  field.value ? [field.value] : [];
+                
+                return (
+                  <FormItem className={`space-y-3 ${dynamicQuestionClass}`}>
+                    {renderFollowUpHeading()}
+                    <FormLabel className={isOpticianField ? "text-primary font-medium" : ""}>
+                      {question.label}
+                      {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
+                      {question.required && <span className="sr-only">(Obligatoriskt)</span>}
+                      {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
+                    </FormLabel>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {question.options.map(option => {
+                        const optionValue = getOptionValue(option);
+                        const optionLabel = getOptionLabel(option);
+                        const optionId = `${fieldId}-${optionValue.replace(/\s+/g, '-').toLowerCase()}`;
+                        
+                        const isChecked = values.includes(optionValue);
+                        
+                        return (
+                          <FormField
+                            key={optionValue}
+                            control={control}
+                            name={fieldName}
+                            render={() => (
+                              <FormItem 
+                                key={optionId} 
+                                className="flex items-start space-x-3 space-y-0"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    id={optionId}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => {
+                                      const newValues = checked 
+                                        ? [...values, optionValue] 
+                                        : values.filter(val => val !== optionValue);
+                                      field.onChange(newValues.length ? newValues : undefined);
+                                    }}
+                                    className={isOpticianField ? "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" : ""}
+                                  />
+                                </FormControl>
+                                <FormLabel 
+                                  htmlFor={optionId} 
+                                  className="font-normal pt-0.5"
+                                >
+                                  {optionLabel}
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        );
+                      })}
+                    </div>
+                    <FormMessage id={errorId} />
+                  </FormItem>
+                );
+              }}
+            />
+          );
+        } else {
+          return (
+            <FormField
+              control={control}
+              name={fieldName}
+              render={({ field }) => (
+                <FormItem className={`flex flex-row items-start space-x-3 space-y-0 ${dynamicQuestionClass}`}>
+                  {renderFollowUpHeading()}
+                  <FormControl>
+                    <Checkbox
+                      id={fieldId}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      aria-required={question.required}
+                      aria-invalid={hasError}
+                      aria-describedby={`${fieldId}-label ${hasError ? errorId : ''}`}
+                      className={isOpticianField ? "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" : ""}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel id={`${fieldId}-label`} htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
+                      {question.label}
+                      {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
+                      {question.required && <span className="sr-only">(Obligatoriskt)</span>}
+                      {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
+                    </FormLabel>
+                  </div>
+                  <FormMessage id={errorId} />
+                </FormItem>
+              )}
+            />
+          );
+        }
+        
       case "dropdown":
         return (
           <FormField
             control={control}
-            name={question.id}
+            name={fieldName}
             render={({ field }) => (
-              <FormItem>
+              <FormItem className={dynamicQuestionClass}>
+                {renderFollowUpHeading()}
                 <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
@@ -138,7 +304,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                 <Select 
                   onValueChange={field.onChange} 
                   defaultValue={field.value}
-                  name={question.id}
+                  name={fieldName}
                 >
                   <FormControl>
                     <SelectTrigger
@@ -152,9 +318,13 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {question.options?.map(option => (
-                      <SelectItem key={option} value={option}>{option}</SelectItem>
-                    ))}
+                    {question.options?.map(option => {
+                      const optionValue = getOptionValue(option);
+                      const optionLabel = getOptionLabel(option);
+                      return (
+                        <SelectItem key={optionValue} value={optionValue}>{optionLabel}</SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 <FormMessage id={errorId} />
@@ -167,9 +337,10 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
         return (
           <FormField
             control={control}
-            name={question.id}
+            name={fieldName}
             render={({ field }) => (
-              <FormItem>
+              <FormItem className={dynamicQuestionClass}>
+                {renderFollowUpHeading()}
                 <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
@@ -195,45 +366,14 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           />
         );
         
-      case "checkbox":
-        return (
-          <FormField
-            control={control}
-            name={question.id}
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    id={fieldId}
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    aria-required={question.required}
-                    aria-invalid={hasError}
-                    aria-describedby={`${fieldId}-label ${hasError ? errorId : ''}`}
-                    className={isOpticianField ? "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" : ""}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel id={`${fieldId}-label`} htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
-                    {question.label}
-                    {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
-                    {question.required && <span className="sr-only">(Obligatoriskt)</span>}
-                    {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
-                  </FormLabel>
-                </div>
-                <FormMessage id={errorId} />
-              </FormItem>
-            )}
-          />
-        );
-        
       default:
         return (
           <FormField
             control={control}
-            name={question.id}
+            name={fieldName}
             render={({ field }) => (
-              <FormItem>
+              <FormItem className={dynamicQuestionClass}>
+                {renderFollowUpHeading()}
                 <FormLabel htmlFor={fieldId} className={isOpticianField ? "text-primary font-medium" : ""}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1" aria-hidden="true">*</span>}

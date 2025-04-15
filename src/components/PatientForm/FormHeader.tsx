@@ -1,56 +1,44 @@
 
 /**
- * This component renders the form header with title, description, and progress bar.
- * It displays the current step progress and form title information.
+ * This component renders the header section of the form, including the progress bar
+ * and title. It provides visual feedback about the form completion progress.
  */
 
 import React from "react";
 import { Progress } from "@/components/ui/progress";
-import { FileQuestion } from "lucide-react";
-import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useFormContext } from "@/contexts/FormContext";
+import { CardHeader, CardTitle } from "@/components/ui/card";
+import { User } from "lucide-react";
 
 interface FormHeaderProps {
   currentStep: number;
   totalSteps: number;
   progress: number;
+  createdByName?: string | null;
 }
 
-const FormHeader: React.FC<FormHeaderProps> = ({
-  currentStep,
-  totalSteps,
-  progress
+const FormHeader: React.FC<FormHeaderProps> = ({ 
+  currentStep, 
+  totalSteps, 
+  progress,
+  createdByName 
 }) => {
-  // Get the form title from context
-  const title = useFormContext().form.formState.defaultValues?.formTitle || "Patientformulär";
-
   return (
     <CardHeader>
-      <div className="flex justify-center mb-4" aria-hidden="true">
-        <FileQuestion className="h-10 w-10 text-primary" />
+      <div className="flex justify-between items-center mb-2">
+        <CardTitle className="text-xl" id="form-title">Hälsodeklaration</CardTitle>
+        <span className="text-sm text-muted-foreground">
+          Steg {currentStep + 1} av {totalSteps}
+        </span>
       </div>
-      <CardTitle className="text-center" id="form-title">
-        {title}
-      </CardTitle>
-      <CardDescription className="text-center">
-        Vänligen fyll i formuläret nedan för att hjälpa din optiker förbereda din undersökning.
-      </CardDescription>
       
-      {/* Progress bar */}
-      <div className="w-full mt-4">
-        <div className="flex justify-between mb-2">
-          <span className="text-xs">Steg {currentStep + 1} av {totalSteps}</span>
-          <span className="text-xs">{progress}% klart</span>
+      <Progress value={progress} className="h-2" />
+      
+      {createdByName && (
+        <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+          <User className="h-4 w-4" />
+          <span>Ansvarig optiker: {createdByName}</span>
         </div>
-        <Progress 
-          value={progress} 
-          className="h-2" 
-          aria-label={`Formulärets framsteg: ${progress}% klart`}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={progress}
-        />
-      </div>
+      )}
     </CardHeader>
   );
 };

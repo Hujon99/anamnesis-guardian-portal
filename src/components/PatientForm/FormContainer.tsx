@@ -1,138 +1,105 @@
+
 /**
  * This component renders the form container, including the Toaster component
- * to ensure toast messages are properly displayed.
+ * to ensure toast messages are properly displayed. It also adds additional
+ * validation of the form template structure to prevent rendering errors.
+ * Enhanced to handle the new template structure with dynamic follow-up questions.
  */
 
-import React, { useState } from "react";
-import { FormTemplate, FormattedAnswerData } from "@/types/anamnesis";
-import { FormContextProvider, useFormContext } from "@/contexts/FormContext";
-import { Card } from "@/components/ui/card";
-import { FormLayout } from "@/components/PatientForm/FormLayout";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import React from "react";
+import { FormTemplate } from "@/types/anamnesis";
+import { FormOrchestrator } from "./FormOrchestrator";
+import { Toaster } from "@/components/ui/toaster";
+import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 
 interface FormContainerProps {
-  formTemplate: FormTemplate | null | undefined;
+  formTemplate: FormTemplate;
+  onSubmit: (values: any, formattedAnswers?: any) => Promise<any>;
+  isSubmitting: boolean;
   isOpticianMode?: boolean;
-  token: string;
-  onSuccess?: (data: any) => void;
+  initialValues?: Record<string, any> | null;
+  createdByName?: string | null;
 }
 
-const FormContainerInternal: React.FC<Pick<FormContainerProps, 'isOpticianMode' | 'token' | 'onSuccess'>> = ({
-    isOpticianMode,
-    token,
-    onSuccess
-}) => {
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { finalizeSubmissionData, form } = useFormContext();
-    const { handleSubmit: RHFhandleSubmit } = form;
-
-    // Submission logic specifically for PATIENTS
-    const handlePatientSubmit = async () => {
-        console.log("[FormContainer/handlePatientSubmit]: Form validated, preparing submission.");
-        setIsSubmitting(true);
-        setError(null);
-
-        if (!token) {
-            console.error("[FormContainer/handlePatientSubmit]: No token available!");
-            setError("Autentiseringstoken saknas.");
-            setIsSubmitting(false);
-            toast({ title: "Fel", description: "Autentiseringstoken saknas.", variant: "destructive" });
-            return;
-        }
-
-        try {
-            const formattedAnswers = finalizeSubmissionData();
-
-            // Patient submissions don't need extra metadata like optician ones
-            const finalData: FormattedAnswerData = { ...formattedAnswers };
-
-            console.log("[FormContainer/handlePatientSubmit]: Final data for edge function:",
-                JSON.stringify(finalData, null, 2));
-
-            const { data, error: functionError } = await supabase.functions.invoke('submit-form', {
-                body: {
-                    token,
-                    formattedAnswers: finalData // Send the prepared data
-                }
-            });
-
-            if (functionError) {
-                console.error("[FormContainer/handlePatientSubmit]: Edge function error:", functionError);
-                throw new Error(functionError.message || "Ett fel uppstod vid anrop till servern.");
-            }
-
-            console.log("[FormContainer/handlePatientSubmit]: Submission successful:", data);
-            toast({
-                title: "Tack för dina svar!",
-                description: "Dina svar har skickats in.",
-            });
-            if (onSuccess) {
-                onSuccess(data); // Call success callback
-            }
-
-        } catch (err: any) {
-            console.error("[FormContainer/handlePatientSubmit]: Submission error:", err);
-            setError(err.message || "Ett oväntat fel inträffade.");
-            toast({
-                title: "Det gick inte att skicka in formuläret",
-                description: err.message || "Ett oväntat fel uppstod.",
-                variant: "destructive",
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    // Determine which submission trigger to use
-    // Optician submission is handled in OpticianFormContainer, so this only needs patient logic
-    const onSubmitTrigger = () => {
-        if (!isOpticianMode) {
-            console.log("[FormContainer/onSubmitTrigger]: Triggering Patient RHF validation and submit.");
-            RHFhandleSubmit(handlePatientSubmit)();
-        } else {
-            // In optician mode, the trigger comes from OpticianFormContainer's props,
-            // but FormLayout still needs an onSubmitTrigger function.
-            // This case should ideally not be hit if OpticianFormContainer provides its own trigger.
-             console.warn("[FormContainer/onSubmitTrigger]: onSubmitTrigger called in Optician mode - this might indicate an issue.");
-        }
-    };
-
-
-    return (
-        <Card>
-            <FormLayout
-                isSubmitting={isSubmitting}
-                onSubmitTrigger={onSubmitTrigger} // Pass the correct trigger
-            />
-            {/* Display error if any */}
-            {error && !isOpticianMode && <p className="text-red-500 text-sm p-4">Fel: {error}</p>}
-        </Card>
-    );
-};
-
-
-// Main FormContainer component wraps the context provider
-const FormContainer: React.FC<FormContainerProps> = ({
-  formTemplate,
+const FormContainer: React.FC<FormContainerProps> = ({ 
+  formTemplate, 
+  onSubmit, 
+  isSubmitting,
   isOpticianMode = false,
-  token,
-  onSuccess
+  initialValues = null,
+  createdByName = null
 }) => {
-  if (!formTemplate) {
-    return <Card><p className="p-4">Laddar formulär...</p></Card>; // Or a loading indicator
+  console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
+  console.log("[FormContainer]: Initializing with values:", initialValues);
+  console.log("[FormContainer]: Created by:", createdByName);
+  console.log("[FormContainer]: Form template:", formTemplate);
+  
+  // Validate the form template structure before rendering
+  const isValidTemplate = React.useMemo(() => {
+    if (!formTemplate) {
+      console.error("[FormContainer]: Form template is null or undefined!");
+      return false;
+    }
+    
+    if (!formTemplate.sections || !Array.isArray(formTemplate.sections)) {
+      console.error("[FormContainer]: Form template has no sections array or sections is not an array!");
+      return false;
+    }
+    
+    // Check if any sections have questions
+    const hasQuestions = formTemplate.sections.some(section => 
+      section.questions && Array.isArray(section.questions) && section.questions.length > 0
+    );
+    
+    if (!hasQuestions) {
+      console.error("[FormContainer]: Form template has no questions in any section!");
+      return false;
+    }
+    
+    // Success - template structure is valid
+    console.log("[FormContainer]: Template structure validation passed!");
+    
+    return true;
+  }, [formTemplate]);
+  
+  const handleSubmit = async (values: any, formattedAnswers?: any) => {
+    console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
+    console.log("[FormContainer/handleSubmit]: Form values:", values);
+    console.log("[FormContainer/handleSubmit]: Formatted answers:", formattedAnswers);
+    
+    try {
+      console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler");
+      return await onSubmit(values, formattedAnswers);
+    } catch (error) {
+      console.error("[FormContainer/handleSubmit]: Error in form submission:", error);
+      throw error;
+    }
+  };
+  
+  // If the template is not valid, show an error
+  if (!isValidTemplate) {
+    return (
+      <ErrorCard 
+        error="Formulärstrukturen är ogiltig" 
+        errorCode="invalid_template"
+        diagnosticInfo={`Template: ${JSON.stringify(formTemplate, null, 2)}`}
+        onRetry={() => window.location.reload()}
+      />
+    );
   }
-
+  
   return (
-    <FormContextProvider formTemplate={formTemplate} isOpticianMode={isOpticianMode}>
-        {/* Pass necessary props down */}
-        <FormContainerInternal
-            isOpticianMode={isOpticianMode}
-            token={token}
-            onSuccess={onSuccess}
-        />
-    </FormContextProvider>
+    <>
+      <FormOrchestrator
+        formTemplate={formTemplate}
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+        isOpticianMode={isOpticianMode}
+        initialValues={initialValues}
+        createdByName={createdByName}
+      />
+      <Toaster />
+    </>
   );
 };
 

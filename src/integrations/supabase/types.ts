@@ -16,6 +16,7 @@ export type Database = {
           answers: Json | null
           created_at: string | null
           created_by: string | null
+          created_by_name: string | null
           expires_at: string | null
           form_id: string
           formatted_raw_data: string | null
@@ -33,6 +34,7 @@ export type Database = {
           answers?: Json | null
           created_at?: string | null
           created_by?: string | null
+          created_by_name?: string | null
           expires_at?: string | null
           form_id: string
           formatted_raw_data?: string | null
@@ -50,6 +52,7 @@ export type Database = {
           answers?: Json | null
           created_at?: string | null
           created_by?: string | null
+          created_by_name?: string | null
           expires_at?: string | null
           form_id?: string
           formatted_raw_data?: string | null

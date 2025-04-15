@@ -1,12 +1,13 @@
 
 /**
  * This component renders a section of the patient anamnesis form.
- * It handles conditional rendering of questions based on the form values
- * and validates required fields.
+ * It handles conditional rendering of questions based on form values
+ * and validates required fields. Now also supports dynamic follow-up questions
+ * and complex condition checks for checkbox fields.
  */
 
 import React from "react";
-import { FormSection as FormSectionType, FormQuestion } from "@/types/anamnesis";
+import { FormSection as FormSectionType, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
 import { FormFieldRenderer } from "./FormFieldRenderer";
 import { useFormContext as useHookFormContext } from "react-hook-form";
 import { useFormContext } from "@/contexts/FormContext";
@@ -30,14 +31,28 @@ export const FormSection: React.FC<FormSectionProps> = ({
   const shouldShowSection = () => {
     if (!section.show_if) return true;
     
-    const { question, equals } = section.show_if;
+    const { question, equals, contains } = section.show_if;
     const dependentValue = currentValues[question];
     
-    if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
+    // Handle "contains" condition for checkbox array values
+    if (contains !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        return dependentValue.includes(contains);
+      }
+      // For non-array values, check equality
+      return dependentValue === contains;
     }
     
-    return dependentValue === equals;
+    // Handle "equals" condition (existing logic)
+    if (equals !== undefined) {
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
+      }
+      return dependentValue === equals;
+    }
+    
+    // If only the question is provided with no condition, show if the value is truthy
+    return !!dependentValue;
   };
 
   // If the section has a show_if condition and it's not met, don't render the section
@@ -48,20 +63,67 @@ export const FormSection: React.FC<FormSectionProps> = ({
   // Generate a section ID for accessibility linking
   const sectionId = `section-${section.section_title.toLowerCase().replace(/\s+/g, '-')}`;
 
-  // Filter questions based on optician mode
-  const visibleQuestions = section.questions.filter(question => {
-    // If it's a regular question with no mode restriction, show it
-    if (!question.show_in_mode) {
+  // Enhanced function to check if a question should be shown
+  const shouldShowQuestion = (question: FormQuestion | DynamicFollowupQuestion): boolean => {
+    // Skip follow-up templates - they should never be shown directly
+    if ((question as FormQuestion).is_followup_template) {
+      return false;
+    }
+    
+    // Get the field ID (could be runtime ID for dynamic questions)
+    const fieldId = (question as DynamicFollowupQuestion).runtimeId || question.id;
+    
+    // For dynamic questions, always show them (their parent condition was already checked)
+    if ((question as DynamicFollowupQuestion).runtimeId) {
       return true;
+    }
+    
+    // Check question's own show_if condition
+    if (!question.show_if) return true;
+    
+    const { question: dependentQuestionId, equals, contains } = question.show_if;
+    const dependentValue = currentValues[dependentQuestionId];
+    
+    // Handle "contains" condition for checkbox array values
+    if (contains !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        return dependentValue.includes(contains);
+      }
+      // For non-array values, check equality
+      return dependentValue === contains;
+    }
+    
+    // Handle "equals" condition (existing logic)
+    if (equals !== undefined) {
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
+      }
+      return dependentValue === equals;
+    }
+    
+    // If only the question is provided with no condition, show if the value is truthy
+    return !!dependentValue;
+  };
+
+  // Filter questions based on optician mode and visibility conditions
+  const visibleQuestions = section.questions.filter(question => {
+    // Skip follow-up templates - they should never be shown directly
+    if (question.is_followup_template) {
+      return false;
+    }
+    
+    // If it's a regular question with no mode restriction, check its visibility
+    if (!question.show_in_mode) {
+      return shouldShowQuestion(question);
     }
     
     // If it's an optician-only question, only show it in optician mode
     if (question.show_in_mode === "optician") {
-      return isOpticianMode;
+      return isOpticianMode && shouldShowQuestion(question);
     }
     
     // For any other mode restrictions, use default logic
-    return true;
+    return shouldShowQuestion(question);
   });
 
   return (
@@ -69,37 +131,26 @@ export const FormSection: React.FC<FormSectionProps> = ({
       <h3 id={sectionId} className="text-lg font-medium mb-4">{section.section_title}</h3>
       <div className="space-y-6">
         {visibleQuestions.map((question) => {
-          // Check if the question should be shown based on its own show_if condition
-          const shouldShowQuestion = () => {
-            if (!question.show_if) return true;
-            
-            const { question: dependentQuestionId, equals } = question.show_if;
-            const dependentValue = currentValues[dependentQuestionId];
-            
-            if (Array.isArray(equals)) {
-              return equals.includes(dependentValue);
-            }
-            
-            return dependentValue === equals;
-          };
-
-          if (!shouldShowQuestion()) {
-            return null;
-          }
-
-          const hasError = errors[question.id] !== undefined;
+          // Get the field ID (could be runtime ID for dynamic questions)
+          const fieldId = (question as DynamicFollowupQuestion).runtimeId || question.id;
+          
+          // Get validation errors using the correct field ID
+          const hasError = errors[fieldId] !== undefined;
 
           // Special styling for optician-specific fields
           const isOpticianField = question.show_in_mode === "optician";
 
+          // Special styling for dynamic follow-up questions
+          const isDynamicQuestion = 'runtimeId' in question;
+
           return (
             <div 
-              key={question.id} 
+              key={fieldId} 
               className={`${hasError ? "animate-shake" : ""} ${isOpticianField ? "border-l-4 border-primary pl-4" : ""}`}
             >
               <FormFieldRenderer 
                 question={question} 
-                error={errors[question.id]} 
+                error={errors[fieldId]} 
                 isOpticianField={isOpticianField}
               />
             </div>

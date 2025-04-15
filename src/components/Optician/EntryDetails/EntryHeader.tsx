@@ -1,4 +1,3 @@
-
 /**
  * This component renders the header section of an anamnesis entry detail view.
  * It displays entry metadata, status, and action buttons for printing and exporting.
@@ -33,7 +32,8 @@ import {
   FileText, 
   Link, 
   Printer, 
-  Send 
+  Send,
+  User 
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
@@ -46,14 +46,14 @@ interface EntryHeaderProps {
   exportToPDF: () => void;
 }
 
-export const EntryHeader = ({ 
+export function EntryHeader({ 
   entry, 
   hasAnswers, 
   isExpired, 
   getSummary, 
   printForm, 
   exportToPDF 
-}: EntryHeaderProps) => {
+}: EntryHeaderProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "sent":
@@ -81,6 +81,8 @@ export const EntryHeader = ({
 
     const baseUrl = window.location.origin;
     const patientLink = `${baseUrl}/patient-form?token=${entry.access_token}`;
+    
+    console.log("Copying patient link to clipboard:", patientLink);
     
     navigator.clipboard.writeText(patientLink)
       .then(() => {
@@ -124,6 +126,12 @@ export const EntryHeader = ({
                   Giltig till: {formatDate(entry.expires_at)}
                   {isExpired && " (Utgången)"}
                 </span>
+              </div>
+            )}
+            {entry.created_by_name && (
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span>Ansvarig optiker: {entry.created_by_name}</span>
               </div>
             )}
           </CardDescription>
@@ -195,4 +203,4 @@ export const EntryHeader = ({
       )}
     </CardHeader>
   );
-};
+}

@@ -1,87 +1,117 @@
 
 /**
- * This component provides a button for opticians to directly fill out a form
- * without generating a patient link. It creates a new entry in the database
- * and navigates to the form page with the appropriate token.
+ * This component provides functionality for creating direct in-store anamnesis forms.
+ * It allows opticians to generate an immediate form for walk-in customers
+ * without creating a patient record first.
  */
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { FilePenLine, Loader2 } from "lucide-react";
+import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { toast } from "sonner";
-import { useOrganization } from "@clerk/clerk-react";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { FileEdit, Loader2 } from "lucide-react";
 
-export const DirectFormButton = () => {
-  const { supabase } = useSupabaseClient();
+export function DirectFormButton() {
   const { organization } = useOrganization();
+  const { user } = useUser();
+  const { sessionClaims } = useAuth();
+  const { supabase } = useSupabaseClient();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Get the creator's name from session claims
+  const creatorName = sessionClaims?.full_name as string || user?.fullName || user?.id || "Okänd";
 
-  // Create a new entry and navigate to the form
-  const handleCreateDirectForm = async () => {
-    try {
-      setIsLoading(true);
-      
-      // First, fetch the form template ID
-      const { data: formTemplate, error: formError } = await supabase
-        .from('anamnes_forms')
-        .select('id')
-        .or(`organization_id.eq.${organization?.id},organization_id.is.null`)
-        .order('organization_id', { ascending: false })
-        .limit(1)
-        .single();
-        
-      if (formError || !formTemplate) {
-        throw new Error("Could not find form template: " + formError?.message);
+  // Mutation for creating a direct form entry
+  const createDirectFormEntry = useMutation({
+    mutationFn: async () => {
+      if (!organization?.id) {
+        throw new Error("Organisation saknas");
       }
-      
-      // Generate a random token
-      const token = crypto.randomUUID();
-      
-      // Create the entry
-      const { data: entry, error } = await supabase
-        .from('anamnes_entries')
+
+      console.log("Creating direct form entry with organization ID:", organization.id);
+      console.log("Current user ID:", user?.id || null);
+      console.log("Creator name:", creatorName);
+
+      // Use a fixed identifier for direct in-store forms
+      const patientIdentifier = "Direkt ifyllning i butik";
+
+      // Generate a unique access token
+      const accessToken = crypto.randomUUID();
+      console.log("Generated access token:", accessToken.substring(0, 6) + "...");
+
+      const { data, error } = await supabase
+        .from("anamnes_entries")
         .insert({
-          organization_id: organization?.id,
-          form_id: formTemplate.id,
-          access_token: token,
-          status: 'sent',
-          patient_identifier: 'Direkt ifyllning i butik',
+          organization_id: organization.id,
+          access_token: accessToken,
+          status: "sent",
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+          form_id: crypto.randomUUID(),
+          patient_identifier: patientIdentifier,
+          created_by: user?.id || null,
+          created_by_name: creatorName, // Add the creator's name
           sent_at: new Date().toISOString()
         })
         .select()
         .single();
-      
+
       if (error) {
+        console.error("Error creating direct form entry:", error);
         throw error;
       }
       
-      // Navigate to the form page
-      navigate(`/optician-form?token=${token}&mode=optician`);
+      // Log the URL that will be used for navigation
+      const baseUrl = window.location.origin;
+      console.log("Will navigate to:", `${baseUrl}/optician-form?token=${accessToken}&mode=optician`);
       
-      toast.success("Formulär skapat för direkt ifyllning");
-    } catch (err) {
-      console.error("Error creating direct form:", err);
-      toast.error("Kunde inte skapa formulär: " + (err instanceof Error ? err.message : "Okänt fel"));
-    } finally {
+      return data;
+    },
+    onSuccess: (data) => {
+      console.log("Direct form entry created successfully:", data);
+      
+      // Navigate to the optician form page with the token
+      navigate(`/optician-form?token=${data.access_token}&mode=optician`);
+      
+      toast({
+        title: "Formulär skapat",
+        description: "Direkt ifyllningsformulär förberett",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error creating direct form:", error);
+      
+      toast({
+        title: "Fel vid skapande av formulär",
+        description: error.message || "Ett oväntat fel uppstod",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
       setIsLoading(false);
     }
+  });
+
+  const handleCreateDirectForm = () => {
+    setIsLoading(true);
+    createDirectFormEntry.mutate();
   };
-  
+
   return (
     <Button 
-      onClick={handleCreateDirectForm} 
-      disabled={isLoading}
-      className="whitespace-nowrap"
+      onClick={handleCreateDirectForm}
+      disabled={isLoading || createDirectFormEntry.isPending}
+      variant="secondary"
     >
-      {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+      {(isLoading || createDirectFormEntry.isPending) ? (
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
       ) : (
-        <FilePenLine className="h-4 w-4 mr-2" />
+        <FileEdit className="h-4 w-4 mr-2" />
       )}
-      Fyll i direkt
+      Direkt ifyllning i butik
     </Button>
   );
-};
+}

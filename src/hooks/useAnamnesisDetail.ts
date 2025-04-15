@@ -81,8 +81,16 @@ export function useAnamnesisDetail(
   const copyLinkToClipboard = () => {
     if (entry.access_token) {
       const baseUrl = window.location.origin;
-      const url = `${baseUrl}/anamnes?token=${entry.access_token}`;
-      navigator.clipboard.writeText(url);
+      const url = `${baseUrl}/patient-form?token=${entry.access_token}`;
+      
+      console.log("Copying link to clipboard:", url);
+      navigator.clipboard.writeText(url)
+        .then(() => {
+          console.log("Link successfully copied to clipboard");
+        })
+        .catch(err => {
+          console.error("Error copying link to clipboard:", err);
+        });
     }
   };
 

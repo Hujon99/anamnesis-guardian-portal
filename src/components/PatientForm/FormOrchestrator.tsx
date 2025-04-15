@@ -1,3 +1,4 @@
+
 /**
  * This component orchestrates the entire form flow, setting up the context provider
  * and rendering the appropriate form layout. It serves as the top-level component
@@ -12,20 +13,31 @@ import { FormContextProvider } from "@/contexts/FormContext";
 
 interface FormOrchestratorProps {
   formTemplate: FormTemplate;
+  onSubmit: (values: any, formattedAnswers?: any) => Promise<void>;
+  isSubmitting: boolean;
   isOpticianMode?: boolean;
+  initialValues?: Record<string, any> | null;
+  createdByName?: string | null;
 }
 
 export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
   formTemplate,
-  isOpticianMode = false
+  onSubmit,
+  isSubmitting,
+  isOpticianMode = false,
+  initialValues = null,
+  createdByName = null
 }) => {
   return (
-    <FormContextProvider
-      formTemplate={formTemplate}
+    <FormContextProvider 
+      formTemplate={formTemplate} 
+      onSubmit={onSubmit}
+      isSubmitting={isSubmitting}
       isOpticianMode={isOpticianMode}
+      initialValues={initialValues}
     >
       <Card>
-        <FormLayout isSubmitting={false} onSubmitTrigger={() => console.warn("Default onSubmitTrigger called in Orchestrator")} />
+        <FormLayout createdByName={createdByName} />
       </Card>
     </FormContextProvider>
   );

@@ -1,3 +1,4 @@
+
 /**
  * This page renders a form specifically for opticians to fill out anamnesis forms for patients.
  * It extends the patient form functionality but shows additional comment fields 
@@ -6,19 +7,24 @@
 
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
+import { useOpticianFormSubmission } from "@/hooks/useOpticianFormSubmission";
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import OpticianFormContainer from "@/components/Optician/OpticianFormContainer";
 import OpticianSubmittedView from "@/components/Optician/OpticianSubmittedView";
-import { useEffect } from "react";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { FormTemplate } from "@/types/anamnesis";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const mode = searchParams.get("mode");
   const navigate = useNavigate();
+  
+  // State to persist form values between submission attempts
+  const [storedFormValues, setStoredFormValues] = useState<Record<string, any> | null>(null);
+  const [storedFormattedAnswers, setStoredFormattedAnswers] = useState<any | null>(null);
   
   // Verify that this is indeed an optician mode form
   const isOpticianMode = mode === "optician";
@@ -32,21 +38,53 @@ const OpticianFormPage = () => {
     expired, 
     submitted,
     formTemplate,
+    entryData,
     handleRetry 
   } = useTokenVerification(token);
+  
+  const {
+    isSubmitting,
+    submissionError,
+    isSubmitted,
+    localSubmitted,
+    handleFormSubmit
+  } = useOpticianFormSubmission(token);
+
+  // Get the responsible optician's name
+  const createdByName = entryData?.created_by_name || null;
 
   // If not in optician mode, redirect to dashboard
   useEffect(() => {
     if (!isOpticianMode && !loading) {
       navigate("/dashboard");
-      return;
     }
+  }, [isOpticianMode, loading, navigate]);
 
-    // Display notification for direct form filling mode
-    if (isOpticianMode && !loading && formTemplate && !submitted) {
-      toast.info("Du fyller nu i formuläret direkt i butiken");
+  // Handler for form submission that stores the form values for potential retries
+  const handleSubmitWithPersistence = async (values: any, formattedAnswers?: any) => {
+    console.log("[OpticianFormPage/handleSubmitWithPersistence]: Storing form values for potential retry", values);
+    
+    // Store the values and formatted answers for potential retries
+    setStoredFormValues(values);
+    setStoredFormattedAnswers(formattedAnswers);
+    
+    // Proceed with submission
+    return handleFormSubmit(values, formTemplate, formattedAnswers);
+  };
+  
+  // Handle retry with stored form values
+  const handleSubmissionRetry = () => {
+    console.log("[OpticianFormPage/handleSubmissionRetry]: Attempting retry with stored values", storedFormValues);
+    
+    if (storedFormValues) {
+      // If we have stored values, use them for the retry
+      return handleFormSubmit(storedFormValues, formTemplate, storedFormattedAnswers);
+    } else {
+      // If no stored values (unlikely), reset the process
+      console.warn("[OpticianFormPage/handleSubmissionRetry]: No stored form values for retry, resetting");
+      handleRetry();
     }
-  }, [isOpticianMode, loading, navigate, formTemplate, submitted]);
+  };
 
   // Loading state
   if (loading) {
@@ -70,24 +108,32 @@ const OpticianFormPage = () => {
     );
   }
 
-  // Form already submitted state - rely only on token verification 'submitted' status
-  if (submitted) {
+  // Form already submitted state - check both global and local submitted state
+  if (submitted || isSubmitted || localSubmitted) {
     return <OpticianSubmittedView />;
   }
 
-  // Form display state - default state
-  if (!token) {
-      return <ErrorCard error="Token saknas i URL:en" errorCode="MISSING_TOKEN" onRetry={() => window.location.reload()} />;
+  // Submission error state
+  if (submissionError) {
+    return (
+      <ErrorCard 
+        error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
+        errorCode="" 
+        diagnosticInfo="" 
+        onRetry={handleSubmissionRetry} 
+      />
+    );
   }
 
+  // Form display state - default state
   return (
     <OpticianFormContainer
       formTemplate={formTemplate}
-      token={token}
+      onSubmit={handleSubmitWithPersistence}
+      isSubmitting={isSubmitting}
       onRetry={handleRetry}
-      onSuccess={() => {
-          setTimeout(() => navigate('/dashboard'), 1500);
-      }}
+      initialValues={storedFormValues}
+      createdByName={createdByName}
     />
   );
 };

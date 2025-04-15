@@ -2,9 +2,6 @@
  * This component displays the patient's anamnesis answers in an optimized text format.
  * It directly manages the formatted raw data stored in the database and provides
  * interfaces for editing, saving, and generating AI summaries from that data.
- * 
- * The formatted raw data is used as a unified source of truth for both display
- * and AI processing, removing the need for separate internal notes management.
  */
 
 import { useFormTemplate } from "@/hooks/useFormTemplate";
@@ -15,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
-import { createOptimizedPromptInput, extractFormattedAnswers } from "@/utils/anamnesisTextUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { useFormattedRawData } from "@/hooks/useFormattedRawData";
 
 interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
@@ -38,98 +35,39 @@ export const OptimizedAnswersView = ({
   entryId,
   aiSummary,
   onSaveSummary,
-  formattedRawData,
+  formattedRawData: initialFormattedRawData,
   setFormattedRawData,
   saveFormattedRawData,
   isPending
 }: OptimizedAnswersViewProps) => {
-  const { data: formTemplate } = useFormTemplate();
-  const [initialFormattedText, setInitialFormattedText] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
 
-  const regenerateRawData = async () => {
-    if (!hasAnswers || !formTemplate) {
-      toast({
-        title: "Kunde inte generera rådata",
-        description: "Det finns inga svar att generera rådata från.",
-        variant: "destructive"
-      });
-      return;
+  const {
+    formattedRawData,
+    setFormattedRawData: updateFormattedRawData,
+    generateRawData,
+    isGenerating: isRegeneratingRawData,
+    saveIndicator,
+    setSaveIndicator
+  } = useFormattedRawData(
+    initialFormattedRawData || "",
+    answers,
+    hasAnswers,
+    (data: string) => {
+      setFormattedRawData(data);
+      saveFormattedRawData();
     }
-
-    setIsRegenerating(true);
-    try {
-      // Extract the formatted answers from whatever structure we have
-      const formattedAnswers = extractFormattedAnswers(answers);
-      
-      if (formattedAnswers) {
-        // Generate the optimized text
-        const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
-        setFormattedRawData(text);
-        setSaveIndicator("unsaved");
-        
-        toast({
-          title: "Rådata har genererats",
-          description: "Kom ihåg att spara ändringarna för att behålla den nya rådatan.",
-        });
-      } else {
-        throw new Error("Kunde inte extrahera formaterade svar från datastrukturen");
-      }
-    } catch (error) {
-      console.error("Error regenerating raw data:", error);
-      toast({
-        title: "Ett fel uppstod",
-        description: error instanceof Error ? error.message : "Kunde inte generera rådata",
-        variant: "destructive"
-      });
-    } finally {
-      setIsRegenerating(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!hasAnswers || !formTemplate) {
-      return;
-    }
-
-    try {
-      // Extract the formatted answers from whatever structure we have
-      const formattedAnswers = extractFormattedAnswers(answers);
-      
-      if (formattedAnswers) {
-        // Generate the optimized text
-        const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
-        setInitialFormattedText(text);
-        
-        // If there's no formatted raw data yet, use the generated text
-        if (!formattedRawData) {
-          console.log("Setting initial formatted raw data");
-          setFormattedRawData(text);
-          // Save the initial formatted raw data
-          saveFormattedRawData();
-        }
-      } else {
-        console.warn("Could not extract formatted answers from the data structure");
-        setInitialFormattedText("Kunde inte formatera svaren på ett läsbart sätt.");
-      }
-    } catch (error) {
-      console.error("Error generating optimized text:", error);
-      setInitialFormattedText("Ett fel uppstod vid formatering av svaren.");
-    }
-  }, [answers, formTemplate, hasAnswers, setFormattedRawData, formattedRawData, saveFormattedRawData]);
+  );
 
   useEffect(() => {
     console.log("aiSummary updated:", aiSummary);
     if (aiSummary) {
       setSummary(aiSummary);
-      // Only switch to summary tab if the summary exists and isn't empty
       if (aiSummary.trim().length > 0) {
         setActiveTab("summary");
         console.log("Switching to summary tab due to aiSummary update");
@@ -154,7 +92,6 @@ export const OptimizedAnswersView = ({
 
     setIsGenerating(true);
     try {
-      // Use the formatted raw data for AI processing
       const { data, error } = await supabase.functions.invoke('generate-summary', {
         body: {
           promptText: formattedRawData
@@ -170,7 +107,6 @@ export const OptimizedAnswersView = ({
         setActiveTab("summary");
         console.log("Successfully generated summary:", data.summary.substring(0, 50) + "...");
         
-        // Save the summary to the database
         onSaveSummary(data.summary);
       } else {
         throw new Error('Fick inget svar från AI-tjänsten');
@@ -196,7 +132,6 @@ export const OptimizedAnswersView = ({
         description: "AI-sammanfattningen har kopierats till urklipp",
       });
       
-      // Reset the copied state after 2 seconds
       setTimeout(() => {
         setIsCopied(false);
       }, 2000);
@@ -204,22 +139,10 @@ export const OptimizedAnswersView = ({
   };
 
   const toggleEditing = () => {
-    if (isEditing && formattedRawData !== initialFormattedText) {
-      // Save when exiting edit mode
+    if (isEditing && formattedRawData !== initialFormattedRawData) {
       saveFormattedRawData();
     }
     setIsEditing(!isEditing);
-  };
-
-  const resetChanges = () => {
-    // Reset to original optimized text
-    setFormattedRawData(initialFormattedText);
-    setSaveIndicator("unsaved");
-    
-    toast({
-      title: "Ändringar återställda",
-      description: "Dina ändringar har återställts till originalsvaren",
-    });
   };
 
   const saveChanges = () => {
@@ -227,7 +150,6 @@ export const OptimizedAnswersView = ({
     setSaveIndicator("unsaved");
     
     try {
-      // Save the formatted raw data
       saveFormattedRawData();
       
       toast({
@@ -269,8 +191,6 @@ export const OptimizedAnswersView = ({
     );
   }
 
-  console.log("Rendering OptimizedAnswersView with activeTab:", activeTab, "summary length:", summary?.length);
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex justify-between items-center mb-4">
@@ -295,7 +215,10 @@ export const OptimizedAnswersView = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={resetChanges}
+                onClick={() => {
+                  updateFormattedRawData(initialFormattedRawData || "");
+                  setIsEditing(false);
+                }}
                 className="flex items-center"
               >
                 Återställ
@@ -316,12 +239,12 @@ export const OptimizedAnswersView = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={regenerateRawData}
-                disabled={isRegenerating || !hasAnswers}
+                onClick={generateRawData}
+                disabled={isRegeneratingRawData || !hasAnswers}
                 className="flex items-center"
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
-                {isRegenerating ? "Genererar..." : "Generera rådata"}
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRegeneratingRawData ? 'animate-spin' : ''}`} />
+                {isRegeneratingRawData ? "Genererar..." : "Generera rådata"}
               </Button>
               <Button
                 variant="outline"
@@ -348,11 +271,7 @@ export const OptimizedAnswersView = ({
       </div>
       
       <div className="flex-grow overflow-hidden border rounded-md flex flex-col">
-        <Tabs 
-          value={activeTab} 
-          onValueChange={handleTabChange} 
-          className="flex flex-col h-full w-full"
-        >
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
           <div className="border-b px-4 pt-2">
             <TabsList className="bg-transparent p-0 h-auto">
               <TabsTrigger value="raw" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
@@ -377,7 +296,7 @@ export const OptimizedAnswersView = ({
                 <Textarea 
                   value={formattedRawData}
                   onChange={(e) => {
-                    setFormattedRawData(e.target.value);
+                    updateFormattedRawData(e.target.value);
                     setSaveIndicator("unsaved");
                   }}
                   className="min-h-[400px] font-mono text-sm h-full w-full resize-none border-0 p-4"
@@ -387,7 +306,7 @@ export const OptimizedAnswersView = ({
                 <ScrollArea className="h-full w-full">
                   <div className="p-4">
                     <pre className="whitespace-pre-wrap text-sm">
-                      {formattedRawData || initialFormattedText}
+                      {formattedRawData || ""}
                     </pre>
                   </div>
                 </ScrollArea>

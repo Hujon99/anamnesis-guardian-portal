@@ -19,24 +19,21 @@ export const AnswerDisplayHelper: React.FC<AnswerDisplayHelperProps> = ({
   // Extract value from nested object structure
   const extractValue = (val: any): any => {
     // Handle undefined/null
-    console.log(val)
     if (val === undefined || val === null) {
       return val;
     }
 
-    // If it's an object, try to extract the value
-    if (typeof val === 'object') {
-      console.log("val is an object: ", val)
-      // Handle dynamic follow-up answer format
-      if ('value' in val) {
-        return val.value;
-      }
-      // Handle legacy answer format
-      if ('answer' in val) {
-        return extractValue(val.answer);
-      }
+    // If it's an array, map over it and extract each value
+    if (Array.isArray(val)) {
+      return val.map(item => extractValue(item)).join(', ');
     }
 
+    // If it's an object with a value property (follow-up question structure)
+    if (typeof val === 'object' && 'value' in val) {
+      return val.value;
+    }
+
+    // If it's a simple value, return as is
     return val;
   };
 
@@ -48,16 +45,7 @@ export const AnswerDisplayHelper: React.FC<AnswerDisplayHelperProps> = ({
     return <span className={`text-muted-foreground italic ${className}`}>Inget svar</span>;
   }
 
-  // Handle arrays
-  if (Array.isArray(displayValue)) {
-    return <span className={className}>{displayValue.join(', ')}</span>;
-  }
-
-  // Handle booleans
-  if (typeof displayValue === 'boolean') {
-    return <span className={className}>{displayValue ? 'Ja' : 'Nej'}</span>;
-  }
-
   // Default case: display as string
   return <span className={className}>{String(displayValue)}</span>;
 };
+

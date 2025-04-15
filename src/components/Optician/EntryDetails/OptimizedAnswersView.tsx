@@ -1,4 +1,3 @@
-
 /**
  * This component displays the patient's anamnesis answers in an optimized text format.
  * It directly manages the formatted raw data stored in the database and provides
@@ -10,7 +9,7 @@
 
 import { useFormTemplate } from "@/hooks/useFormTemplate";
 import { useEffect, useState } from "react";
-import { FileText, Lightbulb, Copy, CheckCheck, PenLine, Save } from "lucide-react";
+import { FileText, Lightbulb, Copy, CheckCheck, PenLine, Save, RefreshCw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,9 +51,49 @@ export const OptimizedAnswersView = ({
   const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
 
-  // Generate optimized text from answers when component mounts or answers change
+  const regenerateRawData = async () => {
+    if (!hasAnswers || !formTemplate) {
+      toast({
+        title: "Kunde inte generera rådata",
+        description: "Det finns inga svar att generera rådata från.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      // Extract the formatted answers from whatever structure we have
+      const formattedAnswers = extractFormattedAnswers(answers);
+      
+      if (formattedAnswers) {
+        // Generate the optimized text
+        const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
+        setFormattedRawData(text);
+        setSaveIndicator("unsaved");
+        
+        toast({
+          title: "Rådata har genererats",
+          description: "Kom ihåg att spara ändringarna för att behålla den nya rådatan.",
+        });
+      } else {
+        throw new Error("Kunde inte extrahera formaterade svar från datastrukturen");
+      }
+    } catch (error) {
+      console.error("Error regenerating raw data:", error);
+      toast({
+        title: "Ett fel uppstod",
+        description: error instanceof Error ? error.message : "Kunde inte generera rådata",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   useEffect(() => {
     if (!hasAnswers || !formTemplate) {
       return;
@@ -73,6 +112,8 @@ export const OptimizedAnswersView = ({
         if (!formattedRawData) {
           console.log("Setting initial formatted raw data");
           setFormattedRawData(text);
+          // Save the initial formatted raw data
+          saveFormattedRawData();
         }
       } else {
         console.warn("Could not extract formatted answers from the data structure");
@@ -82,9 +123,8 @@ export const OptimizedAnswersView = ({
       console.error("Error generating optimized text:", error);
       setInitialFormattedText("Ett fel uppstod vid formatering av svaren.");
     }
-  }, [answers, formTemplate, hasAnswers, setFormattedRawData, formattedRawData]);
+  }, [answers, formTemplate, hasAnswers, setFormattedRawData, formattedRawData, saveFormattedRawData]);
 
-  // Set summary from aiSummary when it changes
   useEffect(() => {
     console.log("aiSummary updated:", aiSummary);
     if (aiSummary) {
@@ -97,7 +137,6 @@ export const OptimizedAnswersView = ({
     }
   }, [aiSummary]);
 
-  // Update active tab when changing between raw and summary
   const handleTabChange = (value: string) => {
     console.log("Tab changed to:", value);
     setActiveTab(value);
@@ -274,6 +313,16 @@ export const OptimizedAnswersView = ({
             </>
           ) : (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={regenerateRawData}
+                disabled={isRegenerating || !hasAnswers}
+                className="flex items-center"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
+                {isRegenerating ? "Genererar..." : "Generera rådata"}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

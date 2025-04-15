@@ -27,18 +27,23 @@ export const useFormattedRawData = (
       hasAnswers,
       hasTemplate: !!formTemplate,
       currentData: formattedRawData,
-      answersLength: Object.keys(answers).length
+      answersLength: Object.keys(answers || {}).length
     });
 
-    if (hasAnswers && formTemplate && !formattedRawData) {
+    if (hasAnswers && formTemplate && !formattedRawData && Object.keys(answers || {}).length > 0) {
       console.log("Conditions met for automatic generation");
       generateRawData();
     }
-  }, [hasAnswers, formTemplate, answers]);
+  }, [hasAnswers, formTemplate, answers, formattedRawData]);
 
   const generateRawData = async () => {
-    if (!hasAnswers || !formTemplate) {
-      console.log("Cannot generate raw data:", { hasAnswers, hasTemplate: !!formTemplate });
+    if (!hasAnswers || !formTemplate || !answers || Object.keys(answers).length === 0) {
+      console.log("Cannot generate raw data:", { 
+        hasAnswers, 
+        hasTemplate: !!formTemplate,
+        hasAnswers: !!answers,
+        answersCount: Object.keys(answers || {}).length 
+      });
       toast({
         title: "Kunde inte generera rådata",
         description: "Det finns inga svar att generera rådata från.",
@@ -49,11 +54,11 @@ export const useFormattedRawData = (
 
     setIsGenerating(true);
     try {
-      console.log("Extracting formatted answers from:", answers);
+      console.log("Generating raw data from answers:", answers);
       const formattedAnswers = extractFormattedAnswers(answers);
       
       if (formattedAnswers) {
-        console.log("Successfully extracted formatted answers");
+        console.log("Successfully extracted formatted answers:", formattedAnswers);
         const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
         console.log("Generated raw data length:", text.length);
         

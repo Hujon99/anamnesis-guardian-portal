@@ -63,6 +63,9 @@ export const createOptimizedPromptInput = (
             if ("value" in answer) {
               // Handle dynamic follow-up answer format
               formattedAnswer = String(answer.value);
+            } else if ("parent_question" in answer && "parent_value" in answer) {
+              // Handle specific follow-up question format
+              formattedAnswer = String(answer.value || answer);
             } else if (Array.isArray(answer)) {
               // Handle array answers (e.g., multiple choice)
               formattedAnswer = answer.map(item => 
@@ -110,28 +113,60 @@ export const extractFormattedAnswers = (answers: Record<string, any>): any | und
     
     // Handle double nesting
     if (formattedAnswers && typeof formattedAnswers === 'object') {
-      if ('formattedAnswers' in formattedAnswers) {
-        console.log("Found double-nested formattedAnswers structure");
-        return formattedAnswers.formattedAnswers;
-      }
-      
+      // Check if it's already the right structure
       if ('answeredSections' in formattedAnswers) {
         console.log("Found single-nested formattedAnswers structure");
         return formattedAnswers;
       }
+      
+      // Check if there's another level of nesting
+      if ('formattedAnswers' in formattedAnswers) {
+        console.log("Found double-nested formattedAnswers structure");
+        return formattedAnswers.formattedAnswers;
+      }
     }
   }
 
-  // Case 3: Raw answers format that needs transformation
+  // Case 3: Look for answers within a metadata wrapper
+  if ('rawAnswers' in answers && typeof answers.rawAnswers === 'object') {
+    console.log("Found rawAnswers field, checking inside");
+    // Try to find formatted answers inside the rawAnswers
+    const innerResult = extractFormattedAnswers(answers.rawAnswers);
+    if (innerResult) {
+      return innerResult;
+    }
+  }
+
+  // Case 4: Raw answers format that needs transformation
   if (Object.keys(answers).length > 0) {
     console.log("Transforming raw answers to formatted structure");
+    
+    // Look for follow-up questions (with _for_ in the key)
+    const dynamicQuestions = Object.keys(answers).filter(key => key.includes('_for_'));
+    console.log(`Found ${dynamicQuestions.length} follow-up questions`);
+    
     // Convert raw answers to formatted structure
     return {
       answeredSections: [{
         section_title: "Patientens svar",
         responses: Object.entries(answers)
           .filter(([key]) => !['formMetadata', 'metadata'].includes(key))
-          .map(([id, answer]) => ({ id, answer }))
+          .map(([id, answer]) => {
+            // Handle dynamic follow-up questions
+            if (id.includes('_for_')) {
+              const [baseQuestion, parentValue] = id.split('_for_');
+              return {
+                id,
+                answer: {
+                  parent_question: baseQuestion,
+                  parent_value: parentValue.replace(/_/g, ' '),
+                  value: answer
+                }
+              };
+            }
+            // Regular questions
+            return { id, answer };
+          })
       }]
     };
   }

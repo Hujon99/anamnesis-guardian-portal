@@ -1,3 +1,4 @@
+
 /**
  * This utility file contains functions to process and format form submissions.
  * It ensures that only relevant answers from dynamic forms are saved in a 
@@ -89,6 +90,11 @@ export const prepareFormSubmission = (
 ): Record<string, any> => {
   console.log("[formSubmissionUtils/prepareFormSubmission]: Called with isOpticianMode:", isOpticianMode);
   console.log("[formSubmissionUtils/prepareFormSubmission]: Raw userInputs:", userInputs);
+  console.log("[formSubmissionUtils/prepareFormSubmission]: Pre-processed formattedAnswers:", formattedAnswers);
+  
+  // Always check for dynamic follow-up questions in the userInputs
+  const hasDynamicQuestions = Object.keys(userInputs).some(key => key.includes('_for_'));
+  console.log("[formSubmissionUtils/prepareFormSubmission]: Has dynamic questions:", hasDynamicQuestions);
   
   // Process the formatted answers if provided
   let processedAnswers = formattedAnswers;
@@ -108,9 +114,54 @@ export const prepareFormSubmission = (
     }
   }
   
-  // If formattedAnswers is provided, use it directly (new approach)
-  if (processedAnswers) {
+  // If formattedAnswers is provided and it has valid structure, use it directly
+  if (processedAnswers && (
+      (processedAnswers.formattedAnswers && processedAnswers.formattedAnswers.answeredSections) ||
+      (processedAnswers.answeredSections)
+    )) {
     console.log("[formSubmissionUtils/prepareFormSubmission]: Using pre-processed formattedAnswers");
+    
+    // If there are dynamic questions, ensure they are included
+    if (hasDynamicQuestions) {
+      console.log("[formSubmissionUtils/prepareFormSubmission]: Adding dynamic questions to pre-processed answers");
+      // Use the enhanced form processing to make sure dynamic questions are included
+      const enhancedAnswers = enhancedProcessFormAnswers(formTemplate, userInputs);
+      
+      // Combine with pre-processed answers
+      const targetStructure = processedAnswers.formattedAnswers || processedAnswers;
+      const combinedSections = [...(targetStructure.answeredSections || [])];
+      
+      // Add dynamic questions from enhanced processing
+      enhancedAnswers.answeredSections.forEach(enhancedSection => {
+        // Find if this section exists in the combined sections
+        const existingSection = combinedSections.find(
+          section => section.section_title === enhancedSection.section_title
+        );
+        
+        if (existingSection) {
+          // Add only the dynamic question responses
+          enhancedSection.responses.forEach(response => {
+            if (response.id.includes('_for_')) {
+              // Check if this response already exists
+              const existingResponse = existingSection.responses.find(r => r.id === response.id);
+              if (!existingResponse) {
+                existingSection.responses.push(response);
+              }
+            }
+          });
+        } else {
+          // Add the entire section
+          combinedSections.push(enhancedSection);
+        }
+      });
+      
+      // Update the processed answers with combined sections
+      if (processedAnswers.formattedAnswers) {
+        processedAnswers.formattedAnswers.answeredSections = combinedSections;
+      } else {
+        processedAnswers.answeredSections = combinedSections;
+      }
+    }
     
     // Return an object structure suitable for API submission
     return {
@@ -387,3 +438,4 @@ export const processFormAnswers = (
 ): FormattedAnswer => {
   return enhancedProcessFormAnswers(formTemplate, userInputs);
 };
+

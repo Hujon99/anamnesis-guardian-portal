@@ -69,26 +69,6 @@ const questionLabels: Record<string, string> = {
   huvudvärk: "Huvudvärk"
 };
 
-// Add this helper function at the top of the file, before the component
-const renderAnswer = (answer: any): string => {
-  if (answer === null || answer === undefined) {
-    return '';
-  }
-  
-  // If answer is an object with a value property, use that
-  if (typeof answer === 'object' && !Array.isArray(answer) && answer.value) {
-    return answer.value;
-  }
-  
-  // For arrays, join the values
-  if (Array.isArray(answer)) {
-    return answer.join(', ');
-  }
-  
-  // For simple values (strings, numbers, booleans)
-  return String(answer);
-};
-
 export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps) => {
   if (!hasAnswers) {
     return (
@@ -197,9 +177,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                           )}
                         </TableCell>
                         <TableCell className="whitespace-pre-wrap break-words py-3">
-                          {response.answer !== null && response.answer !== undefined 
-                            ? renderAnswer(response.answer) 
-                            : ""}
+                          <AnswerDisplayHelper answer={response.answer} />
                         </TableCell>
                       </TableRow>
                     );
@@ -238,7 +216,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                     {questionLabels[questionId] || questionId}
                   </TableCell>
                   <TableCell className="whitespace-pre-wrap break-words py-3">
-                    {answer !== null && answer !== undefined ? renderAnswer(answer) : ""}
+                    <AnswerDisplayHelper answer={answer} />
                   </TableCell>
                 </TableRow>
               ))}

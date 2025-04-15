@@ -41,7 +41,7 @@ export const useFormattedRawData = (
       console.log("Cannot generate raw data:", { 
         hasAnswers, 
         hasTemplate: !!formTemplate,
-        hasAnswers: !!answers,
+        hasAnswersObj: !!answers,
         answersCount: Object.keys(answers || {}).length 
       });
       toast({
@@ -96,4 +96,3 @@ export const useFormattedRawData = (
     setSaveIndicator
   };
 };
-

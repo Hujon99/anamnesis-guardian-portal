@@ -1,4 +1,3 @@
-
 /**
  * This component displays the answers provided by the patient in the anamnesis form.
  * It renders the answers in a table format, showing the question and corresponding answer.
@@ -64,6 +63,26 @@ const questionLabels: Record<string, string> = {
   glasögon_ålder: "Ålder på glasögon",
   glasögon_funktion: "Glasögonfunktion",
   huvudvärk: "Huvudvärk"
+};
+
+// Add this helper function at the top of the file, before the component
+const renderAnswer = (answer: any): string => {
+  if (answer === null || answer === undefined) {
+    return '';
+  }
+  
+  // If answer is an object with a value property, use that
+  if (typeof answer === 'object' && !Array.isArray(answer) && answer.value) {
+    return answer.value;
+  }
+  
+  // For arrays, join the values
+  if (Array.isArray(answer)) {
+    return answer.join(', ');
+  }
+  
+  // For simple values (strings, numbers, booleans)
+  return String(answer);
 };
 
 export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps) => {
@@ -180,7 +199,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                         </TableCell>
                         <TableCell className="whitespace-pre-wrap break-words py-3">
                           {response.answer !== null && response.answer !== undefined 
-                            ? String(response.answer) 
+                            ? renderAnswer(response.answer) 
                             : ""}
                         </TableCell>
                       </TableRow>
@@ -220,7 +239,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                     {questionLabels[questionId] || questionId}
                   </TableCell>
                   <TableCell className="whitespace-pre-wrap break-words py-3">
-                    {answer !== null && answer !== undefined ? String(answer) : ""}
+                    {answer !== null && answer !== undefined ? renderAnswer(answer) : ""}
                   </TableCell>
                 </TableRow>
             ))}

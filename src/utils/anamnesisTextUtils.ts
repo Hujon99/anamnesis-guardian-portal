@@ -47,15 +47,34 @@ export const createOptimizedPromptInput = (
 
         // Process each response
         section.responses.forEach(response => {
+          if (!response) return; // Skip null/undefined responses
+          
           const { id, answer } = response;
+          if (!id) return; // Skip responses without an ID
           
           // Get the question label from our map
-          const label = questionLabelMap.get(id) || id; // Fallback to ID if label not found
+          const label = questionLabelMap.get(id) || id;
           
-          // Format and add the question-answer pair
-          const formattedAnswer = answer !== null && answer !== undefined 
-            ? String(answer) 
-            : "Inget svar";
+          // Handle complex answer structures
+          let formattedAnswer = "";
+          if (answer === null || answer === undefined) {
+            formattedAnswer = "Inget svar";
+          } else if (typeof answer === "object") {
+            if ("value" in answer) {
+              // Handle dynamic follow-up answer format
+              formattedAnswer = String(answer.value);
+            } else if (Array.isArray(answer)) {
+              // Handle array answers (e.g., multiple choice)
+              formattedAnswer = answer.map(item => 
+                typeof item === "object" && "value" in item ? item.value : String(item)
+              ).join(", ");
+            } else {
+              // Handle other object structures
+              formattedAnswer = JSON.stringify(answer);
+            }
+          } else {
+            formattedAnswer = String(answer);
+          }
           
           outputText += `${label}: ${formattedAnswer}\n`;
         });
@@ -74,40 +93,50 @@ export const createOptimizedPromptInput = (
  * @returns The standardized formatted answers object or undefined if not found
  */
 export const extractFormattedAnswers = (answers: Record<string, any>): any | undefined => {
-  // Case 1: New format with double nesting: answers.formattedAnswers.formattedAnswers
-  if (
-    answers && 
-    typeof answers === 'object' && 
-    'formattedAnswers' in answers && 
-    answers.formattedAnswers && 
-    typeof answers.formattedAnswers === 'object' &&
-    'formattedAnswers' in answers.formattedAnswers &&
-    answers.formattedAnswers.formattedAnswers
-  ) {
-    return answers.formattedAnswers.formattedAnswers;
+  if (!answers || typeof answers !== 'object') {
+    console.log("No answers provided or invalid format");
+    return undefined;
   }
-  
-  // Case 2: Single nesting: answers.formattedAnswers
-  if (
-    answers && 
-    typeof answers === 'object' && 
-    'formattedAnswers' in answers && 
-    answers.formattedAnswers && 
-    typeof answers.formattedAnswers === 'object' &&
-    'answeredSections' in answers.formattedAnswers
-  ) {
-    return answers.formattedAnswers;
-  }
-  
-  // Case 3: Direct structure: answers.answeredSections
-  if (
-    answers && 
-    typeof answers === 'object' && 
-    'answeredSections' in answers
-  ) {
+
+  // Case 1: Direct structure with answeredSections
+  if ('answeredSections' in answers && Array.isArray(answers.answeredSections)) {
+    console.log("Found direct structure with answeredSections");
     return answers;
   }
-  
-  // No structured answers found
+
+  // Case 2: Nested in formattedAnswers
+  if ('formattedAnswers' in answers) {
+    const formattedAnswers = answers.formattedAnswers;
+    
+    // Handle double nesting
+    if (formattedAnswers && typeof formattedAnswers === 'object') {
+      if ('formattedAnswers' in formattedAnswers) {
+        console.log("Found double-nested formattedAnswers structure");
+        return formattedAnswers.formattedAnswers;
+      }
+      
+      if ('answeredSections' in formattedAnswers) {
+        console.log("Found single-nested formattedAnswers structure");
+        return formattedAnswers;
+      }
+    }
+  }
+
+  // Case 3: Raw answers format that needs transformation
+  if (Object.keys(answers).length > 0) {
+    console.log("Transforming raw answers to formatted structure");
+    // Convert raw answers to formatted structure
+    return {
+      answeredSections: [{
+        section_title: "Patientens svar",
+        responses: Object.entries(answers)
+          .filter(([key]) => !['formMetadata', 'metadata'].includes(key))
+          .map(([id, answer]) => ({ id, answer }))
+      }]
+    };
+  }
+
+  console.log("No valid answer structure found");
   return undefined;
 };
+

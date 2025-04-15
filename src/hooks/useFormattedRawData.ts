@@ -17,19 +17,28 @@ export const useFormattedRawData = (
   onSave: (data: string) => void
 ) => {
   const { data: formTemplate } = useFormTemplate();
-  const [formattedRawData, setFormattedRawData] = useState(initialData);
+  const [formattedRawData, setFormattedRawData] = useState(initialData || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
 
-  // Initialize raw data when component mounts
+  // Initialize raw data when component mounts and we have answers
   useEffect(() => {
+    console.log("useFormattedRawData effect triggered", {
+      hasAnswers,
+      hasTemplate: !!formTemplate,
+      currentData: formattedRawData,
+      answersLength: Object.keys(answers).length
+    });
+
     if (hasAnswers && formTemplate && !formattedRawData) {
+      console.log("Conditions met for automatic generation");
       generateRawData();
     }
-  }, [hasAnswers, formTemplate]);
+  }, [hasAnswers, formTemplate, answers]);
 
   const generateRawData = async () => {
     if (!hasAnswers || !formTemplate) {
+      console.log("Cannot generate raw data:", { hasAnswers, hasTemplate: !!formTemplate });
       toast({
         title: "Kunde inte generera rådata",
         description: "Det finns inga svar att generera rådata från.",
@@ -40,14 +49,18 @@ export const useFormattedRawData = (
 
     setIsGenerating(true);
     try {
+      console.log("Extracting formatted answers from:", answers);
       const formattedAnswers = extractFormattedAnswers(answers);
       
       if (formattedAnswers) {
+        console.log("Successfully extracted formatted answers");
         const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
+        console.log("Generated raw data length:", text.length);
+        
         setFormattedRawData(text);
         setSaveIndicator("unsaved");
         
-        // Save the initial raw data
+        // Save the generated raw data
         onSave(text);
         
         toast({
@@ -78,3 +91,4 @@ export const useFormattedRawData = (
     setSaveIndicator
   };
 };
+

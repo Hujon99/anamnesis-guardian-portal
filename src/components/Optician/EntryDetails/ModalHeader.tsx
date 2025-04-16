@@ -10,8 +10,16 @@ import { AnamnesesEntry } from "@/types/anamnesis";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, Clock, Copy, CheckCircle2, User, X } from "lucide-react";
+import { 
+  Calendar, 
+  Clock, 
+  Copy, 
+  CheckCircle2, 
+  User, 
+  Trash2
+} from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { DeleteAnamnesisConfirmation } from "./DeleteAnamnesisConfirmation";
 
 interface ModalHeaderProps {
   entry: AnamnesesEntry;
@@ -19,6 +27,7 @@ interface ModalHeaderProps {
   copyLinkToClipboard: () => void;
   handleSendLink: () => void;
   isSendingLink: boolean;
+  onDelete?: () => void;
 }
 
 export function ModalHeader({
@@ -26,9 +35,11 @@ export function ModalHeader({
   isExpired,
   copyLinkToClipboard,
   handleSendLink,
-  isSendingLink
+  isSendingLink,
+  onDelete
 }: ModalHeaderProps) {
   const [hasCopied, setHasCopied] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   
   const handleCopy = () => {
     copyLinkToClipboard();
@@ -42,6 +53,17 @@ export function ModalHeader({
       title: "Länk kopierad",
       description: "Länken har kopierats till urklipp."
     });
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirmation(true);
+  };
+  
+  const handleConfirmDelete = () => {
+    if (onDelete) {
+      onDelete();
+    }
+    setShowDeleteConfirmation(false);
   };
   
   return (
@@ -78,8 +100,8 @@ export function ModalHeader({
         )}
       </div>
       
-      {entry.access_token && (
-        <div className="flex items-center gap-2 pt-1">
+      <div className="flex items-center gap-2 pt-1">
+        {entry.access_token && (
           <Button 
             variant={hasCopied ? "secondary" : "outline"} 
             size="sm" 
@@ -99,7 +121,27 @@ export function ModalHeader({
               </>
             )}
           </Button>
-        </div>
+        )}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleDeleteClick}
+          className="flex items-center gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          aria-label="Ta bort anamnes"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Ta bort
+        </Button>
+      </div>
+      
+      {showDeleteConfirmation && (
+        <DeleteAnamnesisConfirmation
+          isOpen={showDeleteConfirmation}
+          onClose={() => setShowDeleteConfirmation(false)}
+          onConfirm={handleConfirmDelete}
+          patientName={entry.patient_identifier || `Anamnes #${entry.id.substring(0, 8)}`}
+        />
       )}
     </DialogHeader>
   );

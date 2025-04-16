@@ -41,6 +41,12 @@ export function AnamnesisListView() {
     console.log("Manual refresh triggered in AnamnesisListView");
     refetch();
   };
+  
+  // Handle entry deletion from the list
+  const handleEntryDeleted = () => {
+    console.log("Entry deleted, refreshing list");
+    refetch();
+  };
 
   if ((isLoading && !entries.length)) {
     return <LoadingState />;
@@ -90,6 +96,7 @@ export function AnamnesisListView() {
           entries={filteredEntries}
           statusFilter={filters.statusFilter}
           onSelectEntry={setSelectedEntry}
+          onEntryDeleted={handleEntryDeleted}
         />
       </div>
       

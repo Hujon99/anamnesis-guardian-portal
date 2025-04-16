@@ -17,16 +17,18 @@ export const useDeleteAnamnesisEntry = (onSuccess?: () => void) => {
     mutationFn: async (entryId: string) => {
       console.log(`Deleting entry with ID: ${entryId}`);
       
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from("anamnes_entries")
         .delete()
-        .eq("id", entryId);
+        .eq("id", entryId)
+        .select();
       
       if (error) {
         console.error("Error deleting entry:", error);
         throw handleSupabaseError(error);
       }
       
+      console.log("Delete operation returned:", data);
       return { success: true, entryId };
     },
     onSuccess: (data) => {

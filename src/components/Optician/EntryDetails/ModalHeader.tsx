@@ -1,3 +1,4 @@
+
 /**
  * This component displays the header section of the anamnesis detail modal,
  * including title, status badge, and action buttons.
@@ -9,25 +10,26 @@ import { AnamnesesEntry } from "@/types/anamnesis";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, Clock, Copy, Printer, Loader2, CheckCircle2, User } from "lucide-react";
+import { Calendar, Clock, Copy, CheckCircle2, User } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+
 interface ModalHeaderProps {
   entry: AnamnesesEntry;
   isExpired: boolean;
   copyLinkToClipboard: () => void;
   handleSendLink: () => void;
-  printForm: () => void;
   isSendingLink: boolean;
 }
+
 export function ModalHeader({
   entry,
   isExpired,
   copyLinkToClipboard,
   handleSendLink,
-  printForm,
   isSendingLink
 }: ModalHeaderProps) {
   const [hasCopied, setHasCopied] = useState(false);
+  
   const handleCopy = () => {
     copyLinkToClipboard();
     setHasCopied(true);
@@ -41,6 +43,7 @@ export function ModalHeader({
       description: "Länken har kopierats till urklipp."
     });
   };
+  
   return <DialogHeader className="space-y-3 pb-2">
       <div className="flex items-center justify-between">
         <DialogTitle className="text-xl">

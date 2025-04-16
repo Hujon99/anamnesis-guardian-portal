@@ -4,10 +4,9 @@
  * It includes previous/next buttons and handles form submission.
  */
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Loader2, AlertCircle } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
 interface FormNavigationProps {
   isFirstStep: boolean;
@@ -26,18 +25,8 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
   onPrevious,
   onSubmit
 }) => {
-  const [validationAttempted, setValidationAttempted] = useState(false);
+  console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
   
-  const handleNext = () => {
-    setValidationAttempted(true);
-    onNext();
-  };
-  
-  const handleSubmit = () => {
-    setValidationAttempted(true);
-    onSubmit();
-  };
-
   return (
     <div className="flex justify-between w-full">
       {!isFirstStep && (
@@ -55,11 +44,14 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
       
       {isLastStep ? (
         <Button 
-          type="button"
+          type="button" // Changed from "submit" to "button" to prevent automatic submission
           className={`${isFirstStep ? "ml-auto" : ""}`}
           disabled={isSubmitting}
           aria-label="Skicka formulär"
-          onClick={handleSubmit}
+          onClick={() => {
+            console.log("[FormNavigation]: Submit button clicked, calling onSubmit");
+            onSubmit(); // Call the provided onSubmit handler
+          }}
         >
           {isSubmitting ? (
             <>
@@ -71,18 +63,19 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
           )}
         </Button>
       ) : (
-        <div className="flex flex-col items-end">
-          <Button 
-            type="button"
-            onClick={handleNext}
-            className={`${isFirstStep ? "ml-auto" : ""}`}
-            aria-label="Gå till nästa steg"
-          >
-            <span>Nästa</span>
-            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-            <span className="sr-only"> (Alt+Högerpil)</span>
-          </Button>
-        </div>
+        <Button 
+          type="button"
+          onClick={() => {
+            console.log("[FormNavigation]: Next button clicked");
+            onNext();
+          }}
+          className={`${isFirstStep ? "ml-auto" : ""}`}
+          aria-label="Gå till nästa steg"
+        >
+          <span>Nästa</span>
+          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+          <span className="sr-only"> (Alt+Högerpil)</span>
+        </Button>
       )}
     </div>
   );

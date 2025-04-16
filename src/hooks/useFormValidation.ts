@@ -125,7 +125,6 @@ export function useFormValidation(formTemplate: FormTemplate, currentValues: Rec
 
   // Create a dynamic validation schema based on visible questions
   const validationSchema = useMemo(() => {
-    console.log("[useFormValidation]: Creating validation schema");
     const schemaMap: Record<string, any> = {};
     
     // Validate regular template fields first
@@ -197,7 +196,6 @@ export function useFormValidation(formTemplate: FormTemplate, currentValues: Rec
       }
     });
     
-    console.log("[useFormValidation]: Schema map keys:", Object.keys(schemaMap).length);
     return Object.keys(schemaMap).length > 0 ? z.object(schemaMap) : null;
   }, [formTemplate, currentValues]);
 
@@ -236,10 +234,8 @@ export function useFormValidation(formTemplate: FormTemplate, currentValues: Rec
           if (!shouldShow) return;
         }
         
-        // Add field to validation list if required
         if (question.required) {
           fieldsToValidate.push(fieldId);
-          console.log(`[useFormValidation]: Adding required field to validate: ${fieldId}`);
         }
       });
     });

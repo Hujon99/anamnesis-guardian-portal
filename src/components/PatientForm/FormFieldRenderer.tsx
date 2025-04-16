@@ -21,10 +21,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
+import { FieldError } from "react-hook-form";
 
-interface FormFieldRendererProps {
+// Update interface to include the error prop that's being passed from FormSection
+export interface FormFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
-  error: any;
+  error: FieldError | any; // Add this line to include error in the props interface
   isOpticianField?: boolean;
 }
 
@@ -95,7 +97,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
     }
     return null;
   };
-
+  
   const renderField = () => {
     switch (question.type) {
       case "text":

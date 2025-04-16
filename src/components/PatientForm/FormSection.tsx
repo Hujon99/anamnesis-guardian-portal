@@ -1,4 +1,3 @@
-
 /**
  * This component renders a section of the patient anamnesis form.
  * It handles conditional rendering of questions based on form values
@@ -8,7 +7,7 @@
 
 import React from "react";
 import { FormSection as FormSectionType, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
-import { FormFieldRenderer } from "./FormFieldRenderer";
+import { FormFieldRenderer, FormFieldRendererProps } from "./FormFieldRenderer";
 import { useFormContext as useHookFormContext } from "react-hook-form";
 import { useFormContext } from "@/contexts/FormContext";
 

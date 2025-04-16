@@ -40,6 +40,7 @@ export function AnamnesisDetailModal({
   );
 
   const { deleteEntry, isDeleting } = useDeleteAnamnesisEntry(() => {
+    console.log("Entry deletion completed, closing modal and refreshing list");
     onOpenChange(false);
     if (onEntryUpdated) {
       onEntryUpdated();
@@ -54,6 +55,7 @@ export function AnamnesisDetailModal({
   }, [isOpen, entry.id]);
 
   const handleDeleteEntry = () => {
+    console.log("Deleting entry with ID:", entry.id);
     deleteEntry(entry.id);
   };
   
@@ -68,6 +70,7 @@ export function AnamnesisDetailModal({
             handleSendLink={handleSendLink}
             isSendingLink={sendLinkMutation.isPending}
             onDelete={handleDeleteEntry}
+            isDeleting={isDeleting}
           />
         </div>
 

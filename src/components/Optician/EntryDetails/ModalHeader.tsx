@@ -16,9 +16,9 @@ import {
   Copy, 
   CheckCircle2, 
   User, 
-  Trash2
+  Trash2,
+  Loader2
 } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
 import { DeleteAnamnesisConfirmation } from "./DeleteAnamnesisConfirmation";
 
 interface ModalHeaderProps {
@@ -28,6 +28,7 @@ interface ModalHeaderProps {
   handleSendLink: () => void;
   isSendingLink: boolean;
   onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
 export function ModalHeader({
@@ -36,7 +37,8 @@ export function ModalHeader({
   copyLinkToClipboard,
   handleSendLink,
   isSendingLink,
-  onDelete
+  onDelete,
+  isDeleting = false
 }: ModalHeaderProps) {
   const [hasCopied, setHasCopied] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -56,6 +58,7 @@ export function ModalHeader({
   };
   
   const handleConfirmDelete = () => {
+    console.log("Delete confirmation accepted, proceeding with deletion");
     if (onDelete) {
       onDelete();
     }
@@ -123,11 +126,21 @@ export function ModalHeader({
           variant="outline" 
           size="sm" 
           onClick={handleDeleteClick}
+          disabled={isDeleting}
           className="flex items-center gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground"
           aria-label="Ta bort anamnes"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-          Ta bort
+          {isDeleting ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Tar bort...
+            </>
+          ) : (
+            <>
+              <Trash2 className="h-3.5 w-3.5" />
+              Ta bort
+            </>
+          )}
         </Button>
       </div>
       

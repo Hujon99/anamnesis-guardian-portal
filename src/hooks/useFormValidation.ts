@@ -199,16 +199,14 @@ export function useFormValidation(formTemplate: FormTemplate, currentValues: Rec
     return Object.keys(schemaMap).length > 0 ? z.object(schemaMap) : null;
   }, [formTemplate, currentValues]);
 
-  // Function to get all field IDs that should be validated in a specific section
+  // Enhanced function to get all field IDs that should be validated in a specific section
   const getFieldsToValidate = useCallback((sections: Array<any>): string[] => {
     const fieldsToValidate: string[] = [];
     
     sections.forEach(section => {
+      // Process all questions in this section
       section.questions.forEach((question: any) => {
-        // Get the field ID to validate (could be runtime ID for dynamic questions)
-        const fieldId = (question as DynamicFollowupQuestion).runtimeId || question.id;
-        
-        // Skip questions that shouldn't be shown
+        // Skip questions that shouldn't be shown based on conditions
         if (question.show_if) {
           const { question: dependentQuestionId, equals, contains } = question.show_if;
           const dependentValue = currentValues[dependentQuestionId];
@@ -234,12 +232,66 @@ export function useFormValidation(formTemplate: FormTemplate, currentValues: Rec
           if (!shouldShow) return;
         }
         
+        // Get the field ID (could be runtime ID for dynamic questions)
+        const fieldId = (question as DynamicFollowupQuestion).runtimeId || question.id;
+        
+        // If this field is required, add it to the validation list
         if (question.required) {
           fieldsToValidate.push(fieldId);
         }
       });
+      
+      // Find and validate any dynamic follow-up questions related to this section
+      Object.keys(currentValues).forEach(key => {
+        if (key.includes('_for_')) {
+          const [originalId] = key.split('_for_');
+          
+          // Check if the parent question belongs to this section
+          const parentQuestionInThisSection = section.questions.some(
+            (q: any) => q.id === originalId
+          );
+          
+          if (parentQuestionInThisSection) {
+            // Get the parent option value that triggered this follow-up
+            const parentOptionValue = key.split('_for_')[1].replace(/_/g, ' ');
+            
+            // Find the template questions that would apply to this value
+            const followupTemplates = section.questions.filter(
+              (q: any) => q.is_followup_template && 
+                section.questions.some((parentQ: any) => 
+                  parentQ.id === originalId && 
+                  parentQ.followup_question_ids && 
+                  parentQ.followup_question_ids.includes(q.id)
+                )
+            );
+            
+            // If the parent question has a value that would trigger this follow-up
+            // and the follow-up is required, add it to validation
+            followupTemplates.forEach((template: any) => {
+              if (template.required) {
+                // Make sure the parent question has this value selected
+                const parentValue = currentValues[originalId];
+                let isFollowupTriggered = false;
+                
+                if (Array.isArray(parentValue)) {
+                  // For checkbox lists
+                  isFollowupTriggered = parentValue.includes(parentOptionValue);
+                } else {
+                  // For radio/select
+                  isFollowupTriggered = parentValue === parentOptionValue;
+                }
+                
+                if (isFollowupTriggered) {
+                  fieldsToValidate.push(key);
+                }
+              }
+            });
+          }
+        }
+      });
     });
     
+    console.log("Fields to validate:", fieldsToValidate);
     return fieldsToValidate;
   }, [currentValues]);
 

@@ -239,7 +239,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     }
   }, [currentStep, setSubmissionStateCurrentStep, visibleSections, watchedValues, processSectionsWithDebounce]);
 
-  // Handle next step with validation
+  // Handle next step with enhanced validation for dynamic follow-up questions
   const nextStep = async () => {
     if (isLastStep) {
       console.log("[FormContext/nextStep]: On last step, not proceeding to next");

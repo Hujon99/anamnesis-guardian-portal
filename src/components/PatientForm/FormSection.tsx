@@ -1,3 +1,4 @@
+
 /**
  * This component renders a section of the patient anamnesis form.
  * It handles conditional rendering of questions based on form values
@@ -111,6 +112,57 @@ export const FormSection: React.FC<FormSectionProps> = ({
     return !!dependentValue;
   };
 
+  // Get all dynamic follow-up questions for this section
+  const getDynamicQuestionsForSection = () => {
+    const dynamicQuestions: DynamicFollowupQuestion[] = [];
+    
+    // Look through all form values to find dynamic questions
+    Object.keys(currentValues).forEach(key => {
+      // Only process keys that match the dynamic question pattern
+      if (key.includes('_for_')) {
+        const [originalId] = key.split('_for_');
+        
+        // Check if any question in this section has this ID
+        let parentQuestion = section.questions.find(q => q.id === originalId);
+        
+        if (parentQuestion) {
+          // This dynamic question belongs to this section
+          const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
+          const parentSelected = Array.isArray(currentValues[originalId]) 
+            ? currentValues[originalId].includes(parentValue) 
+            : currentValues[originalId] === parentValue;
+          
+          if (parentSelected) {
+            // Find the template for this follow-up question
+            const template = section.questions.find(
+              q => q.is_followup_template && 
+              parentQuestion?.followup_question_ids?.includes(q.id)
+            );
+            
+            if (template) {
+              // Create a dynamic question instance
+              const dynamicQuestion: DynamicFollowupQuestion = {
+                ...template,
+                parentId: originalId,
+                parentValue: parentValue,
+                runtimeId: key,
+                originalId: template.id,
+                label: template.label.replace(/\{option\}/g, parentValue)
+              };
+              
+              // Remove the is_followup_template flag
+              delete (dynamicQuestion as any).is_followup_template;
+              
+              dynamicQuestions.push(dynamicQuestion);
+            }
+          }
+        }
+      }
+    });
+    
+    return dynamicQuestions;
+  };
+
   // Filter questions based on optician mode and visibility conditions
   const visibleQuestions = section.questions.filter(question => {
     // Skip follow-up templates - they should never be shown directly
@@ -131,12 +183,18 @@ export const FormSection: React.FC<FormSectionProps> = ({
     // For any other mode restrictions, use default logic
     return shouldShowQuestion(question);
   });
+  
+  // Get dynamic follow-up questions for this section
+  const dynamicQuestions = getDynamicQuestionsForSection();
+  
+  // Combine regular and dynamic questions
+  const allVisibleQuestions = [...visibleQuestions, ...dynamicQuestions];
 
   return (
     <div className="mb-6" role="region" aria-labelledby={sectionId}>
       <h3 id={sectionId} className="text-lg font-medium mb-4">{section.section_title}</h3>
       <div className="space-y-6">
-        {visibleQuestions.map((question) => {
+        {allVisibleQuestions.map((question) => {
           // Get the field ID (could be runtime ID for dynamic questions)
           const fieldId = (question as DynamicFollowupQuestion).runtimeId || question.id;
           

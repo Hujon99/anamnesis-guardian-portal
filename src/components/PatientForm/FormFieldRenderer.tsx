@@ -38,6 +38,14 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   const { control, watch, setValue } = useFormContext();
   const hasError = error !== undefined;
   
+  // Log error information for debugging
+  useEffect(() => {
+    if (hasError) {
+      const fieldId = (question as DynamicFollowupQuestion).runtimeId || question.id;
+      console.log(`[FormFieldRenderer] Rendering field with error: ${fieldId}`, error);
+    }
+  }, [hasError, question, error]);
+  
   const fieldId = `field-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
   const descriptionId = `desc-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
   const errorId = `error-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
@@ -123,7 +131,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
                     aria-required={question.required}
                     aria-invalid={hasError}
                     aria-describedby={`${descriptionId} ${hasError ? errorId : ''}`}
-                    className={isOpticianField ? "border-primary/30 focus-visible:ring-primary" : ""}
+                    className={`${isOpticianField ? "border-primary/30 focus-visible:ring-primary" : ""} ${hasError ? "border-destructive" : ""}`}
                   />
                 </FormControl>
                 <FormDescription id={descriptionId}>

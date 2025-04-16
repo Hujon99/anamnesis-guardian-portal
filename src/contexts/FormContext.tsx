@@ -1,4 +1,3 @@
-
 /**
  * This context provides centralized state management for the patient form.
  * It handles form validation, navigation between steps, conditional fields,
@@ -243,16 +242,35 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Handle next step with validation
   const nextStep = async () => {
     if (isLastStep) {
-      // console.log("[FormContext/nextStep]: On last step, not proceeding to next");
+      console.log("[FormContext/nextStep]: On last step, not proceeding to next");
       return;
     }
     
     // Validate only the fields in the current step
-    const fieldsToValidate = getFieldsToValidate(visibleSections[currentStep]);
+    if (visibleSections.length <= currentStep) {
+      console.error("[FormContext/nextStep]: Current step index out of bounds:", currentStep, "visible sections:", visibleSections.length);
+      return;
+    }
+    
+    // Get the sections for the current step
+    const currentSections = visibleSections[currentStep];
+    if (!currentSections || !Array.isArray(currentSections)) {
+      console.error("[FormContext/nextStep]: No valid sections found for current step:", currentStep);
+      return;
+    }
+    
+    // Debug info
+    console.log(`[FormContext/nextStep]: Validating step ${currentStep + 1} with ${currentSections.length} section(s)`);
+    
+    // Get all required fields that should be validated in the current step
+    const fieldsToValidate = getFieldsToValidate(currentSections);
+    console.log("[FormContext/nextStep]: Fields to validate:", fieldsToValidate);
+    
+    // Trigger validation only for the current step's required fields
     const isValid = await trigger(fieldsToValidate);
     
     if (isValid) {
-      // console.log("[FormContext/nextStep]: Step validation successful, moving to next step");
+      console.log("[FormContext/nextStep]: Step validation successful, moving to next step");
       goToNextStep();
       // Announce step change to screen readers
       const stepInfo = document.getElementById('step-info');
@@ -263,11 +281,20 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         }, 1000);
       }
     } else {
-      // console.log("[FormContext/nextStep]: Step validation failed");
+      console.log("[FormContext/nextStep]: Step validation failed");
+      // Show toast notification for validation errors
+      toast({
+        title: "Formuläret är inte komplett",
+        description: "Se till att fylla i alla obligatoriska fält markerade med *",
+        variant: "destructive",
+      });
+      
       // Announce validation errors to screen readers
       const firstErrorEl = document.querySelector('[aria-invalid="true"]');
       if (firstErrorEl) {
         (firstErrorEl as HTMLElement).focus();
+      } else {
+        console.warn("[FormContext/nextStep]: No invalid element found to focus after validation failure");
       }
     }
   };

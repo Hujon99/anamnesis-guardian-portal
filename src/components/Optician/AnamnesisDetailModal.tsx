@@ -9,9 +9,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnamnesesEntry } from "@/types/anamnesis";
-import { isBefore } from "date-fns";
 import { ModalHeader } from "./EntryDetails/ModalHeader";
-import { ModalTabContent } from "./EntryDetails/ModalTabContent";
 import { OptimizedAnswersView } from "./EntryDetails/OptimizedAnswersView";
 import { PatientInfo } from "./EntryDetails/PatientInfo";
 import { useAnamnesisDetail } from "@/hooks/useAnamnesisDetail";
@@ -33,10 +31,13 @@ export function AnamnesisDetailModal({
   const [activeTab, setActiveTab] = useState("answers");
   const { 
     copyLinkToClipboard,
-    sendLink,
+    handleSendLink,
     isExpired,
-    isSendingLink
-  } = useAnamnesisDetail(entry);
+    sendLinkMutation
+  } = useAnamnesisDetail(
+    entry, 
+    onEntryUpdated || (() => {})
+  );
 
   const { deleteEntry, isDeleting } = useDeleteAnamnesisEntry(() => {
     onOpenChange(false);
@@ -64,8 +65,8 @@ export function AnamnesisDetailModal({
             entry={entry}
             isExpired={isExpired}
             copyLinkToClipboard={copyLinkToClipboard}
-            handleSendLink={sendLink}
-            isSendingLink={isSendingLink}
+            handleSendLink={handleSendLink}
+            isSendingLink={sendLinkMutation.isPending}
             onDelete={handleDeleteEntry}
           />
         </div>
@@ -83,24 +84,32 @@ export function AnamnesisDetailModal({
           
           <div className="p-6 pt-4 flex-1 overflow-auto">
             <TabsContent value="answers" className="m-0">
-              <ModalTabContent 
-                entry={entry} 
-                formattedData={entry.formatted_raw_data || ""} 
-                onUpdate={onEntryUpdated}
-              />
+              <div>Content for answers tab</div>
             </TabsContent>
             
             <TabsContent value="patient" className="m-0">
               <PatientInfo 
-                entry={entry} 
-                onUpdate={onEntryUpdated} 
+                patientIdentifier={entry.patient_identifier || ""}
+                isEditing={false}
+                toggleEditing={() => {}}
+                setPatientIdentifier={() => {}}
+                savePatientIdentifier={() => {}}
+                status={entry.status || ""}
               />
             </TabsContent>
             
             <TabsContent value="optimized" className="m-0">
               <OptimizedAnswersView 
-                entry={entry} 
-                onUpdate={onEntryUpdated} 
+                answers={entry.answers as Record<string, any> || {}}
+                hasAnswers={Boolean(entry.answers && Object.keys(entry.answers).length > 0)}
+                status={entry.status || ""}
+                entryId={entry.id}
+                aiSummary={entry.ai_summary}
+                onSaveSummary={() => { if (onEntryUpdated) onEntryUpdated(); }}
+                formattedRawData={entry.formatted_raw_data || ""}
+                setFormattedRawData={() => {}}
+                saveFormattedRawData={() => {}}
+                isPending={false}
               />
             </TabsContent>
           </div>

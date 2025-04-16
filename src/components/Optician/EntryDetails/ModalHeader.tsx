@@ -49,10 +49,6 @@ export function ModalHeader({
     setTimeout(() => {
       setHasCopied(false);
     }, 2000);
-    toast({
-      title: "Länk kopierad",
-      description: "Länken har kopierats till urklipp."
-    });
   };
 
   const handleDeleteClick = () => {

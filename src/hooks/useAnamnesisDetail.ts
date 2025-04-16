@@ -1,11 +1,18 @@
+
+/**
+ * This hook manages state and actions related to anamnesis entry details.
+ * It provides functionality for editing, sending, and displaying anamnesis data,
+ * as well as utilities for copying links and handling patient identifiers.
+ */
+
 import { useState, useCallback, useEffect } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useEntryMutations } from "./useEntryMutations";
+import { toast } from "@/components/ui/use-toast";
 
 export function useAnamnesisDetail(
   entry: AnamnesesEntry,
-  onEntryUpdated: () => void,
-  onClose?: () => void
+  onEntryUpdated: () => void
 ) {
   // Local state for edited data
   const [formattedRawData, setFormattedRawData] = useState(entry.formatted_raw_data || "");
@@ -54,6 +61,12 @@ export function useAnamnesisDetail(
   const handleSendLink = () => {
     if (patientIdentifier) {
       sendLink(patientIdentifier);
+    } else {
+      toast({
+        title: "Patientidentifierare saknas",
+        description: "Ange en patientidentifierare innan du skickar länken.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -74,9 +87,18 @@ export function useAnamnesisDetail(
       navigator.clipboard.writeText(url)
         .then(() => {
           console.log("Link successfully copied to clipboard");
+          toast({
+            title: "Länk kopierad",
+            description: "Länken har kopierats till urklipp.",
+          });
         })
         .catch(err => {
           console.error("Error copying link to clipboard:", err);
+          toast({
+            title: "Kunde inte kopiera länk",
+            description: "Ett fel uppstod vid kopiering av länken.",
+            variant: "destructive",
+          });
         });
     }
   };

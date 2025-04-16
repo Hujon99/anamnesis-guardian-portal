@@ -42,17 +42,13 @@ interface EntryHeaderProps {
   hasAnswers: boolean;
   isExpired: boolean;
   getSummary: () => string;
-  printForm: () => void;
-  exportToPDF: () => void;
 }
 
 export function EntryHeader({ 
   entry, 
   hasAnswers, 
   isExpired, 
-  getSummary, 
-  printForm, 
-  exportToPDF 
+  getSummary 
 }: EntryHeaderProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -162,31 +158,6 @@ export function EntryHeader({
           <div className="mt-2 text-xs text-muted-foreground truncate">
             {window.location.origin}/patient-form?token={entry.access_token}
           </div>
-        )}
-      </div>
-      
-      <div className="mt-4 flex justify-end space-x-2">
-        {hasAnswers && (
-          <>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex gap-1" 
-              onClick={printForm}
-            >
-              <Printer className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Skriv ut</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex gap-1" 
-              onClick={exportToPDF}
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Exportera</span>
-            </Button>
-          </>
         )}
       </div>
       

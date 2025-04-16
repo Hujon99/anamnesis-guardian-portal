@@ -1,4 +1,3 @@
-
 /**
  * This component displays detailed information about an anamnesis entry
  * in a modal dialog. It's been refactored to improve maintainability
@@ -10,7 +9,6 @@
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAnamnesisDetail } from "@/hooks/useAnamnesisDetail";
-import { PrintStyles } from "./EntryDetails/PrintStyles";
 import { ModalHeader } from "./EntryDetails/ModalHeader";
 import { ModalTabContent } from "./EntryDetails/ModalTabContent";
 import { ModalActions } from "./EntryDetails/ModalActions";
@@ -31,7 +29,7 @@ export function AnamnesisDetailModal({
   const {
     // State
     formattedRawData,
-    patientIdentifier, // Updated from patientEmail
+    patientIdentifier,
     isEditing,
     isExpired,
     answers,
@@ -43,18 +41,14 @@ export function AnamnesisDetailModal({
     
     // Actions
     setFormattedRawData,
-    setPatientIdentifier, // Updated from setPatientEmail
+    setPatientIdentifier,
     toggleEditing,
     handleSaveFormattedRawData,
-    handleSavePatientIdentifier, // Updated from handleSavePatientEmail
+    handleSavePatientIdentifier,
     handleSendLink,
     handleStatusUpdate,
     handleSaveAiSummary,
-    copyLinkToClipboard,
-    
-    // Print functions
-    showPrintPreview,
-    printForm
+    copyLinkToClipboard
   } = useAnamnesisDetail(entry, onEntryUpdated, () => onOpenChange(false));
 
   // Determines if we need to show the patient info section
@@ -71,7 +65,6 @@ export function AnamnesisDetailModal({
           isExpired={isExpired}
           copyLinkToClipboard={copyLinkToClipboard}
           handleSendLink={handleSendLink}
-          printForm={printForm}
           isSendingLink={sendLinkMutation.isPending}
         />
         
@@ -103,8 +96,6 @@ export function AnamnesisDetailModal({
           entryToken={entry.access_token || undefined}
           onCloseModal={() => onOpenChange(false)}
         />
-        
-        <PrintStyles showPrintPreview={showPrintPreview} />
       </DialogContent>
     </Dialog>
   );

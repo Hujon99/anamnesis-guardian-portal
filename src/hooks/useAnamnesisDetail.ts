@@ -1,17 +1,6 @@
-
-/**
- * This hook manages the state and logic for the anamnesis detail view.
- * It centralizes all operations related to viewing and updating an anamnesis entry,
- * including formatted raw data management, patient identifier updates, and status changes.
- * 
- * The formatted raw data is directly stored in the database and used for AI summarization,
- * removing the need for separate internal notes management.
- */
-
 import { useState, useCallback, useEffect } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useEntryMutations } from "./useEntryMutations";
-import { usePrintFunction } from "./usePrintFunction";
 
 export function useAnamnesisDetail(
   entry: AnamnesesEntry,
@@ -39,8 +28,6 @@ export function useAnamnesisDetail(
     saveAiSummary,
     sendLink
   } = useEntryMutations(entry.id, onEntryUpdated);
-  
-  const { showPrintPreview, printForm, exportToPDF } = usePrintFunction();
 
   // Derived values
   const isExpired = entry.expires_at && 
@@ -124,11 +111,6 @@ export function useAnamnesisDetail(
     handleSendLink,
     handleStatusUpdate,
     handleSaveAiSummary,
-    copyLinkToClipboard,
-    
-    // Print functions
-    showPrintPreview,
-    printForm,
-    exportToPDF
+    copyLinkToClipboard
   };
 }

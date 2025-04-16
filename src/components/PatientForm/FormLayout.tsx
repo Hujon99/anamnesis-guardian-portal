@@ -30,41 +30,65 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     previousStep,
     isSubmitting,
     handleSubmit,
-    form
+    form,
+    validationErrors
   } = useFormContext();
 
-  // Log when dynamic values change to help debug follow-up questions
-  useEffect(() => {
-    // Log any values that might be follow-up questions (with _for_ in the key)
-    const dynamicValues = Object.entries(watchedValues || {})
-      .filter(([key]) => key.includes('_for_'))
-      .reduce((acc, [key, value]) => {
-        acc[key] = value;
-        return acc;
-      }, {} as Record<string, any>);
+  // Show a descriptive message when submitting the form
+  const handleFormSubmission = () => {
+    console.log("[FormLayout]: Submit button clicked, triggering form submission");
+    
+    // Get current form values
+    const formValues = form.getValues();
+    
+    // Log validation status
+    const hasErrors = Object.keys(validationErrors).length > 0;
+    if (hasErrors) {
+      console.log("[FormLayout]: Form has validation errors:", validationErrors);
+      toast.error("Du behöver fylla i alla obligatoriska fält", {
+        description: "Vänligen kontrollera fälten markerade med *"
+      });
       
-    if (Object.keys(dynamicValues).length > 0) {
-      console.log("[FormLayout] Dynamic follow-up values:", dynamicValues);
+      // Focus on first invalid field
+      const firstErrorEl = document.querySelector('[aria-invalid="true"]');
+      if (firstErrorEl) {
+        (firstErrorEl as HTMLElement).focus();
+      }
+      return;
     }
-  }, [watchedValues]);
+    
+    form.handleSubmit((data) => {
+      console.log("[FormLayout]: Form data validated successfully for submission");
+      toast.info("Skickar in dina svar...");
+      // Call the submission handler from context with the current data
+      handleSubmit()(data);
+    })();
+  };
 
   // The onSubmit handler now only prevents default behavior but doesn't trigger submission
-  // This prevents automatic form submission when pressing Enter or when the form is naturally submitted
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("[FormLayout/onSubmit]: Form submit event intercepted and prevented");
-    // We no longer automatically submit the form here
-    // The actual submission will only happen when the user clicks the Submit button
   };
 
   // Ensure form re-validation when values change
   useEffect(() => {
     if (isLastStep && !isSubmitting) {
-      // Trigger validation for all current step fields
       console.log("[FormLayout]: On last step, re-validating fields");
       form.trigger();
     }
   }, [isLastStep, form, isSubmitting]);
+
+  // Add accessibility announcement for errors
+  useEffect(() => {
+    const errorCount = Object.keys(validationErrors).length;
+    if (errorCount > 0) {
+      const errorAnnouncement = document.getElementById('error-announcement');
+      if (errorAnnouncement) {
+        errorAnnouncement.textContent = `${errorCount} obligatoriska fält saknar svar. Vänligen kontrollera formuläret.`;
+      }
+    }
+  }, [validationErrors]);
 
   return (
     <>
@@ -75,10 +99,18 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
         createdByName={createdByName}
       />
       
+      {/* Hidden element for screen readers to announce errors */}
+      <div 
+        id="error-announcement" 
+        className="sr-only" 
+        aria-live="assertive"
+        role="alert"
+      ></div>
+      
       <CardContent>
         <form 
           id="patient-form" 
-          onSubmit={onSubmit} // Only prevents default, doesn't trigger submission
+          onSubmit={onSubmit}
           className="space-y-6"
           aria-labelledby="form-title"
           noValidate
@@ -107,27 +139,7 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
           isSubmitting={isSubmitting}
           onNext={nextStep}
           onPrevious={previousStep}
-          onSubmit={() => {
-            console.log("[FormLayout]: Submit button clicked, triggering form submission");
-            // Get all current form values
-            const formValues = form.getValues();
-            console.log("[FormLayout/onSubmit]: Current form values for submission:", formValues);
-            
-            // Count dynamic follow-up values
-            const dynamicValues = Object.keys(formValues).filter(key => key.includes('_for_'));
-            if (dynamicValues.length > 0) {
-              console.log("[FormLayout/onSubmit]: Found", dynamicValues.length, "dynamic follow-up values");
-            } else {
-              console.warn("[FormLayout/onSubmit]: No dynamic follow-up values found! Check if they're being captured correctly");
-            }
-            
-            form.handleSubmit((data) => {
-              console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
-              toast.info("Skickar in dina svar...");
-              // Call the submission handler from context with the current data
-              handleSubmit()(data);
-            })();
-          }}
+          onSubmit={handleFormSubmission}
         />
         
         <p className="text-sm text-muted-foreground text-center">

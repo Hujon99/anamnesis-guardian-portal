@@ -1,4 +1,3 @@
-
 /**
  * This component displays the header section of the anamnesis detail modal,
  * including title, status badge, and action buttons.
@@ -12,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, Clock, Copy, CheckCircle2, User } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-
 interface ModalHeaderProps {
   entry: AnamnesesEntry;
   isExpired: boolean;
@@ -20,7 +18,6 @@ interface ModalHeaderProps {
   handleSendLink: () => void;
   isSendingLink: boolean;
 }
-
 export function ModalHeader({
   entry,
   isExpired,
@@ -29,7 +26,6 @@ export function ModalHeader({
   isSendingLink
 }: ModalHeaderProps) {
   const [hasCopied, setHasCopied] = useState(false);
-  
   const handleCopy = () => {
     copyLinkToClipboard();
     setHasCopied(true);
@@ -43,7 +39,6 @@ export function ModalHeader({
       description: "Länken har kopierats till urklipp."
     });
   };
-  
   return <DialogHeader className="space-y-3 pb-2">
       <div className="flex items-center justify-between">
         <DialogTitle className="text-xl">
@@ -51,7 +46,7 @@ export function ModalHeader({
         </DialogTitle>
         
         <div className="flex items-center gap-2">
-          <Badge variant={isExpired ? "destructive" : "outline"} className="flex items-center gap-1">
+          <Badge variant={isExpired ? "destructive" : "outline"} className="flex items-center gap-1 px-0 mx-[20px]">
             <Clock className="h-3 w-3" />
             {isExpired ? "Utgången" : entry.expires_at ? `Giltig till: ${format(new Date(entry.expires_at), "yyyy-MM-dd")}` : "Inget utgångsdatum"}
           </Badge>

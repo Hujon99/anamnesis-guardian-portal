@@ -1,9 +1,6 @@
-
 /**
  * This utility file contains functions to process and format form submissions.
- * It ensures that only relevant answers from dynamic forms are saved in a 
- * consistent structure based on the form template that was used.
- * Enhanced to handle checkbox arrays and dynamic follow-up questions.
+ * Enhanced to properly handle nested values and dynamic follow-up questions.
  */
 
 import { FormTemplate, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
@@ -296,10 +293,9 @@ export const enhancedProcessFormAnswers = (
         return;
       }
 
-      const userAnswer = userInputs[question.id];
+      const rawAnswer = userInputs[question.id];
+      const userAnswer = extractValue(rawAnswer);
 
-      // Skip if question wasn't answered (undefined, null, or empty string)
-      // But include false, 0, and empty arrays as valid answers
       if (
         userAnswer === undefined || 
         userAnswer === null || 
@@ -309,37 +305,18 @@ export const enhancedProcessFormAnswers = (
         return;
       }
 
-      // Add the answer to the formatted section
       formattedSection.responses.push({
         id: question.id,
         answer: userAnswer
       });
 
-      // Handle "Övrigt" option for radio buttons, dropdowns, and checkboxes
+      // Handle "Övrigt" option
       if (
-        (question.type === 'radio' || question.type === 'dropdown') &&
-        question.options && 
-        typeof userAnswer === 'string' &&
-        userAnswer === 'Övrigt'
+        (question.type === 'radio' || question.type === 'dropdown' || 
+         (question.type === 'checkbox' && Array.isArray(userAnswer))) &&
+        ((typeof userAnswer === 'string' && userAnswer === 'Övrigt') ||
+         (Array.isArray(userAnswer) && userAnswer.includes('Övrigt')))
       ) {
-        // Look for the associated "other" text input (usually has _other or _övrigt suffix)
-        const otherFieldId = `${question.id}_other`;
-        const alternativeOtherFieldId = `${question.id}_övrigt`;
-        
-        const otherAnswer = userInputs[otherFieldId] || userInputs[alternativeOtherFieldId];
-        
-        if (otherAnswer) {
-          formattedSection.responses.push({
-            id: otherFieldId in userInputs ? otherFieldId : alternativeOtherFieldId,
-            answer: otherAnswer
-          });
-        }
-      } else if (
-        question.type === 'checkbox' &&
-        Array.isArray(userAnswer) &&
-        userAnswer.includes('Övrigt')
-      ) {
-        // For checkbox arrays with "Övrigt" selected
         const otherFieldId = `${question.id}_other`;
         const alternativeOtherFieldId = `${question.id}_övrigt`;
         
@@ -357,21 +334,16 @@ export const enhancedProcessFormAnswers = (
     // Look for dynamic follow-up questions that belong to this section only
     Object.keys(userInputs).forEach(key => {
       if (key.includes('_for_') && !processedRuntimeIds.has(key)) {
-        const originalId = getOriginalQuestionId(key);
+        const originalId = key.split('_for_')[0];
+        const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
         
-        // Only include this dynamic question if its parent belongs to this section
-        if (dynamicQuestionSectionMap[originalId] === section.section_title) {
-          // Get the answer and normalize it if needed
-          let userAnswer = userInputs[key];
+        // Only process if parent question belongs to this section
+        const parentQuestionInSection = section.questions.some(q => q.id === originalId);
+        
+        if (parentQuestionInSection) {
+          const rawAnswer = userInputs[key];
+          const userAnswer = extractValue(rawAnswer);
           
-          // If the answer is an object with a 'value' property (as sometimes happens in form state),
-          // extract just the value
-          if (userAnswer && typeof userAnswer === 'object' && 'value' in userAnswer) {
-            console.log(`[formSubmissionUtils]: Extracting value from nested object for ${key}`);
-            userAnswer = userAnswer.value;
-          }
-          
-          // Skip if no answer
           if (
             userAnswer === undefined || 
             userAnswer === null || 
@@ -381,12 +353,8 @@ export const enhancedProcessFormAnswers = (
             return;
           }
           
-          // Get the parent value from the runtime ID
-          const parentValue = getParentValueFromRuntimeId(key);
-          
-          // Add the formatted follow-up response
           formattedSection.responses.push({
-            id: key, // Use the full runtime ID as the answer identifier
+            id: key,
             answer: {
               parent_question: originalId,
               parent_value: parentValue,
@@ -394,10 +362,7 @@ export const enhancedProcessFormAnswers = (
             }
           });
           
-          // Mark this runtime ID as processed to avoid duplicates
-          processedRuntimeIds.add(key);
-          
-          // Also handle "Övrigt" option for follow-up questions
+          // Handle "Övrigt" for dynamic questions
           if (
             (typeof userAnswer === 'string' && userAnswer === 'Övrigt') ||
             (Array.isArray(userAnswer) && userAnswer.includes('Övrigt'))
@@ -439,3 +404,36 @@ export const processFormAnswers = (
   return enhancedProcessFormAnswers(formTemplate, userInputs);
 };
 
+/**
+ * Helper function to extract values from nested structures
+ */
+const extractValue = (val: any): any => {
+  // Handle null/undefined
+  if (val === null || val === undefined) {
+    return val;
+  }
+  
+  // Handle nested structures
+  if (val && typeof val === 'object') {
+    // Case: Answer object with nested value
+    if ('answer' in val && typeof val.answer === 'object') {
+      if ('value' in val.answer) {
+        return val.answer.value;
+      }
+      return val.answer;
+    }
+    
+    // Case: Direct value property
+    if ('value' in val) {
+      return val.value;
+    }
+    
+    // Case: Parent question structure
+    if ('parent_question' in val && 'parent_value' in val && 'value' in val) {
+      return val.value;
+    }
+  }
+  
+  // Return primitive values as is
+  return val;
+};

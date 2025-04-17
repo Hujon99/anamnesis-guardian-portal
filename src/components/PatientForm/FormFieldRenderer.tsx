@@ -1,8 +1,7 @@
 /**
- * This component renders a form field based on its type.
- * It supports various input types like text, radio, dropdown, checkbox, and number.
- * Enhanced with accessibility attributes for better screen reader support.
- * Now supports dynamic follow-up questions and the new option structure.
+ * This component renders form fields based on their type.
+ * It supports various input types and handles dynamic follow-up questions
+ * with proper value extraction and nested data structures.
  */
 
 import React, { useEffect } from "react";
@@ -23,10 +22,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
 import { FieldError } from "react-hook-form";
 
-// Update interface to include the error prop that's being passed from FormSection
 export interface FormFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
-  error: FieldError | any; // Add this line to include error in the props interface
+  error: FieldError | any;
   isOpticianField?: boolean;
 }
 
@@ -38,7 +36,6 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   const { control, watch, setValue } = useFormContext();
   const hasError = error !== undefined;
   
-  // Log error information for debugging
   useEffect(() => {
     if (hasError) {
       const fieldId = (question as DynamicFollowupQuestion).runtimeId || question.id;
@@ -52,31 +49,43 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   
   const fieldName = (question as DynamicFollowupQuestion).runtimeId || question.id;
   
-  // Watch the current value for this field
   const fieldValue = watch(fieldName);
   
-  // Extract value from nested object structure
   const extractValue = (val: any): any => {
+    if (val === null || val === undefined) {
+      return val;
+    }
+    
     if (val && typeof val === 'object') {
-      // Handle answer object with nested value structure
       if ('answer' in val && typeof val.answer === 'object') {
-        return extractValue(val.answer);
+        if ('value' in val.answer) {
+          return val.answer.value;
+        }
+        return val.answer;
       }
-      // Handle direct value property
+      
       if ('value' in val) {
         return val.value;
       }
+      
+      if ('parent_question' in val && 'parent_value' in val && 'value' in val) {
+        return val.value;
+      }
     }
+    
     return val;
   };
 
-  // Handle special formatting for dynamic follow-up questions with nested values
   useEffect(() => {
-    if (fieldValue && typeof fieldValue === 'object') {
+    if (fieldValue) {
       const extractedValue = extractValue(fieldValue);
-      if (extractedValue !== fieldValue) {
+      
+      if (extractedValue !== fieldValue && extractedValue !== undefined) {
+        console.log(`[FormFieldRenderer] Normalizing value for ${fieldName}:`, {
+          from: fieldValue,
+          to: extractedValue
+        });
         setValue(fieldName, extractedValue);
-        console.log(`Extracted value ${extractedValue} for field ${fieldName}`);
       }
     }
   }, [fieldValue, fieldName, setValue]);

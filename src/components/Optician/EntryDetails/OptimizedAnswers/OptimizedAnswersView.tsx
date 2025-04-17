@@ -1,8 +1,7 @@
-
 /**
- * This is the main component for displaying optimized answers in the anamnesis entry details.
- * It orchestrates the interaction between its child components and manages the state for
- * editing, saving, and generating summaries.
+ * This component renders the optimized view of patient responses, including raw data
+ * and AI-generated summaries. It provides interfaces for editing raw data and
+ * managing AI summaries.
  */
 
 import { FileText } from "lucide-react";
@@ -11,6 +10,7 @@ import { toast } from "@/components/ui/use-toast";
 import { ActionButtons } from "./ActionButtons";
 import { SaveIndicator } from "./SaveIndicator";
 import { ContentTabs } from "./ContentTabs";
+import { useSummaryGeneration } from "@/hooks/useSummaryGeneration";
 
 interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
@@ -29,6 +29,7 @@ export const OptimizedAnswersView = ({
   answers,
   hasAnswers,
   status,
+  entryId,
   aiSummary,
   onSaveSummary,
   formattedRawData,
@@ -38,27 +39,42 @@ export const OptimizedAnswersView = ({
 }: OptimizedAnswersViewProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
-  const [isCopied, setIsCopied] = useState(false);
   const [summary, setSummary] = useState<string>(aiSummary || "");
+  const [isCopied, setIsCopied] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
+  const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
+  
+  const { generateSummary, isGenerating } = useSummaryGeneration({
+    formattedRawData,
+    onSuccess: (newSummary) => {
+      setSummary(newSummary);
+      onSaveSummary(newSummary);
+    }
+  });
+
+  const copySummaryToClipboard = () => {
+    if (summary) {
+      navigator.clipboard.writeText(summary);
+      setIsCopied(true);
+      toast({
+        title: "Kopierad!",
+        description: "AI-sammanfattningen har kopierats till urklipp",
+      });
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
 
   const handleSaveChanges = () => {
     setIsSaving(true);
     setSaveIndicator("unsaved");
-    
     try {
       saveFormattedRawData();
-      
       toast({
         title: "Ändringar sparade",
         description: "Dina anteckningar har sparats för AI-sammanfattning",
       });
-      
       setSaveIndicator("saved");
       setTimeout(() => setSaveIndicator(null), 2000);
-      
       setIsEditing(false);
     } catch (error) {
       console.error("Error saving edited text:", error);
@@ -70,21 +86,6 @@ export const OptimizedAnswersView = ({
       setSaveIndicator(null);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const copySummaryToClipboard = () => {
-    if (summary) {
-      navigator.clipboard.writeText(summary);
-      setIsCopied(true);
-      toast({
-        title: "Kopierad!",
-        description: "AI-sammanfattningen har kopierats till urklipp",
-      });
-      
-      setTimeout(() => {
-        setIsCopied(false);
-      }, 2000);
     }
   };
 
@@ -131,7 +132,7 @@ export const OptimizedAnswersView = ({
               setIsEditing(false);
             }}
             onRegenerateRawData={() => {}}
-            onGenerateSummary={() => {}}
+            onGenerateSummary={generateSummary}
           />
         </div>
       </div>

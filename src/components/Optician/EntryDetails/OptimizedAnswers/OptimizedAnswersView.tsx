@@ -11,7 +11,6 @@ import { toast } from "@/components/ui/use-toast";
 import { ActionButtons } from "./ActionButtons";
 import { SaveIndicator } from "./SaveIndicator";
 import { ContentTabs } from "./ContentTabs";
-import { useFormattedRawData } from "@/hooks/useFormattedRawData";
 
 interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
@@ -30,10 +29,9 @@ export const OptimizedAnswersView = ({
   answers,
   hasAnswers,
   status,
-  entryId,
   aiSummary,
   onSaveSummary,
-  formattedRawData: initialFormattedRawData,
+  formattedRawData,
   setFormattedRawData,
   saveFormattedRawData,
   isPending
@@ -45,14 +43,6 @@ export const OptimizedAnswersView = ({
   const [isCopied, setIsCopied] = useState(false);
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
-
-  const {
-    generateRawData,
-    isGenerating: isRegeneratingRawData,
-  } = useFormattedRawData(initialFormattedRawData, answers, hasAnswers, (data: string) => {
-    setFormattedRawData(data);
-    saveFormattedRawData();
-  });
 
   const handleSaveChanges = () => {
     setIsSaving(true);
@@ -129,18 +119,18 @@ export const OptimizedAnswersView = ({
             isEditing={isEditing}
             isSaving={isSaving}
             isPending={isPending}
-            isRegeneratingRawData={isRegeneratingRawData}
+            isRegeneratingRawData={false}
             isGenerating={isGenerating}
             hasAnswers={hasAnswers}
-            formattedRawData={initialFormattedRawData}
+            formattedRawData={formattedRawData}
             summary={summary}
             onEdit={() => setIsEditing(true)}
             onSave={handleSaveChanges}
             onCancel={() => {
-              setFormattedRawData(initialFormattedRawData);
+              setFormattedRawData(formattedRawData);
               setIsEditing(false);
             }}
-            onRegenerateRawData={generateRawData}
+            onRegenerateRawData={() => {}}
             onGenerateSummary={() => {}}
           />
         </div>
@@ -151,7 +141,7 @@ export const OptimizedAnswersView = ({
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isEditing={isEditing}
-          formattedRawData={initialFormattedRawData}
+          formattedRawData={formattedRawData}
           onRawDataChange={(value) => {
             setFormattedRawData(value);
             setSaveIndicator("unsaved");

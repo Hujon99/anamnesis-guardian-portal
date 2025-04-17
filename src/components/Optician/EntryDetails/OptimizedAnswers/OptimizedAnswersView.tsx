@@ -1,3 +1,4 @@
+
 /**
  * This is the main component for displaying optimized answers in the anamnesis entry details.
  * It orchestrates the interaction between its child components and manages the state for
@@ -29,6 +30,7 @@ export const OptimizedAnswersView = ({
   answers,
   hasAnswers,
   status,
+  entryId,
   aiSummary,
   onSaveSummary,
   formattedRawData: initialFormattedRawData,
@@ -130,7 +132,7 @@ export const OptimizedAnswersView = ({
             isRegeneratingRawData={isRegeneratingRawData}
             isGenerating={isGenerating}
             hasAnswers={hasAnswers}
-            formattedRawData={formattedRawData}
+            formattedRawData={initialFormattedRawData}
             summary={summary}
             onEdit={() => setIsEditing(true)}
             onSave={handleSaveChanges}
@@ -149,7 +151,7 @@ export const OptimizedAnswersView = ({
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isEditing={isEditing}
-          formattedRawData={formattedRawData}
+          formattedRawData={initialFormattedRawData}
           onRawDataChange={(value) => {
             setFormattedRawData(value);
             setSaveIndicator("unsaved");
@@ -162,3 +164,4 @@ export const OptimizedAnswersView = ({
     </div>
   );
 };
+

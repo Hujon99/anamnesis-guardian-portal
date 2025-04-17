@@ -90,6 +90,7 @@ export function AnamnesisListView() {
           entries={filteredEntries}
           statusFilter={filters.statusFilter}
           onSelectEntry={setSelectedEntry}
+          onEntryDeleted={refetch}
         />
       </div>
       

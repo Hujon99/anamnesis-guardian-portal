@@ -14,14 +14,12 @@ interface EntriesListProps {
   entries: AnamnesesEntry[];
   statusFilter: string | null;
   onSelectEntry: (entry: AnamnesesEntry) => void;
-  onEntryDeleted?: () => void;
 }
 
 export function EntriesList({
   entries,
   statusFilter,
-  onSelectEntry,
-  onEntryDeleted
+  onSelectEntry
 }: EntriesListProps) {
   if (entries.length === 0) {
     return <EmptyState status={statusFilter || "all"} />;
@@ -58,7 +56,6 @@ export function EntriesList({
           isExpired={isExpired(entry)}
           daysUntilExpiration={daysUntilExpiration(entry)}
           onClick={() => onSelectEntry(entry)}
-          onDeleted={onEntryDeleted}
         />
       ))}
     </div>

@@ -46,7 +46,7 @@ export function ModalHeader({
         </DialogTitle>
         
         <div className="flex items-center gap-2">
-          <Badge variant={isExpired ? "destructive" : "outline"} className="flex items-center gap-1 px-0 mx-[20px]">
+          <Badge variant={isExpired ? "destructive" : "outline"} className="flex items-center gap-1 mx-[30px] px-[12px]">
             <Clock className="h-3 w-3" />
             {isExpired ? "Utgången" : entry.expires_at ? `Giltig till: ${format(new Date(entry.expires_at), "yyyy-MM-dd")}` : "Inget utgångsdatum"}
           </Badge>

@@ -1,4 +1,3 @@
-
 /**
  * This is the main component for displaying optimized answers in the anamnesis entry details.
  * It orchestrates the interaction between its child components and manages the state for
@@ -11,6 +10,7 @@ import { toast } from "@/components/ui/use-toast";
 import { ActionButtons } from "./ActionButtons";
 import { SaveIndicator } from "./SaveIndicator";
 import { ContentTabs } from "./ContentTabs";
+import { useFormattedRawData } from "@/hooks/useFormattedRawData";
 
 interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
@@ -31,7 +31,7 @@ export const OptimizedAnswersView = ({
   status,
   aiSummary,
   onSaveSummary,
-  formattedRawData,
+  formattedRawData: initialFormattedRawData,
   setFormattedRawData,
   saveFormattedRawData,
   isPending
@@ -43,6 +43,14 @@ export const OptimizedAnswersView = ({
   const [isCopied, setIsCopied] = useState(false);
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
+
+  const {
+    generateRawData,
+    isGenerating: isRegeneratingRawData,
+  } = useFormattedRawData(initialFormattedRawData, answers, hasAnswers, (data: string) => {
+    setFormattedRawData(data);
+    saveFormattedRawData();
+  });
 
   const handleSaveChanges = () => {
     setIsSaving(true);
@@ -119,7 +127,7 @@ export const OptimizedAnswersView = ({
             isEditing={isEditing}
             isSaving={isSaving}
             isPending={isPending}
-            isRegeneratingRawData={false}
+            isRegeneratingRawData={isRegeneratingRawData}
             isGenerating={isGenerating}
             hasAnswers={hasAnswers}
             formattedRawData={formattedRawData}
@@ -127,10 +135,10 @@ export const OptimizedAnswersView = ({
             onEdit={() => setIsEditing(true)}
             onSave={handleSaveChanges}
             onCancel={() => {
-              setFormattedRawData(formattedRawData);
+              setFormattedRawData(initialFormattedRawData);
               setIsEditing(false);
             }}
-            onRegenerateRawData={() => {}}
+            onRegenerateRawData={generateRawData}
             onGenerateSummary={() => {}}
           />
         </div>

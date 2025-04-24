@@ -1,4 +1,3 @@
-
 /**
  * This file contains types for the anamnesis forms and entries in the system.
  * These types define the structure of form templates and the patient data entries.
@@ -9,22 +8,21 @@ export type AnamnesesEntry = {
   organization_id: string;
   form_id: string;
   status: string;
-  formatted_raw_data: string | null; // Field to store the formatted raw data
+  formatted_raw_data: string | null;
   access_token: string | null;
   answers: any | null;
   created_at: string | null;
   expires_at: string | null;
-  patient_identifier: string | null; // Updated from patient_email to patient_identifier
+  patient_identifier: string | null;
   sent_at: string | null;
   created_by: string | null;
-  created_by_name: string | null; // Add the creator's name
+  created_by_name: string | null;
   updated_at: string | null;
   ai_summary: string | null;
-  // internal_notes is deprecated and will be removed in future
   internal_notes: string | null;
+  auto_deletion_timestamp: string | null;
 };
 
-// New type to support enhanced options in checkbox and radio types
 export type FormQuestionOption = string | {
   value: string;
   triggers_followups: boolean;
@@ -39,12 +37,10 @@ export type FormQuestion = {
   show_if?: {
     question: string;
     equals?: string | string[];
-    contains?: string;  // New condition type for array values
+    contains?: string;
   };
-  // New properties for dynamic follow-up questions
   is_followup_template?: boolean;
   followup_question_ids?: string[];
-  // Property to indicate this field should only be shown in a specific mode
   show_in_mode?: "optician" | "patient";
 };
 
@@ -54,7 +50,7 @@ export type FormSection = {
   show_if?: {
     question: string;
     equals?: string | string[];
-    contains?: string;  // New condition type for array values
+    contains?: string;
   };
 };
 
@@ -71,7 +67,6 @@ export type AnamnesForm = {
   created_at: string | null;
 };
 
-// Add a new type for formatted answers to include the isOpticianSubmission property
 export interface FormattedAnswerData {
   formTitle: string;
   submissionTimestamp: string;
@@ -85,7 +80,6 @@ export interface FormattedAnswerData {
   isOpticianSubmission?: boolean;
 }
 
-// Add a type for the submission data structure
 export interface SubmissionData {
   formattedAnswers: FormattedAnswerData;
   rawAnswers: Record<string, any>;
@@ -100,7 +94,6 @@ export interface SubmissionData {
   };
 }
 
-// Type for dynamic follow-up questions that are generated at runtime
 export interface DynamicFollowupQuestion extends FormQuestion {
   parentId: string;
   parentValue: string;

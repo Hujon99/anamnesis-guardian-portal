@@ -14,6 +14,7 @@ export type Database = {
           access_token: string | null
           ai_summary: string | null
           answers: Json | null
+          auto_deletion_timestamp: string | null
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
@@ -32,6 +33,7 @@ export type Database = {
           access_token?: string | null
           ai_summary?: string | null
           answers?: Json | null
+          auto_deletion_timestamp?: string | null
           created_at?: string | null
           created_by?: string | null
           created_by_name?: string | null
@@ -50,6 +52,7 @@ export type Database = {
           access_token?: string | null
           ai_summary?: string | null
           answers?: Json | null
+          auto_deletion_timestamp?: string | null
           created_at?: string | null
           created_by?: string | null
           created_by_name?: string | null
@@ -89,6 +92,35 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      organization_settings: {
+        Row: {
+          created_at: string | null
+          last_auto_deletion_run: string | null
+          organization_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          last_auto_deletion_run?: string | null
+          organization_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          last_auto_deletion_run?: string | null
+          organization_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizations: {
         Row: {

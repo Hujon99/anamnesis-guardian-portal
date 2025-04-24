@@ -1,4 +1,3 @@
-
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -40,6 +39,21 @@ export function AnamnesisListView() {
   const handleManualRefresh = () => {
     console.log("Manual refresh triggered in AnamnesisListView");
     refetch();
+  };
+
+  const getEntryExpirationInfo = (entry: AnamnesesEntry) => {
+    if (!entry.auto_deletion_timestamp) return { isExpired: false, daysUntilExpiration: null };
+    
+    const now = new Date();
+    const expirationDate = new Date(entry.auto_deletion_timestamp);
+    const isExpired = expirationDate < now;
+    
+    if (isExpired) return { isExpired: true, daysUntilExpiration: null };
+    
+    const diffTime = Math.abs(expirationDate.getTime() - now.getTime());
+    const daysUntilExpiration = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return { isExpired, daysUntilExpiration };
   };
 
   if ((isLoading && !entries.length)) {
@@ -87,8 +101,10 @@ export function AnamnesisListView() {
         />
         
         <EntriesList
-          entries={filteredEntries}
-          statusFilter={filters.statusFilter}
+          entries={filteredEntries.map(entry => ({
+            ...entry,
+            ...getEntryExpirationInfo(entry)
+          }))}
           onSelectEntry={setSelectedEntry}
           onEntryDeleted={refetch}
         />

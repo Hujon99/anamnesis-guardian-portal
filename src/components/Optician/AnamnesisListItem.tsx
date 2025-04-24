@@ -1,4 +1,3 @@
-
 /**
  * This component renders a single anamnesis entry in the list view,
  * showing status, expiration info, and other key details in a compact format.

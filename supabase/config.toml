@@ -1,6 +1,20 @@
 
 project_id = "jawtwwwelxaaprzsqfyp"
 
-[functions.verify-token]
-verify_jwt = false
+[api]
+enabled = true
 
+[db]
+version = 0
+
+[realtime]
+enabled = true
+
+[storage]
+enabled = false
+
+[auth]
+enabled = true
+
+[functions.auto-delete-entries]
+verify_jwt = false

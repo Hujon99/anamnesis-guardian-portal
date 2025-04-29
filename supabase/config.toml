@@ -16,5 +16,9 @@ enabled = false
 [auth]
 enabled = true
 
+[functions.verify-token]
+verify_jwt = false
+
 [functions.auto-delete-entries]
 verify_jwt = false
+

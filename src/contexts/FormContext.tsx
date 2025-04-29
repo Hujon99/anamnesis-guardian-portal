@@ -36,10 +36,10 @@ interface FormContextValue {
   isFirstStep: boolean;
   isLastStep: boolean;
   isSubmitting: boolean;
+  isOpticianMode: boolean;
   nextStep: () => void;
   previousStep: () => void;
   handleSubmit: () => (data: any) => Promise<void>;
-  isOpticianMode: boolean;
   processSectionsWithDebounce?: (sections: any[], values: Record<string, any>) => void;
 }
 
@@ -57,10 +57,10 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Setup form validation based on the form template
   const validation = useFormValidation(formTemplate, initialValues);
   
-  // Create the form with React Hook Form
+  // Create the form with React Hook Form - handle the case where defaultValues might not exist
   const form = useForm({
     resolver: zodResolver(validation.validationSchema as z.ZodType<any>),
-    defaultValues: validation.defaultValues || {},
+    defaultValues: validation.defaultValues || {}, // Safely handle defaultValues if it doesn't exist
     mode: "onTouched"
   });
 
@@ -152,10 +152,10 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         isFirstStep,
         isLastStep,
         isSubmitting,
+        isOpticianMode,
         nextStep,
         previousStep,
         handleSubmit: () => handleFormSubmit(),
-        isOpticianMode,
         processSectionsWithDebounce
       }}
     >

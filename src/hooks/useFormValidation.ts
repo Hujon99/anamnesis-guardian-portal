@@ -1,3 +1,4 @@
+
 /**
  * This hook provides validation for anamnesis forms.
  * It generates a Zod schema based on the form template and validates form inputs against it.
@@ -28,7 +29,7 @@ export function useFormValidation(
         if (question.is_followup_template) return;
 
         // Default validation - accept any value
-        let fieldSchema = z.any();
+        let fieldSchema: z.ZodTypeAny = z.any();
 
         // Add required validation if needed
         if (question.required) {

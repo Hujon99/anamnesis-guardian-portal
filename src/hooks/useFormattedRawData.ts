@@ -1,98 +1,70 @@
 
 /**
- * This hook manages the formatted raw data state and operations for anamnesis entries.
- * It handles initialization, generation, and saving of the formatted raw data,
- * ensuring consistency between the UI state and database.
+ * This hook provides utilities for formatting raw form data for submission and display.
+ * It converts raw form values into structured data that can be saved to the database.
  */
 
-import { useState, useEffect } from "react";
-import { useFormTemplate } from "@/hooks/useFormTemplate";
-import { toast } from "@/components/ui/use-toast";
-import { createOptimizedPromptInput, extractFormattedAnswers } from "@/utils/anamnesisTextUtils";
+import { useCallback } from "react";
+import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData } from "@/types/anamnesis";
 
-export const useFormattedRawData = (
-  initialData: string,
-  answers: Record<string, any>,
-  hasAnswers: boolean,
-  onSave: (data: string) => void
-) => {
-  const { data: formTemplate } = useFormTemplate();
-  const [formattedRawData, setFormattedRawData] = useState(initialData || "");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
+export function useFormattedRawData() {
+  /**
+   * Formats form answers for submission by organizing them by section
+   */
+  const formatAnswersForSubmission = useCallback((
+    formValues: Record<string, any>,
+    formTemplate: FormTemplate,
+    isOpticianMode: boolean = false,
+    timestamp: string = new Date().toISOString()
+  ): FormattedAnswerData => {
+    // Create an object to hold the formatted answers
+    const result: FormattedAnswerData = {
+      formTitle: formTemplate.title,
+      submissionTimestamp: timestamp,
+      answeredSections: [],
+      isOpticianSubmission: isOpticianMode
+    };
 
-  // Initialize raw data when component mounts and we have answers
-  useEffect(() => {
-    console.log("useFormattedRawData effect triggered", {
-      hasAnswers,
-      hasTemplate: !!formTemplate,
-      currentData: formattedRawData,
-      answersLength: Object.keys(answers || {}).length
+    // Process each section in the form template
+    formTemplate.sections.forEach((section: FormSection) => {
+      const responses: { id: string; answer: any }[] = [];
+
+      // Process each question in the section
+      section.questions.forEach((question: FormQuestion) => {
+        const answer = formValues[question.id];
+        
+        // Only include answers that have values
+        if (answer !== undefined && answer !== null && answer !== '') {
+          responses.push({
+            id: question.id,
+            answer
+          });
+        }
+      });
+
+      // Also check for dynamic follow-up questions
+      Object.entries(formValues).forEach(([key, value]) => {
+        if (key.includes('_for_') && value !== undefined && value !== null && value !== '') {
+          responses.push({
+            id: key,
+            answer: value
+          });
+        }
+      });
+
+      // Only add the section if it has responses
+      if (responses.length > 0) {
+        result.answeredSections.push({
+          section_title: section.section_title,
+          responses
+        });
+      }
     });
 
-    if (hasAnswers && formTemplate && !formattedRawData && Object.keys(answers || {}).length > 0) {
-      console.log("Conditions met for automatic generation");
-      generateRawData();
-    }
-  }, [hasAnswers, formTemplate, answers, formattedRawData]);
-
-  const generateRawData = async () => {
-    if (!hasAnswers || !formTemplate || !answers || Object.keys(answers).length === 0) {
-      console.log("Cannot generate raw data:", { 
-        hasAnswers, 
-        hasTemplate: !!formTemplate,
-        hasAnswersObj: !!answers,
-        answersCount: Object.keys(answers || {}).length 
-      });
-      toast({
-        title: "Kunde inte generera rådata",
-        description: "Det finns inga svar att generera rådata från.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      console.log("Generating raw data from answers:", answers);
-      const formattedAnswers = extractFormattedAnswers(answers);
-      
-      if (formattedAnswers) {
-        console.log("Successfully extracted formatted answers:", formattedAnswers);
-        const text = createOptimizedPromptInput(formTemplate, formattedAnswers);
-        console.log("Generated raw data length:", text.length);
-        
-        setFormattedRawData(text);
-        setSaveIndicator("unsaved");
-        
-        // Save the generated raw data
-        onSave(text);
-        
-        toast({
-          title: "Rådata har genererats",
-          description: "Rådatan har genererats och sparats.",
-        });
-      } else {
-        throw new Error("Kunde inte extrahera formaterade svar från datastrukturen");
-      }
-    } catch (error) {
-      console.error("Error generating raw data:", error);
-      toast({
-        title: "Ett fel uppstod",
-        description: error instanceof Error ? error.message : "Kunde inte generera rådata",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+    return result;
+  }, []);
 
   return {
-    formattedRawData,
-    setFormattedRawData,
-    generateRawData,
-    isGenerating,
-    saveIndicator,
-    setSaveIndicator
+    formatAnswersForSubmission
   };
-};
+}

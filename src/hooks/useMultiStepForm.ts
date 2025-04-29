@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from "react";
 
-interface UseMultiStepFormProps {
+export interface UseMultiStepFormProps {
   totalSteps: number;
   initialStep?: number;
 }

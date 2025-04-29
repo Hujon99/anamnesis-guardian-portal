@@ -5,7 +5,7 @@
  * the current step in the form flow.
  */
 
-import React, { useEffect } from "react";
+import React from "react";
 import { FormSection as FormSectionType } from "@/types/anamnesis";
 import { FormSection } from "./FormSection";
 import { useFormContext } from "@/contexts/FormContext";
@@ -22,9 +22,11 @@ export const FormStepContent: React.FC<FormStepContentProps> = ({
   const { processSectionsWithDebounce } = useFormContext();
   
   // Update the form submission state when sections or values change
-  useEffect(() => {
+  React.useEffect(() => {
     // Process the current sections with the current form values
-    processSectionsWithDebounce(sections, currentValues);
+    if (processSectionsWithDebounce) {
+      processSectionsWithDebounce(sections, currentValues);
+    }
   }, [sections, currentValues, processSectionsWithDebounce]);
 
   return (

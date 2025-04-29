@@ -1,10 +1,11 @@
+
 /**
  * This context provides form state and functions for all form components.
  * It manages the multi-step form flow, validation, and submission process.
  * Enhanced to support form values change events for auto-save functionality.
  */
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,6 +39,8 @@ interface FormContextValue {
   nextStep: () => void;
   previousStep: () => void;
   handleSubmit: () => (data: any) => Promise<void>;
+  isOpticianMode: boolean;
+  processSectionsWithDebounce?: (sections: any[], values: Record<string, any>) => void;
 }
 
 const FormContext = createContext<FormContextValue | undefined>(undefined);
@@ -52,13 +55,12 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   onFormValuesChange
 }) => {
   // Setup form validation based on the form template
-  const { schema: validationSchema, defaultValues: initialFormValues } = useFormValidation(formTemplate, initialValues);
-
+  const validation = useFormValidation(formTemplate, initialValues);
+  
   // Create the form with React Hook Form
-  const { schema, defaultValues } = useFormValidation(formTemplate, initialValues);
   const form = useForm({
-    resolver: zodResolver(schema as z.ZodType<any>),
-    defaultValues,
+    resolver: zodResolver(validation.validationSchema as z.ZodType<any>),
+    defaultValues: validation.defaultValues,
     mode: "onTouched"
   });
 
@@ -76,18 +78,32 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const { visibleSections } = useConditionalFields(formTemplate, watchedValues, isOpticianMode);
 
   // Setup multi-step form navigation
+  const multiStepForm = useMultiStepForm({ 
+    totalSteps: visibleSections.length, 
+    initialStep: 0 
+  });
+  
   const {
     currentStep,
-    totalSections,
-    progress,
-    goToNextStep,
-    goToPreviousStep,
+    nextStep: goToNextStep,
+    previousStep: goToPreviousStep,
     isFirstStep,
     isLastStep,
-  } = useMultiStepForm(visibleSections.length);
+  } = multiStepForm;
+  
+  const totalSections = visibleSections.length;
+  const progress = multiStepForm.calculateProgress();
 
   // Format answers for submission
   const { formatAnswersForSubmission } = useFormattedRawData();
+  
+  // Define a stub for processSectionsWithDebounce to satisfy the interface
+  // In a future update, we could implement actual debounced processing if needed
+  const processSectionsWithDebounce = useCallback((sections: any[], values: Record<string, any>) => {
+    // This is a stub implementation that doesn't do anything yet
+    console.log("[FormContext] Processing sections (stub implementation)");
+    // In the future, this could implement debounced validation or other processing
+  }, []);
   
   const handleFormSubmit = () => async (data: any) => {
     try {
@@ -138,7 +154,9 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         isSubmitting,
         nextStep,
         previousStep,
-        handleSubmit: () => handleFormSubmit()
+        handleSubmit: () => handleFormSubmit(),
+        isOpticianMode,
+        processSectionsWithDebounce
       }}
     >
       <FormProvider {...form}>{children}</FormProvider>

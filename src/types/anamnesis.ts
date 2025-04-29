@@ -21,6 +21,12 @@ export type AnamnesesEntry = {
   ai_summary: string | null;
   internal_notes: string | null;
   auto_deletion_timestamp: string | null;
+  // Magic link related properties
+  booking_id?: string | null;
+  store_id?: string | null;
+  first_name?: string | null;
+  booking_date?: string | null;
+  is_magic_link?: boolean | null;
 };
 
 export type FormQuestionOption = string | {

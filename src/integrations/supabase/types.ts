@@ -93,6 +93,33 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_deletion_logs: {
+        Row: {
+          entries_deleted: number | null
+          error: string | null
+          id: string
+          organizations_affected: string[] | null
+          run_at: string | null
+          status: string | null
+        }
+        Insert: {
+          entries_deleted?: number | null
+          error?: string | null
+          id?: string
+          organizations_affected?: string[] | null
+          run_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          entries_deleted?: number | null
+          error?: string | null
+          id?: string
+          organizations_affected?: string[] | null
+          run_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       organization_settings: {
         Row: {
           created_at: string | null

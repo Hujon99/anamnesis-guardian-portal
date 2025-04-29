@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useFormattedRawData } from "@/hooks/useFormattedRawData";
+
 interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
   hasAnswers: boolean;
@@ -26,6 +27,7 @@ interface OptimizedAnswersViewProps {
   saveFormattedRawData: () => void;
   isPending: boolean;
 }
+
 export const OptimizedAnswersView = ({
   answers,
   hasAnswers,
@@ -44,6 +46,8 @@ export const OptimizedAnswersView = ({
   const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Use the hook with all required parameters
   const {
     formattedRawData,
     setFormattedRawData: updateFormattedRawData,
@@ -51,10 +55,16 @@ export const OptimizedAnswersView = ({
     isGenerating: isRegeneratingRawData,
     saveIndicator,
     setSaveIndicator
-  } = useFormattedRawData(initialFormattedRawData || "", answers, hasAnswers, (data: string) => {
-    setFormattedRawData(data);
-    saveFormattedRawData();
-  });
+  } = useFormattedRawData(
+    initialFormattedRawData || "", 
+    answers, 
+    hasAnswers,
+    (data: string) => {
+      setFormattedRawData(data);
+      saveFormattedRawData();
+    }
+  );
+
   useEffect(() => {
     console.log("aiSummary updated:", aiSummary);
     if (aiSummary) {
@@ -65,10 +75,12 @@ export const OptimizedAnswersView = ({
       }
     }
   }, [aiSummary]);
+  
   const handleTabChange = (value: string) => {
     console.log("Tab changed to:", value);
     setActiveTab(value);
   };
+  
   const generateSummary = async () => {
     if (!formattedRawData) {
       toast({
@@ -110,6 +122,7 @@ export const OptimizedAnswersView = ({
       setIsGenerating(false);
     }
   };
+  
   const copySummaryToClipboard = () => {
     if (summary) {
       navigator.clipboard.writeText(summary);
@@ -123,12 +136,14 @@ export const OptimizedAnswersView = ({
       }, 2000);
     }
   };
+  
   const toggleEditing = () => {
     if (isEditing && formattedRawData !== initialFormattedRawData) {
       saveFormattedRawData();
     }
     setIsEditing(!isEditing);
   };
+  
   const saveChanges = () => {
     setIsSaving(true);
     setSaveIndicator("unsaved");
@@ -153,6 +168,7 @@ export const OptimizedAnswersView = ({
       setIsSaving(false);
     }
   };
+  
   if (!hasAnswers) {
     return status !== "draft" && <div className="text-center p-4 border border-dashed rounded-md flex-1 min-h-[200px] flex items-center justify-center">
           <div>
@@ -163,6 +179,7 @@ export const OptimizedAnswersView = ({
           </div>
         </div>;
   }
+  
   return <div className="flex flex-col h-full overflow-hidden">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium flex items-center">

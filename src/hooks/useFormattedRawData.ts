@@ -1,13 +1,23 @@
 
 /**
  * This hook provides utilities for formatting raw form data for submission and display.
- * It converts raw form values into structured data that can be saved to the database.
+ * It converts raw form values into structured data that can be saved to the database,
+ * and provides functionality to generate, edit and save formatted raw data.
  */
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData } from "@/types/anamnesis";
 
-export function useFormattedRawData() {
+export function useFormattedRawData(
+  initialData: string = "", 
+  answers: Record<string, any> = {}, 
+  hasAnswers: boolean = false,
+  onSave?: (data: string) => void
+) {
+  const [formattedRawData, setFormattedRawData] = useState<string>(initialData);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
+
   /**
    * Formats form answers for submission by organizing them by section
    */
@@ -64,7 +74,42 @@ export function useFormattedRawData() {
     return result;
   }, []);
 
+  /**
+   * Generate formatted raw data from answers object
+   */
+  const generateRawData = useCallback(async () => {
+    if (!hasAnswers) return;
+    
+    setIsGenerating(true);
+    
+    try {
+      // Format answers into a readable text format
+      let formattedText = "";
+      
+      if (typeof answers === 'object' && answers !== null) {
+        // Simple formatting of answers into text
+        Object.entries(answers).forEach(([key, value]) => {
+          if (key !== 'formMetadata' && key !== 'metadata' && value !== null && value !== undefined && value !== '') {
+            formattedText += `${key}: ${JSON.stringify(value)}\n`;
+          }
+        });
+      }
+      
+      setFormattedRawData(formattedText);
+    } catch (error) {
+      console.error("Error generating formatted data:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [answers, hasAnswers]);
+
   return {
-    formatAnswersForSubmission
+    formatAnswersForSubmission,
+    formattedRawData,
+    setFormattedRawData,
+    generateRawData,
+    isGenerating,
+    saveIndicator,
+    setSaveIndicator
   };
 }

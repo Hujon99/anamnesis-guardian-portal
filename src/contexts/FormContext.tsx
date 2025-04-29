@@ -60,7 +60,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Create the form with React Hook Form
   const form = useForm({
     resolver: zodResolver(validation.validationSchema as z.ZodType<any>),
-    defaultValues: validation.defaultValues,
+    defaultValues: validation.defaultValues || {},
     mode: "onTouched"
   });
 
@@ -107,7 +107,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   
   const handleFormSubmit = () => async (data: any) => {
     try {
-      const formattedAnswers = formatAnswersForSubmission(data, formTemplate);
+      const formattedAnswers = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
       await onSubmit(data, formattedAnswers);
     } catch (error) {
       console.error("[FormContext] Error submitting form:", error);

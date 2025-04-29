@@ -18,6 +18,7 @@ import AdminPanel from "@/pages/AdminPanel";
 import NotFound from "@/pages/NotFound";
 import PatientFormPage from "@/pages/PatientFormPage";
 import OpticianFormPage from "@/pages/OpticianFormPage";
+import LinkPage from "@/pages/LinkPage";
 
 // Components
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -45,6 +46,7 @@ function App() {
         
         {/* Form page - accessed via token, no auth required */}
         <Route path="/patient-form" element={<PatientFormPage />} />
+        <Route path="/link" element={<LinkPage />} />
         
         {/* Protected routes that require authentication */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

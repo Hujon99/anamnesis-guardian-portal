@@ -15,18 +15,23 @@ export type Database = {
           ai_summary: string | null
           answers: Json | null
           auto_deletion_timestamp: string | null
+          booking_date: string | null
+          booking_id: string | null
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
           expires_at: string | null
+          first_name: string | null
           form_id: string
           formatted_raw_data: string | null
           id: string
           internal_notes: string | null
+          is_magic_link: boolean | null
           organization_id: string
           patient_identifier: string | null
           sent_at: string | null
           status: string | null
+          store_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -34,18 +39,23 @@ export type Database = {
           ai_summary?: string | null
           answers?: Json | null
           auto_deletion_timestamp?: string | null
+          booking_date?: string | null
+          booking_id?: string | null
           created_at?: string | null
           created_by?: string | null
           created_by_name?: string | null
           expires_at?: string | null
+          first_name?: string | null
           form_id: string
           formatted_raw_data?: string | null
           id?: string
           internal_notes?: string | null
+          is_magic_link?: boolean | null
           organization_id: string
           patient_identifier?: string | null
           sent_at?: string | null
           status?: string | null
+          store_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -53,18 +63,23 @@ export type Database = {
           ai_summary?: string | null
           answers?: Json | null
           auto_deletion_timestamp?: string | null
+          booking_date?: string | null
+          booking_id?: string | null
           created_at?: string | null
           created_by?: string | null
           created_by_name?: string | null
           expires_at?: string | null
+          first_name?: string | null
           form_id?: string
           formatted_raw_data?: string | null
           id?: string
           internal_notes?: string | null
+          is_magic_link?: boolean | null
           organization_id?: string
           patient_identifier?: string | null
           sent_at?: string | null
           status?: string | null
+          store_id?: string | null
           updated_at?: string | null
         }
         Relationships: []

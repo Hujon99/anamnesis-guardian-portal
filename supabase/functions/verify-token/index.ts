@@ -1,112 +1,192 @@
 
 /**
- * Verify Token Edge Function
- * 
- * This edge function verifies patient access tokens for anamnes forms.
- * It handles token validation and returns the form template for rendering.
+ * This Edge Function verifies access tokens for anamnesis forms.
+ * It checks if a token is valid, not expired, and returns the associated entry and form template.
+ * Enhanced to handle magic link entries and return booking information when available.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { 
-  handleCors, 
-  createSuccessResponse, 
-  createErrorResponse,
-  logFunctionStart
-} from "../utils/responseUtils.ts";
-import { validateRequestAndExtractToken } from "../utils/validationUtils.ts";
 import { createSupabaseClient, fetchEntryByToken, fetchFormTemplate } from "../utils/databaseUtils.ts";
 
-const FUNCTION_VERSION = "v8.5";
-const FUNCTION_NAME = "verify-token";
+// Define CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req: Request) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
-    // Handle CORS preflight requests
-    const corsResponse = handleCors(req);
-    if (corsResponse) return corsResponse;
+    // Parse the request body to get the token
+    const { token } = await req.json();
 
-    // Log function start
-    logFunctionStart(FUNCTION_NAME, FUNCTION_VERSION, req);
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: 'Missing token' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
-    // Create Supabase client
+    console.log("Verifying token:", token.substring(0, 6) + "...");
+
+    // Initialize Supabase client
     const supabase = createSupabaseClient();
     if (!supabase) {
-      return createErrorResponse(
-        'Konfigurationsfel',
-        'config_error',
-        500,
-        'Saknar Supabase-konfiguration'
+      return new Response(
+        JSON.stringify({ error: 'Failed to initialize database client' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
-    // Extract and validate token
-    const { token, isValid, error: validationError } = await validateRequestAndExtractToken(req);
-    
-    if (!isValid || !token) {
-      return createErrorResponse(
-        validationError?.message || 'Invalid token',
-        validationError?.code || 'invalid_token',
-        400,
-        validationError?.details
-      );
-    }
-
-    // Fetch entry using token
-    const { entry, error: entryError, notFound } = await fetchEntryByToken(supabase, token);
+    // Find the entry by token
+    const { entry, error: entryError, notFound: entryNotFound } = await fetchEntryByToken(supabase, token);
 
     if (entryError) {
-      return createErrorResponse(
-        'Database error',
-        'server_error',
-        500,
-        entryError.message
+      console.error("Database error:", entryError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Database error', 
+          details: entryError 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
-    if (notFound) {
-      return createErrorResponse(
-        'Ogiltig länk',
-        'invalid_token',
-        404,
-        'Ingen anamnes hittades med denna token'
+    if (entryNotFound) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Token not found' 
+        }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
-    // Check if entry has expired
+    // Check if the entry has expired
     if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
-      return createErrorResponse(
-        'Länken har gått ut',
-        'expired',
-        403,
-        undefined,
-        { status: 'expired' }
+      return new Response(
+        JSON.stringify({ 
+          error: 'Token expired',
+          expired: true,
+          entry: {
+            id: entry.id,
+            expires_at: entry.expires_at
+          }
+        }),
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
-    // Fetch form template
-    const { formTemplate, error: formError } = await fetchFormTemplate(supabase, entry.organization_id);
+    // Check if the form has already been submitted
+    if (entry.status === 'submitted') {
+      return new Response(
+        JSON.stringify({ 
+          submitted: true,
+          entry: {
+            id: entry.id,
+            status: entry.status,
+            submitted_at: entry.updated_at
+          }
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Fetch the form template for this entry
+    const { formTemplate, error: formError, notFound: formNotFound } = 
+      await fetchFormTemplate(supabase, entry.organization_id);
 
     if (formError) {
-      return createErrorResponse(
-        'Kunde inte hämta formulärmallen',
-        'form_error',
-        500,
-        formError.message
+      console.error("Form template error:", formError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to fetch form template',
+          details: formError
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
-    // Return successful response
-    return createSuccessResponse({ 
-      entry, 
-      formTemplate 
-    });
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    return createErrorResponse(
-      'Ett oväntat fel uppstod',
-      'server_error',
-      500,
-      error instanceof Error ? error.message : 'Unknown error'
+    if (formNotFound) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Form template not found' 
+        }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Extract entry data to return, including magic link information if available
+    const entryData = {
+      id: entry.id,
+      organization_id: entry.organization_id,
+      status: entry.status,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
+      formatted_raw_data: entry.formatted_raw_data,
+      patient_identifier: entry.patient_identifier,
+      created_by: entry.created_by,
+      created_by_name: entry.created_by_name,
+      // Magic link specific fields
+      is_magic_link: entry.is_magic_link || false,
+      booking_id: entry.booking_id,
+      store_id: entry.store_id,
+      first_name: entry.first_name,
+      booking_date: entry.booking_date
+    };
+
+    // Return success with form template and entry data
+    return new Response(
+      JSON.stringify({ 
+        verified: true,
+        formTemplate,
+        entry: entryData
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Server error',
+        details: err.message || String(err)
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });

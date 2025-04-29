@@ -3,6 +3,7 @@
  * This component orchestrates the entire form flow, setting up the context provider
  * and rendering the appropriate form layout. It serves as the top-level component
  * for the patient anamnesis form.
+ * Enhanced to support form values change events for auto-save functionality.
  */
 
 import React from "react";
@@ -18,6 +19,7 @@ interface FormOrchestratorProps {
   isOpticianMode?: boolean;
   initialValues?: Record<string, any> | null;
   createdByName?: string | null;
+  onFormValuesChange?: (values: Record<string, any>) => void;
 }
 
 export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
@@ -26,7 +28,8 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
   isSubmitting,
   isOpticianMode = false,
   initialValues = null,
-  createdByName = null
+  createdByName = null,
+  onFormValuesChange
 }) => {
   return (
     <FormContextProvider 
@@ -35,6 +38,7 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
       isSubmitting={isSubmitting}
       isOpticianMode={isOpticianMode}
       initialValues={initialValues}
+      onFormValuesChange={onFormValuesChange}
     >
       <Card>
         <FormLayout createdByName={createdByName} />

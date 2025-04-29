@@ -1,260 +1,157 @@
 
 /**
- * Submit Form Edge Function (v9)
- * 
- * This edge function handles the submission of patient form data.
- * It validates the token, checks form status, and stores patient answers
- * in a structured format based on the form template.
+ * This Edge Function handles form submissions for anamnes entries.
+ * It validates and processes the submitted form data, updating the entry status.
+ * Enhanced to handle both regular and magic link entries.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { 
-  handleCors, 
-  createSuccessResponse, 
-  createErrorResponse,
-  logFunctionStart,
-  handleUnexpectedError
-} from "../utils/responseUtils.ts";
-import { validateToken } from "../utils/validationUtils.ts";
-import { createSupabaseClient } from "../utils/databaseUtils.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
-// Version tracking for logs
-const FUNCTION_VERSION = "v9.2";
-const FUNCTION_NAME = "submit-form";
+// Define CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
-serve(async (req) => {
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+serve(async (req: Request) => {
   // Handle CORS preflight requests
-  const corsResponse = handleCors(req);
-  if (corsResponse) return corsResponse;
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    // Log function start with more details
-    logFunctionStart(FUNCTION_NAME, FUNCTION_VERSION, req);
-    console.log(`[${FUNCTION_NAME}]: Request headers:`, Object.fromEntries([...req.headers.entries()]));
+    // Parse the request body
+    const { token, formData, formTemplate, formattedAnswers } = await req.json();
     
-    // Create Supabase client
-    console.log(`[${FUNCTION_NAME}]: Creating Supabase client...`);
-    const supabase = createSupabaseClient();
-    if (!supabase) {
-      console.error(`[${FUNCTION_NAME}]: Failed to create Supabase client: Missing environment variables`);
-      return createErrorResponse(
-        'Konfigurationsfel',
-        'config_error',
-        500,
-        'Saknar Supabase-konfiguration'
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: 'Missing token parameter' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    console.log(`[${FUNCTION_NAME}]: Supabase client created successfully`);
-    
-    // Parse request data
-    let token, answers, formData, isOpticianSubmission, autoSetStatus;
-    try {
-      console.log(`[${FUNCTION_NAME}]: Parsing request data...`);
-      const requestData = await req.json();
-      token = requestData.token;
-      answers = requestData.answers;
-      formData = requestData.formData;
-      
-      console.log(`[${FUNCTION_NAME}]: Full request data:`, JSON.stringify(requestData, null, 2));
-      
-      // Parse metadata from multiple possible locations in the answers object
-      
-      // Method 1: Check for _metadata at top level
-      if (answers?._metadata?.submittedBy === 'optician') {
-        console.log(`[${FUNCTION_NAME}]: Detected submission by optician (top level _metadata)`);
-        isOpticianSubmission = true;
-        autoSetStatus = answers._metadata.autoSetStatus || 'ready';
-      }
-      // Method 2: Check for metadata in formattedAnswers
-      else if (answers?.formattedAnswers?.isOpticianSubmission) {
-        console.log(`[${FUNCTION_NAME}]: Detected submission by optician (formattedAnswers flag)`);
-        isOpticianSubmission = true;
-        autoSetStatus = 'ready'; // Default for optician
-      }
-      // Method 3: Check old structure
-      else if (answers?.isOpticianSubmission) {
-        console.log(`[${FUNCTION_NAME}]: Detected submission by optician (legacy flag)`);
-        isOpticianSubmission = true;
-        autoSetStatus = 'ready'; // Default for optician
-      }
-      
-      console.log(`[${FUNCTION_NAME}]: Request data parsed successfully`);
-      console.log(`[${FUNCTION_NAME}]: Token: ${token ? token.substring(0, 6) + '...' : 'missing'}`);
-      console.log(`[${FUNCTION_NAME}]: Answers received: ${answers ? 'yes' : 'no'}`);
-      console.log(`[${FUNCTION_NAME}]: Form metadata received: ${formData ? 'yes' : 'no'}`);
-      console.log(`[${FUNCTION_NAME}]: isOpticianSubmission: ${isOpticianSubmission ? 'yes' : 'no'}`);
-      console.log(`[${FUNCTION_NAME}]: autoSetStatus: ${autoSetStatus || 'not specified'}`);
-      
-    } catch (parseError) {
-      console.error(`[${FUNCTION_NAME}]: Error parsing request JSON:`, parseError);
-      return createErrorResponse(
-        'Ogiltig förfrågan',
-        'invalid_request',
-        400,
-        'JSON parse error'
+    if (!formData) {
+      return new Response(
+        JSON.stringify({ error: 'Missing form data' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Validate token
-    console.log(`[${FUNCTION_NAME}]: Validating token...`);
-    const tokenValidation = validateToken(token);
-    if (!tokenValidation.isValid) {
-      console.error(`[${FUNCTION_NAME}]: Token validation failed:`, tokenValidation.error);
-      return createErrorResponse(
-        tokenValidation.error!.message,
-        tokenValidation.error!.code as any,
-        400
-      );
-    }
+    console.log("Form submission received for token:", token.substring(0, 6) + "...");
     
-    console.log(`[${FUNCTION_NAME}]: Token validation successful`);
+    // Initialize the Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    });
     
-    // Validate answers
-    if (!answers) {
-      console.error(`[${FUNCTION_NAME}]: Missing answers in request`);
-      return createErrorResponse(
-        'Svar är obligatoriska',
-        'invalid_request',
-        400
-      );
-    }
-    
-    // Set access token for RLS policies
-    console.log(`[${FUNCTION_NAME}]: Setting access token for RLS policies...`);
-    try {
-      await supabase.rpc('set_access_token', { token });
-      console.log(`[${FUNCTION_NAME}]: Access token set successfully for RLS policies`);
-    } catch (rpcError) {
-      console.error(`[${FUNCTION_NAME}]: Failed to set access token for RLS:`, rpcError);
-      // Continue execution, as this might not be critical depending on RLS setup
-    }
-    
-    // Fetch the entry data
-    console.log(`[${FUNCTION_NAME}]: Fetching entry with token: ${token.substring(0, 6)}...`);
+    // 1. Fetch the entry by token to get its ID and check its status
+    console.log("Fetching entry by token...");
     const { data: entry, error: entryError } = await supabase
       .from('anamnes_entries')
-      .select('*')
+      .select('id, status, is_magic_link, booking_id')
       .eq('access_token', token)
       .maybeSingle();
-      
-    // Handle entry fetch errors
+    
     if (entryError) {
-      console.error(`[${FUNCTION_NAME}]: Error fetching entry with token:`, entryError);
-      return createErrorResponse(
-        'Invalid token',
-        'invalid_token',
-        400,
-        entryError.message
+      console.error("Error fetching entry:", entryError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch entry', details: entryError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Check if entry exists
     if (!entry) {
-      console.error(`[${FUNCTION_NAME}]: No entry found with token: ${token.substring(0, 6)}...`);
-      return createErrorResponse(
-        'Ogiltig länk',
-        'invalid_token',
-        404,
-        'Ingen anamnes hittades med denna token'
+      console.error("No entry found with token:", token.substring(0, 6) + "...");
+      return new Response(
+        JSON.stringify({ error: 'Invalid token, no entry found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    console.log(`[${FUNCTION_NAME}]: Entry found successfully: ID=${entry.id}, Status=${entry.status}`);
+    console.log(`Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}`);
     
-    // Check if the entry is expired
-    if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
-      console.log(`[${FUNCTION_NAME}]: Token expired at ${entry.expires_at}`);
-      return createErrorResponse(
-        'Länken har gått ut',
-        'expired',
-        403,
-        undefined,
-        { status: 'expired' }
+    // If the form was already submitted, return a success response
+    if (entry.status === 'submitted') {
+      console.log("Form was already submitted, returning success");
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Form was already submitted',
+          submitted: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Remove metadata from answers before saving if it exists at top level
-    if (answers._metadata) {
-      const { _metadata, ...cleanAnswers } = answers;
-      answers = cleanAnswers;
-      console.log(`[${FUNCTION_NAME}]: Removed top-level _metadata before saving`);
-    }
-    
-    // Determine the new status based on submission type
-    let newStatus = 'pending'; // Default status for patient submissions
-    
-    if (isOpticianSubmission) {
-      // For optician submissions, use the specified status or default to 'ready'
-      newStatus = autoSetStatus || 'ready';
-      console.log(`[${FUNCTION_NAME}]: Setting entry status to '${newStatus}' based on optician submission`);
-    } else {
-      // For patient submissions, verify entry status is 'sent'
-      if (entry.status !== 'sent') {
-        let message = 'Formuläret kan inte fyllas i för tillfället';
-        
-        if (entry.status === 'pending' || entry.status === 'ready' || entry.status === 'reviewed') {
-          message = 'Formuläret har redan fyllts i';
-        }
-        
-        console.log(`[${FUNCTION_NAME}]: Invalid status for form submission: ${entry.status}`);
-        return createErrorResponse(
-          message,
-          'invalid_status',
-          400,
-          undefined,
-          { status: entry.status }
-        );
+    // Prepare the raw data to store
+    const rawData = {
+      answers: formData,
+      meta: {
+        submitted_at: new Date().toISOString(),
+        form_template_id: formTemplate?.id || null
       }
-    }
+    };
     
-    console.log(`[${FUNCTION_NAME}]: Entry status will be set to: ${newStatus}`);
+    // Use either the formatted answers (if provided) or stringify the raw data
+    const formattedRawData = formattedAnswers || JSON.stringify(rawData);
     
-    // Ensure organization_id is preserved
-    if (!entry.organization_id) {
-      console.error(`[${FUNCTION_NAME}]: Missing organization_id for entry: ${entry.id}`);
-      return createErrorResponse(
-        'Invalid form configuration',
-        'missing_org',
-        500,
-        'Missing organization data'
-      );
-    }
-    
-    // Update the entry with answers
-    console.log(`[${FUNCTION_NAME}]: Updating entry ${entry.id} with answers and setting status to '${newStatus}'...`);
-    const { data, error } = await supabase
+    // 2. Update the entry with the submitted data
+    console.log("Updating entry with submitted data...");
+    const { error: updateError } = await supabase
       .from('anamnes_entries')
       .update({ 
-        answers: answers,
-        status: newStatus,
+        answers: formData,
+        formatted_raw_data: formattedRawData,
+        status: 'submitted',
         updated_at: new Date().toISOString()
       })
-      .eq('access_token', token)
-      .select()
-      .maybeSingle();
+      .eq('id', entry.id);
     
-    // Handle update errors
-    if (error) {
-      console.error(`[${FUNCTION_NAME}]: Error updating entry with token:`, error);
-      return createErrorResponse(
-        'Failed to update entry',
-        'server_error',
-        500,
-        error.message
+    if (updateError) {
+      console.error("Error updating entry:", updateError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to save entry', details: updateError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    console.log(`[${FUNCTION_NAME}]: Entry ${entry.id} successfully updated with answers and status: ${data?.status}`);
+    // 3. Log additional information for magic link entries
+    if (entry.is_magic_link) {
+      console.log(`Magic link submission successful for booking ID: ${entry.booking_id}`);
+    }
     
-    // Return successful response
-    console.log(`[${FUNCTION_NAME}]: Form submission successful, returning updated entry data`);
-    return createSuccessResponse({ 
-      entry: data,
-      submissionType: isOpticianSubmission ? 'optician' : 'patient'
-    });
+    // 4. Trigger background summary generation if configured
+    try {
+      console.log("Triggering generate-summary function...");
+      await supabase.functions.invoke('generate-summary', {
+        body: { entryId: entry.id }
+      });
+      console.log("Summary generation triggered successfully");
+    } catch (summaryError) {
+      console.error("Error triggering summary generation:", summaryError);
+      // Non-critical error, continue with submission success
+    }
+    
+    // Return success response
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Form submitted successfully',
+        entryId: entry.id
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
   } catch (error) {
-    // Handle unexpected errors
-    return handleUnexpectedError(error as Error, FUNCTION_NAME);
+    console.error("Unexpected error:", error);
+    
+    return new Response(
+      JSON.stringify({ error: 'Server error', details: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });

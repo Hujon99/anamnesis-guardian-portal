@@ -3,7 +3,8 @@
  * This component renders the form container, including the Toaster component
  * to ensure toast messages are properly displayed. It also adds additional
  * validation of the form template structure to prevent rendering errors.
- * Enhanced to handle the new template structure with dynamic follow-up questions.
+ * Enhanced to handle the new template structure with dynamic follow-up questions
+ * and to support form values change events for auto-save.
  */
 
 import React from "react";
@@ -19,6 +20,7 @@ interface FormContainerProps {
   isOpticianMode?: boolean;
   initialValues?: Record<string, any> | null;
   createdByName?: string | null;
+  onFormValuesChange?: (values: Record<string, any>) => void;
 }
 
 const FormContainer: React.FC<FormContainerProps> = ({ 
@@ -27,7 +29,8 @@ const FormContainer: React.FC<FormContainerProps> = ({
   isSubmitting,
   isOpticianMode = false,
   initialValues = null,
-  createdByName = null
+  createdByName = null,
+  onFormValuesChange
 }) => {
   console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
   console.log("[FormContainer]: Initializing with values:", initialValues);
@@ -76,6 +79,12 @@ const FormContainer: React.FC<FormContainerProps> = ({
     }
   };
   
+  const handleValuesChange = (values: Record<string, any>) => {
+    if (onFormValuesChange) {
+      onFormValuesChange(values);
+    }
+  };
+  
   // If the template is not valid, show an error
   if (!isValidTemplate) {
     return (
@@ -97,6 +106,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
         isOpticianMode={isOpticianMode}
         initialValues={initialValues}
         createdByName={createdByName}
+        onFormValuesChange={handleValuesChange}
       />
       <Toaster />
     </>

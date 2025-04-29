@@ -3,21 +3,28 @@
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
  * using a modular approach with dedicated components and hooks.
+ * Enhanced to support magic links and auto-saving functionality.
  */
 
 import { useSearchParams } from "react-router-dom";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useFormSubmission } from "@/hooks/useFormSubmission";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { useEffect, useState } from "react";
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import SubmittedCard from "@/components/PatientForm/StatusCards/SubmittedCard";
 import FormContainer from "@/components/PatientForm/FormContainer";
-import { useEffect } from "react";
+import BookingInfoCard from "@/components/PatientForm/BookingInfoCard";
+import CopyLinkButton from "@/components/PatientForm/CopyLinkButton";
+import AutoSaveIndicator from "@/components/PatientForm/AutoSaveIndicator";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
+  const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
   
   // Enhanced debugging
   useEffect(() => {
@@ -49,6 +56,26 @@ const PatientFormPage = () => {
     submitForm 
   } = useFormSubmission();
 
+  // Setup auto-save functionality
+  const {
+    lastSaved,
+    isSaving,
+    error: saveError,
+    saveFormData
+  } = useAutoSave({
+    token,
+    formData: currentFormValues,
+    enabled: !submitted && !isSubmitted && !!token,
+    formTemplate
+  });
+
+  // Extract magic link info from entry data
+  const isMagicLink = entryData?.is_magic_link || false;
+  const bookingId = entryData?.booking_id || null;
+  const firstName = entryData?.first_name || null;
+  const bookingDate = entryData?.booking_date || null;
+  const storeId = entryData?.store_id || null;
+
   // Add additional debug logging for the form template
   useEffect(() => {
     console.log("PatientFormPage: Form template received:", formTemplate);
@@ -70,6 +97,11 @@ const PatientFormPage = () => {
     }
   }, [formTemplate]);
 
+  // Handle form values change for auto-save
+  const handleFormValuesChange = (values: Record<string, any>) => {
+    setCurrentFormValues(values);
+  };
+
   // Handle form submission with form template
   const handleFormSubmit = async (values: any, formattedAnswers?: any) => {
     if (!token) {
@@ -88,9 +120,10 @@ const PatientFormPage = () => {
     console.log("Form state:", { 
       loading, error, errorCode, expired, submitted, isSubmitted, 
       hasFormTemplate: !!formTemplate,
-      entryData: entryData ? `ID: ${entryData.id.substring(0, 8)}...` : null
+      entryData: entryData ? `ID: ${entryData.id.substring(0, 8)}...` : null,
+      isMagicLink
     });
-  }, [loading, error, errorCode, expired, submitted, isSubmitted, formTemplate, entryData]);
+  }, [loading, error, errorCode, expired, submitted, isSubmitted, formTemplate, entryData, isMagicLink]);
   
   // Loading state
   if (loading) {
@@ -143,12 +176,34 @@ const PatientFormPage = () => {
 
   // Form display state - default state
   return (
-    <FormContainer
-      formTemplate={formTemplate}
-      onSubmit={handleFormSubmit}
-      isSubmitting={isSubmitting}
-      createdByName={createdByName}
-    />
+    <div className="space-y-4">
+      {/* Show info card for magic link entries */}
+      {isMagicLink && (
+        <BookingInfoCard 
+          firstName={firstName}
+          bookingId={bookingId}
+          bookingDate={bookingDate}
+          storeId={storeId}
+        />
+      )}
+      
+      <Card>
+        <CardContent className="p-0">
+          <FormContainer
+            formTemplate={formTemplate}
+            onSubmit={handleFormSubmit}
+            isSubmitting={isSubmitting}
+            createdByName={createdByName}
+            onFormValuesChange={handleFormValuesChange}
+          />
+        </CardContent>
+        
+        <CardFooter className="flex justify-between pt-0 pb-4 px-6">
+          <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
+          <CopyLinkButton />
+        </CardFooter>
+      </Card>
+    </div>
   );
 };
 

@@ -35,7 +35,20 @@ const FormContainer: React.FC<FormContainerProps> = ({
   console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
   console.log("[FormContainer]: Initializing with values:", initialValues);
   console.log("[FormContainer]: Created by:", createdByName);
-  console.log("[FormContainer]: Form template:", formTemplate);
+  
+  // More detailed template logging
+  if (formTemplate) {
+    console.log("[FormContainer]: Form template structure:", {
+      hasTitle: !!formTemplate.title,
+      hasSections: !!(formTemplate.sections && Array.isArray(formTemplate.sections)),
+      sectionCount: formTemplate.sections?.length || 0,
+      firstSectionTitle: formTemplate.sections?.[0]?.section_title || 'N/A',
+      questionCount: formTemplate.sections?.reduce((count, section) => 
+        count + (section.questions?.length || 0), 0) || 0
+    });
+  } else {
+    console.error("[FormContainer]: Form template is null or undefined!");
+  }
   
   // Validate the form template structure before rendering
   const isValidTemplate = React.useMemo(() => {
@@ -80,13 +93,18 @@ const FormContainer: React.FC<FormContainerProps> = ({
   };
   
   const handleValuesChange = (values: Record<string, any>) => {
+    console.log("[FormContainer]: Form values changed");
     if (onFormValuesChange) {
       onFormValuesChange(values);
     }
   };
   
+  // Render decision logging
+  console.log(`[FormContainer/RENDER]: About to render. Template valid: ${isValidTemplate}`);
+  
   // If the template is not valid, show an error
   if (!isValidTemplate) {
+    console.log("[FormContainer/RENDER]: Rendering error card due to invalid template");
     return (
       <ErrorCard 
         error="Formulärstrukturen är ogiltig" 
@@ -97,6 +115,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
     );
   }
   
+  console.log("[FormContainer/RENDER]: Rendering FormOrchestrator");
   return (
     <>
       <FormOrchestrator

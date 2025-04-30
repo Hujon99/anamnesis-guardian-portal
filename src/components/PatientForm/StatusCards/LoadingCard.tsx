@@ -70,6 +70,8 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
   
   // Handle form data readiness changes
   useEffect(() => {
+    console.log("[LoadingCard]: isFormDataReady prop changed to:", isFormDataReady);
+    
     if (isFormDataReady && !dataReadyAcknowledgedRef.current) {
       console.log("[LoadingCard]: Form data ready signal received");
       dataReadyAcknowledgedRef.current = true;
@@ -87,14 +89,20 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
   
   // Start transition with a small delay to allow for smooth state changes
   const startTransition = () => {
-    if (isTransitioning || unmountingRef.current) return;
+    if (isTransitioning || unmountingRef.current) {
+      console.log("[LoadingCard]: Already transitioning or unmounting, skipping transition start");
+      return;
+    }
     
     setIsTransitioning(true);
     console.log("[LoadingCard]: Starting transition phase");
     
     // Add a small buffer time for the transition
     transitionTimeoutRef.current = window.setTimeout(() => {
-      if (unmountingRef.current) return;
+      if (unmountingRef.current) {
+        console.log("[LoadingCard]: Component unmounted during transition, aborting");
+        return;
+      }
       
       console.log("[LoadingCard]: Transition complete, ready for unmounting");
       // The parent component will use the canHide state to unmount this component
@@ -117,6 +125,9 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
       return "Problem med att läsa in formuläret. Du kan försöka igen.";
     }
   };
+  
+  // Add debug console log for rendering
+  console.log(`[LoadingCard/RENDER]: Rendering with loadingTime=${loadingTime}, isTransitioning=${isTransitioning}, canHide=${canHide}`);
   
   return (
     <div className={`min-h-screen flex items-center justify-center bg-gray-50 transition-opacity duration-300 ${isTransitioning ? 'opacity-80' : 'opacity-100'}`}>

@@ -1,3 +1,4 @@
+
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
@@ -45,6 +46,10 @@ const PatientFormPage = () => {
   const forcedTransitionTimeoutRef = useRef<number | null>(null);
   const stateChangeTimeRef = useRef<number>(Date.now());
   
+  // Add circuit breaker for stuck loading states
+  const maxLoadingTimeRef = useRef<number | null>(null);
+  const maxLoadingTimeMs = 10000; // 10 seconds max loading time
+  
   // Enhanced debugging
   useEffect(() => {
     console.log("PatientFormPage rendered with token:", token ? `${token.substring(0, 6)}...` : 'null');
@@ -57,6 +62,26 @@ const PatientFormPage = () => {
     const timeSinceLastChange = Date.now() - stateChangeTimeRef.current;
     console.log(`State changed to ${formPageState} after ${timeSinceLastChange}ms`);
     stateChangeTimeRef.current = Date.now();
+    
+    // Start the circuit breaker when entering loading states
+    if (["INITIAL_LOADING", "LOADING_WITH_DATA", "TRANSITION"].includes(formPageState) && !maxLoadingTimeRef.current) {
+      console.log("[PatientFormPage]: Starting max loading time circuit breaker");
+      maxLoadingTimeRef.current = window.setTimeout(() => {
+        console.log("[PatientFormPage]: Circuit breaker triggered - loading time exceeded");
+        if (["INITIAL_LOADING", "LOADING_WITH_DATA", "TRANSITION"].includes(formPageState)) {
+          console.log("[PatientFormPage]: Forcing FORM_READY state after timeout");
+          setFormPageState("FORM_READY");
+          initialRenderComplete.current = true;
+        }
+      }, maxLoadingTimeMs);
+    }
+    
+    // Clear circuit breaker when leaving loading states
+    if (!["INITIAL_LOADING", "LOADING_WITH_DATA", "TRANSITION"].includes(formPageState) && maxLoadingTimeRef.current) {
+      console.log("[PatientFormPage]: Clearing max loading time circuit breaker");
+      clearTimeout(maxLoadingTimeRef.current);
+      maxLoadingTimeRef.current = null;
+    }
   }, [token, searchParams, formPageState]);
   
   // Use custom hooks to handle token verification and form submission
@@ -98,6 +123,17 @@ const PatientFormPage = () => {
           }
         }, 2500);
       }
+    }
+    
+    // Debug form template when it loads
+    if (formTemplate) {
+      console.log("[PatientFormPage]: Form template loaded:", {
+        hasSchema: !!formTemplate.schema,
+        schemaType: typeof formTemplate.schema,
+        hasSections: !!(formTemplate.schema && formTemplate.schema.sections),
+        sectionCount: formTemplate.schema && formTemplate.schema.sections ? formTemplate.schema.sections.length : 0,
+        formId: formTemplate.id
+      });
     }
     
     return () => {
@@ -264,10 +300,26 @@ const PatientFormPage = () => {
   // Get the responsible optician's name
   const createdByName = entryData?.created_by_name || null;
 
+  // Extra logging to debug the render state
+  useEffect(() => {
+    console.log(`[PatientFormPage/DEBUG]: Current render state: ${formPageState}`);
+    console.log(`[PatientFormPage/DEBUG]: Form template exists: ${!!formTemplate}`);
+    console.log(`[PatientFormPage/DEBUG]: Form template schema: ${!!formTemplate?.schema}`);
+    console.log(`[PatientFormPage/DEBUG]: Entry data exists: ${!!entryData}`);
+    console.log(`[PatientFormPage/DEBUG]: Token exists: ${!!token}`);
+    
+    if (formPageState === "FORM_READY" && formTemplate?.schema) {
+      console.log("[PatientFormPage/DEBUG]: FORM_READY state with valid template, should render form now");
+    }
+  }, [formPageState, formTemplate, entryData, token]);
+
   // Render different components based on form page state
+  console.log(`[PatientFormPage/RENDER]: About to render with state: ${formPageState}`);
+  
   switch (formPageState) {
     case "INITIAL_LOADING":
     case "LOADING_WITH_DATA":
+      console.log(`[PatientFormPage/RENDER]: Rendering LoadingCard for state ${formPageState}`);
       return (
         <LoadingCard 
           onRetry={handleRetry} 
@@ -277,6 +329,7 @@ const PatientFormPage = () => {
       );
       
     case "TRANSITION":
+      console.log("[PatientFormPage/RENDER]: Rendering transition LoadingCard");
       // Show a loading card but indicate that we're in transition
       return (
         <LoadingCard 
@@ -286,6 +339,7 @@ const PatientFormPage = () => {
       );
       
     case "ERROR":
+      console.log("[PatientFormPage/RENDER]: Rendering ErrorCard");
       return (
         <ErrorCard 
           error={submissionError?.message || error} 
@@ -296,17 +350,22 @@ const PatientFormPage = () => {
       );
       
     case "EXPIRED":
+      console.log("[PatientFormPage/RENDER]: Rendering ExpiredCard");
       return <ExpiredCard />;
       
     case "SUBMITTED":
     case "SUBMITTING":
+      console.log(`[PatientFormPage/RENDER]: Rendering ${formPageState === "SUBMITTED" ? "SubmittedCard" : "LoadingCard for submission"}`);
       if (isSubmitting) {
         return <LoadingCard minDisplayTime={800} isFormDataReady={true} />;
       }
       return <SubmittedCard />;
       
     case "FORM_READY":
+      console.log("[PatientFormPage/RENDER]: Rendering FORM_READY state");
+      
       if (!token) {
+        console.log("[PatientFormPage/RENDER]: No token, rendering error");
         return (
           <ErrorCard 
             error="Ingen åtkomsttoken hittades i URL:en" 
@@ -317,7 +376,20 @@ const PatientFormPage = () => {
         );
       }
       
+      if (!formTemplate || !formTemplate.schema) {
+        console.error("[PatientFormPage/RENDER]: Missing formTemplate or schema in FORM_READY state");
+        return (
+          <ErrorCard 
+            error="Kunde inte ladda formulärmallen korrekt" 
+            errorCode="invalid_template"
+            diagnosticInfo={`FormTemplate exists: ${!!formTemplate}, Schema exists: ${!!formTemplate?.schema}`}
+            onRetry={handleRetry}
+          />
+        );
+      }
+      
       // Form display state - show only when fully ready
+      console.log("[PatientFormPage/RENDER]: Rendering form container");
       return (
         <div className="space-y-4">
           {/* Show info card for magic link entries */}
@@ -332,15 +404,13 @@ const PatientFormPage = () => {
           
           <Card>
             <CardContent className="p-0">
-              {formTemplate && (
-                <FormContainer
-                  formTemplate={formTemplate.schema}
-                  onSubmit={handleFormSubmit}
-                  isSubmitting={isSubmitting}
-                  createdByName={createdByName}
-                  onFormValuesChange={handleFormValuesChange}
-                />
-              )}
+              <FormContainer
+                formTemplate={formTemplate.schema}
+                onSubmit={handleFormSubmit}
+                isSubmitting={isSubmitting}
+                createdByName={createdByName}
+                onFormValuesChange={handleFormValuesChange}
+              />
             </CardContent>
             
             <CardFooter className="flex justify-between pt-0 pb-4 px-6">

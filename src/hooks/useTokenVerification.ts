@@ -4,7 +4,6 @@
  * It handles loading states, errors, and fetches the appropriate form template
  * and entry data based on the provided token.
  * Updated to work with FormTemplateWithMeta instead of just FormTemplate.
- * Uses the tokenUtils module for core verification logic.
  */
 
 import { useState, useEffect } from "react";
@@ -35,12 +34,13 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [submitted, setSubmitted] = useState(false);
   const [entryData, setEntryData] = useState<AnamnesesEntry | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [formId, setFormId] = useState<string | null>(null);
   
   // Use the token manager hook to validate the token, passing the supabase client
   const tokenManager = useTokenManager(supabase);
   
   // Get the form template for the organization
-  const { data: formTemplate, refetch: refetchFormTemplate } = useFormTemplate(organizationId);
+  const { data: formTemplate, refetch: refetchFormTemplate } = useFormTemplate();
   
   // Function to handle retrying the verification process
   const handleRetry = () => {
@@ -51,7 +51,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
-    tokenManager.resetVerification(); // Call with no arguments
+    tokenManager.resetVerification();
     refetchFormTemplate();
   };
   
@@ -74,23 +74,17 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         console.log("[useTokenVerification]: Verifying token:", token.substring(0, 6) + "...");
         
         // Verify the token first
-        const result = await tokenManager.verifyToken(token);
+        const { valid, error: verificationErr, entry, expired: isExpired } = await tokenManager.verifyToken(token);
         
-        // Fix for TypeScript union type issues - explicitly check the properties
-        const isValid = result.valid;
-        const verificationError = 'error' in result ? result.error : null;
-        const isExpired = 'expired' in result ? result.expired : false;
-        const entry = 'entry' in result ? result.entry : null;
-        
-        if (!isValid || verificationError || !entry) {
-          console.error("[useTokenVerification]: Token verification failed:", verificationError);
+        if (!valid || verificationErr || !entry) {
+          console.error("[useTokenVerification]: Token verification failed:", verificationErr);
           
-          if (isExpired || verificationError?.includes("expired")) {
+          if (isExpired || verificationErr?.includes("expired")) {
             setExpired(true);
           } else {
-            setError(verificationError || "Ogiltig åtkomsttoken");
+            setError(verificationErr || "Ogiltig åtkomsttoken");
             setErrorCode("invalid_token");
-            setDiagnosticInfo(`Token: ${token.substring(0, 6)}..., Error: ${verificationError || "Unknown"}`);
+            setDiagnosticInfo(`Token: ${token.substring(0, 6)}..., Error: ${verificationErr || "Unknown"}`);
           }
           
           setLoading(false);
@@ -101,6 +95,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         
         // Set organization ID from the entry
         setOrganizationId(entry.organization_id);
+        setFormId(entry.form_id);
         
         // Check if the entry already has answers
         if (entry.answers) {

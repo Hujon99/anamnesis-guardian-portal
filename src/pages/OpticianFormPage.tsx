@@ -3,7 +3,6 @@
  * This page renders a form specifically for opticians to fill out anamnesis forms for patients.
  * It extends the patient form functionality but shows additional comment fields 
  * and manages the form submission with the appropriate status for optician completion.
- * Enhanced with improved error handling and recovery mechanics.
  */
 
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -15,8 +14,6 @@ import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import OpticianFormContainer from "@/components/Optician/OpticianFormContainer";
 import OpticianSubmittedView from "@/components/Optician/OpticianSubmittedView";
 import { useEffect, useState } from "react";
-import { validateTokenFormat } from "@/utils/tokenUtils";
-import { toast } from "@/components/ui/use-toast";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -27,13 +24,9 @@ const OpticianFormPage = () => {
   // State to persist form values between submission attempts
   const [storedFormValues, setStoredFormValues] = useState<Record<string, any> | null>(null);
   const [storedFormattedAnswers, setStoredFormattedAnswers] = useState<any | null>(null);
-  const [tokenValidationAttempted, setTokenValidationAttempted] = useState(false);
   
   // Verify that this is indeed an optician mode form
   const isOpticianMode = mode === "optician";
-  
-  // Check token format before verification
-  const isValidTokenFormat = token ? validateTokenFormat(token) : false;
   
   // Use custom hooks to handle token verification and form submission
   const { 
@@ -46,7 +39,7 @@ const OpticianFormPage = () => {
     formTemplate,
     entryData,
     handleRetry 
-  } = useTokenVerification(isValidTokenFormat ? token : null);
+  } = useTokenVerification(token);
   
   const {
     isSubmitting,
@@ -61,33 +54,10 @@ const OpticianFormPage = () => {
 
   // If not in optician mode, redirect to dashboard
   useEffect(() => {
-    if (!isOpticianMode && !loading && tokenValidationAttempted) {
-      console.log("[OpticianFormPage]: Not in optician mode, redirecting to dashboard");
+    if (!isOpticianMode && !loading) {
       navigate("/dashboard");
     }
-    
-    if (!isValidTokenFormat && token) {
-      console.error("[OpticianFormPage]: Invalid token format:", token);
-      toast({
-        title: "Ogiltig token",
-        description: "Token har ogiltigt format. Kontrollera URL:en.",
-        variant: "destructive"
-      });
-    }
-    
-    // Mark token validation as attempted after the first check
-    if (!tokenValidationAttempted) {
-      setTokenValidationAttempted(true);
-    }
-  }, [isOpticianMode, loading, navigate, token, isValidTokenFormat, tokenValidationAttempted]);
-
-  // Debug the current path and token for troubleshooting
-  useEffect(() => {
-    console.log("[OpticianFormPage] Current path:", window.location.pathname);
-    console.log("[OpticianFormPage] Token:", token ? `${token.substring(0, 6)}...` : 'null');
-    console.log("[OpticianFormPage] Token format valid:", isValidTokenFormat);
-    console.log("[OpticianFormPage] Mode:", mode);
-  }, [token, mode, isValidTokenFormat]);
+  }, [isOpticianMode, loading, navigate]);
 
   // Handler for form submission that stores the form values for potential retries
   const handleSubmitWithPersistence = async (values: any, formattedAnswers?: any) => {
@@ -114,18 +84,6 @@ const OpticianFormPage = () => {
       handleRetry();
     }
   };
-
-  // Invalid token format error state
-  if (!isValidTokenFormat && token) {
-    return (
-      <ErrorCard 
-        error="Ogiltig token-format" 
-        errorCode="invalid_token_format" 
-        diagnosticInfo={`Token: ${token}`}
-        onRetry={() => navigate("/dashboard")} 
-      />
-    );
-  }
 
   // Loading state
   if (loading) {
@@ -159,8 +117,8 @@ const OpticianFormPage = () => {
     return (
       <ErrorCard 
         error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
-        errorCode="submission_failed" 
-        diagnosticInfo={submissionError.stack || ""} 
+        errorCode="" 
+        diagnosticInfo="" 
         onRetry={handleSubmissionRetry} 
       />
     );

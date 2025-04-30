@@ -20,7 +20,7 @@ export function DirectFormButton() {
   const { organization } = useOrganization();
   const { user } = useUser();
   const { sessionClaims } = useAuth();
-  const { supabase, isReady } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -33,10 +33,6 @@ export function DirectFormButton() {
   // Mutation for creating a direct form entry
   const createDirectFormEntry = useMutation({
     mutationFn: async () => {
-      if (!isReady) {
-        throw new Error("Supabase klient inte redo");
-      }
-      
       if (!organization?.id) {
         throw new Error("Organisation saknas");
       }
@@ -80,16 +76,15 @@ export function DirectFormButton() {
       
       // Log the URL that will be used for navigation
       const baseUrl = window.location.origin;
-      const targetUrl = `${baseUrl}/optician-form?token=${accessToken}&mode=optician`;
-      console.log("Will navigate to:", targetUrl);
+      console.log("Will navigate to:", `${baseUrl}/optician-form?token=${accessToken}&mode=optician`);
       
-      return { data, targetUrl, accessToken };
+      return data;
     },
-    onSuccess: ({ data, targetUrl, accessToken }) => {
+    onSuccess: (data) => {
       console.log("Direct form entry created successfully:", data);
       
       // Navigate to the optician form page with the token
-      navigate(`/optician-form?token=${accessToken}&mode=optician`);
+      navigate(`/optician-form?token=${data.access_token}&mode=optician`);
       
       toast({
         title: "Formulär skapat",
@@ -115,12 +110,10 @@ export function DirectFormButton() {
     createDirectFormEntry.mutate();
   };
 
-  const isDisabled = isLoading || createDirectFormEntry.isPending || !formTemplate || !isReady;
-
   return (
     <Button 
       onClick={handleCreateDirectForm}
-      disabled={isDisabled}
+      disabled={isLoading || createDirectFormEntry.isPending || !formTemplate}
       variant="secondary"
     >
       {(isLoading || createDirectFormEntry.isPending) ? (

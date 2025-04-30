@@ -12,12 +12,6 @@ import { Database } from "@/integrations/supabase/types";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://jawtwwwelxaaprzsqfyp.supabase.co";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk";
 
-// Token validation utility
-export const validateToken = (token: string): boolean => {
-  if (!token) return false;
-  return typeof token === 'string' && token.length > 0;
-};
-
 /**
  * Creates an authenticated Supabase client with the provided JWT token
  * @param token The JWT token to authenticate the client

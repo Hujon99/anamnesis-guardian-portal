@@ -81,7 +81,7 @@ const PatientFormPage = () => {
     console.log("PatientFormPage: Form template received:", formTemplate);
     if (formTemplate) {
       console.log("PatientFormPage: Template title:", formTemplate.title);
-      console.log("PatientFormPage: Template sections count:", formTemplate.schema?.sections?.length || 0);
+      console.log("PatientFormPage: Template schema sections count:", formTemplate.schema?.sections?.length || 0);
       
       // Log detailed information about sections
       if (formTemplate.schema?.sections && formTemplate.schema.sections.length > 0) {
@@ -109,7 +109,7 @@ const PatientFormPage = () => {
       return;
     }
     console.log("Submitting form with token:", token.substring(0, 6) + "...");
-    await submitForm(token, values, formTemplate, formattedAnswers);
+    await submitForm(token, values, formTemplate?.schema, formattedAnswers);
   };
 
   // Get the responsible optician's name

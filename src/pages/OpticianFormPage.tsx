@@ -59,6 +59,13 @@ const OpticianFormPage = () => {
     }
   }, [isOpticianMode, loading, navigate]);
 
+  // Debug the current path and token for troubleshooting
+  useEffect(() => {
+    console.log("[OpticianFormPage] Current path:", window.location.pathname);
+    console.log("[OpticianFormPage] Token:", token ? `${token.substring(0, 6)}...` : 'null');
+    console.log("[OpticianFormPage] Mode:", mode);
+  }, [token, mode]);
+
   // Handler for form submission that stores the form values for potential retries
   const handleSubmitWithPersistence = async (values: any, formattedAnswers?: any) => {
     console.log("[OpticianFormPage/handleSubmitWithPersistence]: Storing form values for potential retry", values);

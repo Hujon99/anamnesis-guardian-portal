@@ -40,7 +40,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const tokenManager = useTokenManager(supabase);
   
   // Get the form template for the organization
-  const { data: formTemplate, refetch: refetchFormTemplate } = useFormTemplate();
+  const { data: formTemplate, refetch: refetchFormTemplate } = useFormTemplate(organizationId);
   
   // Function to handle retrying the verification process
   const handleRetry = () => {

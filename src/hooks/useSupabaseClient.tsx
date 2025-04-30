@@ -11,7 +11,7 @@ import { useAuth, useClerk } from "@clerk/clerk-react";
 import { Database } from "@/integrations/supabase/types";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { createSupabaseClient } from "@/utils/supabaseClientUtils";
+import { createSupabaseClient, validateToken } from "@/utils/supabaseClientUtils";
 
 // Configuration
 const TOKEN_REFRESH_INTERVAL = 20 * 60 * 1000; // 20 minutes - reduced frequency
@@ -19,34 +19,11 @@ const TOKEN_COOLDOWN_PERIOD = 10000; // 10 seconds cooldown between token reques
 const MAX_RETRIES = 2; // Reduced max retries
 const INITIAL_RETRY_DELAY = 2000; // 2 seconds initial delay (increased)
 
-// Helper function for token caching (moved from useTokenManager)
-const getTokenCache = () => {
-  const cacheRef = useRef<{
-    token: string;
-    expiresAt: number;
-  } | null>(null);
-  
-  return {
-    get: () => {
-      if (!cacheRef.current) return null;
-      const now = Date.now();
-      if (cacheRef.current.expiresAt > now + 5 * 60 * 1000) {
-        return cacheRef.current.token;
-      }
-      return null;
-    },
-    set: (token: string) => {
-      if (!token) return;
-      cacheRef.current = {
-        token,
-        expiresAt: Date.now() + 45 * 60 * 1000
-      };
-    },
-    clear: () => {
-      cacheRef.current = null;
-    }
-  };
-};
+// Internal token cache
+interface TokenCache {
+  token: string;
+  expiresAt: number;
+}
 
 /**
  * A hook that provides a Supabase client authenticated with the current Clerk session
@@ -61,19 +38,63 @@ export const useSupabaseClient = () => {
   
   // Use refs to track state without causing re-renders
   const initialized = useRef(false);
-  const lastTokenRef = useRef<string | null>(null);
+  const tokenCacheRef = useRef<TokenCache | null>(null);
   const lastTokenTimeRef = useRef<number>(0);
   const intervalRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
   const isRefreshingRef = useRef(false);
   const pendingRefreshRef = useRef(false);
-  
-  // Create local token cache
-  const tokenCache = getTokenCache();
+
+  // Get token from cache if it's still valid
+  const getTokenFromCache = useCallback(() => {
+    if (!tokenCacheRef.current) return null;
+    
+    const now = Date.now();
+    // Token is valid if it expires more than 5 minutes from now
+    if (tokenCacheRef.current.expiresAt > now + 5 * 60 * 1000) {
+      console.log("Using cached token");
+      return tokenCacheRef.current.token;
+    }
+    return null;
+  }, []);
+
+  // Save token to cache with expiration
+  const saveTokenToCache = useCallback((token: string) => {
+    // Validate token before caching
+    if (!validateToken(token)) {
+      console.warn("Attempted to cache invalid token, ignoring");
+      return;
+    }
+    
+    try {
+      // Cache token with 45 min expiry
+      tokenCacheRef.current = {
+        token,
+        expiresAt: Date.now() + 45 * 60 * 1000
+      };
+      console.log("Token cached with expiry at", new Date(tokenCacheRef.current.expiresAt).toISOString());
+    } catch (err) {
+      console.error("Error saving token to cache:", err);
+    }
+  }, []);
+
+  // Clear token cache
+  const clearTokenCache = useCallback(() => {
+    tokenCacheRef.current = null;
+    console.log("Token cache cleared");
+  }, []);
 
   // Get token with debouncing, caching and retry logic
   const getTokenWithRetry = useCallback(async (force = false): Promise<string | null> => {
     if (!session) return null;
+    
+    // Check cached token first if not forcing refresh
+    if (!force) {
+      const cachedToken = getTokenFromCache();
+      if (cachedToken) {
+        return cachedToken;
+      }
+    }
     
     // Check cooldown period to prevent excessive requests
     const now = Date.now();
@@ -82,15 +103,7 @@ export const useSupabaseClient = () => {
     if (!force && timeSinceLastRequest < TOKEN_COOLDOWN_PERIOD) {
       console.log(`Token request debounced (${timeSinceLastRequest}ms < ${TOKEN_COOLDOWN_PERIOD}ms cooldown)`);
       pendingRefreshRef.current = true;
-      return lastTokenRef.current;
-    }
-    
-    // Check token cache first if not forcing refresh
-    if (!force) {
-      const cachedToken = tokenCache.get();
-      if (cachedToken) {
-        return cachedToken;
-      }
+      return null;
     }
     
     let retryCount = 0;
@@ -107,7 +120,7 @@ export const useSupabaseClient = () => {
         
         // Cache the token
         if (token) {
-          tokenCache.set(token);
+          saveTokenToCache(token);
         }
         
         return token;
@@ -126,17 +139,11 @@ export const useSupabaseClient = () => {
     }
     
     return null;
-  }, [session]);
+  }, [session, getTokenFromCache, saveTokenToCache]);
 
   // Create authenticated Supabase client
   const createAuthenticatedClient = useCallback(async (token: string) => {
-    if (token === lastTokenRef.current && initialized.current) {
-      return; // Skip if token hasn't changed
-    }
-    
     console.log("Creating new Supabase client with updated token");
-    lastTokenRef.current = token;
-    
     const client = createSupabaseClient(token);
     setAuthenticatedClient(client);
     initialized.current = true;
@@ -164,7 +171,7 @@ export const useSupabaseClient = () => {
         // Return the unauthenticated client if no user is logged in
         setAuthenticatedClient(supabaseClient);
         initialized.current = false;
-        lastTokenRef.current = null;
+        clearTokenCache();
         isRefreshingRef.current = false;
         pendingRefreshRef.current = false;
         setIsLoading(false);
@@ -208,7 +215,7 @@ export const useSupabaseClient = () => {
         }, TOKEN_COOLDOWN_PERIOD * 2); // Use a longer delay for pending refreshes
       }
     }
-  }, [isAuthLoaded, userId, session, getTokenWithRetry, createAuthenticatedClient]);
+  }, [isAuthLoaded, userId, session, getTokenWithRetry, createAuthenticatedClient, clearTokenCache]);
 
   // Setup auth listener and initial check
   useEffect(() => {
@@ -245,7 +252,7 @@ export const useSupabaseClient = () => {
     supabase: authenticatedClient, 
     isLoading, 
     error,
-    isReady, // New state to indicate client is fully initialized
-    refreshClient // Expose refresh method with force option
+    isReady, 
+    refreshClient 
   };
 };

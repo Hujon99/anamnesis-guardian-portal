@@ -1,3 +1,4 @@
+
 /**
  * This component renders a single anamnesis entry in the list view,
  * showing status, expiration info, and other key details in a compact format.
@@ -10,7 +11,7 @@ import { formatDate } from "@/lib/date-utils";
 import { EntryStatusBadge } from "./EntriesList/EntryStatusBadge";
 import { EntryStatusIcon } from "./EntriesList/EntryStatusIcon";
 import { Badge } from "@/components/ui/badge";
-import { Trash2 } from "lucide-react";
+import { Trash2, CalendarIcon, MapPinIcon } from "lucide-react";
 import { Clock, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +47,7 @@ export function AnamnesisListItem({
   const [isDeleting, setIsDeleting] = useState(false);
   const { supabase } = useSupabaseClient();
   const hasAnswers = entry.answers && Object.keys(entry.answers as Record<string, any>).length > 0;
+  const hasMagicLinkData = entry.is_magic_link || entry.booking_date || entry.store_id;
 
   const handleDelete = async () => {
     try {
@@ -135,6 +137,9 @@ export function AnamnesisListItem({
                 {!hasAnswers && entry.status === 'sent' && (
                   <Badge variant="outline" className="text-xs">Ej besvarad</Badge>
                 )}
+                {entry.is_magic_link && (
+                  <Badge variant="secondary" className="text-xs">Magic Link</Badge>
+                )}
               </div>
               
               <div className="flex items-center gap-2 flex-wrap">
@@ -146,6 +151,24 @@ export function AnamnesisListItem({
                 <EntryStatusBadge status={entry.status || ""} isExpired={isExpired} />
                 {getExpirationBadge()}
               </div>
+              
+              {/* Display booking information when available */}
+              {hasMagicLinkData && (
+                <div className="flex flex-wrap gap-3 mt-1">
+                  {entry.booking_date && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CalendarIcon className="h-3 w-3" />
+                      <span>{formatDate(entry.booking_date)}</span>
+                    </div>
+                  )}
+                  {entry.store_id && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPinIcon className="h-3 w-3" />
+                      <span>Butik: {entry.store_id}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             <Button

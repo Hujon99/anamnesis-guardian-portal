@@ -58,6 +58,12 @@ export async function fetchEntryByToken(supabase: SupabaseClient, token: string)
     }
 
     console.log('Entry found with ID:', entry.id);
+    console.log('Entry has magic link data:', 
+      entry.is_magic_link ? 'Yes' : 'No',
+      'booking_id:', entry.booking_id || 'None',
+      'store_id:', entry.store_id || 'None'
+    );
+    
     return { entry };
   } catch (error) {
     console.error('Unexpected error in fetchEntryByToken:', error);

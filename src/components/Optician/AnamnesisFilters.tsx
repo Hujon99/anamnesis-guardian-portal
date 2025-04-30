@@ -10,6 +10,7 @@ import { TimeFilter } from "./Filters/TimeFilter";
 import { UnansweredFilter } from "./Filters/UnansweredFilter";
 import { SortDirectionToggle } from "./Filters/SortDirectionToggle";
 import { ResetFiltersButton } from "./Filters/ResetFiltersButton";
+import { BookingFilter } from "./Filters/BookingFilter";
 
 interface AnamnesisFiltersProps {
   statusFilter: string | null;
@@ -20,6 +21,8 @@ interface AnamnesisFiltersProps {
   onUnansweredFilterChange: (value: boolean) => void;
   sortDescending: boolean;
   onSortDirectionChange: (value: boolean) => void;
+  showOnlyBookings: boolean;
+  onBookingFilterChange: (value: boolean) => void;
   onResetFilters: () => void;
 }
 
@@ -32,6 +35,8 @@ export function AnamnesisFilters({
   onUnansweredFilterChange,
   sortDescending,
   onSortDirectionChange,
+  showOnlyBookings,
+  onBookingFilterChange,
   onResetFilters
 }: AnamnesisFiltersProps) {
   return (
@@ -49,6 +54,11 @@ export function AnamnesisFilters({
       <UnansweredFilter 
         showOnlyUnanswered={showOnlyUnanswered} 
         onUnansweredFilterChange={onUnansweredFilterChange} 
+      />
+      
+      <BookingFilter
+        showOnlyBookings={showOnlyBookings}
+        onBookingFilterChange={onBookingFilterChange}
       />
       
       <SortDirectionToggle 

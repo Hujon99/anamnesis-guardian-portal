@@ -1,3 +1,4 @@
+
 /**
  * This component renders the header section of an anamnesis entry detail view.
  * It displays entry metadata, status, and action buttons for printing and exporting.
@@ -36,6 +37,7 @@ import {
   User 
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { BookingInfoPanel } from "./BookingInfoPanel";
 
 interface EntryHeaderProps {
   entry: AnamnesesEntry;
@@ -136,6 +138,9 @@ export function EntryHeader({
           {getStatusBadge(entry.status || "")}
         </div>
       </div>
+      
+      {/* Booking Info Panel - new component */}
+      <BookingInfoPanel entry={entry} />
       
       {/* Patient link section - now always visible */}
       <div className="mt-4 border p-3 rounded-md bg-gray-50">

@@ -21,6 +21,7 @@ export interface AnamnesisFilters {
   statusFilter: string | null;
   timeFilter: string | null;
   showOnlyUnanswered: boolean;
+  showOnlyBookings: boolean;
   sortDescending: boolean;
 }
 
@@ -36,6 +37,7 @@ export const useAnamnesisList = () => {
     statusFilter: null,
     timeFilter: null,
     showOnlyUnanswered: false,
+    showOnlyBookings: false,
     sortDescending: true,
   });
 
@@ -226,6 +228,7 @@ export const useAnamnesisList = () => {
       statusFilter: null,
       timeFilter: null,
       showOnlyUnanswered: false,
+      showOnlyBookings: false,
       sortDescending: true,
     });
   };
@@ -281,6 +284,13 @@ export const useAnamnesisList = () => {
     // Filter by answered status
     if (filters.showOnlyUnanswered) {
       if (entry.answers && Object.keys(entry.answers as Record<string, any>).length > 0) {
+        return false;
+      }
+    }
+
+    // Filter by booking status (magic link entries)
+    if (filters.showOnlyBookings) {
+      if (!entry.is_magic_link && !entry.booking_id) {
         return false;
       }
     }

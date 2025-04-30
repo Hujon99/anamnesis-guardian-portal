@@ -1,3 +1,4 @@
+
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -86,6 +87,8 @@ export function AnamnesisListView() {
             onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
             sortDescending={filters.sortDescending}
             onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
+            showOnlyBookings={filters.showOnlyBookings}
+            onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
             onResetFilters={resetFilters}
           />
         </div>

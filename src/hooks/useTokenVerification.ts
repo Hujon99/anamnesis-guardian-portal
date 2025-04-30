@@ -1,190 +1,130 @@
 
 /**
- * This hook handles the verification of access tokens for anamnesis forms.
- * It checks if tokens are valid, expired, or already used, and fetches
- * the associated form template. It provides different states for different
- * token statuses, making it easy to display the correct UI to users.
+ * This hook verifies the token for accessing the anamnesis form.
+ * It handles loading states, errors, and fetches the appropriate form template
+ * and entry data based on the provided token.
+ * Updated to work with FormTemplateWithMeta instead of just FormTemplate.
  */
 
 import { useState, useEffect } from "react";
 import { useSupabaseClient } from "./useSupabaseClient";
-import { FormTemplate, AnamnesesEntry } from "@/types/anamnesis";
+import { useFormTemplate, FormTemplateWithMeta } from "./useFormTemplate";
+import { useTokenManager } from "./useTokenManager";
+import { AnamnesesEntry } from "@/types/anamnesis";
 
-interface VerificationResult {
+interface UseTokenVerificationResult {
   loading: boolean;
   error: string | null;
-  errorCode: string | null;
-  diagnosticInfo: string | null;
+  errorCode: string;
+  diagnosticInfo: string;
   expired: boolean;
   submitted: boolean;
-  formTemplate: FormTemplate | null;
+  formTemplate: FormTemplateWithMeta | null;
   entryData: AnamnesesEntry | null;
   handleRetry: () => void;
 }
 
-export function useTokenVerification(token: string | null): VerificationResult {
-  const { supabase, isReady } = useSupabaseClient();
+export const useTokenVerification = (token: string | null): UseTokenVerificationResult => {
+  const { supabase } = useSupabaseClient();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
-  const [diagnosticInfo, setDiagnosticInfo] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState("");
+  const [diagnosticInfo, setDiagnosticInfo] = useState("");
   const [expired, setExpired] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [formTemplate, setFormTemplate] = useState<FormTemplate | null>(null);
   const [entryData, setEntryData] = useState<AnamnesesEntry | null>(null);
-
-  const verifyToken = async () => {
-    if (!token) {
-      setError("Token saknas i URL");
-      setErrorCode("missing_token");
-      setLoading(false);
-      return;
-    }
-
-    if (!isReady) {
-      console.log("Supabase client not ready yet, waiting...");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      console.log(`Verifying token: ${token.substring(0, 6)}...`);
-      
-      // Call the verify-token edge function with the token in the request body
-      const { data, error } = await supabase.functions.invoke("verify-token", {
-        body: { token }
-      });
-      
-      if (error) {
-        console.error("Error verifying token:", error);
-        setError(error.message || "Ett fel uppstod vid verifiering av token");
-        setErrorCode("api_error");
-        setDiagnosticInfo(JSON.stringify(error));
-        setLoading(false);
-        return;
-      }
-      
-      if (!data) {
-        console.error("No data returned from verify-token function");
-        setError("Ingen data returnerades från verifieringsfunktionen");
-        setErrorCode("no_data");
-        setLoading(false);
-        return;
-      }
-      
-      console.log("Verify token response:", data);
-      
-      // Handle edge function response status
-      if (data.status === 'expired') {
-        console.log("Token is expired");
-        setExpired(true);
-        setLoading(false);
-        return;
-      }
-      
-      if (data.status === 'already_submitted') {
-        console.log("Form already submitted");
-        setSubmitted(true);
-        setLoading(false);
-        return;
-      }
-      
-      // Handle successful verification
-      if (data.entry && data.formTemplate) {
-        console.log("Token verified successfully", data);
-        
-        // Store the entry data
-        setEntryData(data.entry as AnamnesesEntry);
-        
-        // Process the form template structure - this is the critical part
-        const processedTemplate = processFormTemplate(data.formTemplate);
-        console.log("Processed form template:", processedTemplate);
-        
-        setFormTemplate(processedTemplate);
-        setError(null);
-        setErrorCode(null);
-      } else {
-        console.error("Invalid response format from verify-token function");
-        setError("Ogiltig respons från verifieringsfunktionen");
-        setErrorCode("invalid_response");
-        setDiagnosticInfo(JSON.stringify(data));
-      }
-    } catch (err: any) {
-      console.error("Error in token verification:", err);
-      setError(err.message || "Ett oväntat fel uppstod");
-      setErrorCode("unexpected_error");
-      setDiagnosticInfo(err.toString());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // This function processes the form template data to match the expected structure in FormContext
-  const processFormTemplate = (rawTemplate: any): FormTemplate => {
-    console.log("Processing form template:", rawTemplate);
-    
-    // Check if we have a "schema" property which contains the actual template
-    if (rawTemplate.schema) {
-      console.log("Template has schema property, unwrapping it");
-      
-      // Extract the needed values from schema
-      const processedTemplate: FormTemplate = {
-        title: rawTemplate.schema.title || rawTemplate.title || "Patientformulär",
-        sections: rawTemplate.schema.sections || []
-      };
-      
-      // Pre-process the options in any question to convert string arrays to object arrays if needed
-      processedTemplate.sections.forEach(section => {
-        if (section.questions) {
-          section.questions.forEach(question => {
-            // Handle checkbox type questions with options that might trigger follow-up questions
-            if ((question.type === "checkbox" || question.type === "radio") && 
-                question.options && Array.isArray(question.options)) {
-              
-              // No need to transform plain string options
-              console.log(`Processing options for question ${question.id}:`, question.options);
-            }
-          });
-        }
-      });
-      
-      return processedTemplate;
-    }
-    
-    // If we don't have a schema property, use the raw template as is
-    // but ensure it has the expected structure
-    return {
-      title: rawTemplate.title || "Patientformulär",
-      sections: rawTemplate.sections || []
-    };
-  };
-
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [formId, setFormId] = useState<string | null>(null);
+  
+  // Use the token manager hook to validate the token
+  const { verifyToken, isVerifying, verificationError, resetVerification } = useTokenManager();
+  
+  // Get the form template for the organization
+  const { data: formTemplate, refetch: refetchFormTemplate } = useFormTemplate();
+  
+  // Function to handle retrying the verification process
   const handleRetry = () => {
+    console.log("[useTokenVerification/handleRetry]: Retrying token verification");
+    setLoading(true);
     setError(null);
-    setErrorCode(null);
-    setDiagnosticInfo(null);
+    setErrorCode("");
+    setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
-    setFormTemplate(null);
-    setLoading(true);
-    verifyToken();
+    resetVerification();
+    refetchFormTemplate();
   };
-
+  
+  // Effect to verify the token and fetch entry data
   useEffect(() => {
-    if (token && isReady) {
-      verifyToken();
-    } else if (!token) {
-      // Handle missing token case
-      setError("Token saknas i URL");
-      setErrorCode("missing_token");
-      setLoading(false);
-    }
-  }, [token, isReady]);
-
+    const fetchData = async () => {
+      try {
+        if (!token) {
+          setError("Ingen åtkomsttoken angiven");
+          setLoading(false);
+          return;
+        }
+        
+        if (!supabase) {
+          setError("Kunde inte ansluta till databasen");
+          setLoading(false);
+          return;
+        }
+        
+        console.log("[useTokenVerification]: Verifying token:", token.substring(0, 6) + "...");
+        
+        // Verify the token first
+        const { valid, error: verificationErr, entry } = await verifyToken(token);
+        
+        if (!valid || verificationErr || !entry) {
+          console.error("[useTokenVerification]: Token verification failed:", verificationErr);
+          
+          if (verificationErr?.includes("expired")) {
+            setExpired(true);
+          } else {
+            setError(verificationErr || "Ogiltig åtkomsttoken");
+            setErrorCode("invalid_token");
+            setDiagnosticInfo(`Token: ${token.substring(0, 6)}..., Error: ${verificationErr || "Unknown"}`);
+          }
+          
+          setLoading(false);
+          return;
+        }
+        
+        console.log("[useTokenVerification]: Token verified successfully, entry:", entry);
+        
+        // Set organization ID from the entry
+        setOrganizationId(entry.organization_id);
+        setFormId(entry.form_id);
+        
+        // Check if the entry already has answers
+        if (entry.answers) {
+          console.log("[useTokenVerification]: Entry already has answers, marking as submitted");
+          setSubmitted(true);
+        }
+        
+        // Store the entry data
+        setEntryData(entry);
+        
+        // Refetch form template with the organization ID
+        await refetchFormTemplate();
+        
+        setLoading(false);
+      } catch (err: any) {
+        console.error("[useTokenVerification]: Error in fetchData:", err);
+        setError("Ett oväntat fel uppstod: " + (err.message || "Okänt fel"));
+        setErrorCode("unexpected");
+        setDiagnosticInfo(JSON.stringify(err));
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [token, supabase, verifyToken]);
+  
   return {
-    loading,
-    error,
+    loading: loading || isVerifying,
+    error: error || verificationError,
     errorCode,
     diagnosticInfo,
     expired,
@@ -193,4 +133,4 @@ export function useTokenVerification(token: string | null): VerificationResult {
     entryData,
     handleRetry
   };
-}
+};

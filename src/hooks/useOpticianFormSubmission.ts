@@ -1,95 +1,103 @@
 
 /**
- * This hook manages form submission specifically for optician-completed anamnesis forms.
- * It handles submission state, navigation after submission, and automatically sets the
- * appropriate status for optician-completed forms.
+ * This hook handles the submission of forms filled out by opticians.
+ * It manages the submission state, error handling, and successful submission feedback.
+ * Updated to work with FormTemplateWithMeta instead of just FormTemplate.
  */
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useFormSubmission } from "@/hooks/useFormSubmission";
-import { FormTemplate } from "@/types/anamnesis";
+import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { FormTemplateWithMeta } from "./useFormTemplate";
 
 export const useOpticianFormSubmission = (token: string | null) => {
-  const navigate = useNavigate();
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [localSubmitted, setLocalSubmitted] = useState(false);
+  const { supabase } = useSupabaseClient();
   
-  const { 
-    isSubmitting, 
-    error: submissionError, 
-    isSubmitted, 
-    submitForm 
-  } = useFormSubmission();
-
-  // Handle form submission with form template
-  const handleFormSubmit = async (values: any, formTemplate?: FormTemplate, formattedAnswers?: any): Promise<void> => {
-    if (!token) {
-      console.error("[useOpticianFormSubmission/handleFormSubmit]: No token available for submission");
-      toast({
-        title: "Error",
-        description: "Missing token for form submission",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    console.log("[useOpticianFormSubmission/handleFormSubmit]: Starting form submission with values:", values);
-    console.log("[useOpticianFormSubmission/handleFormSubmit]: Formatted answers:", formattedAnswers);
-    console.log("[useOpticianFormSubmission/handleFormSubmit]: Token:", token);
-    
-    // For optician submissions, we'll set some additional metadata
-    const opticianSubmissionData = {
-      ...values,
-      _metadata: {
-        submittedBy: "optician",
-        autoSetStatus: "ready" // This will be used by the submit-form function to set the status
+  const submission = useMutation({
+    mutationFn: async (data: {
+      values: Record<string, any>;
+      formTemplate: FormTemplateWithMeta | null;
+      formattedAnswers?: any;
+    }) => {
+      if (!token) {
+        throw new Error("Ingen åtkomsttoken hittades");
       }
-    };
-    
-    console.log("[useOpticianFormSubmission/handleFormSubmit]: Submitting optician form with data:", opticianSubmissionData);
-    
-    try {
-      // Pass the optician metadata along with the form values
-      const result = await submitForm(token, opticianSubmissionData, formTemplate, formattedAnswers);
-      console.log("[useOpticianFormSubmission/handleFormSubmit]: Submit form result:", result);
       
-      // Set local submission state on success
-      if (result) {
-        console.log("[useOpticianFormSubmission/handleFormSubmit]: Form submission successful, setting localSubmitted to true");
-        setLocalSubmitted(true);
-        
-        toast({
-          title: "Formuläret har fyllts i",
-          description: "Patientens anamnes har markerats som klar för undersökning",
-        });
-        
-        // After a short delay, navigate to the dashboard to show the updated entry
-        setTimeout(() => {
-          console.log("[useOpticianFormSubmission/handleFormSubmit]: Navigating to dashboard");
-          navigate('/dashboard');
-        }, 2000);
-      } else {
-        console.error("[useOpticianFormSubmission/handleFormSubmit]: Form submission failed");
-        toast({
-          title: "Något gick fel",
-          description: "Formuläret kunde inte skickas in, försök igen",
-          variant: "destructive",
-        });
+      if (!supabase) {
+        throw new Error("Kunde inte ansluta till databasen");
       }
-    } catch (error) {
-      console.error("[useOpticianFormSubmission/handleFormSubmit]: Error during form submission:", error);
+      
+      if (!data.formTemplate) {
+        throw new Error("Ingen formulärmall hittades");
+      }
+      
+      const { values, formTemplate, formattedAnswers } = data;
+      
+      console.log("[useOpticianFormSubmission]: Submitting form with values:", values);
+      console.log("[useOpticianFormSubmission]: Using formTemplate:", formTemplate);
+      
+      // Prepare submission data
+      const submissionData = {
+        answers: values,
+        formatted_raw_data: formattedAnswers ? JSON.stringify(formattedAnswers) : null,
+        status: "ready", // Set status to "ready" for optician-filled forms
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log("[useOpticianFormSubmission]: Preparing submission data:", submissionData);
+      
+      // Update the entry with the form answers
+      const { error } = await supabase
+        .from("anamnes_entries")
+        .update(submissionData)
+        .eq("access_token", token);
+      
+      if (error) {
+        console.error("[useOpticianFormSubmission]: Error submitting form:", error);
+        throw new Error("Kunde inte skicka formuläret: " + error.message);
+      }
+      
+      console.log("[useOpticianFormSubmission]: Form submitted successfully");
+      
+      // Set local state to indicate successful submission
+      setLocalSubmitted(true);
+      
+      return true;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Formuläret har skickats in",
+        description: "Tack för din ifyllda information",
+      });
+      
+      setIsSubmitted(true);
+    },
+    onError: (error: Error) => {
+      console.error("[useOpticianFormSubmission]: Mutation error:", error);
+      
       toast({
         title: "Ett fel uppstod",
-        description: "Kunde inte skicka in formuläret på grund av ett tekniskt fel",
+        description: error.message || "Kunde inte skicka in formuläret",
         variant: "destructive",
       });
     }
+  });
+  
+  const handleFormSubmit = (
+    values: Record<string, any>, 
+    formTemplate: FormTemplateWithMeta | null,
+    formattedAnswers?: any
+  ) => {
+    console.log("[useOpticianFormSubmission/handleFormSubmit]: Starting form submission");
+    return submission.mutateAsync({ values, formTemplate, formattedAnswers });
   };
-
+  
   return {
-    isSubmitting,
-    submissionError,
+    isSubmitting: submission.isPending,
+    submissionError: submission.error,
     isSubmitted,
     localSubmitted,
     handleFormSubmit

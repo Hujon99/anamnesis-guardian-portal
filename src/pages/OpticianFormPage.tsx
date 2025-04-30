@@ -14,7 +14,7 @@ import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import OpticianFormContainer from "@/components/Optician/OpticianFormContainer";
 import OpticianSubmittedView from "@/components/Optician/OpticianSubmittedView";
 import { useEffect, useState } from "react";
-import { FormTemplate } from "@/types/anamnesis";
+import { FormTemplateWithMeta } from "@/hooks/useFormTemplate";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();

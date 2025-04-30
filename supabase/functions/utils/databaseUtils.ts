@@ -1,3 +1,4 @@
+
 /**
  * This utility module provides database operations for edge functions.
  * It includes functions for creating Supabase clients and common database queries.

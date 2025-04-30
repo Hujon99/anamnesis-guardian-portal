@@ -8,11 +8,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth, useClerk } from "@clerk/clerk-react";
-import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { useTokenManager } from "./useTokenManager";
 import { createSupabaseClient } from "@/utils/supabaseClientUtils";
 
 // Configuration
@@ -20,6 +18,35 @@ const TOKEN_REFRESH_INTERVAL = 20 * 60 * 1000; // 20 minutes - reduced frequency
 const TOKEN_COOLDOWN_PERIOD = 10000; // 10 seconds cooldown between token requests (increased)
 const MAX_RETRIES = 2; // Reduced max retries
 const INITIAL_RETRY_DELAY = 2000; // 2 seconds initial delay (increased)
+
+// Helper function for token caching (moved from useTokenManager)
+const getTokenCache = () => {
+  const cacheRef = useRef<{
+    token: string;
+    expiresAt: number;
+  } | null>(null);
+  
+  return {
+    get: () => {
+      if (!cacheRef.current) return null;
+      const now = Date.now();
+      if (cacheRef.current.expiresAt > now + 5 * 60 * 1000) {
+        return cacheRef.current.token;
+      }
+      return null;
+    },
+    set: (token: string) => {
+      if (!token) return;
+      cacheRef.current = {
+        token,
+        expiresAt: Date.now() + 45 * 60 * 1000
+      };
+    },
+    clear: () => {
+      cacheRef.current = null;
+    }
+  };
+};
 
 /**
  * A hook that provides a Supabase client authenticated with the current Clerk session
@@ -41,12 +68,8 @@ export const useSupabaseClient = () => {
   const isRefreshingRef = useRef(false);
   const pendingRefreshRef = useRef(false);
   
-  // Get token management utilities
-  const { 
-    getTokenFromCache, 
-    saveTokenToCache, 
-    tokenCacheRef 
-  } = useTokenManager();
+  // Create local token cache
+  const tokenCache = getTokenCache();
 
   // Get token with debouncing, caching and retry logic
   const getTokenWithRetry = useCallback(async (force = false): Promise<string | null> => {
@@ -64,7 +87,7 @@ export const useSupabaseClient = () => {
     
     // Check token cache first if not forcing refresh
     if (!force) {
-      const cachedToken = getTokenFromCache();
+      const cachedToken = tokenCache.get();
       if (cachedToken) {
         return cachedToken;
       }
@@ -84,7 +107,7 @@ export const useSupabaseClient = () => {
         
         // Cache the token
         if (token) {
-          saveTokenToCache(token);
+          tokenCache.set(token);
         }
         
         return token;
@@ -103,7 +126,7 @@ export const useSupabaseClient = () => {
     }
     
     return null;
-  }, [session, getTokenFromCache, saveTokenToCache]);
+  }, [session]);
 
   // Create authenticated Supabase client
   const createAuthenticatedClient = useCallback(async (token: string) => {

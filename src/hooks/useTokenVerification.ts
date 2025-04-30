@@ -36,8 +36,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [formId, setFormId] = useState<string | null>(null);
   
-  // Use the token manager hook to validate the token
-  const tokenManager = useTokenManager();
+  // Use the token manager hook to validate the token, passing the supabase client
+  const tokenManager = useTokenManager(supabase);
   
   // Get the form template for the organization
   const { data: formTemplate, refetch: refetchFormTemplate } = useFormTemplate();

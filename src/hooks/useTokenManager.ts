@@ -6,19 +6,19 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { useSupabaseClient } from "./useSupabaseClient";
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from "@/integrations/supabase/types";
 
 interface TokenCache {
   token: string;
   expiresAt: number;
 }
 
-export const useTokenManager = () => {
+export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   // Use refs to avoid re-renders when updating the token cache
   const tokenCacheRef = useRef<TokenCache | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const { supabase } = useSupabaseClient();
   
   // Get token from cache if it's still valid
   const getTokenFromCache = useCallback(() => {
@@ -69,16 +69,16 @@ export const useTokenManager = () => {
   
   // Verify token with the backend
   const verifyToken = useCallback(async (token: string) => {
+    if (!supabaseClient) {
+      throw new Error("Supabase client not initialized");
+    }
+    
     setIsVerifying(true);
     setVerificationError(null);
     
     try {
-      if (!supabase) {
-        throw new Error("Supabase client not initialized");
-      }
-      
       // Fetch the entry using the token
-      const { data: entry, error } = await supabase
+      const { data: entry, error } = await supabaseClient
         .from("anamnes_entries")
         .select("*")
         .eq("access_token", token)
@@ -116,7 +116,7 @@ export const useTokenManager = () => {
       setIsVerifying(false);
       return { valid: false, error: err.message };
     }
-  }, [supabase]);
+  }, [supabaseClient]);
   
   // Reset verification state
   const resetVerification = useCallback(() => {

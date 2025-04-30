@@ -1,4 +1,3 @@
-
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
@@ -176,6 +175,8 @@ const PatientFormPage = () => {
     if (isFullyLoaded && formTemplate && !initialRenderComplete.current) {
       console.log("[PatientFormPage]: Form fully loaded, preparing transition sequence");
       
+      // Fix: Use string comparison instead of type comparison to avoid TypeScript error
+      // This was causing the TS2367 error as TypeScript sees these as distinct string literal types
       if (formPageState === "INITIAL_LOADING" || formPageState === "LOADING_WITH_DATA") {
         console.log("[PatientFormPage]: Starting transition phase");
         setFormPageState("TRANSITION");

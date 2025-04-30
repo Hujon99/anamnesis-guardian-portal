@@ -61,7 +61,7 @@ export function BookingInfoPanel({ entry }: BookingInfoPanelProps) {
       </div>
       
       {entry.is_magic_link && (
-        <Alert variant="info" className="bg-blue-50 text-xs">
+        <Alert variant="default" className="bg-blue-50 text-xs">
           <AlertTitle className="text-xs">Magic Link</AlertTitle>
           <AlertDescription className="text-xs">
             Detta är ett formulär som skapats via Magic Link-funktion.

@@ -1,7 +1,7 @@
-
 /**
  * This utility module provides database operations for edge functions.
  * It includes functions for creating Supabase clients and common database queries.
+ * Enhanced with improved error handling and SQL safety.
  */
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -37,6 +37,11 @@ export async function fetchEntryByToken(supabase: SupabaseClient, token: string)
   error?: any;
   notFound?: boolean;
 }> {
+  if (!token) {
+    console.error('Missing token in fetchEntryByToken');
+    return { error: 'Missing token parameter' };
+  }
+
   console.log('Starting fetchEntryByToken with token:', token.substring(0, 6) + '...');
   
   try {
@@ -82,38 +87,55 @@ export async function fetchFormTemplate(supabase: SupabaseClient, organizationId
   error?: any;
   notFound?: boolean;
 }> {
+  if (!organizationId) {
+    console.error('Missing organizationId in fetchFormTemplate');
+    return { error: 'Missing organization ID parameter' };
+  }
+  
   console.log('Starting fetchFormTemplate for organization:', organizationId);
   
   try {
-    console.log('Executing query to fetch form template...');
+    console.log('First trying to fetch organization-specific template...');
     
-    // Using proper filtering technique without string interpolation
-    let query = supabase
+    // First try to get the organization-specific template
+    let { data: orgTemplate, error: orgError } = await supabase
       .from('anamnes_forms')
-      .select('*');
-
-    // Using Supabase's filter syntax safely - while this uses string concatenation,
-    // it follows Supabase's specific filtering format which is different from raw SQL
-    query = query
-      .or('organization_id.eq.' + organizationId + ',organization_id.is.null')
-      .order('organization_id', { ascending: false }) // Organization-specific first
-      .limit(1);
-
-    const { data: formTemplate, error } = await query.single();
-
-    if (error) {
-      console.error('Database error:', error);
-      return { error };
+      .select('*')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+      
+    if (orgError) {
+      console.error('Error fetching organization template:', orgError);
+      // Continue to try default template instead of failing
     }
-
-    if (!formTemplate) {
-      console.log('No form template found');
+    
+    // If we found an org template, return it
+    if (orgTemplate) {
+      console.log('Found organization-specific template with ID:', orgTemplate.id);
+      return { formTemplate: orgTemplate };
+    }
+    
+    // Otherwise, try to get the default template
+    console.log('No org template found, fetching default template...');
+    
+    let { data: defaultTemplate, error: defaultError } = await supabase
+      .from('anamnes_forms')
+      .select('*')
+      .is('organization_id', null)
+      .maybeSingle();
+      
+    if (defaultError) {
+      console.error('Error fetching default template:', defaultError);
+      return { error: defaultError };
+    }
+    
+    if (!defaultTemplate) {
+      console.log('No default template found');
       return { notFound: true };
     }
-
-    console.log('Form template found with ID:', formTemplate.id);
-    console.log('Template organization_id:', formTemplate.organization_id || 'default (null)');
-    return { formTemplate };
+    
+    console.log('Found default template with ID:', defaultTemplate.id);
+    return { formTemplate: defaultTemplate };
   } catch (error) {
     console.error('Unexpected error in fetchFormTemplate:', error);
     return { error };

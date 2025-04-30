@@ -2,7 +2,7 @@
 /**
  * This Edge Function verifies access tokens for anamnesis forms.
  * It checks if a token is valid, not expired, and returns the associated entry and form template.
- * Enhanced to handle magic link entries and return booking information when available.
+ * Enhanced with improved error reporting, logging and SQL safety.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -17,10 +17,13 @@ const corsHeaders = {
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("Handling CORS preflight request");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log("Starting verify-token edge function execution");
+    
     // Parse the request body to get the token
     const requestData = await req.json().catch(error => {
       console.error("Failed to parse request JSON:", error);
@@ -30,6 +33,7 @@ serve(async (req: Request) => {
     const { token } = requestData;
 
     if (!token) {
+      console.error("Missing token in request");
       return new Response(
         JSON.stringify({ error: 'Missing token' }),
         { 
@@ -44,6 +48,7 @@ serve(async (req: Request) => {
     // Initialize Supabase client
     const supabase = createSupabaseClient();
     if (!supabase) {
+      console.error("Failed to initialize Supabase client");
       return new Response(
         JSON.stringify({ error: 'Failed to initialize database client' }),
         { 
@@ -57,7 +62,7 @@ serve(async (req: Request) => {
     const { entry, error: entryError, notFound: entryNotFound } = await fetchEntryByToken(supabase, token);
 
     if (entryError) {
-      console.error("Database error:", entryError);
+      console.error("Database error fetching entry:", entryError);
       return new Response(
         JSON.stringify({ 
           error: 'Database error', 
@@ -71,6 +76,7 @@ serve(async (req: Request) => {
     }
 
     if (entryNotFound) {
+      console.error("Token not found in database");
       return new Response(
         JSON.stringify({ 
           error: 'Token not found' 
@@ -84,6 +90,7 @@ serve(async (req: Request) => {
 
     // Check if the entry has expired
     if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
+      console.log("Token expired, expires_at:", entry.expires_at);
       return new Response(
         JSON.stringify({ 
           error: 'Token expired',
@@ -102,6 +109,7 @@ serve(async (req: Request) => {
 
     // Check if the form has already been submitted
     if (entry.status === 'submitted') {
+      console.log("Form already submitted, status:", entry.status);
       return new Response(
         JSON.stringify({ 
           submitted: true,
@@ -137,6 +145,7 @@ serve(async (req: Request) => {
     }
 
     if (formNotFound) {
+      console.error("Form template not found for organization:", entry.organization_id);
       return new Response(
         JSON.stringify({ 
           error: 'Form template not found' 
@@ -167,6 +176,8 @@ serve(async (req: Request) => {
       booking_date: entry.booking_date
     };
 
+    console.log("Token verification successful, returning data");
+    
     // Return success with form template and entry data
     return new Response(
       JSON.stringify({ 

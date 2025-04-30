@@ -1,8 +1,8 @@
-
 /**
  * This utility hook manages token caching and validation for the Supabase client.
  * It provides functions to store and retrieve cached tokens with expiration management,
  * reducing unnecessary token requests and improving performance.
+ * Enhanced with direct database fallback when edge function is unavailable.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -69,7 +69,47 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     console.log("[useTokenManager]: Token cache cleared");
   }, []);
   
-  // Verify token with the backend
+  // Verify token directly in the database if edge function fails
+  const verifyTokenWithDatabase = useCallback(async (token: string) => {
+    if (!supabaseClient) {
+      throw new Error("Supabase client not initialized");
+    }
+    
+    console.log("[useTokenManager]: Attempting direct database verification");
+    
+    // First get the entry
+    const { data: entry, error } = await supabaseClient
+      .from('anamnes_entries')
+      .select('*')
+      .eq('access_token', token)
+      .maybeSingle();
+    
+    if (error) {
+      console.error("[useTokenManager/verifyTokenWithDatabase]: Database error:", error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+    
+    if (!entry) {
+      console.log("[useTokenManager/verifyTokenWithDatabase]: No entry found");
+      return { valid: false, error: "Token not found" };
+    }
+    
+    // Check if the entry has expired
+    if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
+      console.log("[useTokenManager/verifyTokenWithDatabase]: Token expired");
+      return { valid: false, error: "Token expired", expired: true };
+    }
+    
+    // Check if already submitted
+    if (entry.status === 'submitted') {
+      return { valid: true, entry, submitted: true };
+    }
+    
+    console.log("[useTokenManager/verifyTokenWithDatabase]: Token verified successfully");
+    return { valid: true, entry };
+  }, [supabaseClient]);
+  
+  // Verify token with the edge function, falling back to direct database verification if needed
   const verifyToken = useCallback(async (token: string) => {
     if (!supabaseClient) {
       throw new Error("Supabase client not initialized");
@@ -93,85 +133,108 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     try {
       console.log("[useTokenManager]: Verifying token with attempt #", verificationAttemptRef.current);
       
-      // Use more reliable technique - fetch from edge function
-      const response = await fetch(`${window.location.origin}/functions/v1/verify-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
+      // Construct the edge function URL correctly using the project ID
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://jawtwwwelxaaprzsqfyp.supabase.co";
+      const projectId = supabaseUrl.match(/\/\/([^.]+)\.supabase\.co/)?.[1] || "jawtwwwelxaaprzsqfyp";
+      const edgeFunctionUrl = `https://${projectId}.supabase.co/functions/v1/verify-token`;
       
-      if (!response.ok) {
-        let errorMsg = `API error: ${response.status} ${response.statusText}`;
+      console.log("[useTokenManager]: Using edge function URL:", edgeFunctionUrl);
+      
+      // Try using the edge function first
+      try {
+        const response = await fetch(edgeFunctionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token }),
+        });
         
-        try {
-          const errorData = await response.json();
-          console.error("[useTokenManager/verifyToken]: API error:", response.status, errorData);
+        if (!response.ok) {
+          // If edge function fails, extract the error details
+          let errorMsg = `API error: ${response.status} ${response.statusText}`;
+          let errorData = null;
           
-          // Check specifically for expired token
-          if (response.status === 403 && errorData.expired) {
-            errorMsg = "Åtkomsttokenet har upphört att gälla";
-            setVerificationError(errorMsg);
-            setIsVerifying(false);
-            return { valid: false, error: "Token expired", expired: true };
-          }
-          
-          // Add more details to error message if available
-          if (errorData.error) {
-            errorMsg = `API error: ${response.status} ${errorData.error}`;
-            if (errorData.details) {
-              errorMsg += ` - ${errorData.details}`;
+          try {
+            errorData = await response.json();
+            console.error("[useTokenManager]: Edge function error:", response.status, errorData);
+            
+            // Check specifically for expired token
+            if (response.status === 403 && errorData.expired) {
+              errorMsg = "Åtkomsttokenet har upphört att gälla";
+              setVerificationError(errorMsg);
+              setIsVerifying(false);
+              return { valid: false, error: "Token expired", expired: true };
             }
+            
+            // Add more details to error message if available
+            if (errorData.error) {
+              errorMsg = `API error: ${response.status} ${errorData.error}`;
+              if (errorData.details) {
+                errorMsg += ` - ${errorData.details}`;
+              }
+            }
+          } catch (parseError) {
+            // If we can't parse the JSON, just use the status text
+            console.error("[useTokenManager]: Failed to parse error response:", parseError);
           }
-        } catch (parseError) {
-          // If we can't parse the JSON, just use the status text
-          console.error("[useTokenManager/verifyToken]: Failed to parse error response:", parseError);
+          
+          // If edge function returned 404 (not found) or other server error,
+          // fall back to direct database verification
+          if (response.status === 404 || response.status >= 500) {
+            console.warn("[useTokenManager]: Edge function unavailable, falling back to direct database verification");
+            return await verifyTokenWithDatabase(token);
+          }
+          
+          // Otherwise, handle as a legitimate error
+          setVerificationError(errorMsg);
+          setIsVerifying(false);
+          return { valid: false, error: errorMsg };
         }
         
-        // Handle other errors
+        // Process successful edge function response
+        const data = await response.json();
+        console.log("[useTokenManager]: Edge function response received:", 
+          data.verified ? "Verified" : "Not verified",
+          data.submitted ? ", Submitted" : "",
+          data.expired ? ", Expired" : ""
+        );
+        
+        // Handle already submitted case
+        if (data.submitted) {
+          console.log("[useTokenManager]: Form already submitted");
+          setIsVerifying(false);
+          return { valid: true, entry: data.entry };
+        }
+        
+        // Successful verification
+        if (data.verified && data.entry) {
+          console.log("[useTokenManager]: Token verified successfully");
+          setIsVerifying(false);
+          verificationAttemptRef.current = 0; // Reset counter on success
+          return { valid: true, entry: data.entry };
+        }
+        
+        // Fallback error
+        console.error("[useTokenManager]: Unexpected response format:", data);
+        const errorMsg = "Oväntat svar från servern";
         setVerificationError(errorMsg);
         setIsVerifying(false);
-        return { valid: false, error: errorMsg };
+        return { valid: false, error: "Unexpected response format" };
+      } catch (fetchError: any) {
+        // Network error or other fetch error - fall back to direct database verification
+        console.warn("[useTokenManager]: Edge function fetch error, falling back to direct database:", fetchError);
+        return await verifyTokenWithDatabase(token);
       }
-      
-      const data = await response.json();
-      console.log("[useTokenManager/verifyToken]: Response received:", 
-        data.verified ? "Verified" : "Not verified",
-        data.submitted ? ", Submitted" : "",
-        data.expired ? ", Expired" : ""
-      );
-      
-      // Handle already submitted case
-      if (data.submitted) {
-        console.log("[useTokenManager/verifyToken]: Form already submitted");
-        setIsVerifying(false);
-        return { valid: true, entry: data.entry };
-      }
-      
-      // Successful verification
-      if (data.verified && data.entry) {
-        console.log("[useTokenManager/verifyToken]: Token verified successfully");
-        setIsVerifying(false);
-        verificationAttemptRef.current = 0; // Reset counter on success
-        return { valid: true, entry: data.entry };
-      }
-      
-      // Fallback error
-      console.error("[useTokenManager/verifyToken]: Unexpected response format:", data);
-      const errorMsg = "Oväntat svar från servern";
-      setVerificationError(errorMsg);
-      setIsVerifying(false);
-      return { valid: false, error: "Unexpected response format" };
       
     } catch (err: any) {
-      console.error("[useTokenManager/verifyToken]: Error:", err);
+      console.error("[useTokenManager]: Error:", err);
       const errorMsg = err.message || "Ett fel uppstod vid verifiering av token";
       setVerificationError(errorMsg);
       setIsVerifying(false);
       return { valid: false, error: errorMsg };
     }
-  }, [supabaseClient]);
+  }, [supabaseClient, verifyTokenWithDatabase]);
   
   // Reset verification state
   const resetVerification = useCallback(() => {

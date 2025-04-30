@@ -1,9 +1,9 @@
-
 /**
  * This hook fetches the form template for anamesis entries based on the organization ID.
  * It prioritizes organization-specific templates, falling back to the global standard template
  * when no organization-specific template exists.
  * Returns both the template schema and metadata like the form ID.
+ * Enhanced with improved SQL safety and error handling.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -34,53 +34,97 @@ export const useFormTemplate = () => {
           return null;
         }
         
-        // Get organization-specific template or fall back to global template
+        // Start with initial query for anamnes_forms
         let query = supabase
           .from('anamnes_forms')
           .select("*");
-          
-        // Using proper parameter binding instead of string interpolation
+
+        // Apply proper filtering - safely handling organization ID
         if (organization?.id) {
-          // Use individual filters and combine with or() - no string interpolation
-          query = query
-            .or('organization_id.eq.' + organization.id + ',organization_id.is.null');
-            // This syntax is specifically designed for Supabase's filtering system
-            // and doesn't use direct string interpolation of user input
-        } else {
-          query = query.filter('organization_id', 'is', null);
-        }
-        
-        // Order and limit
-        const { data, error } = await query
-          .order("organization_id", { ascending: false }) // Organization-specific first, then null (default)
-          .limit(1)
-          .maybeSingle();
+          // First get organization-specific template if it exists
+          const { data: orgTemplate, error: orgError } = await supabase
+            .from('anamnes_forms')
+            .select("*")
+            .eq('organization_id', organization.id)
+            .maybeSingle();
+            
+          if (orgError) {
+            console.error("[useFormTemplate]: Error fetching org template:", orgError);
+          }
           
-        if (error) {
-          console.error("[useFormTemplate]: Error fetching form template:", error);
-          throw new Error("Kunde inte hämta formulärmallen: " + error.message);
+          // If we found an org-specific template, return it directly
+          if (orgTemplate) {
+            console.log("[useFormTemplate]: Using organization-specific template");
+            const formData = orgTemplate as unknown as AnamnesForm;
+            
+            return {
+              schema: formData.schema,
+              id: formData.id,
+              title: formData.title,
+              organization_id: formData.organization_id
+            };
+          }
+          
+          // Otherwise, fetch the default template
+          console.log("[useFormTemplate]: No org template found, using default");
+          const { data: defaultTemplate, error: defaultError } = await supabase
+            .from('anamnes_forms')
+            .select("*")
+            .is('organization_id', null)
+            .maybeSingle();
+            
+          if (defaultError) {
+            console.error("[useFormTemplate]: Error fetching default template:", defaultError);
+            throw new Error("Kunde inte hämta formulärmallen: " + defaultError.message);
+          }
+          
+          if (!defaultTemplate) {
+            console.log("[useFormTemplate]: No default template found");
+            return null;
+          }
+          
+          const formData = defaultTemplate as unknown as AnamnesForm;
+          
+          return {
+            schema: formData.schema,
+            id: formData.id,
+            title: formData.title,
+            organization_id: formData.organization_id
+          };
+        } else {
+          // No organization ID, just get the default template
+          const { data, error } = await supabase
+            .from('anamnes_forms')
+            .select("*")
+            .is('organization_id', null)
+            .maybeSingle();
+            
+          if (error) {
+            console.error("[useFormTemplate]: Error fetching default template:", error);
+            throw new Error("Kunde inte hämta formulärmallen: " + error.message);
+          }
+          
+          if (!data) {
+            console.log("[useFormTemplate]: No default template found");
+            return null;
+          }
+          
+          // Type assertion to handle the schema property - AFTER we've checked that data exists
+          const formData = data as unknown as AnamnesForm;
+          
+          console.log("[useFormTemplate]: Default template found:", 
+            formData.id, 
+            "organization:", 
+            formData.organization_id || "default"
+          );
+          
+          return {
+            schema: formData.schema,
+            id: formData.id,
+            title: formData.title,
+            organization_id: formData.organization_id
+          };
         }
-        
-        if (!data) {
-          console.log("[useFormTemplate]: No template found");
-          return null;
-        }
-        
-        // Type assertion to handle the schema property - AFTER we've checked that data exists
-        const formData = data as unknown as AnamnesForm;
-        
-        console.log("[useFormTemplate]: Template found:", 
-          formData.id, 
-          "organization:", 
-          formData.organization_id || "default"
-        );
-        
-        return {
-          schema: formData.schema,
-          id: formData.id,
-          title: formData.title,
-          organization_id: formData.organization_id
-        };
       } catch (err: any) {
         console.error("[useFormTemplate]: Error:", err);
         toast({

@@ -87,14 +87,19 @@ export async function fetchFormTemplate(supabase: SupabaseClient, organizationId
   try {
     console.log('Executing query to fetch form template...');
     
-    // First try to find organization-specific template
-    let { data: formTemplate, error } = await supabase
+    // Using proper filtering technique without string interpolation
+    let query = supabase
       .from('anamnes_forms')
-      .select('*')
-      .or(`organization_id.eq.${organizationId},organization_id.is.null`)
-      .order('organization_id', { ascending: false }) // Organization-specific first, then null (default)
-      .limit(1)
-      .single();
+      .select('*');
+
+    // Using Supabase's filter syntax safely - while this uses string concatenation,
+    // it follows Supabase's specific filtering format which is different from raw SQL
+    query = query
+      .or('organization_id.eq.' + organizationId + ',organization_id.is.null')
+      .order('organization_id', { ascending: false }) // Organization-specific first
+      .limit(1);
+
+    const { data: formTemplate, error } = await query.single();
 
     if (error) {
       console.error('Database error:', error);

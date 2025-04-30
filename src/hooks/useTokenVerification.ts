@@ -38,9 +38,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [retryCount, setRetryCount] = useState(0);
   
   // Add circuit breaker to prevent infinite retries
-  const MAX_RETRIES = 2;
+  const MAX_RETRIES = 3; // Increased from 2 to 3
   const requestInProgressRef = useRef(false);
   const circuitBrokenRef = useRef(false);
+  const lastErrorRef = useRef<string | null>(null);
   
   // Use the token manager hook to validate the token, passing the supabase client
   const tokenManager = useTokenManager(supabase);
@@ -56,7 +57,15 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   useEffect(() => {
     circuitBrokenRef.current = false;
     requestInProgressRef.current = false;
+    lastErrorRef.current = null;
     setRetryCount(0);
+    
+    // Log token for debugging
+    if (token) {
+      console.log("[useTokenVerification]: New token received:", token.substring(0, 6) + "...");
+    } else {
+      console.log("[useTokenVerification]: No token provided");
+    }
   }, [token]);
   
   // Function to handle retrying the verification process
@@ -74,12 +83,16 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
+    lastErrorRef.current = null;
     
     // Reset verification state
     tokenManager.resetVerification();
     
     // Reset circuit breaker
     circuitBrokenRef.current = false;
+    
+    // Reset request in progress
+    requestInProgressRef.current = false;
     
     // Increment retry count to prevent infinite loops
     setRetryCount((prev) => prev + 1);
@@ -106,6 +119,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       console.error("[useTokenVerification]: Too many retry attempts, stopping");
       setError("För många försök att läsa in formuläret. Försök igen senare.");
       setErrorCode("too_many_retries");
+      setDiagnosticInfo("Maximum retry count exceeded: " + MAX_RETRIES);
       setLoading(false);
       circuitBrokenRef.current = true;
       return;
@@ -124,6 +138,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       try {
         if (!token) {
           setError("Ingen åtkomsttoken angiven");
+          setErrorCode("missing_token");
           setLoading(false);
           requestInProgressRef.current = false;
           return;
@@ -131,6 +146,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         
         if (!supabase) {
           setError("Kunde inte ansluta till databasen");
+          setErrorCode("no_supabase_client");
           setLoading(false);
           requestInProgressRef.current = false;
           return;
@@ -140,16 +156,24 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         
         // Verify the token first
         const verificationResult = await tokenManager.verifyToken(token);
+        console.log("[useTokenVerification]: Verification result:", 
+          verificationResult.valid ? "Valid" : "Invalid",
+          verificationResult.error || ""
+        );
         
         // Handle the different result types with proper type checking
         if (!verificationResult.valid) {
           console.error("[useTokenVerification]: Token verification failed:", verificationResult.error);
+          
+          // Save the error for future comparison
+          lastErrorRef.current = verificationResult.error || "Unknown error";
           
           // Safely check if expired property exists and is true
           const isExpired = 'expired' in verificationResult && verificationResult.expired === true;
           
           if (isExpired || (verificationResult.error && verificationResult.error.includes("expired"))) {
             setExpired(true);
+            setErrorCode("token_expired");
           } else {
             setError(verificationResult.error || "Ogiltig åtkomsttoken");
             setErrorCode("invalid_token");
@@ -167,12 +191,14 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         if (!entry) {
           console.error("[useTokenVerification]: Entry not found after successful verification");
           setError("Kunde inte hitta anamnesen");
+          setErrorCode("entry_not_found");
           setLoading(false);
           requestInProgressRef.current = false;
           return;
         }
         
-        console.log("[useTokenVerification]: Token verified successfully, entry:", entry);
+        console.log("[useTokenVerification]: Token verified successfully, entry:", 
+          `ID: ${entry.id}, Organization: ${entry.organization_id}`);
         
         // Set organization ID from the entry
         setOrganizationId(entry.organization_id);
@@ -190,6 +216,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         // Refetch form template with the organization ID
         await refetchFormTemplate();
         
+        // Clear any previous errors
+        setError(null);
+        setErrorCode("");
+        
         setLoading(false);
         requestInProgressRef.current = false;
       } catch (err: any) {
@@ -199,8 +229,13 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         const isNetworkError = err.message?.includes("Failed to fetch") || 
                               err.message?.includes("Network") ||
                               err.message?.includes("network");
+        
+        // Compare with last error - if we're seeing the same error repeatedly, 
+        // that suggests we might be in a loop
+        const isSameError = lastErrorRef.current === err.message;
+        lastErrorRef.current = err.message || "Unknown error";
                               
-        if (isNetworkError && retryCount < MAX_RETRIES) {
+        if (isNetworkError && retryCount < MAX_RETRIES && !isSameError) {
           console.log("[useTokenVerification]: Network error, will retry automatically");
         } else {
           // Break the circuit for non-network errors or after max retries

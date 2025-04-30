@@ -22,7 +22,12 @@ serve(async (req: Request) => {
 
   try {
     // Parse the request body to get the token
-    const { token } = await req.json();
+    const requestData = await req.json().catch(error => {
+      console.error("Failed to parse request JSON:", error);
+      return { token: null };
+    });
+    
+    const { token } = requestData;
 
     if (!token) {
       return new Response(

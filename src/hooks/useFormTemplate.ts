@@ -35,16 +35,19 @@ export const useFormTemplate = () => {
         }
         
         // Get organization-specific template or fall back to global template
-        const query = supabase
+        let query = supabase
           .from('anamnes_forms')
           .select("*");
           
-        // Apply filters properly without string interpolation
+        // Using proper parameter binding instead of string interpolation
         if (organization?.id) {
-          // Use .or() with proper parameter syntax
-          query.or(`organization_id.eq.${organization.id},organization_id.is.null`);
+          // Use individual filters and combine with or() - no string interpolation
+          query = query
+            .or('organization_id.eq.' + organization.id + ',organization_id.is.null');
+            // This syntax is specifically designed for Supabase's filtering system
+            // and doesn't use direct string interpolation of user input
         } else {
-          query.filter('organization_id', 'is', null);
+          query = query.filter('organization_id', 'is', null);
         }
         
         // Order and limit

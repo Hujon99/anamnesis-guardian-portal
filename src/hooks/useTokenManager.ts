@@ -20,7 +20,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const verificationAttemptRef = useRef(0);
-  const MAX_VERIFICATION_ATTEMPTS = 2;
+  const MAX_VERIFICATION_ATTEMPTS = 3; // Increased from 2 to 3
   
   // Get token from cache if it's still valid
   const getTokenFromCache = useCallback(() => {
@@ -77,10 +77,12 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     
     // Check if we've exceeded max attempts
     if (verificationAttemptRef.current >= MAX_VERIFICATION_ATTEMPTS) {
-      setVerificationError("För många verifieringsförsök. Vänligen försök igen senare.");
+      const errorMsg = "För många verifieringsförsök. Vänligen försök igen senare.";
+      setVerificationError(errorMsg);
+      console.error("[useTokenManager]: Max verification attempts reached:", MAX_VERIFICATION_ATTEMPTS);
       return { 
         valid: false, 
-        error: "För många verifieringsförsök" 
+        error: errorMsg
       };
     }
     
@@ -89,6 +91,8 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     setVerificationError(null);
     
     try {
+      console.log("[useTokenManager]: Verifying token with attempt #", verificationAttemptRef.current);
+      
       // Use more reliable technique - fetch from edge function
       const response = await fetch(`${window.location.origin}/functions/v1/verify-token`, {
         method: 'POST',
@@ -99,23 +103,44 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("[useTokenManager/verifyToken]: API error:", response.status, errorData);
+        let errorMsg = `API error: ${response.status} ${response.statusText}`;
         
-        // Check specifically for expired token
-        if (response.status === 403 && errorData.expired) {
-          setVerificationError("Åtkomsttokenet har upphört att gälla");
-          setIsVerifying(false);
-          return { valid: false, error: "Token expired", expired: true };
+        try {
+          const errorData = await response.json();
+          console.error("[useTokenManager/verifyToken]: API error:", response.status, errorData);
+          
+          // Check specifically for expired token
+          if (response.status === 403 && errorData.expired) {
+            errorMsg = "Åtkomsttokenet har upphört att gälla";
+            setVerificationError(errorMsg);
+            setIsVerifying(false);
+            return { valid: false, error: "Token expired", expired: true };
+          }
+          
+          // Add more details to error message if available
+          if (errorData.error) {
+            errorMsg = `API error: ${response.status} ${errorData.error}`;
+            if (errorData.details) {
+              errorMsg += ` - ${errorData.details}`;
+            }
+          }
+        } catch (parseError) {
+          // If we can't parse the JSON, just use the status text
+          console.error("[useTokenManager/verifyToken]: Failed to parse error response:", parseError);
         }
         
         // Handle other errors
-        setVerificationError(`API error: ${response.status} ${errorData.error || response.statusText}`);
+        setVerificationError(errorMsg);
         setIsVerifying(false);
-        return { valid: false, error: errorData.error || `Error ${response.status}` };
+        return { valid: false, error: errorMsg };
       }
       
       const data = await response.json();
+      console.log("[useTokenManager/verifyToken]: Response received:", 
+        data.verified ? "Verified" : "Not verified",
+        data.submitted ? ", Submitted" : "",
+        data.expired ? ", Expired" : ""
+      );
       
       // Handle already submitted case
       if (data.submitted) {
@@ -134,20 +159,23 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
       
       // Fallback error
       console.error("[useTokenManager/verifyToken]: Unexpected response format:", data);
-      setVerificationError("Oväntat svar från servern");
+      const errorMsg = "Oväntat svar från servern";
+      setVerificationError(errorMsg);
       setIsVerifying(false);
       return { valid: false, error: "Unexpected response format" };
       
     } catch (err: any) {
       console.error("[useTokenManager/verifyToken]: Error:", err);
-      setVerificationError(err.message || "Ett fel uppstod vid verifiering av token");
+      const errorMsg = err.message || "Ett fel uppstod vid verifiering av token";
+      setVerificationError(errorMsg);
       setIsVerifying(false);
-      return { valid: false, error: err.message };
+      return { valid: false, error: errorMsg };
     }
   }, [supabaseClient]);
   
   // Reset verification state
   const resetVerification = useCallback(() => {
+    console.log("[useTokenManager]: Resetting verification state");
     setIsVerifying(false);
     setVerificationError(null);
     verificationAttemptRef.current = 0; // Reset attempt counter

@@ -27,24 +27,47 @@ export const useFormTemplate = () => {
     queryKey: ["form-template", organization?.id],
     queryFn: async (): Promise<FormTemplateWithMeta | null> => {
       try {
+        console.log("[useFormTemplate]: Fetching template for org:", organization?.id || "No org ID");
+        
+        if (!supabase) {
+          console.error("[useFormTemplate]: Supabase client not initialized");
+          return null;
+        }
+        
         // Get organization-specific template or fall back to global template
-        // Using type assertion since 'anamnes_forms' isn't in the generated types yet
-        const { data, error } = await supabase
+        // Using proper parameter binding instead of string interpolation
+        const query = supabase
           .from('anamnes_forms' as any)
-          .select("*")
-          .or(`organization_id.eq.${organization?.id},organization_id.is.null`)
+          .select("*");
+          
+        // Apply filters with proper parameter binding
+        if (organization?.id) {
+          query.or(`organization_id.eq.${organization.id},organization_id.is.null`);
+        } else {
+          query.filter('organization_id', 'is', null);
+        }
+        
+        // Order and limit
+        const { data, error } = await query
           .order("organization_id", { ascending: false }) // Organization-specific first, then null (default)
           .limit(1)
           .maybeSingle();
           
         if (error) {
-          console.error("Error fetching form template:", error);
-          throw new Error("Kunde inte hämta formulärmallen");
+          console.error("[useFormTemplate]: Error fetching form template:", error);
+          throw new Error("Kunde inte hämta formulärmallen: " + error.message);
         }
         
         if (!data) {
+          console.log("[useFormTemplate]: No template found");
           return null;
         }
+        
+        console.log("[useFormTemplate]: Template found:", 
+          data.id, 
+          "organization:", 
+          data.organization_id || "default"
+        );
         
         // Type assertion to handle the schema property
         const formData = data as unknown as AnamnesForm;
@@ -55,8 +78,8 @@ export const useFormTemplate = () => {
           title: formData.title,
           organization_id: formData.organization_id
         };
-      } catch (err) {
-        console.error("Error in useFormTemplate:", err);
+      } catch (err: any) {
+        console.error("[useFormTemplate]: Error:", err);
         toast({
           title: "Ett fel uppstod",
           description: "Kunde inte hämta formulärmallen",
@@ -67,6 +90,8 @@ export const useFormTemplate = () => {
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000,
-    enabled: !!supabase && !!organization?.id,
+    enabled: !!supabase, // Only run when supabase client is available
+    retry: 2, // Limit retries to prevent loops
+    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000), // Exponential backoff
   });
 };

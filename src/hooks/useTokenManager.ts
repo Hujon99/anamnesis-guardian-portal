@@ -19,6 +19,8 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const tokenCacheRef = useRef<TokenCache | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const verificationAttemptRef = useRef(0);
+  const MAX_VERIFICATION_ATTEMPTS = 2;
   
   // Get token from cache if it's still valid
   const getTokenFromCache = useCallback(() => {
@@ -27,7 +29,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     const now = Date.now();
     // Token is valid if it expires more than 5 minutes from now (increased from 2 min)
     if (tokenCacheRef.current.expiresAt > now + 5 * 60 * 1000) {
-      console.log("Using cached token");
+      console.log("[useTokenManager]: Using cached token");
       return tokenCacheRef.current.token;
     }
     return null;
@@ -37,7 +39,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const saveTokenToCache = useCallback((token: string) => {
     // Validate token before caching
     if (!token) {
-      console.warn("Attempted to cache empty token, ignoring");
+      console.warn("[useTokenManager]: Attempted to cache empty token, ignoring");
       return;
     }
     
@@ -47,9 +49,9 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
         token,
         expiresAt: Date.now() + 45 * 60 * 1000
       };
-      console.log("Token cached with expiry at", new Date(tokenCacheRef.current.expiresAt).toISOString());
+      console.log("[useTokenManager]: Token cached with expiry at", new Date(tokenCacheRef.current.expiresAt).toISOString());
     } catch (err) {
-      console.error("Error saving token to cache:", err);
+      console.error("[useTokenManager]: Error saving token to cache:", err);
     }
   }, []);
 
@@ -64,7 +66,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   // Clear token cache
   const clearTokenCache = useCallback(() => {
     tokenCacheRef.current = null;
-    console.log("Token cache cleared");
+    console.log("[useTokenManager]: Token cache cleared");
   }, []);
   
   // Verify token with the backend
@@ -73,42 +75,68 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
       throw new Error("Supabase client not initialized");
     }
     
+    // Check if we've exceeded max attempts
+    if (verificationAttemptRef.current >= MAX_VERIFICATION_ATTEMPTS) {
+      setVerificationError("För många verifieringsförsök. Vänligen försök igen senare.");
+      return { 
+        valid: false, 
+        error: "För många verifieringsförsök" 
+      };
+    }
+    
+    verificationAttemptRef.current++;
     setIsVerifying(true);
     setVerificationError(null);
     
     try {
-      // Fetch the entry using the token
-      const { data: entry, error } = await supabaseClient
-        .from("anamnes_entries")
-        .select("*")
-        .eq("access_token", token)
-        .maybeSingle();
+      // Use more reliable technique - fetch from edge function
+      const response = await fetch(`${window.location.origin}/functions/v1/verify-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
       
-      if (error) {
-        console.error("[useTokenManager/verifyToken]: Database error:", error);
-        setVerificationError(`Database error: ${error.message}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("[useTokenManager/verifyToken]: API error:", response.status, errorData);
+        
+        // Check specifically for expired token
+        if (response.status === 403 && errorData.expired) {
+          setVerificationError("Åtkomsttokenet har upphört att gälla");
+          setIsVerifying(false);
+          return { valid: false, error: "Token expired", expired: true };
+        }
+        
+        // Handle other errors
+        setVerificationError(`API error: ${response.status} ${errorData.error || response.statusText}`);
         setIsVerifying(false);
-        return { valid: false, error: error.message };
+        return { valid: false, error: errorData.error || `Error ${response.status}` };
       }
       
-      if (!entry) {
-        console.error("[useTokenManager/verifyToken]: Entry not found");
-        setVerificationError("Ogiltig åtkomsttoken eller så har formuläret redan skickats in");
+      const data = await response.json();
+      
+      // Handle already submitted case
+      if (data.submitted) {
+        console.log("[useTokenManager/verifyToken]: Form already submitted");
         setIsVerifying(false);
-        return { valid: false, error: "Ogiltig åtkomsttoken" };
+        return { valid: true, entry: data.entry };
       }
       
-      // Check if the entry has expired
-      if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
-        console.error("[useTokenManager/verifyToken]: Token expired");
-        setVerificationError("Åtkomsttokenet har upphört att gälla");
+      // Successful verification
+      if (data.verified && data.entry) {
+        console.log("[useTokenManager/verifyToken]: Token verified successfully");
         setIsVerifying(false);
-        return { valid: false, error: "Token expired", expired: true };
+        verificationAttemptRef.current = 0; // Reset counter on success
+        return { valid: true, entry: data.entry };
       }
       
-      console.log("[useTokenManager/verifyToken]: Token verified successfully");
+      // Fallback error
+      console.error("[useTokenManager/verifyToken]: Unexpected response format:", data);
+      setVerificationError("Oväntat svar från servern");
       setIsVerifying(false);
-      return { valid: true, entry };
+      return { valid: false, error: "Unexpected response format" };
       
     } catch (err: any) {
       console.error("[useTokenManager/verifyToken]: Error:", err);
@@ -122,6 +150,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const resetVerification = useCallback(() => {
     setIsVerifying(false);
     setVerificationError(null);
+    verificationAttemptRef.current = 0; // Reset attempt counter
   }, []);
 
   return {

@@ -24,6 +24,7 @@ const OpticianFormPage = () => {
   // State to persist form values between submission attempts
   const [storedFormValues, setStoredFormValues] = useState<Record<string, any> | null>(null);
   const [storedFormattedAnswers, setStoredFormattedAnswers] = useState<any | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Verify that this is indeed an optician mode form
   const isOpticianMode = mode === "optician";
@@ -58,10 +59,17 @@ const OpticianFormPage = () => {
       navigate("/dashboard");
     }
   }, [isOpticianMode, loading, navigate]);
+  
+  // Track initial load completion
+  useEffect(() => {
+    if (!loading && isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [loading, isInitialLoad]);
 
   // Handler for form submission that stores the form values for potential retries
   const handleSubmitWithPersistence = async (values: any, formattedAnswers?: any) => {
-    console.log("[OpticianFormPage/handleSubmitWithPersistence]: Storing form values for potential retry", values);
+    console.log("[OpticianFormPage/handleSubmitWithPersistence]: Storing form values for potential retry");
     
     // Store the values and formatted answers for potential retries
     setStoredFormValues(values);
@@ -73,7 +81,7 @@ const OpticianFormPage = () => {
   
   // Handle retry with stored form values
   const handleSubmissionRetry = async () => {
-    console.log("[OpticianFormPage/handleSubmissionRetry]: Attempting retry with stored values", storedFormValues);
+    console.log("[OpticianFormPage/handleSubmissionRetry]: Attempting retry with stored values");
     
     if (storedFormValues) {
       // If we have stored values, use them for the retry
@@ -85,8 +93,8 @@ const OpticianFormPage = () => {
     }
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state - only show during initial load to prevent flashing
+  if (loading && isInitialLoad) {
     return <LoadingCard />;
   }
 
@@ -129,7 +137,7 @@ const OpticianFormPage = () => {
     <OpticianFormContainer
       formTemplate={formTemplate}
       onSubmit={handleSubmitWithPersistence}
-      isSubmitting={isSubmitting}
+      isSubmitting={isSubmitting || loading}
       onRetry={handleRetry}
       initialValues={storedFormValues}
       createdByName={createdByName}

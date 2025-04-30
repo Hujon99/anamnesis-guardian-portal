@@ -6,7 +6,7 @@
  * Updated to work with FormTemplateWithMeta instead of just FormTemplate.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { useFormTemplate, FormTemplateWithMeta } from "./useFormTemplate";
 import { useTokenManager } from "./useTokenManager";
@@ -25,7 +25,7 @@ interface UseTokenVerificationResult {
 }
 
 export const useTokenVerification = (token: string | null): UseTokenVerificationResult => {
-  const { supabase } = useSupabaseClient();
+  const { supabase, isReady: isSupabaseReady } = useSupabaseClient();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState("");
@@ -35,16 +35,38 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [entryData, setEntryData] = useState<AnamnesesEntry | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [formId, setFormId] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0); // Add retry count to prevent infinite loops
+  const [retryCount, setRetryCount] = useState(0);
+  
+  // Add circuit breaker to prevent infinite retries
+  const MAX_RETRIES = 2;
+  const requestInProgressRef = useRef(false);
+  const circuitBrokenRef = useRef(false);
   
   // Use the token manager hook to validate the token, passing the supabase client
   const tokenManager = useTokenManager(supabase);
   
   // Get the form template for the organization
-  const { data: formTemplate, refetch: refetchFormTemplate } = useFormTemplate();
+  const { 
+    data: formTemplate, 
+    refetch: refetchFormTemplate,
+    isLoading: formTemplateLoading
+  } = useFormTemplate();
+  
+  // Reset circuit breaker when token changes
+  useEffect(() => {
+    circuitBrokenRef.current = false;
+    requestInProgressRef.current = false;
+    setRetryCount(0);
+  }, [token]);
   
   // Function to handle retrying the verification process
   const handleRetry = () => {
+    // Don't retry if a request is already in progress
+    if (requestInProgressRef.current) {
+      console.log("[useTokenVerification/handleRetry]: Request already in progress, ignoring retry");
+      return;
+    }
+    
     console.log("[useTokenVerification/handleRetry]: Retrying token verification");
     setLoading(true);
     setError(null);
@@ -52,35 +74,65 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
-    // Fix: Remove the argument from resetVerification
+    
+    // Reset verification state
     tokenManager.resetVerification();
+    
+    // Reset circuit breaker
+    circuitBrokenRef.current = false;
+    
     // Increment retry count to prevent infinite loops
     setRetryCount((prev) => prev + 1);
+    
+    // Refetch form template
     refetchFormTemplate();
   };
   
   // Effect to verify the token and fetch entry data
   useEffect(() => {
+    // Skip verification if Supabase client is not ready
+    if (!isSupabaseReady || formTemplateLoading) {
+      return;
+    }
+    
+    // Skip if circuit breaker is active
+    if (circuitBrokenRef.current) {
+      console.log("[useTokenVerification]: Circuit breaker active, skipping verification");
+      return;
+    }
+    
     // Add a guard against too many retries
-    if (retryCount > 3) {
+    if (retryCount > MAX_RETRIES) {
       console.error("[useTokenVerification]: Too many retry attempts, stopping");
       setError("För många försök att läsa in formuläret. Försök igen senare.");
       setErrorCode("too_many_retries");
       setLoading(false);
+      circuitBrokenRef.current = true;
+      return;
+    }
+    
+    // Skip if there's already a request in progress
+    if (requestInProgressRef.current) {
+      console.log("[useTokenVerification]: Request already in progress, skipping");
       return;
     }
     
     const fetchData = async () => {
+      // Mark request as in progress
+      requestInProgressRef.current = true;
+      
       try {
         if (!token) {
           setError("Ingen åtkomsttoken angiven");
           setLoading(false);
+          requestInProgressRef.current = false;
           return;
         }
         
         if (!supabase) {
           setError("Kunde inte ansluta till databasen");
           setLoading(false);
+          requestInProgressRef.current = false;
           return;
         }
         
@@ -105,6 +157,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           }
           
           setLoading(false);
+          requestInProgressRef.current = false;
           return;
         }
         
@@ -115,6 +168,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           console.error("[useTokenVerification]: Entry not found after successful verification");
           setError("Kunde inte hitta anamnesen");
           setLoading(false);
+          requestInProgressRef.current = false;
           return;
         }
         
@@ -137,20 +191,36 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         await refetchFormTemplate();
         
         setLoading(false);
+        requestInProgressRef.current = false;
       } catch (err: any) {
         console.error("[useTokenVerification]: Error in fetchData:", err);
-        setError("Ett oväntat fel uppstod: " + (err.message || "Okänt fel"));
-        setErrorCode("unexpected");
-        setDiagnosticInfo(JSON.stringify(err));
+        
+        // If this is a network error, don't break the circuit on first try
+        const isNetworkError = err.message?.includes("Failed to fetch") || 
+                              err.message?.includes("Network") ||
+                              err.message?.includes("network");
+                              
+        if (isNetworkError && retryCount < MAX_RETRIES) {
+          console.log("[useTokenVerification]: Network error, will retry automatically");
+        } else {
+          // Break the circuit for non-network errors or after max retries
+          circuitBrokenRef.current = true;
+          
+          setError("Ett oväntat fel uppstod: " + (err.message || "Okänt fel"));
+          setErrorCode("unexpected");
+          setDiagnosticInfo(JSON.stringify(err));
+        }
+        
         setLoading(false);
+        requestInProgressRef.current = false;
       }
     };
     
     fetchData();
-  }, [token, supabase, refetchFormTemplate, tokenManager, retryCount]);
+  }, [token, supabase, refetchFormTemplate, tokenManager, retryCount, isSupabaseReady, formTemplateLoading]);
   
   return {
-    loading: loading || tokenManager.isVerifying,
+    loading: loading || tokenManager.isVerifying || formTemplateLoading,
     error: error || tokenManager.verificationError,
     errorCode,
     diagnosticInfo,

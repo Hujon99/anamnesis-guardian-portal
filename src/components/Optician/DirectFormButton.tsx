@@ -13,29 +13,48 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { FileEdit, Loader2 } from "lucide-react";
+import { FileEdit, Loader2, AlertCircle } from "lucide-react";
 import { useFormTemplate } from "@/hooks/useFormTemplate";
 
 export function DirectFormButton() {
   const { organization } = useOrganization();
   const { user } = useUser();
   const { sessionClaims } = useAuth();
-  const { supabase } = useSupabaseClient();
+  const { supabase, isReady: isSupabaseReady } = useSupabaseClient();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
   
   // Get organization's form template with enhanced error handling
-  const { data: formTemplate, isLoading: templateLoading, error: templateError } = useFormTemplate();
+  const { 
+    data: formTemplate, 
+    isLoading: templateLoading, 
+    error: templateError,
+    isError: isTemplateError,
+    refetch: refetchTemplate 
+  } = useFormTemplate();
+  
+  // Reset error state when organization changes
+  useEffect(() => {
+    if (organization?.id) {
+      setHasError(false);
+    }
+  }, [organization?.id]);
   
   // Provide feedback if there's a template error
   useEffect(() => {
     if (templateError) {
-      console.error("Error loading form template:", templateError);
-      toast({
-        title: "Fel vid laddning av formulärmall",
-        description: "Kunde inte ladda organisationens formulärmall. Kontakta administratör.",
-        variant: "destructive",
-      });
+      console.error("[DirectFormButton]: Error loading form template:", templateError);
+      setHasError(true);
+      
+      // Only show toast for non-network errors to prevent spamming
+      if (!templateError.message?.includes("Failed to fetch")) {
+        toast({
+          title: "Fel vid laddning av formulärmall",
+          description: "Kunde inte ladda organisationens formulärmall. Kontakta administratör.",
+          variant: "destructive",
+        });
+      }
     }
   }, [templateError]);
   
@@ -53,17 +72,21 @@ export function DirectFormButton() {
         throw new Error("Ingen formulärmall hittades för denna organisation");
       }
 
-      console.log("Creating direct form entry with organization ID:", organization.id);
-      console.log("Current user ID:", user?.id || null);
-      console.log("Creator name:", creatorName);
-      console.log("Using form template ID:", formTemplate.id);
+      if (!isSupabaseReady || !supabase) {
+        throw new Error("Databasanslutning ej klar");
+      }
+
+      console.log("[DirectFormButton]: Creating direct form entry with organization ID:", organization.id);
+      console.log("[DirectFormButton]: Current user ID:", user?.id || null);
+      console.log("[DirectFormButton]: Creator name:", creatorName);
+      console.log("[DirectFormButton]: Using form template ID:", formTemplate.id);
 
       // Use a fixed identifier for direct in-store forms
       const patientIdentifier = "Direkt ifyllning i butik";
 
       // Generate a unique access token
       const accessToken = crypto.randomUUID();
-      console.log("Generated access token:", accessToken.substring(0, 6) + "...");
+      console.log("[DirectFormButton]: Generated access token:", accessToken.substring(0, 6) + "...");
 
       const { data, error } = await supabase
         .from("anamnes_entries")
@@ -82,18 +105,18 @@ export function DirectFormButton() {
         .single();
 
       if (error) {
-        console.error("Error creating direct form entry:", error);
+        console.error("[DirectFormButton]: Error creating direct form entry:", error);
         throw error;
       }
       
       // Log the URL that will be used for navigation
       const baseUrl = window.location.origin;
-      console.log("Will navigate to:", `${baseUrl}/optician-form?token=${accessToken}&mode=optician`);
+      console.log("[DirectFormButton]: Will navigate to:", `${baseUrl}/optician-form?token=${accessToken}&mode=optician`);
       
       return data;
     },
     onSuccess: (data) => {
-      console.log("Direct form entry created successfully:", data);
+      console.log("[DirectFormButton]: Direct form entry created successfully:", data);
       
       // Navigate to the optician form page with the token
       navigate(`/optician-form?token=${data.access_token}&mode=optician`);
@@ -104,7 +127,8 @@ export function DirectFormButton() {
       });
     },
     onError: (error: any) => {
-      console.error("Error creating direct form:", error);
+      console.error("[DirectFormButton]: Error creating direct form:", error);
+      setHasError(true);
       
       toast({
         title: "Fel vid skapande av formulär",
@@ -118,12 +142,38 @@ export function DirectFormButton() {
   });
 
   const handleCreateDirectForm = () => {
+    // Don't allow multiple attempts while loading
+    if (isLoading || createDirectFormEntry.isPending) {
+      return;
+    }
+    
+    // Reset error state and start loading
+    setHasError(false);
     setIsLoading(true);
-    createDirectFormEntry.mutate();
+    
+    // If template had an error, try refetching before proceeding
+    if (isTemplateError) {
+      refetchTemplate().then((result) => {
+        if (result.data) {
+          createDirectFormEntry.mutate();
+        } else {
+          setIsLoading(false);
+          setHasError(true);
+        }
+      });
+    } else {
+      createDirectFormEntry.mutate();
+    }
+  };
+
+  // Allow manual retry if there was an error
+  const handleRetry = () => {
+    setHasError(false);
+    refetchTemplate();
   };
 
   // Determine if button should be disabled
-  const isButtonDisabled = isLoading || createDirectFormEntry.isPending || templateLoading || !formTemplate;
+  const isButtonDisabled = !isSupabaseReady || isLoading || createDirectFormEntry.isPending || templateLoading;
   
   // Show informative tooltip if button is disabled due to missing template
   const buttonTitle = !formTemplate && !templateLoading 
@@ -131,18 +181,31 @@ export function DirectFormButton() {
     : "Skapa formulär för direkt ifyllning i butik";
 
   return (
-    <Button 
-      onClick={handleCreateDirectForm}
-      disabled={isButtonDisabled}
-      variant="secondary"
-      title={buttonTitle}
-    >
-      {(isLoading || createDirectFormEntry.isPending || templateLoading) ? (
-        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+    <>
+      {hasError ? (
+        <Button 
+          onClick={handleRetry}
+          variant="destructive"
+          title="Försök igen"
+        >
+          <AlertCircle className="h-4 w-4 mr-2" />
+          Försök igen
+        </Button>
       ) : (
-        <FileEdit className="h-4 w-4 mr-2" />
+        <Button 
+          onClick={handleCreateDirectForm}
+          disabled={isButtonDisabled}
+          variant="secondary"
+          title={buttonTitle}
+        >
+          {(isLoading || createDirectFormEntry.isPending || templateLoading) ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <FileEdit className="h-4 w-4 mr-2" />
+          )}
+          Direkt ifyllning i butik
+        </Button>
       )}
-      Direkt ifyllning i butik
-    </Button>
+    </>
   );
 }

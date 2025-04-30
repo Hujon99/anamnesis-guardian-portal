@@ -13,6 +13,7 @@ import FormNavigation from "@/components/PatientForm/FormNavigation";
 import FormStepContent from "@/components/PatientForm/FormStepContent";
 import { useFormContext } from "@/contexts/FormContext";
 import { toast } from "sonner";
+import { FieldError } from "react-hook-form";
 
 interface FormLayoutProps {
   createdByName?: string | null;
@@ -144,7 +145,10 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
           if (visibleFieldIds) {
             const visibleErrors = Object.entries(errors)
               .filter(([fieldId]) => visibleFieldIds.includes(fieldId))
-              .map(([fieldId, error]) => ({ fieldId, message: error.message }));
+              .map(([fieldId, error]) => ({ 
+                fieldId, 
+                message: (error as FieldError)?.message || "Validation error" 
+              }));
               
             console.error("Visible field errors:", visibleErrors);
             

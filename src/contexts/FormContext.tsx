@@ -11,7 +11,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FormTemplate } from "@/types/anamnesis";
+import { FormTemplate, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
 import { useMultiStepForm } from "@/hooks/useMultiStepForm";
 import { useFormValidation } from "@/hooks/useFormValidation";
 import { useConditionalFields } from "@/hooks/useConditionalFields";
@@ -73,7 +73,10 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const visibleFieldIds = useMemo(() => {
     return visibleSections.flatMap(stepSections => 
       stepSections.flatMap(section => 
-        section.questions.map(q => q.id || q.runtimeId)
+        section.questions.map(q => 
+          // Handle both regular FormQuestion and DynamicFollowupQuestion types
+          'runtimeId' in q ? (q as DynamicFollowupQuestion).runtimeId : q.id
+        )
       )
     );
   }, [visibleSections]);
@@ -159,7 +162,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         // Check which errors are for visible fields
         const visibleErrors = Object.entries(errors)
           .filter(([fieldId]) => visibleFieldIds.includes(fieldId))
-          .map(([fieldId, error]) => ({ fieldId, message: error.message }));
+          .map(([fieldId, error]) => ({ fieldId, message: (error as any)?.message }));
           
         console.error("Visible field errors:", visibleErrors);
         
@@ -233,7 +236,10 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     
     return visibleSections[currentStep].flatMap((section: any) => {
       if (!section.questions) return [];
-      return section.questions.map((q: any) => q.id || q.runtimeId);
+      return section.questions.map((q: any) => 
+        // Handle both regular FormQuestion and DynamicFollowupQuestion types
+        'runtimeId' in q ? q.runtimeId : q.id
+      );
     });
   };
 

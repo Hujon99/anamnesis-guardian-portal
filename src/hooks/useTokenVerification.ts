@@ -37,7 +37,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [formId, setFormId] = useState<string | null>(null);
   
   // Use the token manager hook to validate the token
-  const { verifyToken, isVerifying, verificationError, resetVerification } = useTokenManager();
+  const tokenManager = useTokenManager();
   
   // Get the form template for the organization
   const { data: formTemplate, refetch: refetchFormTemplate } = useFormTemplate();
@@ -51,7 +51,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
-    resetVerification();
+    tokenManager.resetVerification();
     refetchFormTemplate();
   };
   
@@ -74,12 +74,12 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         console.log("[useTokenVerification]: Verifying token:", token.substring(0, 6) + "...");
         
         // Verify the token first
-        const { valid, error: verificationErr, entry } = await verifyToken(token);
+        const { valid, error: verificationErr, entry, expired: isExpired } = await tokenManager.verifyToken(token);
         
         if (!valid || verificationErr || !entry) {
           console.error("[useTokenVerification]: Token verification failed:", verificationErr);
           
-          if (verificationErr?.includes("expired")) {
+          if (isExpired || verificationErr?.includes("expired")) {
             setExpired(true);
           } else {
             setError(verificationErr || "Ogiltig åtkomsttoken");
@@ -120,11 +120,11 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     };
     
     fetchData();
-  }, [token, supabase, verifyToken]);
+  }, [token, supabase, refetchFormTemplate, tokenManager]);
   
   return {
-    loading: loading || isVerifying,
-    error: error || verificationError,
+    loading: loading || tokenManager.isVerifying,
+    error: error || tokenManager.verificationError,
     errorCode,
     diagnosticInfo,
     expired,

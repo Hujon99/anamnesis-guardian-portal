@@ -14,7 +14,6 @@ import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
 import OpticianFormContainer from "@/components/Optician/OpticianFormContainer";
 import OpticianSubmittedView from "@/components/Optician/OpticianSubmittedView";
 import { useEffect, useState } from "react";
-import { FormTemplateWithMeta } from "@/hooks/useFormTemplate";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -69,16 +68,16 @@ const OpticianFormPage = () => {
     setStoredFormattedAnswers(formattedAnswers);
     
     // Proceed with submission
-    return handleFormSubmit(values, formTemplate, formattedAnswers);
+    await handleFormSubmit(values, formTemplate, formattedAnswers);
   };
   
   // Handle retry with stored form values
-  const handleSubmissionRetry = () => {
+  const handleSubmissionRetry = async () => {
     console.log("[OpticianFormPage/handleSubmissionRetry]: Attempting retry with stored values", storedFormValues);
     
     if (storedFormValues) {
       // If we have stored values, use them for the retry
-      return handleFormSubmit(storedFormValues, formTemplate, storedFormattedAnswers);
+      await handleFormSubmit(storedFormValues, formTemplate, storedFormattedAnswers);
     } else {
       // If no stored values (unlikely), reset the process
       console.warn("[OpticianFormPage/handleSubmissionRetry]: No stored form values for retry, resetting");

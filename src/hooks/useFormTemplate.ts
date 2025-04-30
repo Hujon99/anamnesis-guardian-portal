@@ -33,7 +33,7 @@ export const useFormTemplate = () => {
           .from('anamnes_forms' as any)
           .select("*")
           .or(`organization_id.eq.${organization?.id},organization_id.is.null`)
-          .order("organization_id", { ascending: false })
+          .order("organization_id", { ascending: false }) // Organization-specific first, then null (default)
           .limit(1)
           .maybeSingle();
           

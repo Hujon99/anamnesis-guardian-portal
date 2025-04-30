@@ -5,7 +5,8 @@
  * reducing unnecessary token requests and improving performance.
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useSupabaseClient } from "./useSupabaseClient";
 
 interface TokenCache {
   token: string;
@@ -15,6 +16,9 @@ interface TokenCache {
 export const useTokenManager = () => {
   // Use refs to avoid re-renders when updating the token cache
   const tokenCacheRef = useRef<TokenCache | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const { supabase } = useSupabaseClient();
   
   // Get token from cache if it's still valid
   const getTokenFromCache = useCallback(() => {
@@ -62,12 +66,73 @@ export const useTokenManager = () => {
     tokenCacheRef.current = null;
     console.log("Token cache cleared");
   }, []);
+  
+  // Verify token with the backend
+  const verifyToken = useCallback(async (token: string) => {
+    setIsVerifying(true);
+    setVerificationError(null);
+    
+    try {
+      if (!supabase) {
+        throw new Error("Supabase client not initialized");
+      }
+      
+      // Fetch the entry using the token
+      const { data: entry, error } = await supabase
+        .from("anamnes_entries")
+        .select("*")
+        .eq("access_token", token)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("[useTokenManager/verifyToken]: Database error:", error);
+        setVerificationError(`Database error: ${error.message}`);
+        setIsVerifying(false);
+        return { valid: false, error: error.message };
+      }
+      
+      if (!entry) {
+        console.error("[useTokenManager/verifyToken]: Entry not found");
+        setVerificationError("Ogiltig åtkomsttoken eller så har formuläret redan skickats in");
+        setIsVerifying(false);
+        return { valid: false, error: "Ogiltig åtkomsttoken" };
+      }
+      
+      // Check if the entry has expired
+      if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
+        console.error("[useTokenManager/verifyToken]: Token expired");
+        setVerificationError("Åtkomsttokenet har upphört att gälla");
+        setIsVerifying(false);
+        return { valid: false, error: "Token expired", expired: true };
+      }
+      
+      console.log("[useTokenManager/verifyToken]: Token verified successfully");
+      setIsVerifying(false);
+      return { valid: true, entry };
+      
+    } catch (err: any) {
+      console.error("[useTokenManager/verifyToken]: Error:", err);
+      setVerificationError(err.message || "Ett fel uppstod vid verifiering av token");
+      setIsVerifying(false);
+      return { valid: false, error: err.message };
+    }
+  }, [supabase]);
+  
+  // Reset verification state
+  const resetVerification = useCallback(() => {
+    setIsVerifying(false);
+    setVerificationError(null);
+  }, []);
 
   return {
     getTokenFromCache,
     saveTokenToCache,
     isValidToken,
     clearTokenCache,
-    tokenCacheRef
+    tokenCacheRef,
+    verifyToken,
+    isVerifying,
+    verificationError,
+    resetVerification
   };
 };

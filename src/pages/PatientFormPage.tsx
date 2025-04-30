@@ -81,11 +81,11 @@ const PatientFormPage = () => {
     console.log("PatientFormPage: Form template received:", formTemplate);
     if (formTemplate) {
       console.log("PatientFormPage: Template title:", formTemplate.title);
-      console.log("PatientFormPage: Template sections count:", formTemplate.sections?.length || 0);
+      console.log("PatientFormPage: Template sections count:", formTemplate.schema?.sections?.length || 0);
       
       // Log detailed information about sections
-      if (formTemplate.sections && formTemplate.sections.length > 0) {
-        formTemplate.sections.forEach((section, idx) => {
+      if (formTemplate.schema?.sections && formTemplate.schema.sections.length > 0) {
+        formTemplate.schema.sections.forEach((section, idx) => {
           console.log(`PatientFormPage: Section ${idx + 1}: ${section.section_title}`);
           console.log(`PatientFormPage: Section ${idx + 1} questions count:`, section.questions?.length || 0);
         });
@@ -189,13 +189,15 @@ const PatientFormPage = () => {
       
       <Card>
         <CardContent className="p-0">
-          <FormContainer
-            formTemplate={formTemplate}
-            onSubmit={handleFormSubmit}
-            isSubmitting={isSubmitting}
-            createdByName={createdByName}
-            onFormValuesChange={handleFormValuesChange}
-          />
+          {formTemplate && (
+            <FormContainer
+              formTemplate={formTemplate.schema}
+              onSubmit={handleFormSubmit}
+              isSubmitting={isSubmitting}
+              createdByName={createdByName}
+              onFormValuesChange={handleFormValuesChange}
+            />
+          )}
         </CardContent>
         
         <CardFooter className="flex justify-between pt-0 pb-4 px-6">

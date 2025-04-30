@@ -64,8 +64,6 @@ export const useOpticianFormSubmission = (token: string | null) => {
       
       // Set local state to indicate successful submission
       setLocalSubmitted(true);
-      
-      return true;
     },
     onSuccess: () => {
       toast({
@@ -86,13 +84,13 @@ export const useOpticianFormSubmission = (token: string | null) => {
     }
   });
   
-  const handleFormSubmit = (
+  const handleFormSubmit = async (
     values: Record<string, any>, 
     formTemplate: FormTemplateWithMeta | null,
     formattedAnswers?: any
   ) => {
     console.log("[useOpticianFormSubmission/handleFormSubmit]: Starting form submission");
-    return submission.mutateAsync({ values, formTemplate, formattedAnswers });
+    await submission.mutateAsync({ values, formTemplate, formattedAnswers });
   };
   
   return {

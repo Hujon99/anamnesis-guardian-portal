@@ -7,7 +7,6 @@
 
 import React from "react";
 import FormContainer from "@/components/PatientForm/FormContainer";
-import { FormTemplate } from "@/types/anamnesis";
 import OpticianFormHeader from "./OpticianFormHeader";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import { FormTemplateWithMeta } from "@/hooks/useFormTemplate";

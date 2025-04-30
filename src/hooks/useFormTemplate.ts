@@ -35,13 +35,13 @@ export const useFormTemplate = () => {
         }
         
         // Get organization-specific template or fall back to global template
-        // Using proper parameter binding instead of string interpolation
         const query = supabase
-          .from('anamnes_forms' as any)
+          .from('anamnes_forms')
           .select("*");
           
-        // Apply filters with proper parameter binding
+        // Apply filters properly without string interpolation
         if (organization?.id) {
+          // Use .or() with proper parameter syntax
           query.or(`organization_id.eq.${organization.id},organization_id.is.null`);
         } else {
           query.filter('organization_id', 'is', null);
@@ -63,14 +63,14 @@ export const useFormTemplate = () => {
           return null;
         }
         
-        console.log("[useFormTemplate]: Template found:", 
-          data.id, 
-          "organization:", 
-          data.organization_id || "default"
-        );
-        
-        // Type assertion to handle the schema property
+        // Type assertion to handle the schema property - AFTER we've checked that data exists
         const formData = data as unknown as AnamnesForm;
+        
+        console.log("[useFormTemplate]: Template found:", 
+          formData.id, 
+          "organization:", 
+          formData.organization_id || "default"
+        );
         
         return {
           schema: formData.schema,

@@ -4,14 +4,14 @@
  * It handles token verification, form rendering, validation, and submission
  * using a modular approach with dedicated components and hooks.
  * Enhanced to support magic links, auto-saving functionality, and smooth transitions
- * between loading and form display.
+ * between loading and form display using a state machine approach to prevent flashing.
  */
 
 import { useSearchParams } from "react-router-dom";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useFormSubmission } from "@/hooks/useFormSubmission";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
@@ -22,22 +22,33 @@ import CopyLinkButton from "@/components/PatientForm/CopyLinkButton";
 import AutoSaveIndicator from "@/components/PatientForm/AutoSaveIndicator";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
+// Define a form state enum for better state management
+type FormPageState = 
+  | "INITIAL_LOADING" 
+  | "ERROR" 
+  | "EXPIRED" 
+  | "SUBMITTED" 
+  | "FORM_READY"
+  | "SUBMITTING";
+
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
-  const [isPending, startTransition] = useTransition(); // Add useTransition for smoother UI changes
-  const [showForm, setShowForm] = useState(false);
+  const [formPageState, setFormPageState] = useState<FormPageState>("INITIAL_LOADING");
+  
+  // Track if initial rendering has occurred to avoid flashing
+  const initialRenderComplete = useRef(false);
+  const transitionTimeoutRef = useRef<number | null>(null);
   
   // Enhanced debugging
   useEffect(() => {
     console.log("PatientFormPage rendered with token:", token ? `${token.substring(0, 6)}...` : 'null');
-    
-    // Check if we're on the correct path
+    console.log("Current form page state:", formPageState);
     console.log("Current path:", window.location.pathname);
     console.log("Complete URL:", window.location.href);
     console.log("Search params:", Object.fromEntries([...searchParams.entries()]));
-  }, [token, searchParams]);
+  }, [token, searchParams, formPageState]);
   
   // Use custom hooks to handle token verification and form submission
   const { 
@@ -54,17 +65,48 @@ const PatientFormPage = () => {
     isFullyLoaded
   } = useTokenVerification(token);
   
-  // Effect to handle the transition from loading to showing form
+  // Determine the form page state based on verification results
   useEffect(() => {
-    if (isFullyLoaded && !formLoading && !loading && !error && !expired && !submitted) {
-      // Use transition to make UI changes smoother
-      startTransition(() => {
-        setShowForm(true);
-      });
-    } else {
-      setShowForm(false);
+    // Clear any pending timeouts to avoid race conditions
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current);
     }
-  }, [isFullyLoaded, formLoading, loading, error, expired, submitted]);
+    
+    if (loading || formLoading) {
+      setFormPageState("INITIAL_LOADING");
+      return;
+    }
+    
+    if (error) {
+      setFormPageState("ERROR");
+      return;
+    }
+    
+    if (expired) {
+      setFormPageState("EXPIRED");
+      return;
+    }
+    
+    if (submitted) {
+      setFormPageState("SUBMITTED");
+      return;
+    }
+    
+    if (isFullyLoaded && formTemplate) {
+      // Add a small delay before showing the form to ensure smooth transition
+      // and prevent rapid state changes causing flashing
+      transitionTimeoutRef.current = window.setTimeout(() => {
+        setFormPageState("FORM_READY");
+        initialRenderComplete.current = true;
+      }, 300);
+    }
+    
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+      }
+    };
+  }, [loading, formLoading, error, expired, submitted, isFullyLoaded, formTemplate]);
   
   const { 
     isSubmitting, 
@@ -72,6 +114,17 @@ const PatientFormPage = () => {
     isSubmitted, 
     submitForm 
   } = useFormSubmission();
+
+  // Update form state when submission starts
+  useEffect(() => {
+    if (isSubmitting) {
+      setFormPageState("SUBMITTING");
+    } else if (isSubmitted) {
+      setFormPageState("SUBMITTED");
+    } else if (submissionError && formPageState === "SUBMITTING") {
+      setFormPageState("ERROR");
+    }
+  }, [isSubmitting, isSubmitted, submissionError, formPageState]);
 
   // Setup auto-save functionality
   const {
@@ -82,7 +135,7 @@ const PatientFormPage = () => {
   } = useAutoSave({
     token,
     formData: currentFormValues,
-    enabled: !submitted && !isSubmitted && !!token,
+    enabled: formPageState === "FORM_READY" && !isSubmitted && !!token,
     formTemplate
   });
 
@@ -92,145 +145,104 @@ const PatientFormPage = () => {
   const firstName = entryData?.first_name || null;
   const bookingDate = entryData?.booking_date || null;
   const storeId = entryData?.store_id || null;
-
+  
   // Add additional debug logging for the form template
   useEffect(() => {
-    console.log("PatientFormPage: Form template received:", formTemplate);
     if (formTemplate) {
-      console.log("PatientFormPage: Template title:", formTemplate.title);
       console.log("PatientFormPage: Template schema sections count:", formTemplate.schema?.sections?.length || 0);
-      
-      // Log detailed information about sections
-      if (formTemplate.schema?.sections && formTemplate.schema.sections.length > 0) {
-        formTemplate.schema.sections.forEach((section, idx) => {
-          console.log(`PatientFormPage: Section ${idx + 1}: ${section.section_title}`);
-          console.log(`PatientFormPage: Section ${idx + 1} questions count:`, section.questions?.length || 0);
-        });
-      } else {
-        console.warn("PatientFormPage: Template has no sections!");
-      }
-    } else {
-      console.warn("PatientFormPage: Template is null or undefined!");
     }
   }, [formTemplate]);
 
-  // Handle form values change for auto-save
-  const handleFormValuesChange = (values: Record<string, any>) => {
+  // Handle form values change for auto-save - memoized to prevent unnecessary re-renders
+  const handleFormValuesChange = useCallback((values: Record<string, any>) => {
     setCurrentFormValues(values);
-  };
+  }, []);
 
-  // Handle form submission with form template
-  const handleFormSubmit = async (values: any, formattedAnswers?: any) => {
+  // Handle form submission with form template - memoized to prevent unnecessary re-renders
+  const handleFormSubmit = useCallback(async (values: any, formattedAnswers?: any) => {
     if (!token) {
       console.error("Cannot submit form: No token provided");
       return;
     }
     console.log("Submitting form with token:", token.substring(0, 6) + "...");
+    setFormPageState("SUBMITTING");
     await submitForm(token, values, formTemplate?.schema, formattedAnswers);
-  };
+  }, [token, submitForm, formTemplate?.schema]);
 
   // Get the responsible optician's name
   const createdByName = entryData?.created_by_name || null;
 
-  // Debug info
-  useEffect(() => {
-    console.log("Form state:", { 
-      loading, formLoading, error, errorCode, expired, submitted, isSubmitted, 
-      isPending, showForm, isFullyLoaded,
-      hasFormTemplate: !!formTemplate,
-      entryData: entryData ? `ID: ${entryData.id.substring(0, 8)}...` : null,
-      isMagicLink
-    });
-  }, [loading, formLoading, error, errorCode, expired, submitted, isSubmitted, 
-      formTemplate, entryData, isMagicLink, isPending, showForm, isFullyLoaded]);
-  
-  // Loading state - show while token verification or form is loading
-  if (loading || formLoading) {
-    return <LoadingCard onRetry={handleRetry} />;
-  }
-
-  // Expired token state
-  if (expired) {
-    return <ExpiredCard />;
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <ErrorCard 
-        error={error} 
-        errorCode={errorCode} 
-        diagnosticInfo={diagnosticInfo} 
-        onRetry={handleRetry} 
-      />
-    );
-  }
-
-  // Form already submitted state
-  if (submitted || isSubmitted) {
-    return <SubmittedCard />;
-  }
-
-  // Submission error state
-  if (submissionError) {
-    return (
-      <ErrorCard 
-        error={submissionError.message || "Ett fel uppstod vid inskickning av formuläret"} 
-        onRetry={() => handleFormSubmit({})} 
-      />
-    );
-  }
-
-  // Missing token state
-  if (!token) {
-    return (
-      <ErrorCard 
-        error="Ingen åtkomsttoken hittades i URL:en" 
-        errorCode="missing_token"
-        diagnosticInfo="Token parameter saknas i URL:en"
-        onRetry={() => window.location.href = "/"}
-      />
-    );
-  }
-
-  // Only show form when it's fully ready - prevents flashing
-  if (!showForm) {
-    return <LoadingCard onRetry={handleRetry} />;
-  }
-
-  // Form display state - default state
-  return (
-    <div className="space-y-4">
-      {/* Show info card for magic link entries */}
-      {isMagicLink && (
-        <BookingInfoCard 
-          firstName={firstName}
-          bookingId={bookingId}
-          bookingDate={bookingDate}
-          storeId={storeId}
-        />
-      )}
+  // Render different components based on form page state
+  switch (formPageState) {
+    case "INITIAL_LOADING":
+      return <LoadingCard onRetry={handleRetry} minDisplayTime={800} />;
       
-      <Card>
-        <CardContent className="p-0">
-          {formTemplate && (
-            <FormContainer
-              formTemplate={formTemplate.schema}
-              onSubmit={handleFormSubmit}
-              isSubmitting={isSubmitting}
-              createdByName={createdByName}
-              onFormValuesChange={handleFormValuesChange}
+    case "ERROR":
+      return (
+        <ErrorCard 
+          error={submissionError?.message || error} 
+          errorCode={errorCode} 
+          diagnosticInfo={diagnosticInfo} 
+          onRetry={handleRetry} 
+        />
+      );
+      
+    case "EXPIRED":
+      return <ExpiredCard />;
+      
+    case "SUBMITTED":
+    case "SUBMITTING":
+      if (isSubmitting) {
+        return <LoadingCard />;
+      }
+      return <SubmittedCard />;
+      
+    case "FORM_READY":
+      if (!token) {
+        return (
+          <ErrorCard 
+            error="Ingen åtkomsttoken hittades i URL:en" 
+            errorCode="missing_token"
+            diagnosticInfo="Token parameter saknas i URL:en"
+            onRetry={() => window.location.href = "/"}
+          />
+        );
+      }
+      
+      // Form display state - show only when fully ready
+      return (
+        <div className="space-y-4">
+          {/* Show info card for magic link entries */}
+          {isMagicLink && (
+            <BookingInfoCard 
+              firstName={firstName}
+              bookingId={bookingId}
+              bookingDate={bookingDate}
+              storeId={storeId}
             />
           )}
-        </CardContent>
-        
-        <CardFooter className="flex justify-between pt-0 pb-4 px-6">
-          <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
-          <CopyLinkButton />
-        </CardFooter>
-      </Card>
-    </div>
-  );
+          
+          <Card>
+            <CardContent className="p-0">
+              {formTemplate && (
+                <FormContainer
+                  formTemplate={formTemplate.schema}
+                  onSubmit={handleFormSubmit}
+                  isSubmitting={isSubmitting}
+                  createdByName={createdByName}
+                  onFormValuesChange={handleFormValuesChange}
+                />
+              )}
+            </CardContent>
+            
+            <CardFooter className="flex justify-between pt-0 pb-4 px-6">
+              <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
+              <CopyLinkButton />
+            </CardFooter>
+          </Card>
+        </div>
+      );
+  }
 };
 
 export default PatientFormPage;

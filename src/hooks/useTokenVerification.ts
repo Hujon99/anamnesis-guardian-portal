@@ -2,7 +2,8 @@
  * This hook verifies the token for accessing the anamnesis form.
  * It handles loading states, errors, and fetches the appropriate form template
  * and entry data based on the provided token.
- * Enhanced to handle simultaneous loading states to prevent flashing.
+ * Enhanced with better state coordination to prevent flashing and ensure
+ * all data is fully loaded before rendering the form.
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -13,7 +14,7 @@ import { AnamnesesEntry } from "@/types/anamnesis";
 
 interface UseTokenVerificationResult {
   loading: boolean;
-  formLoading: boolean;  // New state to track form loading specifically
+  formLoading: boolean;  
   error: string | null;
   errorCode: string;
   diagnosticInfo: string;
@@ -22,14 +23,14 @@ interface UseTokenVerificationResult {
   formTemplate: FormTemplateWithMeta | null;
   entryData: AnamnesesEntry | null;
   handleRetry: () => void;
-  isFullyLoaded: boolean; // New state to track when everything is ready
+  isFullyLoaded: boolean;
 }
 
 export const useTokenVerification = (token: string | null): UseTokenVerificationResult => {
   const { supabase, isReady: isSupabaseReady } = useSupabaseClient();
   const [loading, setLoading] = useState(true);
-  const [formLoading, setFormLoading] = useState(true); // New state for form loading
-  const [isFullyLoaded, setIsFullyLoaded] = useState(false); // Track complete loading state
+  const [formLoading, setFormLoading] = useState(true);
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState("");
   const [diagnosticInfo, setDiagnosticInfo] = useState("");
@@ -39,7 +40,12 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [formId, setFormId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [renderDelay, setRenderDelay] = useState(false); // Add a small delay before showing form
+  
+  // Refs for state tracking and debouncing
+  const isVerifyingRef = useRef(false);
+  const lastVerificationTimeRef = useRef<number>(0);
+  const verificationCooldownMs = 800; // Cooldown period to prevent rapid verification calls
+  const stableFormDataRef = useRef<boolean>(false);
   
   // Add circuit breaker to prevent infinite retries
   const MAX_RETRIES = 3;
@@ -55,14 +61,18 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     data: formTemplate, 
     refetch: refetchFormTemplate,
     isLoading: formTemplateLoading,
-    isSuccess: formTemplateSuccess
+    isSuccess: formTemplateSuccess,
+    isError: formTemplateError
   } = useFormTemplate();
   
   // Reset circuit breaker when token changes
   useEffect(() => {
     circuitBrokenRef.current = false;
     requestInProgressRef.current = false;
+    isVerifyingRef.current = false;
+    stableFormDataRef.current = false;
     lastErrorRef.current = null;
+    lastVerificationTimeRef.current = 0;
     setRetryCount(0);
     setFormLoading(true);
     setIsFullyLoaded(false);
@@ -75,28 +85,46 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     }
   }, [token]);
 
-  // Track form template loading state
+  // Unified status tracking - ensure we've met all conditions to mark as fully loaded
   useEffect(() => {
-    // When form template loads successfully and not in an error state
-    if (formTemplateSuccess && !loading && !error && !expired && !submitted) {
-      // Small delay to ensure everything is ready to render
-      const timer = setTimeout(() => {
-        setFormLoading(false);
-        
-        // Add a small additional delay to ensure smooth transition
-        setTimeout(() => {
-          setIsFullyLoaded(true);
-        }, 150);
-      }, 200);
+    const now = Date.now();
+    const timeSinceLastVerification = now - lastVerificationTimeRef.current;
+    const verificationStable = timeSinceLastVerification > verificationCooldownMs;
+    
+    // Check for the ideal condition to set isFullyLoaded = true
+    if (!loading && 
+        !isVerifyingRef.current && 
+        formTemplateSuccess && 
+        !formTemplateLoading && 
+        verificationStable &&
+        entryData && 
+        formTemplate && 
+        !error && 
+        !expired && 
+        !submitted) {
       
-      return () => clearTimeout(timer);
+      // Ensure we have stable data for a minimum period before marking as loaded
+      if (!stableFormDataRef.current) {
+        stableFormDataRef.current = true;
+        // Add a small delay to ensure all React updates have propagated
+        const stabilityTimer = setTimeout(() => {
+          console.log("[useTokenVerification]: All conditions met, marking as fully loaded");
+          setFormLoading(false);
+          setIsFullyLoaded(true);
+        }, 300);
+        
+        return () => clearTimeout(stabilityTimer);
+      }
+    } else {
+      // Reset stable data flag if conditions are no longer met
+      stableFormDataRef.current = false;
     }
-  }, [formTemplateSuccess, loading, error, expired, submitted]);
+  }, [loading, formTemplateLoading, formTemplateSuccess, formTemplate, entryData, error, expired, submitted]);
   
   // Function to handle retrying the verification process
   const handleRetry = () => {
     // Don't retry if a request is already in progress
-    if (requestInProgressRef.current) {
+    if (requestInProgressRef.current || isVerifyingRef.current) {
       console.log("[useTokenVerification/handleRetry]: Request already in progress, ignoring retry");
       return;
     }
@@ -111,6 +139,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setExpired(false);
     setSubmitted(false);
     lastErrorRef.current = null;
+    lastVerificationTimeRef.current = 0;
+    stableFormDataRef.current = false;
     
     // Reset verification state
     tokenManager.resetVerification();
@@ -120,6 +150,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     
     // Reset request in progress
     requestInProgressRef.current = false;
+    isVerifyingRef.current = false;
     
     // Increment retry count to prevent infinite loops
     setRetryCount((prev) => prev + 1);
@@ -131,7 +162,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   // Effect to verify the token and fetch entry data
   useEffect(() => {
     // Skip verification if Supabase client is not ready
-    if (!isSupabaseReady || formTemplateLoading) {
+    if (!isSupabaseReady) {
+      console.log("[useTokenVerification]: Supabase client not ready, skipping verification");
       return;
     }
     
@@ -154,14 +186,24 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     }
     
     // Skip if there's already a request in progress
-    if (requestInProgressRef.current) {
+    if (requestInProgressRef.current || isVerifyingRef.current) {
       console.log("[useTokenVerification]: Request already in progress, skipping");
       return;
     }
     
+    // Implement cooldown to prevent rapid verification attempts
+    const now = Date.now();
+    const timeSinceLastVerification = now - lastVerificationTimeRef.current;
+    if (timeSinceLastVerification < verificationCooldownMs) {
+      console.log(`[useTokenVerification]: Cooldown period active (${timeSinceLastVerification}ms), skipping verification`);
+      return;
+    }
+    
     const fetchData = async () => {
-      // Mark request as in progress
+      // Mark request as in progress and update verification time
       requestInProgressRef.current = true;
+      isVerifyingRef.current = true;
+      lastVerificationTimeRef.current = Date.now();
       
       try {
         if (!token) {
@@ -170,6 +212,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           setLoading(false);
           setFormLoading(false);
           requestInProgressRef.current = false;
+          isVerifyingRef.current = false;
           return;
         }
         
@@ -179,6 +222,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           setLoading(false);
           setFormLoading(false);
           requestInProgressRef.current = false;
+          isVerifyingRef.current = false;
           return;
         }
         
@@ -213,6 +257,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           setLoading(false);
           setFormLoading(false);
           requestInProgressRef.current = false;
+          isVerifyingRef.current = false;
           return;
         }
         
@@ -226,6 +271,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           setLoading(false);
           setFormLoading(false);
           requestInProgressRef.current = false;
+          isVerifyingRef.current = false;
           return;
         }
         
@@ -240,6 +286,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         if (entry.answers) {
           console.log("[useTokenVerification]: Entry already has answers, marking as submitted");
           setSubmitted(true);
+          setLoading(false);
+          requestInProgressRef.current = false;
+          isVerifyingRef.current = false;
+          return;
         }
         
         // Store the entry data
@@ -252,10 +302,11 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         setError(null);
         setErrorCode("");
         
-        // Token verification part is done, but we keep formLoading true
-        // until the form template has loaded (handled in other effect)
+        // Mark token verification as complete
         setLoading(false);
         requestInProgressRef.current = false;
+        
+        // We'll keep isVerifying true until the form template check completes
       } catch (err: any) {
         console.error("[useTokenVerification]: Error in fetchData:", err);
         
@@ -283,15 +334,39 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         setLoading(false);
         setFormLoading(false);
         requestInProgressRef.current = false;
+        isVerifyingRef.current = false;
       }
     };
     
     fetchData();
-  }, [token, supabase, refetchFormTemplate, tokenManager, retryCount, isSupabaseReady, formTemplateLoading]);
+  }, [token, supabase, refetchFormTemplate, tokenManager, retryCount, isSupabaseReady]);
+
+  // Second effect - monitor the form template loading status
+  useEffect(() => {
+    // Only process if we've already verified the token (loading is false)
+    if (loading || !entryData) {
+      return;
+    }
+    
+    if (formTemplateError) {
+      console.error("[useTokenVerification]: Form template error");
+      setError("Kunde inte ladda formulärmallen");
+      setErrorCode("template_error");
+      setFormLoading(false);
+      isVerifyingRef.current = false;
+    }
+    
+    // When form template is successfully loaded
+    if (formTemplateSuccess && formTemplate) {
+      console.log("[useTokenVerification]: Form template loaded successfully");
+      isVerifyingRef.current = false;
+      // formLoading will be set to false when all conditions are met in the unified state tracking effect
+    }
+  }, [formTemplateError, formTemplateSuccess, formTemplate, loading, entryData]);
   
   return {
     loading: loading || tokenManager.isVerifying,
-    formLoading: formLoading || formTemplateLoading || loading || tokenManager.isVerifying,
+    formLoading: formLoading || formTemplateLoading || loading || tokenManager.isVerifying || isVerifyingRef.current,
     error: error || tokenManager.verificationError,
     errorCode,
     diagnosticInfo,

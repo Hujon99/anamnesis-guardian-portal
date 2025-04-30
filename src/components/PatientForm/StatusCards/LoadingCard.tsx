@@ -2,28 +2,44 @@
 /**
  * This component displays a loading state for the patient form.
  * It shows a spinner and loading message while the form is being loaded.
- * Enhanced with a timer to show extended messages for long loading times
- * and a retry button for cases where loading takes too long.
+ * Enhanced with a timer to show extended messages for long loading times,
+ * a minimum display time to prevent flashing, and a retry button for cases
+ * where loading takes too long.
  */
 
 import React, { useState, useEffect } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface LoadingCardProps {
   onRetry?: () => void;
+  minDisplayTime?: number; // Added prop for minimum display time
 }
 
-const LoadingCard: React.FC<LoadingCardProps> = ({ onRetry }) => {
+const LoadingCard: React.FC<LoadingCardProps> = ({ 
+  onRetry,
+  minDisplayTime = 1000 // Default minimum display time of 1 second
+}) => {
   const [loadingTime, setLoadingTime] = useState(0);
+  const [canHide, setCanHide] = useState(false);
   
   useEffect(() => {
+    // Set up timer for loading messages
     const timer = setInterval(() => {
       setLoadingTime(prev => prev + 1);
     }, 1000);
     
-    return () => clearInterval(timer);
-  }, []);
+    // Set up minimum display timer
+    const minDisplayTimer = setTimeout(() => {
+      setCanHide(true);
+    }, minDisplayTime);
+    
+    return () => {
+      clearInterval(timer);
+      clearTimeout(minDisplayTimer);
+    };
+  }, [minDisplayTime]);
   
   // Show additional messaging if loading takes longer than expected
   const getLoadingMessage = () => {
@@ -40,9 +56,17 @@ const LoadingCard: React.FC<LoadingCardProps> = ({ onRetry }) => {
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center p-6 bg-white rounded-lg shadow-md">
+      <div className="text-center p-6 bg-white rounded-lg shadow-md max-w-md w-full">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
         <p className="mt-4 text-gray-600">{getLoadingMessage()}</p>
+        
+        {/* Loading indicators to make the transition smoother */}
+        {loadingTime >= 3 && (
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-2 w-3/4 mx-auto" />
+            <Skeleton className="h-2 w-1/2 mx-auto" />
+          </div>
+        )}
         
         {loadingTime >= 15 && onRetry && (
           <div className="mt-6">

@@ -25,6 +25,8 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 // Define a form state enum for better state management
 type FormPageState = 
   | "INITIAL_LOADING" 
+  | "LOADING_WITH_DATA"
+  | "TRANSITION"
   | "ERROR" 
   | "EXPIRED" 
   | "SUBMITTED" 
@@ -42,6 +44,7 @@ const PatientFormPage = () => {
   const transitionTimeoutRef = useRef<number | null>(null);
   const formDataReadyRef = useRef(false);
   const forcedTransitionTimeoutRef = useRef<number | null>(null);
+  const stateChangeTimeRef = useRef<number>(Date.now());
   
   // Enhanced debugging
   useEffect(() => {
@@ -50,6 +53,11 @@ const PatientFormPage = () => {
     console.log("Current path:", window.location.pathname);
     console.log("Complete URL:", window.location.href);
     console.log("Search params:", Object.fromEntries([...searchParams.entries()]));
+    
+    // Track state changes with timestamps for debugging
+    const timeSinceLastChange = Date.now() - stateChangeTimeRef.current;
+    console.log(`State changed to ${formPageState} after ${timeSinceLastChange}ms`);
+    stateChangeTimeRef.current = Date.now();
   }, [token, searchParams, formPageState]);
   
   // Use custom hooks to handle token verification and form submission
@@ -69,23 +77,27 @@ const PatientFormPage = () => {
   
   // Force transition to FORM_READY if we have the form template but isFullyLoaded is not set
   useEffect(() => {
-    if (formTemplate && !isFullyLoaded && formPageState === "INITIAL_LOADING" && !loading) {
-      // If we have the form template but not fully loaded, set a timeout to force transition
-      console.log("[PatientFormPage]: Have formTemplate but not fully loaded, setting backup timer");
+    if (formTemplate && formPageState === "INITIAL_LOADING" && !loading) {
+      // Update to LOADING_WITH_DATA state first
+      console.log("[PatientFormPage]: Have formTemplate but not fully loaded, setting LOADING_WITH_DATA state");
+      setFormPageState("LOADING_WITH_DATA");
+      formDataReadyRef.current = true;
       
+      // Set a backup timer to force transition after 2.5 seconds
       if (!forcedTransitionTimeoutRef.current) {
         forcedTransitionTimeoutRef.current = window.setTimeout(() => {
-          console.log("[PatientFormPage]: Backup timer triggered, forcing FORM_READY state");
-          if (formPageState === "INITIAL_LOADING") {
-            formDataReadyRef.current = true;
+          console.log("[PatientFormPage]: Backup timer triggered, forcing TRANSITION state");
+          if (formPageState === "LOADING_WITH_DATA" || formPageState === "INITIAL_LOADING") {
+            setFormPageState("TRANSITION");
             
-            // Wait a bit more to ensure smooth transition
+            // Then schedule the final transition to FORM_READY
             setTimeout(() => {
+              console.log("[PatientFormPage]: Final transition to FORM_READY");
               setFormPageState("FORM_READY");
               initialRenderComplete.current = true;
-            }, 500);
+            }, 300);
           }
-        }, 2000); // Wait 2 seconds before forcing transition
+        }, 2500);
       }
     }
     
@@ -95,26 +107,24 @@ const PatientFormPage = () => {
         forcedTransitionTimeoutRef.current = null;
       }
     };
-  }, [formTemplate, isFullyLoaded, formPageState, loading]);
+  }, [formTemplate, formPageState, loading]);
   
   // Determine the form page state based on verification results
   useEffect(() => {
     // Clear any pending timeouts to avoid race conditions
     if (transitionTimeoutRef.current) {
       clearTimeout(transitionTimeoutRef.current);
+      transitionTimeoutRef.current = null;
     }
     
-    if (loading || formLoading) {
-      setFormPageState("INITIAL_LOADING");
-      return;
-    }
-    
+    // Error state takes precedence
     if (error) {
       console.log("[PatientFormPage]: Error detected, transitioning to ERROR state");
       setFormPageState("ERROR");
       return;
     }
     
+    // Then check for expired or submitted states
     if (expired) {
       console.log("[PatientFormPage]: Token expired, transitioning to EXPIRED state");
       setFormPageState("EXPIRED");
@@ -127,30 +137,65 @@ const PatientFormPage = () => {
       return;
     }
     
+    // Handle loading states
+    if (loading || formLoading) {
+      // Only update state if coming from initial state to avoid unnecessary renders
+      if (formPageState === "INITIAL_LOADING" && formTemplate) {
+        console.log("[PatientFormPage]: Have template while loading, showing LOADING_WITH_DATA state");
+        formDataReadyRef.current = true;
+        setFormPageState("LOADING_WITH_DATA");
+      }
+      return;
+    }
+    
     // If form template is loaded, mark data as ready for the loading screen
     if (formTemplate) {
       console.log("[PatientFormPage]: Form template loaded, marking data as ready");
       formDataReadyRef.current = true;
+      
+      // If we were in INITIAL_LOADING, move to LOADING_WITH_DATA first
+      if (formPageState === "INITIAL_LOADING") {
+        setFormPageState("LOADING_WITH_DATA");
+        
+        // Schedule transition to avoid flashing
+        transitionTimeoutRef.current = window.setTimeout(() => {
+          console.log("[PatientFormPage]: Scheduling transition phase");
+          setFormPageState("TRANSITION");
+          
+          // Then schedule the final transition to FORM_READY
+          setTimeout(() => {
+            console.log("[PatientFormPage]: Final transition to FORM_READY");
+            setFormPageState("FORM_READY");
+            initialRenderComplete.current = true;
+          }, 300);
+        }, 500);
+      }
     }
     
-    if (isFullyLoaded && formTemplate) {
-      console.log("[PatientFormPage]: Form fully loaded, preparing for transition to FORM_READY");
+    // If fully loaded with form data, use a multi-step transition
+    if (isFullyLoaded && formTemplate && !initialRenderComplete.current) {
+      console.log("[PatientFormPage]: Form fully loaded, preparing transition sequence");
       
-      // Add a small delay before showing the form to ensure smooth transition
-      // and prevent rapid state changes causing flashing
-      transitionTimeoutRef.current = window.setTimeout(() => {
-        console.log("[PatientFormPage]: Transition timeout elapsed, setting FORM_READY state");
-        setFormPageState("FORM_READY");
-        initialRenderComplete.current = true;
-      }, 300);
+      if (formPageState === "INITIAL_LOADING" || formPageState === "LOADING_WITH_DATA") {
+        console.log("[PatientFormPage]: Starting transition phase");
+        setFormPageState("TRANSITION");
+        
+        // Schedule final transition after a short delay
+        transitionTimeoutRef.current = window.setTimeout(() => {
+          console.log("[PatientFormPage]: Transition complete, setting FORM_READY state");
+          setFormPageState("FORM_READY");
+          initialRenderComplete.current = true;
+        }, 300);
+      }
     }
     
     return () => {
       if (transitionTimeoutRef.current) {
         clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = null;
       }
     };
-  }, [loading, formLoading, error, expired, submitted, isFullyLoaded, formTemplate]);
+  }, [loading, formLoading, error, expired, submitted, isFullyLoaded, formTemplate, formPageState]);
   
   const { 
     isSubmitting, 
@@ -222,11 +267,21 @@ const PatientFormPage = () => {
   // Render different components based on form page state
   switch (formPageState) {
     case "INITIAL_LOADING":
+    case "LOADING_WITH_DATA":
       return (
         <LoadingCard 
           onRetry={handleRetry} 
-          minDisplayTime={1500}
+          minDisplayTime={2000}
           isFormDataReady={formDataReadyRef.current} 
+        />
+      );
+      
+    case "TRANSITION":
+      // Show a loading card but indicate that we're in transition
+      return (
+        <LoadingCard 
+          minDisplayTime={300}
+          isFormDataReady={true} 
         />
       );
       
@@ -246,7 +301,7 @@ const PatientFormPage = () => {
     case "SUBMITTED":
     case "SUBMITTING":
       if (isSubmitting) {
-        return <LoadingCard minDisplayTime={800} />;
+        return <LoadingCard minDisplayTime={800} isFormDataReady={true} />;
       }
       return <SubmittedCard />;
       

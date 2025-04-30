@@ -35,6 +35,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [entryData, setEntryData] = useState<AnamnesesEntry | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [formId, setFormId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0); // Add retry count to prevent infinite loops
   
   // Use the token manager hook to validate the token, passing the supabase client
   const tokenManager = useTokenManager(supabase);
@@ -51,12 +52,24 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
+    // Fix: Remove the argument from resetVerification
     tokenManager.resetVerification();
+    // Increment retry count to prevent infinite loops
+    setRetryCount((prev) => prev + 1);
     refetchFormTemplate();
   };
   
   // Effect to verify the token and fetch entry data
   useEffect(() => {
+    // Add a guard against too many retries
+    if (retryCount > 3) {
+      console.error("[useTokenVerification]: Too many retry attempts, stopping");
+      setError("För många försök att läsa in formuläret. Försök igen senare.");
+      setErrorCode("too_many_retries");
+      setLoading(false);
+      return;
+    }
+    
     const fetchData = async () => {
       try {
         if (!token) {
@@ -74,19 +87,33 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         console.log("[useTokenVerification]: Verifying token:", token.substring(0, 6) + "...");
         
         // Verify the token first
-        const { valid, error: verificationErr, entry, expired: isExpired } = await tokenManager.verifyToken(token);
+        const verificationResult = await tokenManager.verifyToken(token);
         
-        if (!valid || verificationErr || !entry) {
-          console.error("[useTokenVerification]: Token verification failed:", verificationErr);
+        // Handle the different result types with proper type checking
+        if (!verificationResult.valid) {
+          console.error("[useTokenVerification]: Token verification failed:", verificationResult.error);
           
-          if (isExpired || verificationErr?.includes("expired")) {
+          // Safely check if expired property exists and is true
+          const isExpired = 'expired' in verificationResult && verificationResult.expired === true;
+          
+          if (isExpired || (verificationResult.error && verificationResult.error.includes("expired"))) {
             setExpired(true);
           } else {
-            setError(verificationErr || "Ogiltig åtkomsttoken");
+            setError(verificationResult.error || "Ogiltig åtkomsttoken");
             setErrorCode("invalid_token");
-            setDiagnosticInfo(`Token: ${token.substring(0, 6)}..., Error: ${verificationErr || "Unknown"}`);
+            setDiagnosticInfo(`Token: ${token.substring(0, 6)}..., Error: ${verificationResult.error || "Unknown"}`);
           }
           
+          setLoading(false);
+          return;
+        }
+        
+        // Now that we know it's valid, we can safely access the entry property
+        const entry = 'entry' in verificationResult ? verificationResult.entry : null;
+        
+        if (!entry) {
+          console.error("[useTokenVerification]: Entry not found after successful verification");
+          setError("Kunde inte hitta anamnesen");
           setLoading(false);
           return;
         }
@@ -120,7 +147,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     };
     
     fetchData();
-  }, [token, supabase, refetchFormTemplate, tokenManager]);
+  }, [token, supabase, refetchFormTemplate, tokenManager, retryCount]);
   
   return {
     loading: loading || tokenManager.isVerifying,

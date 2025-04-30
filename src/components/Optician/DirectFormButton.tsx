@@ -6,7 +6,7 @@
  * Uses the organization-specific form template.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
@@ -24,8 +24,20 @@ export function DirectFormButton() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   
-  // Get organization's form template
-  const { data: formTemplate } = useFormTemplate();
+  // Get organization's form template with enhanced error handling
+  const { data: formTemplate, isLoading: templateLoading, error: templateError } = useFormTemplate();
+  
+  // Provide feedback if there's a template error
+  useEffect(() => {
+    if (templateError) {
+      console.error("Error loading form template:", templateError);
+      toast({
+        title: "Fel vid laddning av formulärmall",
+        description: "Kunde inte ladda organisationens formulärmall. Kontakta administratör.",
+        variant: "destructive",
+      });
+    }
+  }, [templateError]);
   
   // Get the creator's name from session claims
   const creatorName = sessionClaims?.full_name as string || user?.fullName || user?.id || "Okänd";
@@ -110,13 +122,22 @@ export function DirectFormButton() {
     createDirectFormEntry.mutate();
   };
 
+  // Determine if button should be disabled
+  const isButtonDisabled = isLoading || createDirectFormEntry.isPending || templateLoading || !formTemplate;
+  
+  // Show informative tooltip if button is disabled due to missing template
+  const buttonTitle = !formTemplate && !templateLoading 
+    ? "Ingen formulärmall finns tillgänglig för denna organisation"
+    : "Skapa formulär för direkt ifyllning i butik";
+
   return (
     <Button 
       onClick={handleCreateDirectForm}
-      disabled={isLoading || createDirectFormEntry.isPending || !formTemplate}
+      disabled={isButtonDisabled}
       variant="secondary"
+      title={buttonTitle}
     >
-      {(isLoading || createDirectFormEntry.isPending) ? (
+      {(isLoading || createDirectFormEntry.isPending || templateLoading) ? (
         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
       ) : (
         <FileEdit className="h-4 w-4 mr-2" />

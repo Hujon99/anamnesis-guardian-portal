@@ -51,7 +51,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
-    tokenManager.resetVerification();
+    tokenManager.resetVerification(); // Fixed: removed the parameter
     refetchFormTemplate();
   };
   

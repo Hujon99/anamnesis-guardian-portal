@@ -4,9 +4,10 @@
  * It manages the multi-step form flow, validation, and submission process.
  * Enhanced to support form values change events for auto-save functionality.
  * Enhanced with better error handling and detailed logging for debugging.
+ * Now supports dynamic validation based on field visibility.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,6 +44,7 @@ interface FormContextValue {
   previousStep: () => void;
   handleSubmit: () => (data: any) => Promise<void>;
   processSectionsWithDebounce?: (sections: any[], values: Record<string, any>) => void;
+  visibleFieldIds?: string[];
 }
 
 const FormContext = createContext<FormContextValue | undefined>(undefined);
@@ -61,8 +63,28 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     sections: formTemplate?.sections?.length || 0
   });
 
-  // Setup form validation based on the form template
-  const validation = useFormValidation(formTemplate, initialValues);
+  // Use state for form values that will be watched
+  const [watchedFormValues, setWatchedFormValues] = useState<Record<string, any>>(initialValues || {});
+  
+  // Setup conditional fields logic
+  const { visibleSections, dynamicQuestions } = useConditionalFields(formTemplate, watchedFormValues, isOpticianMode);
+  
+  // Get all visible field IDs for validation
+  const visibleFieldIds = useMemo(() => {
+    return visibleSections.flatMap(stepSections => 
+      stepSections.flatMap(section => 
+        section.questions.map(q => q.id || q.runtimeId)
+      )
+    );
+  }, [visibleSections]);
+
+  // Setup form validation based on the form template and only validate visible fields
+  const validation = useFormValidation(
+    formTemplate, 
+    initialValues,
+    watchedFormValues,
+    visibleFieldIds
+  );
   
   // Create the form with React Hook Form - handle the case where defaultValues might not exist
   const form = useForm({
@@ -74,15 +96,17 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Get the form values and handle them for auto-save
   const watchedValues = form.watch();
   
+  // Update our local state when form values change
+  useEffect(() => {
+    setWatchedFormValues(watchedValues);
+  }, [watchedValues]);
+  
   // Call onFormValuesChange when form values change
   useEffect(() => {
     if (onFormValuesChange) {
       onFormValuesChange(watchedValues);
     }
   }, [watchedValues, onFormValuesChange]);
-
-  // Setup conditional fields logic
-  const { visibleSections } = useConditionalFields(formTemplate, watchedValues, isOpticianMode);
 
   // Setup multi-step form navigation
   const multiStepForm = useMultiStepForm({ 
@@ -116,10 +140,38 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const handleFormSubmit = () => async (data: any) => {
     console.log("[FormContext/handleFormSubmit]: Form submission triggered", { 
       dataKeys: Object.keys(data).length,
-      isOpticianMode
+      isOpticianMode,
+      visibleFieldCount: visibleFieldIds.length
     });
     
+    console.log("[FormContext/handleFormSubmit]: Visible field IDs:", visibleFieldIds);
+    
     try {
+      // Validate only visible fields
+      console.log("[FormContext/handleFormSubmit]: Validating visible fields only");
+      const isValid = await form.trigger(visibleFieldIds);
+      
+      if (!isValid) {
+        console.error("[FormContext/handleFormSubmit]: Form validation failed for visible fields");
+        const errors = form.formState.errors;
+        console.error("Validation errors:", errors);
+        
+        // Check which errors are for visible fields
+        const visibleErrors = Object.entries(errors)
+          .filter(([fieldId]) => visibleFieldIds.includes(fieldId))
+          .map(([fieldId, error]) => ({ fieldId, message: error.message }));
+          
+        console.error("Visible field errors:", visibleErrors);
+        
+        if (visibleErrors.length > 0) {
+          toast.error("Formuläret innehåller fel som måste åtgärdas");
+          return;
+        } else {
+          // If errors are only in hidden fields, we can proceed
+          console.log("[FormContext/handleFormSubmit]: Errors only in hidden fields, proceeding with submission");
+        }
+      }
+      
       console.log("[FormContext/handleFormSubmit]: Formatting answers for submission");
       const formattedAnswers = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
       console.log("[FormContext/handleFormSubmit]: Answers formatted successfully");
@@ -153,13 +205,17 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     
     try {
       console.log("[FormContext/nextStep]: Validating fields for current step:", fields);
-      const isValid = await form.trigger(fields);
+      // Only validate fields that are currently visible
+      const visibleFields = fields.filter(fieldId => visibleFieldIds.includes(fieldId));
+      console.log("[FormContext/nextStep]: Visible fields for validation:", visibleFields);
+      
+      const isValid = await form.trigger(visibleFields);
       if (isValid) {
         console.log("[FormContext/nextStep]: Fields valid, proceeding to next step");
         goToNextStep();
       } else {
         console.log("[FormContext/nextStep]: Field validation failed, staying on current step");
-        // Could add a toast here to inform the user
+        toast.error("Vänligen åtgärda felen innan du fortsätter");
       }
     } catch (error) {
       console.error("[FormContext/nextStep]: Error during validation:", error);
@@ -187,9 +243,10 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       currentStep, 
       totalSections, 
       isLastStep, 
-      isSubmitting 
+      isSubmitting,
+      visibleFieldCount: visibleFieldIds.length
     });
-  }, [currentStep, totalSections, isLastStep, isSubmitting]);
+  }, [currentStep, totalSections, isLastStep, isSubmitting, visibleFieldIds]);
 
   return (
     <FormContext.Provider
@@ -208,7 +265,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         nextStep,
         previousStep,
         handleSubmit: () => handleFormSubmit(),
-        processSectionsWithDebounce
+        processSectionsWithDebounce,
+        visibleFieldIds
       }}
     >
       <FormProvider {...form}>{children}</FormProvider>

@@ -2,6 +2,7 @@
 /**
  * This component provides navigation controls for multi-step forms.
  * It includes previous/next buttons and handles form submission.
+ * Enhanced with better error handling and debugging to trace submission flow.
  */
 
 import React from "react";
@@ -46,6 +47,7 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
           variant="outline" 
           onClick={onPrevious}
           aria-label="Gå till föregående steg"
+          disabled={isSubmitting}
         >
           <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
           <span>Föregående</span>
@@ -55,7 +57,7 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
       
       {isLastStep ? (
         <Button 
-          type="button" // Changed from "submit" to "button" to prevent automatic submission
+          type="button"
           className={`${isFirstStep ? "ml-auto" : ""}`}
           disabled={isSubmitting}
           aria-label="Skicka formulär"

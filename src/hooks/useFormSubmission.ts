@@ -4,6 +4,7 @@
  * It handles submission state, error handling, and interacts with the API
  * to send the processed form data to the submit-form edge function.
  * Enhanced with better error handling and detailed logging for debugging.
+ * Now includes conditional validation for form submissions.
  */
 
 import { useState } from "react";
@@ -44,10 +45,42 @@ export const useFormSubmission = () => {
       const isOpticianSubmission = values._metadata?.submittedBy === 'optician';
       console.log("[useFormSubmission/submitForm]: isOpticianSubmission:", isOpticianSubmission);
       
+      // Handle conditional fields - filter out values that are not needed
+      // If values contain keys that have parent-child relationship in conditional fields,
+      // make sure we only include necessary ones
+      const cleanedValues = { ...values };
+      for (const key in cleanedValues) {
+        // Skip metadata fields
+        if (key.startsWith('_')) continue;
+        
+        // If this is a follow-up field (_for_), check if parent condition is met
+        if (key.includes('_for_')) {
+          const [parentId, parentValue] = key.split('_for_');
+          const normalizedParentValue = parentValue.replace(/_/g, ' ');
+          
+          const parentFieldValue = values[parentId];
+          let shouldKeep = false;
+          
+          // Check if parent field has this value selected
+          if (Array.isArray(parentFieldValue)) {
+            // For checkboxes, see if the parent value is in the array
+            shouldKeep = parentFieldValue.includes(normalizedParentValue);
+          } else {
+            // For radio/select, check if equal
+            shouldKeep = parentFieldValue === normalizedParentValue;
+          }
+          
+          if (!shouldKeep) {
+            console.log(`[useFormSubmission/submitForm]: Removing unused follow-up field "${key}"`);
+            delete cleanedValues[key];
+          }
+        }
+      }
+      
       // Prepare the submission data, using the pre-processed data if available
       const submissionData = formTemplate 
-        ? prepareFormSubmission(formTemplate, values, preProcessedFormattedAnswers, isOpticianSubmission)
-        : { answers: values }; // Fallback for backward compatibility
+        ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
+        : { answers: cleanedValues }; // Fallback for backward compatibility
 
       console.log("[useFormSubmission/submitForm]: Submission data prepared");
       

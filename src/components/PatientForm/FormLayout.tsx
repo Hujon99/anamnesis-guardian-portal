@@ -3,6 +3,7 @@
  * This component handles the structural layout of the form, including the header,
  * content area, and footer with navigation controls. It uses the form context
  * to access form state and functions.
+ * Enhanced to handle conditional validation when submitting the form.
  */
 
 import React, { useEffect } from "react";
@@ -30,7 +31,8 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     previousStep,
     isSubmitting,
     handleSubmit,
-    form
+    form,
+    visibleFieldIds
   } = useFormContext();
 
   // Log when dynamic values change to help debug follow-up questions
@@ -62,11 +64,26 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     if (isLastStep && !isSubmitting) {
       // Trigger validation for all current step fields
       console.log("[FormLayout]: On last step, re-validating fields");
-      form.trigger();
+      
+      // Only validate visible fields on the current step
+      if (visibleFieldIds && visibleFieldIds.length > 0) {
+        // Get the visible fields for the current step
+        const currentStepVisibleFields = visibleSections[currentStep]?.flatMap(section => 
+          section.questions.map(q => q.id || q.runtimeId)
+        ) || [];
+        
+        // Filter by what's actually visible
+        const fieldsToValidate = currentStepVisibleFields.filter(
+          fieldId => visibleFieldIds.includes(fieldId)
+        );
+        
+        console.log("[FormLayout]: Re-validating visible fields:", fieldsToValidate);
+        form.trigger(fieldsToValidate);
+      }
     }
-  }, [isLastStep, form, isSubmitting]);
+  }, [isLastStep, form, isSubmitting, visibleFieldIds, currentStep, visibleSections]);
 
-  // New: Enhanced submit handler with better error handling
+  // New: Enhanced submit handler with better error handling and conditional validation
   const handleFormSubmission = () => {
     console.log("[FormLayout/handleFormSubmission]: Starting form submission process");
     
@@ -87,37 +104,70 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
         isSubmitting: form.formState.isSubmitting
       });
       
-      // Simple circuit breaker to prevent getting stuck
-      let submissionStarted = false;
-      
-      // Use handleSubmit from react-hook-form to validate and submit
-      form.handleSubmit((data) => {
-        console.log("[FormLayout/handleFormSubmission]: Form validated successfully, proceeding with submission");
-        submissionStarted = true;
+      // If we have visible field IDs, only validate those
+      if (visibleFieldIds && visibleFieldIds.length > 0) {
+        console.log("[FormLayout/handleFormSubmission]: Validating only visible fields:", visibleFieldIds.length);
+        
+        // Use custom submission handler that only validates visible fields
         toast.info("Skickar in dina svar...");
         
-        // Call the submission handler from context with the current data
-        try {
-          const submitHandler = handleSubmit();
-          console.log("[FormLayout/handleFormSubmission]: Calling submit handler with data");
-          submitHandler(data);
-        } catch (error) {
-          console.error("[FormLayout/handleFormSubmission]: Error in submit handler:", error);
-          toast.error("Ett fel uppstod vid inskickning av formuläret");
-        }
-      }, (errors) => {
-        // This will run if validation fails
-        console.error("[FormLayout/handleFormSubmission]: Form validation failed:", errors);
-        toast.error("Formuläret innehåller fel som måste åtgärdas");
-      })();
-      
-      // Check if submission started after a short delay
-      setTimeout(() => {
-        if (!submissionStarted) {
-          console.warn("[FormLayout/handleFormSubmission]: Submission may have failed to start");
-          // Add error handling if needed
-        }
-      }, 1000);
+        // Use the context's submit handler which knows about field visibility
+        const submitHandler = handleSubmit();
+        submitHandler(formValues);
+      } else {
+        // Fallback to normal validation if we don't have visibility data
+        console.log("[FormLayout/handleFormSubmission]: No visibility data, using standard validation");
+        
+        // Simple circuit breaker to prevent getting stuck
+        let submissionStarted = false;
+        
+        // Use handleSubmit from react-hook-form to validate and submit
+        form.handleSubmit((data) => {
+          console.log("[FormLayout/handleFormSubmission]: Form validated successfully, proceeding with submission");
+          submissionStarted = true;
+          toast.info("Skickar in dina svar...");
+          
+          // Call the submission handler from context with the current data
+          try {
+            const submitHandler = handleSubmit();
+            console.log("[FormLayout/handleFormSubmission]: Calling submit handler with data");
+            submitHandler(data);
+          } catch (error) {
+            console.error("[FormLayout/handleFormSubmission]: Error in submit handler:", error);
+            toast.error("Ett fel uppstod vid inskickning av formuläret");
+          }
+        }, (errors) => {
+          // This will run if validation fails
+          console.error("[FormLayout/handleFormSubmission]: Form validation failed:", errors);
+          
+          // Log which errors are for visible fields
+          if (visibleFieldIds) {
+            const visibleErrors = Object.entries(errors)
+              .filter(([fieldId]) => visibleFieldIds.includes(fieldId))
+              .map(([fieldId, error]) => ({ fieldId, message: error.message }));
+              
+            console.error("Visible field errors:", visibleErrors);
+            
+            if (visibleErrors.length === 0) {
+              // If errors are only in hidden fields, we can still submit
+              console.log("[FormLayout/handleFormSubmission]: Errors only in hidden fields, proceeding with submission");
+              const submitHandler = handleSubmit();
+              submitHandler(form.getValues());
+              return;
+            }
+          }
+          
+          toast.error("Formuläret innehåller fel som måste åtgärdas");
+        })();
+        
+        // Check if submission started after a short delay
+        setTimeout(() => {
+          if (!submissionStarted) {
+            console.warn("[FormLayout/handleFormSubmission]: Submission may have failed to start");
+            // Add error handling if needed
+          }
+        }, 1000);
+      }
     } catch (error) {
       console.error("[FormLayout/handleFormSubmission]: Unexpected error during form submission:", error);
       toast.error("Ett oväntat fel uppstod");

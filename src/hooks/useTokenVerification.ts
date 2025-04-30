@@ -51,7 +51,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
-    tokenManager.resetVerification();
+    tokenManager.resetVerification(); // Fixed: removed the argument
     refetchFormTemplate();
   };
   
@@ -74,17 +74,23 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         console.log("[useTokenVerification]: Verifying token:", token.substring(0, 6) + "...");
         
         // Verify the token first
-        const { valid, error: verificationErr, entry, expired: isExpired } = await tokenManager.verifyToken(token);
+        const result = await tokenManager.verifyToken(token);
         
-        if (!valid || verificationErr || !entry) {
-          console.error("[useTokenVerification]: Token verification failed:", verificationErr);
+        // Fix for TypeScript union type issues - explicitly check the properties
+        const isValid = result.valid;
+        const verificationError = 'error' in result ? result.error : null;
+        const isExpired = 'expired' in result ? result.expired : false;
+        const entry = 'entry' in result ? result.entry : null;
+        
+        if (!isValid || verificationError || !entry) {
+          console.error("[useTokenVerification]: Token verification failed:", verificationError);
           
-          if (isExpired || verificationErr?.includes("expired")) {
+          if (isExpired || verificationError?.includes("expired")) {
             setExpired(true);
           } else {
-            setError(verificationErr || "Ogiltig åtkomsttoken");
+            setError(verificationError || "Ogiltig åtkomsttoken");
             setErrorCode("invalid_token");
-            setDiagnosticInfo(`Token: ${token.substring(0, 6)}..., Error: ${verificationErr || "Unknown"}`);
+            setDiagnosticInfo(`Token: ${token.substring(0, 6)}..., Error: ${verificationError || "Unknown"}`);
           }
           
           setLoading(false);

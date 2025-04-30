@@ -1,4 +1,3 @@
-
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
@@ -87,7 +86,7 @@ const PatientFormPage = () => {
       if (!forcedTransitionTimeoutRef.current) {
         forcedTransitionTimeoutRef.current = window.setTimeout(() => {
           console.log("[PatientFormPage]: Backup timer triggered, forcing TRANSITION state");
-          if (formPageState === "LOADING_WITH_DATA" || formPageState === "INITIAL_LOADING") {
+          if (["INITIAL_LOADING", "LOADING_WITH_DATA"].includes(formPageState)) {
             setFormPageState("TRANSITION");
             
             // Then schedule the final transition to FORM_READY
@@ -176,9 +175,8 @@ const PatientFormPage = () => {
     if (isFullyLoaded && formTemplate && !initialRenderComplete.current) {
       console.log("[PatientFormPage]: Form fully loaded, preparing transition sequence");
       
-      // Fix: Cast formPageState to string before comparison to avoid TypeScript literal type error
-      const currentState = formPageState as string;
-      if (currentState === "INITIAL_LOADING" || currentState === "LOADING_WITH_DATA") {
+      // Fix: Use array.includes for type-safe comparison of literal string types
+      if (["INITIAL_LOADING", "LOADING_WITH_DATA"].includes(formPageState)) {
         console.log("[PatientFormPage]: Starting transition phase");
         setFormPageState("TRANSITION");
         

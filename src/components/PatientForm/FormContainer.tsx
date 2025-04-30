@@ -11,6 +11,7 @@ import React from "react";
 import { FormTemplate } from "@/types/anamnesis";
 import { FormOrchestrator } from "./FormOrchestrator";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 
 interface FormContainerProps {
@@ -128,6 +129,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
         onFormValuesChange={handleValuesChange}
       />
       <Toaster />
+      <SonnerToaster position="top-center" />
     </>
   );
 };

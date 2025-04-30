@@ -66,6 +66,64 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     }
   }, [isLastStep, form, isSubmitting]);
 
+  // New: Enhanced submit handler with better error handling
+  const handleFormSubmission = () => {
+    console.log("[FormLayout/handleFormSubmission]: Starting form submission process");
+    
+    try {
+      // Get all current form values
+      const formValues = form.getValues();
+      console.log("[FormLayout/handleFormSubmission]: Current form values for submission:", formValues);
+      
+      // Count dynamic follow-up values
+      const dynamicValues = Object.keys(formValues).filter(key => key.includes('_for_'));
+      console.log("[FormLayout/handleFormSubmission]: Found", dynamicValues.length, "dynamic follow-up values");
+      
+      // Enhanced debugging to check form state
+      console.log("[FormLayout/handleFormSubmission]: Form state:", {
+        isValid: form.formState.isValid,
+        isDirty: form.formState.isDirty,
+        errors: form.formState.errors,
+        isSubmitting: form.formState.isSubmitting
+      });
+      
+      // Simple circuit breaker to prevent getting stuck
+      let submissionStarted = false;
+      
+      // Use handleSubmit from react-hook-form to validate and submit
+      form.handleSubmit((data) => {
+        console.log("[FormLayout/handleFormSubmission]: Form validated successfully, proceeding with submission");
+        submissionStarted = true;
+        toast.info("Skickar in dina svar...");
+        
+        // Call the submission handler from context with the current data
+        try {
+          const submitHandler = handleSubmit();
+          console.log("[FormLayout/handleFormSubmission]: Calling submit handler with data");
+          submitHandler(data);
+        } catch (error) {
+          console.error("[FormLayout/handleFormSubmission]: Error in submit handler:", error);
+          toast.error("Ett fel uppstod vid inskickning av formuläret");
+        }
+      }, (errors) => {
+        // This will run if validation fails
+        console.error("[FormLayout/handleFormSubmission]: Form validation failed:", errors);
+        toast.error("Formuläret innehåller fel som måste åtgärdas");
+      })();
+      
+      // Check if submission started after a short delay
+      setTimeout(() => {
+        if (!submissionStarted) {
+          console.warn("[FormLayout/handleFormSubmission]: Submission may have failed to start");
+          // Add error handling if needed
+        }
+      }, 1000);
+    } catch (error) {
+      console.error("[FormLayout/handleFormSubmission]: Unexpected error during form submission:", error);
+      toast.error("Ett oväntat fel uppstod");
+    }
+  };
+
   return (
     <>
       <FormHeader 
@@ -107,27 +165,7 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
           isSubmitting={isSubmitting}
           onNext={nextStep}
           onPrevious={previousStep}
-          onSubmit={() => {
-            console.log("[FormLayout]: Submit button clicked, triggering form submission");
-            // Get all current form values
-            const formValues = form.getValues();
-            console.log("[FormLayout/onSubmit]: Current form values for submission:", formValues);
-            
-            // Count dynamic follow-up values
-            const dynamicValues = Object.keys(formValues).filter(key => key.includes('_for_'));
-            if (dynamicValues.length > 0) {
-              console.log("[FormLayout/onSubmit]: Found", dynamicValues.length, "dynamic follow-up values");
-            } else {
-              console.warn("[FormLayout/onSubmit]: No dynamic follow-up values found! Check if they're being captured correctly");
-            }
-            
-            form.handleSubmit((data) => {
-              console.log("[FormLayout/onSubmit]: Form data validated successfully for submission");
-              toast.info("Skickar in dina svar...");
-              // Call the submission handler from context with the current data
-              handleSubmit()(data);
-            })();
-          }}
+          onSubmit={handleFormSubmission}
         />
         
         <p className="text-sm text-muted-foreground text-center">

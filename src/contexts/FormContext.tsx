@@ -3,6 +3,7 @@
  * This context provides form state and functions for all form components.
  * It manages the multi-step form flow, validation, and submission process.
  * Enhanced to support form values change events for auto-save functionality.
+ * Enhanced with better error handling and detailed logging for debugging.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
@@ -14,6 +15,7 @@ import { useMultiStepForm } from "@/hooks/useMultiStepForm";
 import { useFormValidation } from "@/hooks/useFormValidation";
 import { useConditionalFields } from "@/hooks/useConditionalFields";
 import { useFormattedRawData } from "@/hooks/useFormattedRawData";
+import { toast } from "sonner";
 
 interface FormContextProviderProps {
   children: React.ReactNode;
@@ -54,6 +56,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   isOpticianMode = false,
   onFormValuesChange
 }) => {
+  console.log("[FormContext]: Initializing FormContext with template:", {
+    title: formTemplate?.title,
+    sections: formTemplate?.sections?.length || 0
+  });
+
   // Setup form validation based on the form template
   const validation = useFormValidation(formTemplate, initialValues);
   
@@ -105,12 +112,37 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     // In the future, this could implement debounced validation or other processing
   }, []);
   
+  // Enhanced form submission handler with better error handling and debugging
   const handleFormSubmit = () => async (data: any) => {
+    console.log("[FormContext/handleFormSubmit]: Form submission triggered", { 
+      dataKeys: Object.keys(data).length,
+      isOpticianMode
+    });
+    
     try {
+      console.log("[FormContext/handleFormSubmit]: Formatting answers for submission");
       const formattedAnswers = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
-      await onSubmit(data, formattedAnswers);
+      console.log("[FormContext/handleFormSubmit]: Answers formatted successfully");
+      
+      // Add circuit breaker
+      const submissionTimeout = setTimeout(() => {
+        console.warn("[FormContext/handleFormSubmit]: Submission is taking too long, may be stuck");
+      }, 10000);
+      
+      try {
+        console.log("[FormContext/handleFormSubmit]: Calling onSubmit handler");
+        await onSubmit(data, formattedAnswers);
+        console.log("[FormContext/handleFormSubmit]: Form submitted successfully");
+        clearTimeout(submissionTimeout);
+      } catch (error) {
+        clearTimeout(submissionTimeout);
+        console.error("[FormContext/handleFormSubmit]: Error submitting form:", error);
+        toast.error("Det gick inte att skicka in formuläret");
+        throw error;
+      }
     } catch (error) {
-      console.error("[FormContext] Error submitting form:", error);
+      console.error("[FormContext/handleFormSubmit]: Error formatting answers:", error);
+      toast.error("Ett fel uppstod vid formatering av svaren");
       throw error;
     }
   };
@@ -119,13 +151,23 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const nextStep = async () => {
     const fields = getFieldsForCurrentStep();
     
-    const isValid = await form.trigger(fields);
-    if (isValid) {
-      goToNextStep();
+    try {
+      console.log("[FormContext/nextStep]: Validating fields for current step:", fields);
+      const isValid = await form.trigger(fields);
+      if (isValid) {
+        console.log("[FormContext/nextStep]: Fields valid, proceeding to next step");
+        goToNextStep();
+      } else {
+        console.log("[FormContext/nextStep]: Field validation failed, staying on current step");
+        // Could add a toast here to inform the user
+      }
+    } catch (error) {
+      console.error("[FormContext/nextStep]: Error during validation:", error);
     }
   };
   
   const previousStep = () => {
+    console.log("[FormContext/previousStep]: Moving to previous step");
     goToPreviousStep();
   };
   
@@ -138,6 +180,16 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       return section.questions.map((q: any) => q.id || q.runtimeId);
     });
   };
+
+  // Log state updates
+  useEffect(() => {
+    console.log("[FormContext]: State updated", { 
+      currentStep, 
+      totalSections, 
+      isLastStep, 
+      isSubmitting 
+    });
+  }, [currentStep, totalSections, isLastStep, isSubmitting]);
 
   return (
     <FormContext.Provider

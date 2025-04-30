@@ -27,6 +27,17 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
 }) => {
   console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
   
+  const handleSubmitClick = () => {
+    console.log("[FormNavigation/handleSubmitClick]: Submit button clicked, calling onSubmit handler");
+    // Add a detailed log to track submission flow
+    try {
+      onSubmit();
+      console.log("[FormNavigation/handleSubmitClick]: onSubmit handler called successfully");
+    } catch (error) {
+      console.error("[FormNavigation/handleSubmitClick]: Error calling onSubmit handler:", error);
+    }
+  };
+  
   return (
     <div className="flex justify-between w-full">
       {!isFirstStep && (
@@ -48,10 +59,7 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
           className={`${isFirstStep ? "ml-auto" : ""}`}
           disabled={isSubmitting}
           aria-label="Skicka formulär"
-          onClick={() => {
-            console.log("[FormNavigation]: Submit button clicked, calling onSubmit");
-            onSubmit(); // Call the provided onSubmit handler
-          }}
+          onClick={handleSubmitClick}
         >
           {isSubmitting ? (
             <>

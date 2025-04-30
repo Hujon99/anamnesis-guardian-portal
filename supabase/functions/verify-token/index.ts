@@ -7,6 +7,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createSupabaseClient, fetchEntryByToken, fetchFormTemplate } from "../utils/databaseUtils.ts";
+import { validateRequestAndExtractToken } from "../utils/validationUtils.ts";
 
 // Define CORS headers
 const corsHeaders = {
@@ -24,25 +25,20 @@ serve(async (req: Request) => {
   try {
     console.log("Starting verify-token edge function execution");
     
-    // Parse the request body to get the token
-    const requestData = await req.json().catch(error => {
-      console.error("Failed to parse request JSON:", error);
-      return { token: null };
-    });
+    // Enhanced token extraction and validation
+    const { token, isValid, error } = await validateRequestAndExtractToken(req);
     
-    const { token } = requestData;
-
-    if (!token) {
-      console.error("Missing token in request");
+    if (!isValid || !token) {
+      console.error("Invalid token request:", error);
       return new Response(
-        JSON.stringify({ error: 'Missing token' }),
+        JSON.stringify({ error: error?.message || 'Invalid request', code: error?.code || 'invalid_request' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
-
+    
     console.log("Verifying token:", token.substring(0, 6) + "...");
 
     // Initialize Supabase client

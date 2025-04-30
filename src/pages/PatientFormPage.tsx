@@ -37,9 +37,11 @@ const PatientFormPage = () => {
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
   const [formPageState, setFormPageState] = useState<FormPageState>("INITIAL_LOADING");
   
-  // Track if initial rendering has occurred to avoid flashing
+  // Track transition timing to prevent flashing
   const initialRenderComplete = useRef(false);
   const transitionTimeoutRef = useRef<number | null>(null);
+  const formDataReadyRef = useRef(false);
+  const forcedTransitionTimeoutRef = useRef<number | null>(null);
   
   // Enhanced debugging
   useEffect(() => {
@@ -65,6 +67,36 @@ const PatientFormPage = () => {
     isFullyLoaded
   } = useTokenVerification(token);
   
+  // Force transition to FORM_READY if we have the form template but isFullyLoaded is not set
+  useEffect(() => {
+    if (formTemplate && !isFullyLoaded && formPageState === "INITIAL_LOADING" && !loading) {
+      // If we have the form template but not fully loaded, set a timeout to force transition
+      console.log("[PatientFormPage]: Have formTemplate but not fully loaded, setting backup timer");
+      
+      if (!forcedTransitionTimeoutRef.current) {
+        forcedTransitionTimeoutRef.current = window.setTimeout(() => {
+          console.log("[PatientFormPage]: Backup timer triggered, forcing FORM_READY state");
+          if (formPageState === "INITIAL_LOADING") {
+            formDataReadyRef.current = true;
+            
+            // Wait a bit more to ensure smooth transition
+            setTimeout(() => {
+              setFormPageState("FORM_READY");
+              initialRenderComplete.current = true;
+            }, 500);
+          }
+        }, 2000); // Wait 2 seconds before forcing transition
+      }
+    }
+    
+    return () => {
+      if (forcedTransitionTimeoutRef.current) {
+        clearTimeout(forcedTransitionTimeoutRef.current);
+        forcedTransitionTimeoutRef.current = null;
+      }
+    };
+  }, [formTemplate, isFullyLoaded, formPageState, loading]);
+  
   // Determine the form page state based on verification results
   useEffect(() => {
     // Clear any pending timeouts to avoid race conditions
@@ -78,24 +110,36 @@ const PatientFormPage = () => {
     }
     
     if (error) {
+      console.log("[PatientFormPage]: Error detected, transitioning to ERROR state");
       setFormPageState("ERROR");
       return;
     }
     
     if (expired) {
+      console.log("[PatientFormPage]: Token expired, transitioning to EXPIRED state");
       setFormPageState("EXPIRED");
       return;
     }
     
     if (submitted) {
+      console.log("[PatientFormPage]: Form submitted, transitioning to SUBMITTED state");
       setFormPageState("SUBMITTED");
       return;
     }
     
+    // If form template is loaded, mark data as ready for the loading screen
+    if (formTemplate) {
+      console.log("[PatientFormPage]: Form template loaded, marking data as ready");
+      formDataReadyRef.current = true;
+    }
+    
     if (isFullyLoaded && formTemplate) {
+      console.log("[PatientFormPage]: Form fully loaded, preparing for transition to FORM_READY");
+      
       // Add a small delay before showing the form to ensure smooth transition
       // and prevent rapid state changes causing flashing
       transitionTimeoutRef.current = window.setTimeout(() => {
+        console.log("[PatientFormPage]: Transition timeout elapsed, setting FORM_READY state");
         setFormPageState("FORM_READY");
         initialRenderComplete.current = true;
       }, 300);
@@ -118,10 +162,13 @@ const PatientFormPage = () => {
   // Update form state when submission starts
   useEffect(() => {
     if (isSubmitting) {
+      console.log("[PatientFormPage]: Form submission started, setting SUBMITTING state");
       setFormPageState("SUBMITTING");
     } else if (isSubmitted) {
+      console.log("[PatientFormPage]: Form submission completed, setting SUBMITTED state");
       setFormPageState("SUBMITTED");
     } else if (submissionError && formPageState === "SUBMITTING") {
+      console.log("[PatientFormPage]: Form submission error, setting ERROR state");
       setFormPageState("ERROR");
     }
   }, [isSubmitting, isSubmitted, submissionError, formPageState]);
@@ -149,7 +196,7 @@ const PatientFormPage = () => {
   // Add additional debug logging for the form template
   useEffect(() => {
     if (formTemplate) {
-      console.log("PatientFormPage: Template schema sections count:", formTemplate.schema?.sections?.length || 0);
+      console.log("[PatientFormPage]: Template schema sections count:", formTemplate.schema?.sections?.length || 0);
     }
   }, [formTemplate]);
 
@@ -161,10 +208,10 @@ const PatientFormPage = () => {
   // Handle form submission with form template - memoized to prevent unnecessary re-renders
   const handleFormSubmit = useCallback(async (values: any, formattedAnswers?: any) => {
     if (!token) {
-      console.error("Cannot submit form: No token provided");
+      console.error("[PatientFormPage]: Cannot submit form: No token provided");
       return;
     }
-    console.log("Submitting form with token:", token.substring(0, 6) + "...");
+    console.log("[PatientFormPage]: Submitting form with token:", token.substring(0, 6) + "...");
     setFormPageState("SUBMITTING");
     await submitForm(token, values, formTemplate?.schema, formattedAnswers);
   }, [token, submitForm, formTemplate?.schema]);
@@ -175,7 +222,13 @@ const PatientFormPage = () => {
   // Render different components based on form page state
   switch (formPageState) {
     case "INITIAL_LOADING":
-      return <LoadingCard onRetry={handleRetry} minDisplayTime={800} />;
+      return (
+        <LoadingCard 
+          onRetry={handleRetry} 
+          minDisplayTime={1500}
+          isFormDataReady={formDataReadyRef.current} 
+        />
+      );
       
     case "ERROR":
       return (
@@ -193,7 +246,7 @@ const PatientFormPage = () => {
     case "SUBMITTED":
     case "SUBMITTING":
       if (isSubmitting) {
-        return <LoadingCard />;
+        return <LoadingCard minDisplayTime={800} />;
       }
       return <SubmittedCard />;
       

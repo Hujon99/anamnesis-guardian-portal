@@ -10,7 +10,22 @@ import { useState } from "react";
 
 export const usePrintFunction = () => {
   // This is now just a stub that returns nothing functional
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  
+  // Even though these functions don't do anything now,
+  // we provide them to maintain the API for any components that might use them
+  const handlePrint = () => {
+    console.log("[usePrintFunction]: Print function called (no-op)");
+  };
+  
+  const togglePrintPreview = () => {
+    console.log("[usePrintFunction]: Toggle print preview called (no-op)");
+    setShowPrintPreview(false); // Always ensure it's false since functionality is removed
+  };
+  
   return {
-    showPrintPreview: false
+    showPrintPreview,
+    handlePrint,
+    togglePrintPreview
   };
 };

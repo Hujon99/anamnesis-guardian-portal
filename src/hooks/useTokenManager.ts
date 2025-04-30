@@ -1,3 +1,4 @@
+
 /**
  * This utility hook manages token caching and validation for the Supabase client.
  * It provides functions to store and retrieve cached tokens with expiration management,
@@ -31,8 +32,8 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const pendingRequestRef = useRef<VerificationRequest | null>(null);
   const MAX_VERIFICATION_ATTEMPTS = 3;
   
-  // Verification cooldown - important for preventing race conditions
-  const VERIFICATION_COOLDOWN_MS = 2000; // 2 second cooldown between identical requests
+  // Verification cooldown - important for preventing race conditions - reduced to allow more responsive state transitions
+  const VERIFICATION_COOLDOWN_MS = 1000; // 1 second cooldown between identical requests
   
   // Get token verification result from cache if it's still valid
   const getFromCache = useCallback((token: string) => {
@@ -48,7 +49,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
         
         // Also check if we have a cached verification result and it's recent enough
         if (cachedData.verificationResult && cachedData.lastVerified && 
-            now - cachedData.lastVerified < 30000) { // 30 seconds max age for verification result
+            now - cachedData.lastVerified < 60000) { // 60 seconds max age for verification result
           console.log("[useTokenManager]: Using cached verification result");
           return cachedData.verificationResult;
         }
@@ -311,7 +312,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
             console.log("[useTokenManager]: Form already submitted");
             setIsVerifying(false);
             
-            const result = { valid: true, entry: data.entry };
+            const result = { valid: true, entry: data.entry, submitted: true };
             saveToCache(token, result);
             return result;
           }
@@ -339,16 +340,26 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
         } catch (fetchError: any) {
           // Network error or other fetch error - fall back to direct database verification
           console.warn("[useTokenManager]: Edge function fetch error, falling back to direct database:", fetchError);
-          const dbResult = await verifyTokenWithDatabase(token);
-          saveToCache(token, dbResult);
-          return dbResult;
+          try {
+            const dbResult = await verifyTokenWithDatabase(token);
+            saveToCache(token, dbResult);
+            return dbResult;
+          } catch (dbError) {
+            // If database verification also fails, handle as an error
+            console.error("[useTokenManager]: Database verification also failed:", dbError);
+            const errorMsg = "Failed to verify token: " + (dbError.message || "Unknown error");
+            setVerificationError(errorMsg);
+            
+            const result = { valid: false, error: errorMsg };
+            saveToCache(token, result);
+            return result;
+          }
         }
         
       } catch (err: any) {
         console.error("[useTokenManager]: Error:", err);
         const errorMsg = err.message || "Ett fel uppstod vid verifiering av token";
         setVerificationError(errorMsg);
-        setIsVerifying(false);
         
         const result = { valid: false, error: errorMsg };
         saveToCache(token, result);

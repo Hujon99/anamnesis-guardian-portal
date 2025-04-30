@@ -1,3 +1,4 @@
+
 /**
  * This hook verifies the token for accessing the anamnesis form.
  * It handles loading states, errors, and fetches the appropriate form template
@@ -44,8 +45,9 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   // Refs for state tracking and debouncing
   const isVerifyingRef = useRef(false);
   const lastVerificationTimeRef = useRef<number>(0);
-  const verificationCooldownMs = 800; // Cooldown period to prevent rapid verification calls
+  const verificationCooldownMs = 500; // Reduced cooldown period to prevent blocking legitimate state transitions
   const stableFormDataRef = useRef<boolean>(false);
+  const isFullyLoadedAttemptCount = useRef(0);
   
   // Add circuit breaker to prevent infinite retries
   const MAX_RETRIES = 3;
@@ -73,6 +75,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     stableFormDataRef.current = false;
     lastErrorRef.current = null;
     lastVerificationTimeRef.current = 0;
+    isFullyLoadedAttemptCount.current = 0;
     setRetryCount(0);
     setFormLoading(true);
     setIsFullyLoaded(false);
@@ -85,11 +88,60 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     }
   }, [token]);
 
+  // Add a forced timeout to set isFullyLoaded=true if conditions seem right but it's not getting set
+  useEffect(() => {
+    // If we have the essential data but isFullyLoaded is still false
+    if (!isFullyLoaded && 
+        !loading && 
+        !formLoading &&
+        formTemplate && 
+        entryData && 
+        !error && 
+        !expired && 
+        !submitted) {
+      
+      isFullyLoadedAttemptCount.current += 1;
+      console.log(`[useTokenVerification]: Attempt #${isFullyLoadedAttemptCount.current} to set isFullyLoaded=true`);
+      
+      // Condition seems right but isFullyLoaded not set, try after a delay
+      const forceFullyLoadedTimer = setTimeout(() => {
+        if (!isFullyLoaded &&
+            formTemplate && 
+            entryData &&
+            !error && 
+            !expired && 
+            !submitted) {
+          console.log("[useTokenVerification]: Forcing isFullyLoaded=true after conditions held for 1 second");
+          setIsFullyLoaded(true);
+          setFormLoading(false);
+        }
+      }, 1000);
+      
+      return () => clearTimeout(forceFullyLoadedTimer);
+    }
+  }, [formTemplate, entryData, error, expired, submitted, loading, formLoading, isFullyLoaded]);
+
   // Unified status tracking - ensure we've met all conditions to mark as fully loaded
   useEffect(() => {
     const now = Date.now();
     const timeSinceLastVerification = now - lastVerificationTimeRef.current;
     const verificationStable = timeSinceLastVerification > verificationCooldownMs;
+    
+    // Log all conditions for easier debugging
+    const conditions = {
+      loading: !loading,
+      isVerifying: !isVerifyingRef.current,
+      formTemplateSuccess,
+      formTemplateLoading: !formTemplateLoading,
+      verificationStable,
+      hasEntryData: !!entryData,
+      hasFormTemplate: !!formTemplate,
+      noError: !error,
+      notExpired: !expired,
+      notSubmitted: !submitted
+    };
+    
+    console.log("[useTokenVerification]: Fully loaded conditions:", conditions);
     
     // Check for the ideal condition to set isFullyLoaded = true
     if (!loading && 
@@ -105,10 +157,11 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       
       // Ensure we have stable data for a minimum period before marking as loaded
       if (!stableFormDataRef.current) {
+        console.log("[useTokenVerification]: All conditions met, setting stable data flag");
         stableFormDataRef.current = true;
         // Add a small delay to ensure all React updates have propagated
         const stabilityTimer = setTimeout(() => {
-          console.log("[useTokenVerification]: All conditions met, marking as fully loaded");
+          console.log("[useTokenVerification]: All conditions met and stable, marking as fully loaded");
           setFormLoading(false);
           setIsFullyLoaded(true);
         }, 300);
@@ -116,8 +169,17 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         return () => clearTimeout(stabilityTimer);
       }
     } else {
-      // Reset stable data flag if conditions are no longer met
-      stableFormDataRef.current = false;
+      // Only log and reset if it was previously stable
+      if (stableFormDataRef.current) {
+        console.log("[useTokenVerification]: Conditions no longer met, resetting stable data flag");
+        console.log("[useTokenVerification]: Failed conditions:", 
+          Object.entries(conditions)
+            .filter(([_, value]) => !value)
+            .map(([key]) => key)
+            .join(", ")
+        );
+        stableFormDataRef.current = false;
+      }
     }
   }, [loading, formTemplateLoading, formTemplateSuccess, formTemplate, entryData, error, expired, submitted]);
   
@@ -141,6 +203,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     lastErrorRef.current = null;
     lastVerificationTimeRef.current = 0;
     stableFormDataRef.current = false;
+    isFullyLoadedAttemptCount.current = 0;
     
     // Reset verification state
     tokenManager.resetVerification();
@@ -191,7 +254,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       return;
     }
     
-    // Implement cooldown to prevent rapid verification attempts
+    // Implement cooldown to prevent rapid verification attempts - reduced to allow more responsive state transitions
     const now = Date.now();
     const timeSinceLastVerification = now - lastVerificationTimeRef.current;
     if (timeSinceLastVerification < verificationCooldownMs) {

@@ -7,7 +7,7 @@
  * where loading takes too long.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,16 +15,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface LoadingCardProps {
   onRetry?: () => void;
   minDisplayTime?: number; // Added prop for minimum display time
+  isFormDataReady?: boolean; // Flag to indicate if data is ready but still showing loading for min time
 }
 
 const LoadingCard: React.FC<LoadingCardProps> = ({ 
   onRetry,
-  minDisplayTime = 1000 // Default minimum display time of 1 second
+  minDisplayTime = 1500, // Increased default minimum display time to reduce flickering
+  isFormDataReady = false
 }) => {
   const [loadingTime, setLoadingTime] = useState(0);
   const [canHide, setCanHide] = useState(false);
+  const minTimeElapsedRef = useRef(false);
   
   useEffect(() => {
+    console.log("[LoadingCard]: Mounted with minDisplayTime:", minDisplayTime, "isFormDataReady:", isFormDataReady);
+    
     // Set up timer for loading messages
     const timer = setInterval(() => {
       setLoadingTime(prev => prev + 1);
@@ -32,10 +37,13 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
     
     // Set up minimum display timer
     const minDisplayTimer = setTimeout(() => {
+      console.log("[LoadingCard]: Minimum display time elapsed");
+      minTimeElapsedRef.current = true;
       setCanHide(true);
     }, minDisplayTime);
     
     return () => {
+      console.log("[LoadingCard]: Unmounted after", loadingTime, "seconds");
       clearInterval(timer);
       clearTimeout(minDisplayTimer);
     };
@@ -43,7 +51,9 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
   
   // Show additional messaging if loading takes longer than expected
   const getLoadingMessage = () => {
-    if (loadingTime < 5) {
+    if (isFormDataReady) {
+      return "Förbereder formuläret...";
+    } else if (loadingTime < 5) {
       return "Laddar formulär...";
     } else if (loadingTime < 10) {
       return "Hämtar formulärmall...";
@@ -65,6 +75,13 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
           <div className="mt-4 space-y-2">
             <Skeleton className="h-2 w-3/4 mx-auto" />
             <Skeleton className="h-2 w-1/2 mx-auto" />
+          </div>
+        )}
+        
+        {/* Display debug info for loading state */}
+        {loadingTime >= 10 && (
+          <div className="mt-3 text-xs text-gray-400">
+            {isFormDataReady ? "Väntar på att visa formuläret..." : "Väntar på formulärdata..."}
           </div>
         )}
         

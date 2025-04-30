@@ -2,6 +2,7 @@
 /**
  * This utility module provides input validation functions for edge functions.
  * It includes functions for validating tokens, request data, and other input.
+ * Enhanced with better logging and improved error handling to help diagnose issues.
  */
 
 /**

@@ -8,6 +8,7 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Pages
 import SignInPage from "@/pages/SignInPage";
@@ -39,27 +40,29 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
-        
-        {/* Form page - accessed via token, no auth required */}
-        <Route path="/patient-form" element={<PatientFormPage />} />
-        <Route path="/link" element={<LinkPage />} />
-        
-        {/* Protected routes that require authentication */}
-        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/optician" element={<OpticianView />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/optician-form" element={<OpticianFormPage />} />
-        </Route>
-        
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster richColors position="top-center" />
+      <TooltipProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up/*" element={<SignUpPage />} />
+          
+          {/* Form page - accessed via token, no auth required */}
+          <Route path="/patient-form" element={<PatientFormPage />} />
+          <Route path="/link" element={<LinkPage />} />
+          
+          {/* Protected routes that require authentication */}
+          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/optician" element={<OpticianView />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/optician-form" element={<OpticianFormPage />} />
+          </Route>
+          
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster richColors position="top-center" />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

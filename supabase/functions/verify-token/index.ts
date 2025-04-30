@@ -88,108 +88,8 @@ serve(async (req: Request) => {
       );
     }
 
-    // Check if the entry has expired
-    if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
-      console.log("Token expired, expires_at:", entry.expires_at);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Token expired',
-          expired: true,
-          entry: {
-            id: entry.id,
-            expires_at: entry.expires_at
-          }
-        }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Check if the form has already been submitted
-    if (entry.status === 'submitted') {
-      console.log("Form already submitted, status:", entry.status);
-      return new Response(
-        JSON.stringify({ 
-          submitted: true,
-          entry: {
-            id: entry.id,
-            status: entry.status,
-            submitted_at: entry.updated_at
-          }
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Fetch the form template for this entry
-    const { formTemplate, error: formError, notFound: formNotFound } = 
-      await fetchFormTemplate(supabase, entry.organization_id);
-
-    if (formError) {
-      console.error("Form template error:", formError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to fetch form template',
-          details: formError
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    if (formNotFound) {
-      console.error("Form template not found for organization:", entry.organization_id);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Form template not found' 
-        }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Extract entry data to return, including magic link information if available
-    const entryData = {
-      id: entry.id,
-      organization_id: entry.organization_id,
-      status: entry.status,
-      created_at: entry.created_at,
-      updated_at: entry.updated_at,
-      formatted_raw_data: entry.formatted_raw_data,
-      patient_identifier: entry.patient_identifier,
-      created_by: entry.created_by,
-      created_by_name: entry.created_by_name,
-      // Magic link specific fields
-      is_magic_link: entry.is_magic_link || false,
-      booking_id: entry.booking_id,
-      store_id: entry.store_id,
-      first_name: entry.first_name,
-      booking_date: entry.booking_date
-    };
-
-    console.log("Token verification successful, returning data");
-    
-    // Return success with form template and entry data
-    return new Response(
-      JSON.stringify({ 
-        verified: true,
-        formTemplate,
-        entry: entryData
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    // Process the entry and return appropriate response
+    return await processEntryAndRespond(entry, supabase, corsHeaders);
 
   } catch (err) {
     console.error("Unexpected error:", err);
@@ -206,3 +106,109 @@ serve(async (req: Request) => {
     );
   }
 });
+
+// Helper function to process the entry and return the appropriate response
+async function processEntryAndRespond(entry: any, supabase: any, corsHeaders: any) {
+  // Check if the entry has expired
+  if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
+    console.log("Token expired, expires_at:", entry.expires_at);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Token expired',
+        expired: true,
+        entry: {
+          id: entry.id,
+          expires_at: entry.expires_at
+        }
+      }),
+      { 
+        status: 403, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Check if the form has already been submitted
+  if (entry.status === 'submitted') {
+    console.log("Form already submitted, status:", entry.status);
+    return new Response(
+      JSON.stringify({ 
+        submitted: true,
+        entry: {
+          id: entry.id,
+          status: entry.status,
+          submitted_at: entry.updated_at
+        }
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Fetch the form template for this entry
+  const { formTemplate, error: formError, notFound: formNotFound } = 
+    await fetchFormTemplate(supabase, entry.organization_id);
+
+  if (formError) {
+    console.error("Form template error:", formError);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to fetch form template',
+        details: formError
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  if (formNotFound) {
+    console.error("Form template not found for organization:", entry.organization_id);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Form template not found' 
+      }),
+      { 
+        status: 404, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Extract entry data to return
+  const entryData = {
+    id: entry.id,
+    organization_id: entry.organization_id,
+    status: entry.status,
+    created_at: entry.created_at,
+    updated_at: entry.updated_at,
+    formatted_raw_data: entry.formatted_raw_data,
+    patient_identifier: entry.patient_identifier,
+    created_by: entry.created_by,
+    created_by_name: entry.created_by_name,
+    // Magic link specific fields
+    is_magic_link: entry.is_magic_link || false,
+    booking_id: entry.booking_id,
+    store_id: entry.store_id,
+    first_name: entry.first_name,
+    booking_date: entry.booking_date
+  };
+
+  console.log("Token verification successful, returning data");
+  
+  // Return success with form template and entry data
+  return new Response(
+    JSON.stringify({ 
+      verified: true,
+      formTemplate,
+      entry: entryData
+    }),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}

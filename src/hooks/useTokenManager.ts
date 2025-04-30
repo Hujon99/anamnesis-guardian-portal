@@ -3,18 +3,20 @@
  * This utility hook manages token verification for the Supabase client.
  * It provides functions to verify tokens without creating circular dependencies.
  * The hook accepts a Supabase client instance as a parameter rather than importing it.
+ * It now leverages the standalone tokenUtils module for core verification logic.
  */
 
 import { useCallback, useState } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from "@/integrations/supabase/types";
+import { verifyToken } from '@/utils/tokenUtils';
 
 export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   
   // Verify token with the backend
-  const verifyToken = useCallback(async (token: string) => {
+  const verifyTokenWithState = useCallback(async (token: string) => {
     if (!supabaseClient) {
       throw new Error("Supabase client not initialized");
     }
@@ -23,40 +25,16 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     setVerificationError(null);
     
     try {
-      console.log("[useTokenManager/verifyToken]: Verifying token:", token.substring(0, 6) + "...");
+      // Use the standalone verifyToken function from tokenUtils
+      const result = await verifyToken(supabaseClient, token);
       
-      // Fetch the entry using the token
-      const { data: entry, error } = await supabaseClient
-        .from("anamnes_entries")
-        .select("*")
-        .eq("access_token", token)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("[useTokenManager/verifyToken]: Database error:", error);
-        setVerificationError(`Database error: ${error.message}`);
-        setIsVerifying(false);
-        return { valid: false, error: error.message };
+      // Update state based on verification result
+      if (!result.valid) {
+        setVerificationError(result.error || "Unknown verification error");
       }
       
-      if (!entry) {
-        console.error("[useTokenManager/verifyToken]: Entry not found");
-        setVerificationError("Ogiltig åtkomsttoken eller så har formuläret redan skickats in");
-        setIsVerifying(false);
-        return { valid: false, error: "Ogiltig åtkomsttoken" };
-      }
-      
-      // Check if the entry has expired
-      if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
-        console.error("[useTokenManager/verifyToken]: Token expired");
-        setVerificationError("Åtkomsttokenet har upphört att gälla");
-        setIsVerifying(false);
-        return { valid: false, error: "Token expired", expired: true };
-      }
-      
-      console.log("[useTokenManager/verifyToken]: Token verified successfully");
       setIsVerifying(false);
-      return { valid: true, entry };
+      return result;
       
     } catch (err: any) {
       console.error("[useTokenManager/verifyToken]: Error:", err);
@@ -73,7 +51,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   }, []);
 
   return {
-    verifyToken,
+    verifyToken: verifyTokenWithState,
     isVerifying,
     verificationError,
     resetVerification

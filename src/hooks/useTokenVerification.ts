@@ -4,6 +4,7 @@
  * It handles loading states, errors, and fetches the appropriate form template
  * and entry data based on the provided token.
  * Updated to work with FormTemplateWithMeta instead of just FormTemplate.
+ * Uses the tokenUtils module for core verification logic.
  */
 
 import { useState, useEffect } from "react";
@@ -34,7 +35,6 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [submitted, setSubmitted] = useState(false);
   const [entryData, setEntryData] = useState<AnamnesesEntry | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [formId, setFormId] = useState<string | null>(null);
   
   // Use the token manager hook to validate the token, passing the supabase client
   const tokenManager = useTokenManager(supabase);
@@ -51,7 +51,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setDiagnosticInfo("");
     setExpired(false);
     setSubmitted(false);
-    tokenManager.resetVerification(); // Call with no parameters
+    tokenManager.resetVerification();
     refetchFormTemplate();
   };
   
@@ -95,7 +95,6 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         
         // Set organization ID from the entry
         setOrganizationId(entry.organization_id);
-        setFormId(entry.form_id);
         
         // Check if the entry already has answers
         if (entry.answers) {

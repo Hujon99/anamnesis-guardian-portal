@@ -1,13 +1,15 @@
+
 /**
  * This component provides functionality for generating and sending personalized
  * anamnesis links to patients. It handles the collection of patient information,
  * form creation, and notification to users about the process status.
+ * It ensures that the generated links are associated with the correct organization.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +32,9 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Link, Loader2, Plus } from "lucide-react";
+import { AlertCircle, Link, Loader2, Plus } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useFormTemplate } from "@/hooks/useFormTemplate";
 
 // Form schema with validation for patient info
 const formSchema = z.object({
@@ -44,6 +48,10 @@ export function LinkGenerator() {
   const { supabase } = useSupabaseClient();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Get the organization's form template
+  const { data: formTemplate, isLoading: isLoadingTemplate } = useFormTemplate();
 
   // Get the creator's name from session claims
   const creatorName = sessionClaims?.full_name as string || user?.fullName || user?.id || "Okänd";
@@ -56,16 +64,26 @@ export function LinkGenerator() {
     },
   });
 
+  useEffect(() => {
+    // Reset error message when dialog opens/closes
+    setErrorMessage(null);
+  }, [open]);
+
   // Mutation for creating and sending a link
   const sendLinkMutation = useMutation({
     mutationFn: async ({ patientIdentifier }: { patientIdentifier: string }) => {
       if (!organization?.id) {
         throw new Error("Organisation saknas");
       }
+      
+      if (!formTemplate) {
+        throw new Error("Ingen formmall hittades för denna organisation");
+      }
 
       console.log("Creating anamnesis entry with patient identifier:", patientIdentifier);
       console.log("Organization ID:", organization.id);
       console.log("Creator:", creatorName);
+      console.log("Using form ID:", formTemplate.id);
 
       // Create a new anamnesis entry with a unique access token
       const accessToken = crypto.randomUUID();
@@ -78,7 +96,7 @@ export function LinkGenerator() {
           access_token: accessToken,
           status: "sent",
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-          form_id: crypto.randomUUID(),
+          form_id: formTemplate.id,
           patient_identifier: patientIdentifier,
           created_by: user?.id || null,
           created_by_name: creatorName,
@@ -112,6 +130,8 @@ export function LinkGenerator() {
     onError: (error: any) => {
       console.error("Error creating anamnesis entry:", error);
       
+      setErrorMessage(error.message || "Ett oväntat fel uppstod");
+      
       toast({
         title: "Fel vid skapande av formulär",
         description: error.message || "Ett oväntat fel uppstod",
@@ -126,6 +146,7 @@ export function LinkGenerator() {
   // Handle form submission
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
+    setErrorMessage(null);
     sendLinkMutation.mutate({ patientIdentifier: values.patientIdentifier });
   };
 
@@ -146,53 +167,66 @@ export function LinkGenerator() {
           </DialogDescription>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="patientIdentifier"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Patientinformation</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Ange personens namn eller annan identifierare" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="flex justify-end gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setOpen(false)}
-              >
-                Avbryt
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Skapar...
-                  </>
-                ) : (
-                  <>
-                    <Link className="h-4 w-4" />
-                    Skapa länk
-                  </>
+        {errorMessage && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+        
+        {isLoadingTemplate ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="patientIdentifier"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Patientinformation</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Ange personens namn eller annan identifierare" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </Button>
-            </div>
-          </form>
-        </Form>
+              />
+              
+              <div className="flex justify-end gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setOpen(false)}
+                >
+                  Avbryt
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading || !formTemplate}
+                  className="flex items-center gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Skapar...
+                    </>
+                  ) : (
+                    <>
+                      <Link className="h-4 w-4" />
+                      Skapa länk
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

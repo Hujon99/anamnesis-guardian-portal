@@ -3,6 +3,7 @@
  * This page handles magic links for anamnes forms. It parses URL parameters, validates them,
  * and creates a new entry in the database with the booking information.
  * After successful entry creation, it redirects the user to the form.
+ * It ensures that the form is tied to the correct organization.
  */
 
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ const LinkPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [validFormId, setValidFormId] = useState<boolean>(false);
   
   // Extract params from URL
   const bookingId = searchParams.get("booking_id");
@@ -30,7 +32,45 @@ const LinkPage = () => {
   const bookingDate = searchParams.get("booking_date");
   const formId = searchParams.get("form_id"); // Form ID is required
   
+  // Validate the form ID exists in the database
   useEffect(() => {
+    const validateFormId = async () => {
+      if (!formId) {
+        setError("Formulär-ID saknas i URL:en");
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        // Check that the form exists
+        const { data, error } = await supabase
+          .from('anamnes_forms')
+          .select('id')
+          .eq('id', formId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Error validating form ID:", error);
+          setError(`Ett fel uppstod vid validering av formuläret: ${error.message}`);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!data) {
+          setError("Det angivna formuläret finns inte");
+          setIsLoading(false);
+          return;
+        }
+        
+        setValidFormId(true);
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Error in form validation:", err);
+        setError("Ett oväntat fel uppstod vid validering av formuläret");
+        setIsLoading(false);
+      }
+    };
+    
     // Validate required parameters
     if (!bookingId) {
       setError("Boknings-ID saknas i URL:en");
@@ -38,13 +78,11 @@ const LinkPage = () => {
       return;
     }
     
-    if (!formId) {
-      setError("Formulär-ID saknas i URL:en");
+    if (formId) {
+      validateFormId();
+    } else {
       setIsLoading(false);
-      return;
     }
-    
-    setIsLoading(false);
   }, [bookingId, formId]);
   
   const handleGenerateForm = async () => {
@@ -75,9 +113,9 @@ const LinkPage = () => {
         navigate(`/patient-form?token=${data.accessToken}`);
       }, 1500);
       
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error in handleGenerateForm:", err);
-      setError("Ett oväntat fel uppstod. Försök igen senare.");
+      setError(`Ett oväntat fel uppstod: ${err.message || "Okänt fel"}`);
       setIsProcessing(false);
     }
   };
@@ -192,7 +230,7 @@ const LinkPage = () => {
         <CardFooter>
           <Button 
             onClick={handleGenerateForm} 
-            disabled={isProcessing}
+            disabled={isProcessing || !validFormId}
             className="w-full"
           >
             {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

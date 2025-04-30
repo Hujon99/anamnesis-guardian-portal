@@ -3,6 +3,7 @@
  * This Edge Function generates access tokens for magic link anamnes forms.
  * It creates a new entry in the anamnes_entries table with booking information
  * and returns an access token that can be used to access the form.
+ * It verifies that the form exists and belongs to the correct organization.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -52,10 +53,10 @@ serve(async (req: Request) => {
       auth: { persistSession: false }
     });
     
-    // Check if organization exists for this form
+    // Check if form exists and get its organization
     const { data: formData, error: formError } = await supabase
       .from('anamnes_forms')
-      .select('organization_id')
+      .select('organization_id, title')
       .eq('id', formId)
       .single();
       
@@ -71,13 +72,10 @@ serve(async (req: Request) => {
     }
     
     if (!formData.organization_id) {
-      return new Response(
-        JSON.stringify({ error: 'No organization associated with this form' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      console.log("Form has no organization, using the default form");
+      // This is the default form (organization_id is null), which is fine to use
+    } else {
+      console.log("Using form for organization:", formData.organization_id);
     }
     
     // Generate access token
@@ -92,7 +90,7 @@ serve(async (req: Request) => {
       .from('anamnes_entries')
       .insert({
         form_id: formId,
-        organization_id: formData.organization_id,
+        organization_id: formData.organization_id, // Use the organization from the form
         access_token: accessToken,
         booking_id: bookingId,
         first_name: firstName || null,

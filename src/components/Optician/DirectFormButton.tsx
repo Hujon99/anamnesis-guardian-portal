@@ -3,6 +3,7 @@
  * This component provides functionality for creating direct in-store anamnesis forms.
  * It allows opticians to generate an immediate form for walk-in customers
  * without creating a patient record first.
+ * Uses the organization-specific form template.
  */
 
 import { useState } from "react";
@@ -13,6 +14,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { FileEdit, Loader2 } from "lucide-react";
+import { useFormTemplate } from "@/hooks/useFormTemplate";
 
 export function DirectFormButton() {
   const { organization } = useOrganization();
@@ -21,6 +23,9 @@ export function DirectFormButton() {
   const { supabase } = useSupabaseClient();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Get organization's form template
+  const { data: formTemplate } = useFormTemplate();
   
   // Get the creator's name from session claims
   const creatorName = sessionClaims?.full_name as string || user?.fullName || user?.id || "Okänd";
@@ -31,10 +36,15 @@ export function DirectFormButton() {
       if (!organization?.id) {
         throw new Error("Organisation saknas");
       }
+      
+      if (!formTemplate) {
+        throw new Error("Ingen formulärmall hittades för denna organisation");
+      }
 
       console.log("Creating direct form entry with organization ID:", organization.id);
       console.log("Current user ID:", user?.id || null);
       console.log("Creator name:", creatorName);
+      console.log("Using form template ID:", formTemplate.id);
 
       // Use a fixed identifier for direct in-store forms
       const patientIdentifier = "Direkt ifyllning i butik";
@@ -50,7 +60,7 @@ export function DirectFormButton() {
           access_token: accessToken,
           status: "sent",
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
-          form_id: crypto.randomUUID(),
+          form_id: formTemplate.id,
           patient_identifier: patientIdentifier,
           created_by: user?.id || null,
           created_by_name: creatorName, // Add the creator's name
@@ -103,7 +113,7 @@ export function DirectFormButton() {
   return (
     <Button 
       onClick={handleCreateDirectForm}
-      disabled={isLoading || createDirectFormEntry.isPending}
+      disabled={isLoading || createDirectFormEntry.isPending || !formTemplate}
       variant="secondary"
     >
       {(isLoading || createDirectFormEntry.isPending) ? (

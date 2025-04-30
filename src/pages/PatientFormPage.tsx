@@ -3,14 +3,15 @@
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
  * using a modular approach with dedicated components and hooks.
- * Enhanced to support magic links and auto-saving functionality.
+ * Enhanced to support magic links, auto-saving functionality, and smooth transitions
+ * between loading and form display.
  */
 
 import { useSearchParams } from "react-router-dom";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useFormSubmission } from "@/hooks/useFormSubmission";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
 import ExpiredCard from "@/components/PatientForm/StatusCards/ExpiredCard";
@@ -25,6 +26,8 @@ const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
+  const [isPending, startTransition] = useTransition(); // Add useTransition for smoother UI changes
+  const [showForm, setShowForm] = useState(false);
   
   // Enhanced debugging
   useEffect(() => {
@@ -39,6 +42,7 @@ const PatientFormPage = () => {
   // Use custom hooks to handle token verification and form submission
   const { 
     loading, 
+    formLoading,
     error, 
     errorCode, 
     diagnosticInfo, 
@@ -46,8 +50,21 @@ const PatientFormPage = () => {
     submitted,
     formTemplate,
     entryData,
-    handleRetry 
+    handleRetry,
+    isFullyLoaded
   } = useTokenVerification(token);
+  
+  // Effect to handle the transition from loading to showing form
+  useEffect(() => {
+    if (isFullyLoaded && !formLoading && !loading && !error && !expired && !submitted) {
+      // Use transition to make UI changes smoother
+      startTransition(() => {
+        setShowForm(true);
+      });
+    } else {
+      setShowForm(false);
+    }
+  }, [isFullyLoaded, formLoading, loading, error, expired, submitted]);
   
   const { 
     isSubmitting, 
@@ -118,16 +135,18 @@ const PatientFormPage = () => {
   // Debug info
   useEffect(() => {
     console.log("Form state:", { 
-      loading, error, errorCode, expired, submitted, isSubmitted, 
+      loading, formLoading, error, errorCode, expired, submitted, isSubmitted, 
+      isPending, showForm, isFullyLoaded,
       hasFormTemplate: !!formTemplate,
       entryData: entryData ? `ID: ${entryData.id.substring(0, 8)}...` : null,
       isMagicLink
     });
-  }, [loading, error, errorCode, expired, submitted, isSubmitted, formTemplate, entryData, isMagicLink]);
+  }, [loading, formLoading, error, errorCode, expired, submitted, isSubmitted, 
+      formTemplate, entryData, isMagicLink, isPending, showForm, isFullyLoaded]);
   
-  // Loading state
-  if (loading) {
-    return <LoadingCard />;
+  // Loading state - show while token verification or form is loading
+  if (loading || formLoading) {
+    return <LoadingCard onRetry={handleRetry} />;
   }
 
   // Expired token state
@@ -172,6 +191,11 @@ const PatientFormPage = () => {
         onRetry={() => window.location.href = "/"}
       />
     );
+  }
+
+  // Only show form when it's fully ready - prevents flashing
+  if (!showForm) {
+    return <LoadingCard onRetry={handleRetry} />;
   }
 
   // Form display state - default state

@@ -2,7 +2,8 @@
 /**
  * This component displays a loading state for the patient form.
  * It shows a spinner and loading message while the form is being loaded.
- * Enhanced with a timer to show extended messages for long loading times.
+ * Enhanced with a timer to show extended messages for long loading times
+ * and a retry button for cases where loading takes too long.
  */
 
 import React, { useState, useEffect } from "react";

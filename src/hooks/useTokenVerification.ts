@@ -1,9 +1,8 @@
-
 /**
  * This hook verifies the token for accessing the anamnesis form.
  * It handles loading states, errors, and fetches the appropriate form template
  * and entry data based on the provided token.
- * Updated to work with FormTemplateWithMeta instead of just FormTemplate.
+ * Enhanced to handle simultaneous loading states to prevent flashing.
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -14,6 +13,7 @@ import { AnamnesesEntry } from "@/types/anamnesis";
 
 interface UseTokenVerificationResult {
   loading: boolean;
+  formLoading: boolean;  // New state to track form loading specifically
   error: string | null;
   errorCode: string;
   diagnosticInfo: string;
@@ -22,11 +22,14 @@ interface UseTokenVerificationResult {
   formTemplate: FormTemplateWithMeta | null;
   entryData: AnamnesesEntry | null;
   handleRetry: () => void;
+  isFullyLoaded: boolean; // New state to track when everything is ready
 }
 
 export const useTokenVerification = (token: string | null): UseTokenVerificationResult => {
   const { supabase, isReady: isSupabaseReady } = useSupabaseClient();
   const [loading, setLoading] = useState(true);
+  const [formLoading, setFormLoading] = useState(true); // New state for form loading
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false); // Track complete loading state
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState("");
   const [diagnosticInfo, setDiagnosticInfo] = useState("");
@@ -36,9 +39,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [formId, setFormId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [renderDelay, setRenderDelay] = useState(false); // Add a small delay before showing form
   
   // Add circuit breaker to prevent infinite retries
-  const MAX_RETRIES = 3; // Increased from 2 to 3
+  const MAX_RETRIES = 3;
   const requestInProgressRef = useRef(false);
   const circuitBrokenRef = useRef(false);
   const lastErrorRef = useRef<string | null>(null);
@@ -50,7 +54,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const { 
     data: formTemplate, 
     refetch: refetchFormTemplate,
-    isLoading: formTemplateLoading
+    isLoading: formTemplateLoading,
+    isSuccess: formTemplateSuccess
   } = useFormTemplate();
   
   // Reset circuit breaker when token changes
@@ -59,6 +64,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     requestInProgressRef.current = false;
     lastErrorRef.current = null;
     setRetryCount(0);
+    setFormLoading(true);
+    setIsFullyLoaded(false);
     
     // Log token for debugging
     if (token) {
@@ -67,6 +74,24 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       console.log("[useTokenVerification]: No token provided");
     }
   }, [token]);
+
+  // Track form template loading state
+  useEffect(() => {
+    // When form template loads successfully and not in an error state
+    if (formTemplateSuccess && !loading && !error && !expired && !submitted) {
+      // Small delay to ensure everything is ready to render
+      const timer = setTimeout(() => {
+        setFormLoading(false);
+        
+        // Add a small additional delay to ensure smooth transition
+        setTimeout(() => {
+          setIsFullyLoaded(true);
+        }, 150);
+      }, 200);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formTemplateSuccess, loading, error, expired, submitted]);
   
   // Function to handle retrying the verification process
   const handleRetry = () => {
@@ -78,6 +103,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     
     console.log("[useTokenVerification/handleRetry]: Retrying token verification");
     setLoading(true);
+    setFormLoading(true);
+    setIsFullyLoaded(false);
     setError(null);
     setErrorCode("");
     setDiagnosticInfo("");
@@ -121,6 +148,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       setErrorCode("too_many_retries");
       setDiagnosticInfo("Maximum retry count exceeded: " + MAX_RETRIES);
       setLoading(false);
+      setFormLoading(false);
       circuitBrokenRef.current = true;
       return;
     }
@@ -140,6 +168,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           setError("Ingen åtkomsttoken angiven");
           setErrorCode("missing_token");
           setLoading(false);
+          setFormLoading(false);
           requestInProgressRef.current = false;
           return;
         }
@@ -148,6 +177,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           setError("Kunde inte ansluta till databasen");
           setErrorCode("no_supabase_client");
           setLoading(false);
+          setFormLoading(false);
           requestInProgressRef.current = false;
           return;
         }
@@ -181,6 +211,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           }
           
           setLoading(false);
+          setFormLoading(false);
           requestInProgressRef.current = false;
           return;
         }
@@ -193,6 +224,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           setError("Kunde inte hitta anamnesen");
           setErrorCode("entry_not_found");
           setLoading(false);
+          setFormLoading(false);
           requestInProgressRef.current = false;
           return;
         }
@@ -220,6 +252,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         setError(null);
         setErrorCode("");
         
+        // Token verification part is done, but we keep formLoading true
+        // until the form template has loaded (handled in other effect)
         setLoading(false);
         requestInProgressRef.current = false;
       } catch (err: any) {
@@ -247,6 +281,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         }
         
         setLoading(false);
+        setFormLoading(false);
         requestInProgressRef.current = false;
       }
     };
@@ -255,7 +290,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   }, [token, supabase, refetchFormTemplate, tokenManager, retryCount, isSupabaseReady, formTemplateLoading]);
   
   return {
-    loading: loading || tokenManager.isVerifying || formTemplateLoading,
+    loading: loading || tokenManager.isVerifying,
+    formLoading: formLoading || formTemplateLoading || loading || tokenManager.isVerifying,
     error: error || tokenManager.verificationError,
     errorCode,
     diagnosticInfo,
@@ -263,6 +299,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     submitted,
     formTemplate,
     entryData,
-    handleRetry
+    handleRetry,
+    isFullyLoaded
   };
 };

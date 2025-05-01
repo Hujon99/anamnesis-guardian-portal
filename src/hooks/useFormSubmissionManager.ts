@@ -5,11 +5,14 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useFormSubmission } from './useFormSubmission';
+import { useFormSubmission, SubmissionError } from './useFormSubmission';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { useMutation } from '@tanstack/react-query';
 import { FormTemplateWithMeta } from './useFormTemplate';
+
+// Export the SubmissionError type for use in other components
+export { SubmissionError } from './useFormSubmission';
 
 export type SubmissionMode = 'patient' | 'optician';
 
@@ -63,7 +66,10 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
         .eq("access_token", token);
       
       if (error) {
-        throw new Error("Kunde inte skicka formuläret: " + error.message);
+        const submissionError = new Error("Kunde inte skicka formuläret: " + error.message) as SubmissionError;
+        submissionError.details = error.message;
+        submissionError.recoverable = true;
+        throw submissionError;
       }
       
       // Set local state to indicate successful submission
@@ -132,7 +138,7 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
   
   // Determine submission error
   const submissionError = mode === 'optician' 
-    ? (opticianMutation.error as Error) || null
+    ? (opticianMutation.error as SubmissionError | null)
     : patientSubmission.error;
   
   // Determine submission status

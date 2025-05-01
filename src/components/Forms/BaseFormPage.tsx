@@ -202,7 +202,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
         });
       }
       
-      // Default error UI
+      // Default error UI - with proper type casting for SubmissionError
       return (
         <Card className="w-full max-w-3xl mx-auto p-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">

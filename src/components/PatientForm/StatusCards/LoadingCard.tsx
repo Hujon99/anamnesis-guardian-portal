@@ -14,14 +14,14 @@ export interface LoadingCardProps {
   onRetry?: () => void;
   minDisplayTime?: number;
   isFormDataReady?: boolean;
-  message?: string; // Added message prop
+  message?: string;
 }
 
 const LoadingCard: React.FC<LoadingCardProps> = ({
   onRetry,
   minDisplayTime = 1000,
   isFormDataReady = false,
-  message = "Laddar formulär..." // Default message
+  message = "Laddar formulär..."
 }) => {
   const [shouldShow, setShouldShow] = useState(true);
   const [showRetry, setShowRetry] = useState(false);

@@ -1,3 +1,4 @@
+
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
@@ -51,6 +52,8 @@ serve(async (req: Request) => {
       hasFormattedAnswers: !!requestData?.answers?.formattedAnswers,
       formattedAnswersType: typeof requestData?.answers?.formattedAnswers,
       hasMetadata: !!requestData?.answers?.metadata,
+      hasFormattedRawData: !!requestData?.answers?.formattedRawData,
+      formattedRawDataType: typeof requestData?.answers?.formattedRawData,
     }, null, 2));
     
     // Extract necessary data
@@ -144,7 +147,9 @@ serve(async (req: Request) => {
         formattedAnswersType: typeof answers.formattedAnswers,
         hasAnswersProperty: !!answers.answers,
         answersPropertyType: typeof answers.answers,
-        directAnswersKeys: typeof answers === 'object' ? Object.keys(answers) : []
+        directAnswersKeys: typeof answers === 'object' ? Object.keys(answers) : [],
+        hasFormattedRawData: !!answers.formattedRawData,
+        formattedRawDataType: typeof answers.formattedRawData
       });
       
       // Extract form data using safer access patterns with detailed validation
@@ -162,7 +167,7 @@ serve(async (req: Request) => {
         // Filter out special properties that aren't actual form answers
         formData = {};
         for (const key in answers) {
-          if (key !== 'metadata' && key !== 'formattedAnswers' && key !== 'rawAnswers') {
+          if (key !== 'metadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && key !== 'formattedRawData') {
             formData[key] = answers[key];
           }
         }
@@ -177,7 +182,7 @@ serve(async (req: Request) => {
       if (typeof answers.formattedRawData === 'string' && answers.formattedRawData.trim() !== '') {
         console.log("[submit-form]: Using provided formattedRawData string");
         formattedRawData = answers.formattedRawData;
-      } else if (answers.formatted_raw_data) {
+      } else if (typeof answers.formatted_raw_data === 'string' && answers.formatted_raw_data.trim() !== '') {
         console.log("[submit-form]: Using provided formatted_raw_data");
         formattedRawData = answers.formatted_raw_data;
       } else {
@@ -193,6 +198,8 @@ serve(async (req: Request) => {
         }
       }
         
+      console.log("[submit-form]: Formatted raw data sample:", formattedRawData.substring(0, 100) + "...");
+      
       // Prepare the update data
       updateData = { 
         answers: formData,
@@ -273,7 +280,7 @@ serve(async (req: Request) => {
     try {
       const { data: verifyData, error: verifyError } = await supabase
         .from('anamnes_entries')
-        .select('id, status, answers')
+        .select('id, status, answers, formatted_raw_data')
         .eq('id', entry.id)
         .single();
         
@@ -284,7 +291,9 @@ serve(async (req: Request) => {
           id: verifyData.id,
           status: verifyData.status,
           hasAnswers: !!verifyData.answers,
-          answersSize: verifyData.answers ? Object.keys(verifyData.answers).length : 0
+          answersSize: verifyData.answers ? Object.keys(verifyData.answers).length : 0,
+          hasFormattedRawData: !!verifyData.formatted_raw_data,
+          formattedRawDataLength: verifyData.formatted_raw_data ? verifyData.formatted_raw_data.length : 0
         }));
       }
     } catch (verifyException) {

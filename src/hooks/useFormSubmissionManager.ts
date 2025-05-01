@@ -158,6 +158,8 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
           const formattedAnswersObj = extractFormattedAnswers(values);
           if (formattedAnswersObj) {
             formattedText = createOptimizedPromptInput(formTemplate.schema, formattedAnswersObj);
+            console.log("[useFormSubmissionManager]: Generated formatted raw data for patient submission:", 
+              formattedText?.substring(0, 100) + "...");
           }
         } catch (error) {
           console.error("[useFormSubmissionManager]: Error generating formatted text for patient submission:", error);
@@ -165,8 +167,12 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
         }
       }
       
-      // Use patient submission flow
-      return await patientSubmission.submitForm(token, values, formTemplate?.schema, formattedText);
+      // Use patient submission flow and pass the formatted raw data explicitly
+      return await patientSubmission.submitForm(
+        token, 
+        { ...values, formattedRawData: formattedText }, // Include formattedRawData directly in values
+        formTemplate?.schema
+      );
     }
   }, [token, mode, opticianMutation, patientSubmission]);
 

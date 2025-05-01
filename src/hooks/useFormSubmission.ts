@@ -53,7 +53,8 @@ export const useFormSubmission = () => {
       valuesCount: Object.keys(values).length,
       hasTemplate: !!formTemplate,
       sampleKeys: Object.keys(values).slice(0, 5),
-      attemptCount: submissionAttempts + 1
+      attemptCount: submissionAttempts + 1,
+      hasFormattedRawData: !!values.formattedRawData || !!preProcessedFormattedAnswers
     });
     
     // Store values for potential retry
@@ -107,15 +108,28 @@ export const useFormSubmission = () => {
         }
       }
       
+      // Ensure we preserve formatted raw data if it exists
+      const formattedRawData = cleanedValues.formattedRawData || preProcessedFormattedAnswers;
+      if (formattedRawData) {
+        console.log("[useFormSubmission/submitForm]: Using pre-existing formatted raw data, length:", 
+          formattedRawData.length);
+      }
+      
       // Prepare the submission data, using the pre-processed data if available
       const submissionData = formTemplate 
         ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: cleanedValues }; // Fallback for backward compatibility
+      
+      // Add formattedRawData directly if available
+      if (formattedRawData) {
+        submissionData.formattedRawData = formattedRawData;
+      }
 
       console.log("[useFormSubmission/submitForm]: Submission data prepared:", {
         hasRawAnswers: !!submissionData.rawAnswers,
         hasFormattedAnswers: !!submissionData.formattedAnswers,
         hasMetadata: !!submissionData.metadata,
+        hasFormattedRawData: !!submissionData.formattedRawData,
         rawAnswersKeys: submissionData.rawAnswers ? Object.keys(submissionData.rawAnswers).slice(0, 3) : []
       });
       
@@ -124,7 +138,8 @@ export const useFormSubmission = () => {
         isRawAnswersObject: submissionData.rawAnswers && typeof submissionData.rawAnswers === 'object',
         isFormattedAnswersObject: submissionData.formattedAnswers && typeof submissionData.formattedAnswers === 'object',
         answersDataSample: JSON.stringify(submissionData).substring(0, 200) + '...',
-        dataType: typeof submissionData
+        dataType: typeof submissionData,
+        formattedRawDataLength: submissionData.formattedRawData?.length || 0
       });
       
       // Submit the form using the edge function

@@ -3,14 +3,11 @@
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
  * to send the processed form data to the submit-form edge function.
- * Enhanced with better error handling, detailed logging for debugging,
- * and robust recovery mechanisms for failed submissions.
- * Updated to use a simplified, consistent data structure matching the optician mode.
+ * Simplified to use a consistent, flat data structure that matches the optician mode.
  */
 
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { prepareFormSubmission } from "@/utils/formSubmissionUtils";
 import { FormTemplate } from "@/types/anamnesis";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -49,11 +46,10 @@ export const useFormSubmission = () => {
     formTemplate?: FormTemplate,
     preProcessedFormattedAnswers?: any
   ): Promise<boolean> => {
-    console.log("[useFormSubmission/submitForm]: Starting form submission", { 
+    console.log("[useFormSubmission/submitForm]: Starting form submission with simplified structure", { 
       hasToken: !!token, 
       valuesCount: Object.keys(values).length,
       hasTemplate: !!formTemplate,
-      sampleKeys: Object.keys(values).slice(0, 5),
       attemptCount: submissionAttempts + 1,
       hasFormattedRawData: !!values.formattedRawData || !!preProcessedFormattedAnswers
     });
@@ -73,14 +69,24 @@ export const useFormSubmission = () => {
     }, 15000);
 
     try {
-      // Extract metadata for optician submissions if present
-      const isOpticianSubmission = values._metadata?.submittedBy === 'optician';
-      console.log("[useFormSubmission/submitForm]: isOpticianSubmission:", isOpticianSubmission);
+      // SIMPLIFICATION: Create a flat, consistent data structure similar to optician mode
+      
+      // Get formatted raw data from either provided parameter or values object
+      let formattedRawData = preProcessedFormattedAnswers;
+      if (!formattedRawData && values.formattedRawData) {
+        formattedRawData = values.formattedRawData;
+      }
+      
+      console.log("[useFormSubmission/submitForm]: Using formatted raw data:", {
+        source: preProcessedFormattedAnswers ? "preProcessed" : (values.formattedRawData ? "values object" : "none"),
+        length: formattedRawData?.length || 0,
+        sample: formattedRawData ? formattedRawData.substring(0, 100) + "..." : "N/A"
+      });
+      
+      // Clean up any metadata or unnecessary fields
+      const cleanedValues = { ...values };
       
       // Handle conditional fields - filter out values that are not needed
-      // If values contain keys that have parent-child relationship in conditional fields,
-      // make sure we only include necessary ones
-      const cleanedValues = { ...values };
       for (const key in cleanedValues) {
         // Skip metadata fields
         if (key.startsWith('_')) continue;
@@ -109,27 +115,27 @@ export const useFormSubmission = () => {
         }
       }
       
-      // Ensure we preserve formatted raw data if it exists
-      const formattedRawData = cleanedValues.formattedRawData || preProcessedFormattedAnswers;
-      
-      // Prepare the submission data in a SIMPLIFIED format - more similar to optician flow
-      // This simplifies what we send to the edge function
+      // SIMPLIFIED APPROACH: Create a flat structure matching the optician mode
+      // This is the key simplification that makes both modes consistent
       const submissionData = {
-        // Include the raw answers directly
+        // Include answers directly at top level
         ...cleanedValues,
         
-        // Ensure formatted_raw_data is set directly on the answers object (snake_case for DB compatibility)
+        // Always include formatted_raw_data (snake_case for database compatibility)
         formatted_raw_data: formattedRawData,
         
-        // Also include camelCase version for backward compatibility
-        formattedRawData: formattedRawData
+        // Set status to "submitted"
+        status: "submitted",
+        
+        // Update timestamp
+        updated_at: new Date().toISOString()
       };
 
-      console.log("[useFormSubmission/submitForm]: Simplified submission data prepared:", {
+      console.log("[useFormSubmission/submitForm]: Simplified submission data structure:", {
         directAnswersKeys: Object.keys(submissionData).slice(0, 5),
-        hasFormattedRawData: !!submissionData.formattedRawData,
-        hasFormatted_raw_data: !!submissionData.formatted_raw_data,
-        formattedRawDataLength: submissionData.formattedRawData?.length || 0
+        hasFormattedRawData: !!submissionData.formatted_raw_data,
+        formattedRawDataLength: submissionData.formatted_raw_data?.length || 0,
+        status: submissionData.status
       });
       
       // Submit the form using the edge function
@@ -144,7 +150,7 @@ export const useFormSubmission = () => {
         try {
           console.log("[useFormSubmission/submitForm]: Sending data to edge function, attempt", retryCount + 1);
           
-          // More validation before sending
+          // Validate data before sending
           if (!submissionData || 
               (typeof submissionData === 'object' && Object.keys(submissionData).length === 0)) {
             throw new Error("Submission data is empty or invalid");
@@ -157,6 +163,7 @@ export const useFormSubmission = () => {
           response = await supabase.functions.invoke('submit-form', {
             body: { 
               token,
+              // SIMPLIFIED: Just send the answers directly, matching optician flow
               answers: submissionData
             }
           });
@@ -200,8 +207,6 @@ export const useFormSubmission = () => {
         throw new Error("Failed to get response after multiple attempts");
       }
 
-      console.log("[useFormSubmission/submitForm]: Response received from edge function:", response);
-
       // Process the response
       if (response.error) {
         console.error("[useFormSubmission/submitForm]: Form submission error after retries:", response.error);
@@ -225,9 +230,7 @@ export const useFormSubmission = () => {
       
       toast({
         title: "Tack för dina svar!",
-        description: isOpticianSubmission 
-          ? "Formuläret har markerats som färdigt och statusen har uppdaterats." 
-          : "Dina svar har skickats in framgångsrikt.",
+        description: "Dina svar har skickats in framgångsrikt.",
       });
       
       clearTimeout(submissionTimeout);

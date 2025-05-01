@@ -24,3 +24,7 @@ verify_jwt = false
 
 [functions.issue-form-token]
 verify_jwt = false
+
+[functions.submit-form]
+verify_jwt = false
+

@@ -3,7 +3,7 @@
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
  * to send the processed form data to the submit-form edge function.
- * Enhanced with better error handling and detailed logging for debugging.
+ * Enhanced with better error handling, detailed logging for debugging.
  * Now includes conditional validation for form submissions.
  */
 
@@ -82,22 +82,62 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: cleanedValues }; // Fallback for backward compatibility
 
-      console.log("[useFormSubmission/submitForm]: Submission data prepared");
+      console.log("[useFormSubmission/submitForm]: Submission data prepared:", submissionData);
       
       // Submit the form using the edge function
-      console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
-      const response = await supabase.functions.invoke('submit-form', {
-        body: { 
-          token,
-          answers: submissionData
+      console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form' with URL:", 
+                 `${supabase.functions.url}/submit-form`);
+                 
+      // More robust error handling with retries
+      let retryCount = 0;
+      const maxRetries = 2;
+      let response;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          response = await supabase.functions.invoke('submit-form', {
+            body: { 
+              token,
+              answers: submissionData
+            }
+          });
+          
+          // If successful, break the retry loop
+          if (!response.error) break;
+          
+          // If there was an error, log it and retry
+          console.warn(`[useFormSubmission/submitForm]: Error attempt ${retryCount + 1}/${maxRetries + 1}:`, response.error);
+          retryCount++;
+          
+          if (retryCount <= maxRetries) {
+            // Wait before retrying (exponential backoff)
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+            console.log(`[useFormSubmission/submitForm]: Retrying submission, attempt ${retryCount + 1}/${maxRetries + 1}`);
+          }
+        } catch (invocationError) {
+          console.error("[useFormSubmission/submitForm]: Function invocation error:", invocationError);
+          retryCount++;
+          
+          if (retryCount <= maxRetries) {
+            // Wait before retrying
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+            console.log(`[useFormSubmission/submitForm]: Retrying after error, attempt ${retryCount + 1}/${maxRetries + 1}`);
+          } else {
+            throw invocationError;
+          }
         }
-      });
+      }
+
+      // No response after all retries
+      if (!response) {
+        throw new Error("Failed to get response after multiple attempts");
+      }
 
       console.log("[useFormSubmission/submitForm]: Response received from edge function:", response);
 
       // Process the response
       if (response.error) {
-        console.error("[useFormSubmission/submitForm]: Form submission error:", response.error);
+        console.error("[useFormSubmission/submitForm]: Form submission error after retries:", response.error);
         throw new Error(
           response.error.message || "Ett fel uppstod vid formulärinskickning"
         );
@@ -122,9 +162,22 @@ export const useFormSubmission = () => {
       console.error("[useFormSubmission/submitForm]: Form submission error:", err);
       setError(err);
       
+      // Show a more detailed error message based on the type of error
+      let errorMessage = err.message || "Ett oväntat fel uppstod.";
+      
+      // Network error detection
+      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+        errorMessage = "Kunde inte ansluta till servern. Kontrollera din internetanslutning och försök igen.";
+      }
+      
+      // Generic API error
+      if (err.status >= 500) {
+        errorMessage = "Ett serverfel uppstod. Försök igen senare.";
+      }
+      
       toast({
         title: "Det gick inte att skicka in formuläret",
-        description: err.message || "Ett oväntat fel uppstod.",
+        description: errorMessage,
         variant: "destructive",
       });
       

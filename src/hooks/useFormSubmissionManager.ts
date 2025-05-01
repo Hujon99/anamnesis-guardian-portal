@@ -2,6 +2,7 @@
 /**
  * This hook unifies form submission handling for both patient and optician modes.
  * It provides a common interface but adapts to different submission methods based on mode.
+ * Updated to ensure consistent handling of formatted_raw_data between patient and optician modes.
  */
 
 import { useState, useCallback } from 'react';
@@ -90,13 +91,25 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
         // Continue with submission even if formatting fails
       }
       
-      // Prepare submission data
+      // Prepare submission data - SIMPLIFIED AND CONSISTENT with patient flow
       const submissionData = {
-        answers: values,
+        // Include the direct answers
+        ...values,
+        // Always include formatted_raw_data for database (snake_case)
         formatted_raw_data: formattedRawData,
-        status: "ready", // Set status to "ready" for optician-filled forms
+        // Also include camelCase version for consistency
+        formattedRawData: formattedRawData,
+        // Set status to "ready" for optician-filled forms
+        status: "ready",
         updated_at: new Date().toISOString()
       };
+      
+      console.log("[useFormSubmissionManager]: Optician submission data:", {
+        hasDirectAnswers: true,
+        directAnswersCount: Object.keys(values).length,
+        hasFormattedRawData: !!submissionData.formattedRawData,
+        hasFormatted_raw_data: !!submissionData.formatted_raw_data,
+      });
       
       // Update the entry with the form answers
       const { error } = await supabase
@@ -145,21 +158,21 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
     console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode`);
     
     if (mode === 'optician') {
-      // Use optician submission flow
+      // Use optician submission flow - direct database update
       await opticianMutation.mutateAsync({ values, formTemplate, formattedAnswers });
       return !opticianMutation.error;
     } else {
       // Generate formatted raw data for patient submission
-      let formattedText = formattedAnswers;
+      let formattedRawData = formattedAnswers;
       
       // If no pre-formatted answers, try to generate them
-      if (!formattedText && formTemplate) {
+      if (!formattedRawData && formTemplate) {
         try {
           const formattedAnswersObj = extractFormattedAnswers(values);
           if (formattedAnswersObj) {
-            formattedText = createOptimizedPromptInput(formTemplate.schema, formattedAnswersObj);
+            formattedRawData = createOptimizedPromptInput(formTemplate.schema, formattedAnswersObj);
             console.log("[useFormSubmissionManager]: Generated formatted raw data for patient submission:", 
-              formattedText?.substring(0, 100) + "...");
+              formattedRawData?.substring(0, 100) + "...");
           }
         } catch (error) {
           console.error("[useFormSubmissionManager]: Error generating formatted text for patient submission:", error);
@@ -167,24 +180,27 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
         }
       }
       
-      // Use patient submission flow and pass the formatted raw data explicitly
-      // ⚠️ Include BOTH camelCase and snake_case versions for compatibility
-      const valuesWithFormattedData = {
+      // SIMPLIFIED - Use consistent structure between patient and optician modes
+      // Add both snake_case and camelCase versions directly to values
+      // This matches what the optician mode sends
+      const enhancedValues = {
         ...values,
-        formattedRawData: formattedText,   // camelCase for JavaScript
-        formatted_raw_data: formattedText, // snake_case for database column
+        formatted_raw_data: formattedRawData,   // snake_case for database
+        formattedRawData: formattedRawData      // camelCase for consistency
       };
       
-      console.log("[useFormSubmissionManager]: Sending patient form with formatted data:", {
-        hasFormattedRawData: !!valuesWithFormattedData.formattedRawData,
-        hasFormattedRawDataSnakeCase: !!valuesWithFormattedData.formatted_raw_data,
-        dataLength: formattedText?.length || 0
+      console.log("[useFormSubmissionManager]: Patient submission using simplified approach:", {
+        hasFormattedRawData: !!enhancedValues.formattedRawData,
+        hasFormattedRawDataSnakeCase: !!enhancedValues.formatted_raw_data,
+        dataLength: formattedRawData?.length || 0
       });
       
+      // Use patient submission flow with enhanced values
       return await patientSubmission.submitForm(
         token,
-        valuesWithFormattedData,
-        formTemplate?.schema
+        enhancedValues,
+        formTemplate?.schema,
+        formattedRawData // Pass formatted data explicitly as backup
       );
     }
   }, [token, mode, opticianMutation, patientSubmission]);

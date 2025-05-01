@@ -5,6 +5,7 @@
  * to send the processed form data to the submit-form edge function.
  * Enhanced with better error handling, detailed logging for debugging,
  * and robust recovery mechanisms for failed submissions.
+ * Updated to use a simplified, consistent data structure matching the optician mode.
  */
 
 import { useState } from "react";
@@ -110,39 +111,25 @@ export const useFormSubmission = () => {
       
       // Ensure we preserve formatted raw data if it exists
       const formattedRawData = cleanedValues.formattedRawData || preProcessedFormattedAnswers;
-      if (formattedRawData) {
-        console.log("[useFormSubmission/submitForm]: Using pre-existing formatted raw data, length:", 
-          formattedRawData.length);
-      }
       
-      // Prepare the submission data, using the pre-processed data if available
-      const submissionData = formTemplate 
-        ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
-        : { answers: cleanedValues }; // Fallback for backward compatibility
-      
-      // Add formattedRawData directly if available - use BOTH camelCase and snake_case for compatibility
-      if (formattedRawData) {
-        submissionData.formattedRawData = formattedRawData;
-        submissionData.formatted_raw_data = formattedRawData; // Add snake_case version to align with DB column
-      }
+      // Prepare the submission data in a SIMPLIFIED format - more similar to optician flow
+      // This simplifies what we send to the edge function
+      const submissionData = {
+        // Include the raw answers directly
+        ...cleanedValues,
+        
+        // Ensure formatted_raw_data is set directly on the answers object (snake_case for DB compatibility)
+        formatted_raw_data: formattedRawData,
+        
+        // Also include camelCase version for backward compatibility
+        formattedRawData: formattedRawData
+      };
 
-      console.log("[useFormSubmission/submitForm]: Submission data prepared:", {
-        hasRawAnswers: !!submissionData.rawAnswers,
-        hasFormattedAnswers: !!submissionData.formattedAnswers,
-        hasMetadata: !!submissionData.metadata,
+      console.log("[useFormSubmission/submitForm]: Simplified submission data prepared:", {
+        directAnswersKeys: Object.keys(submissionData).slice(0, 5),
         hasFormattedRawData: !!submissionData.formattedRawData,
         hasFormatted_raw_data: !!submissionData.formatted_raw_data,
-        rawAnswersKeys: submissionData.rawAnswers ? Object.keys(submissionData.rawAnswers).slice(0, 3) : []
-      });
-      
-      // More detailed logging of the actual data structure being sent
-      console.log("[useFormSubmission/submitForm]: Data structure validation:", {
-        isRawAnswersObject: submissionData.rawAnswers && typeof submissionData.rawAnswers === 'object',
-        isFormattedAnswersObject: submissionData.formattedAnswers && typeof submissionData.formattedAnswers === 'object',
-        answersDataSample: JSON.stringify(submissionData).substring(0, 200) + '...',
-        dataType: typeof submissionData,
-        formattedRawDataLength: submissionData.formattedRawData?.length || 0,
-        formatted_raw_dataLength: submissionData.formatted_raw_data?.length || 0
+        formattedRawDataLength: submissionData.formattedRawData?.length || 0
       });
       
       // Submit the form using the edge function

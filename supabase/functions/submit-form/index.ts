@@ -4,6 +4,7 @@
  * It validates and processes the submitted form data, updating the entry status.
  * Enhanced to handle both regular and magic link entries.
  * Improved with better error handling, detailed logging, and input validation.
+ * Modified to use a consistent approach for both patient and optician submissions.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -47,15 +48,16 @@ serve(async (req: Request) => {
       tokenLength: requestData?.token?.length,
       hasAnswers: !!requestData?.answers,
       answersType: typeof requestData?.answers,
+      answersKeys: typeof requestData?.answers === 'object' ? Object.keys(requestData?.answers) : [],
+      hasFormattedRawData: !!requestData?.answers?.formatted_raw_data,
+      formattedRawDataType: typeof requestData?.answers?.formatted_raw_data,
+      formattedRawDataLength: requestData?.answers?.formatted_raw_data?.length || 0,
+      // Additional logging for rawAnswers path
       hasRawAnswers: !!requestData?.answers?.rawAnswers,
-      rawAnswersType: typeof requestData?.answers?.rawAnswers,
-      hasFormattedAnswers: !!requestData?.answers?.formattedAnswers,
-      formattedAnswersType: typeof requestData?.answers?.formattedAnswers,
-      hasMetadata: !!requestData?.answers?.metadata,
-      hasFormattedRawData: !!requestData?.answers?.formattedRawData,
-      formattedRawDataType: typeof requestData?.answers?.formattedRawData,
-      hasFormatted_raw_data: !!requestData?.answers?.formatted_raw_data,
-      formatted_raw_dataType: typeof requestData?.answers?.formatted_raw_data,
+      rawAnswersKeys: requestData?.answers?.rawAnswers ? Object.keys(requestData?.answers?.rawAnswers) : [],
+      // Log all top-level keys for better diagnostics
+      topLevelKeys: Object.keys(requestData || {}),
+      answerTopLevelKeys: requestData?.answers ? Object.keys(requestData.answers) : []
     }, null, 2));
     
     // Extract necessary data
@@ -134,111 +136,81 @@ serve(async (req: Request) => {
       );
     }
     
-    // Prepare data for database update
+    // Prepare data for database update - SIMPLIFIED APPROACH
     let updateData;
     
     try {
-      // Enhanced answer extraction and validation
-      console.log("[submit-form]: Data inspection and validation");
-      console.log("[submit-form]: Answers type:", typeof answers);
-      console.log("[submit-form]: Answers structure:", {
-        isObject: typeof answers === 'object',
-        hasRawAnswers: !!answers.rawAnswers,
-        rawAnswersType: typeof answers.rawAnswers,
-        hasFormattedAnswers: !!answers.formattedAnswers,
-        formattedAnswersType: typeof answers.formattedAnswers,
-        hasAnswersProperty: !!answers.answers,
-        answersPropertyType: typeof answers.answers,
-        directAnswersKeys: typeof answers === 'object' ? Object.keys(answers) : [],
-        hasFormattedRawData: !!answers.formattedRawData,
-        formattedRawDataLength: answers.formattedRawData?.length,
-        hasFormatted_raw_data: !!answers.formatted_raw_data,
-        formatted_raw_dataLength: answers.formatted_raw_data?.length
-      });
+      // SIMPLIFIED DATA EXTRACTION - Use a more direct approach
+      console.log("[submit-form]: Preparing update data with simplified approach");
       
-      // Extract form data using safer access patterns with detailed validation
-      let formData;
-      
-      // Handle different possible structures with more explicit validation
-      if (answers.rawAnswers) {
-        console.log("[submit-form]: Using rawAnswers property");
-        formData = answers.rawAnswers;
-      } else if (answers.answers) {
-        console.log("[submit-form]: Using answers property");
-        formData = answers.answers;
-      } else if (typeof answers === 'object' && !Array.isArray(answers)) {
-        console.log("[submit-form]: Using answers object directly");
-        // Filter out special properties that aren't actual form answers
-        formData = {};
-        for (const key in answers) {
-          if (key !== 'metadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && 
-              key !== 'formattedRawData' && key !== 'formatted_raw_data') {
-            formData[key] = answers[key];
-          }
-        }
-      } else {
-        console.error("[submit-form]: Could not determine valid answer structure");
-        throw new Error("Invalid answer structure in submission");
+      // Get the form answers - either from direct answers object or from rawAnswers
+      let formAnswers = answers;
+      if (answers.rawAnswers && typeof answers.rawAnswers === 'object') {
+        console.log("[submit-form]: Using rawAnswers from payload");
+        formAnswers = answers.rawAnswers;
       }
       
-      // Search for formatted raw data in all possible locations using a priority order
-      // This ensures compatibility with both camelCase and snake_case versions
-      let formattedRawData;
+      // Get formatted_raw_data - prioritize it wherever it might be
+      let formattedRawData = null;
       
-      // First check for snake_case version (DB column name)
+      // Check all possible locations for formatted_raw_data
       if (typeof answers.formatted_raw_data === 'string' && answers.formatted_raw_data.trim() !== '') {
-        console.log("[submit-form]: Using provided formatted_raw_data");
+        console.log("[submit-form]: Found formatted_raw_data directly in answers");
         formattedRawData = answers.formatted_raw_data;
-      } 
-      // Then check for camelCase version
-      else if (typeof answers.formattedRawData === 'string' && answers.formattedRawData.trim() !== '') {
-        console.log("[submit-form]: Using provided formattedRawData string");
+      } else if (typeof answers.formattedRawData === 'string' && answers.formattedRawData.trim() !== '') {
+        console.log("[submit-form]: Found formattedRawData directly in answers");
         formattedRawData = answers.formattedRawData;
-      }
-      // Check in nested structures
-      else if (answers.rawAnswers?.formatted_raw_data) {
-        console.log("[submit-form]: Using formatted_raw_data from rawAnswers");
+      } else if (answers.rawAnswers?.formatted_raw_data) {
+        console.log("[submit-form]: Found formatted_raw_data in rawAnswers");
         formattedRawData = answers.rawAnswers.formatted_raw_data;
-      }
-      else if (answers.rawAnswers?.formattedRawData) {
-        console.log("[submit-form]: Using formattedRawData from rawAnswers");
+      } else if (answers.rawAnswers?.formattedRawData) {
+        console.log("[submit-form]: Found formattedRawData in rawAnswers");
         formattedRawData = answers.rawAnswers.formattedRawData;
       }
-      // Create a simple text representation if no formatted data provided
-      else {
-        console.log("[submit-form]: Creating formattedRawData from raw data");
-        formattedRawData = "Patientens anamnesinformation:\n\n";
-        if (typeof formData === 'object' && formData !== null) {
-          Object.entries(formData).forEach(([key, value]) => {
-            if (key !== 'metadata' && key !== 'formattedAnswers' && value !== null && value !== undefined) {
-              formattedRawData += `${key}: ${JSON.stringify(value)}\n`;
-            }
-          });
-        }
-      }
+      
+      // Log what we found
+      if (formattedRawData) {
+        console.log("[submit-form]: Successfully extracted formatted raw data, length:", 
+                   formattedRawData.length);
+        console.log("[submit-form]: Sample of formatted raw data:", 
+                   formattedRawData.substring(0, 100) + "...");
+      } else {
+        console.warn("[submit-form]: No formatted raw data found in any location");
         
-      console.log("[submit-form]: Formatted raw data sample:", 
-                  formattedRawData ? formattedRawData.substring(0, 100) + "..." : "MISSING");
-      
-      if (!formattedRawData) {
-        console.warn("[submit-form]: No formatted raw data found in any field, using empty string");
-        formattedRawData = "";
+        // Create a simple fallback if formatted data is missing
+        formattedRawData = "Patientens anamnesinformation:\n\n";
+        if (typeof formAnswers === 'object' && formAnswers !== null) {
+          Object.entries(formAnswers)
+            .filter(([key]) => !['metadata', 'formattedAnswers', '_metadata'].includes(key))
+            .forEach(([key, value]) => {
+              if (value !== null && value !== undefined && value !== '') {
+                formattedRawData += `${key}: ${JSON.stringify(value)}\n`;
+              }
+            });
+        }
+        console.log("[submit-form]: Created fallback formatted raw data");
       }
       
-      // Prepare the update data
-      updateData = { 
-        answers: formData,
-        formatted_raw_data: formattedRawData, // Always use snake_case for DB column
+      // Construct the final update data - SIMPLIFIED
+      updateData = {
+        // Use the form answers directly
+        answers: formAnswers,
+        // Always set formatted_raw_data (database field name)
+        formatted_raw_data: formattedRawData,
+        // Set status to submitted
         status: 'submitted',
+        // Update timestamp
         updated_at: new Date().toISOString()
       };
       
-      console.log("[submit-form]: Update data prepared successfully:", {
+      console.log("[submit-form]: Final update data structure:", {
         hasAnswers: !!updateData.answers,
         answersFieldCount: Object.keys(updateData.answers || {}).length,
         hasFormattedRawData: !!updateData.formatted_raw_data,
-        formattedRawDataLength: updateData.formatted_raw_data?.length || 0
+        formattedRawDataLength: updateData.formatted_raw_data?.length || 0,
+        status: updateData.status
       });
+      
     } catch (dataError) {
       console.error("[submit-form]: Error preparing update data:", dataError);
       return new Response(
@@ -250,11 +222,6 @@ serve(async (req: Request) => {
     // 2. Update the entry with the submitted data
     console.log("[submit-form]: Updating entry with submitted data...");
     console.log("[submit-form]: Entry ID:", entry.id);
-    console.log("[submit-form]: Update data structure validation:",
-      "answers is " + (updateData.answers ? "present" : "missing"),
-      "answers has " + Object.keys(updateData.answers).length + " keys",
-      "formatted_raw_data is " + (updateData.formatted_raw_data ? `present (${updateData.formatted_raw_data.substring(0, 50)}...)` : "missing")
-    );
     
     // Attempt to update with transaction for better atomicity
     try {
@@ -262,6 +229,7 @@ serve(async (req: Request) => {
       const sampleData = {
         answersSample: JSON.stringify(updateData.answers).substring(0, 200) + '...',
         formattedRawDataSample: updateData.formatted_raw_data.substring(0, 200) + '...',
+        status: updateData.status
       };
       console.log("[submit-form]: Sample of data being inserted:", sampleData);
       

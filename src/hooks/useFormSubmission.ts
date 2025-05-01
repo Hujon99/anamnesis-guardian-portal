@@ -120,9 +120,10 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: cleanedValues }; // Fallback for backward compatibility
       
-      // Add formattedRawData directly if available
+      // Add formattedRawData directly if available - use BOTH camelCase and snake_case for compatibility
       if (formattedRawData) {
         submissionData.formattedRawData = formattedRawData;
+        submissionData.formatted_raw_data = formattedRawData; // Add snake_case version to align with DB column
       }
 
       console.log("[useFormSubmission/submitForm]: Submission data prepared:", {
@@ -130,6 +131,7 @@ export const useFormSubmission = () => {
         hasFormattedAnswers: !!submissionData.formattedAnswers,
         hasMetadata: !!submissionData.metadata,
         hasFormattedRawData: !!submissionData.formattedRawData,
+        hasFormatted_raw_data: !!submissionData.formatted_raw_data,
         rawAnswersKeys: submissionData.rawAnswers ? Object.keys(submissionData.rawAnswers).slice(0, 3) : []
       });
       
@@ -139,7 +141,8 @@ export const useFormSubmission = () => {
         isFormattedAnswersObject: submissionData.formattedAnswers && typeof submissionData.formattedAnswers === 'object',
         answersDataSample: JSON.stringify(submissionData).substring(0, 200) + '...',
         dataType: typeof submissionData,
-        formattedRawDataLength: submissionData.formattedRawData?.length || 0
+        formattedRawDataLength: submissionData.formattedRawData?.length || 0,
+        formatted_raw_dataLength: submissionData.formatted_raw_data?.length || 0
       });
       
       // Submit the form using the edge function

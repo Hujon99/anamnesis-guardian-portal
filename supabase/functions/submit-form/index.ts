@@ -54,6 +54,8 @@ serve(async (req: Request) => {
       hasMetadata: !!requestData?.answers?.metadata,
       hasFormattedRawData: !!requestData?.answers?.formattedRawData,
       formattedRawDataType: typeof requestData?.answers?.formattedRawData,
+      hasFormatted_raw_data: !!requestData?.answers?.formatted_raw_data,
+      formatted_raw_dataType: typeof requestData?.answers?.formatted_raw_data,
     }, null, 2));
     
     // Extract necessary data
@@ -149,7 +151,9 @@ serve(async (req: Request) => {
         answersPropertyType: typeof answers.answers,
         directAnswersKeys: typeof answers === 'object' ? Object.keys(answers) : [],
         hasFormattedRawData: !!answers.formattedRawData,
-        formattedRawDataType: typeof answers.formattedRawData
+        formattedRawDataLength: answers.formattedRawData?.length,
+        hasFormatted_raw_data: !!answers.formatted_raw_data,
+        formatted_raw_dataLength: answers.formatted_raw_data?.length
       });
       
       // Extract form data using safer access patterns with detailed validation
@@ -167,7 +171,8 @@ serve(async (req: Request) => {
         // Filter out special properties that aren't actual form answers
         formData = {};
         for (const key in answers) {
-          if (key !== 'metadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && key !== 'formattedRawData') {
+          if (key !== 'metadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && 
+              key !== 'formattedRawData' && key !== 'formatted_raw_data') {
             formData[key] = answers[key];
           }
         }
@@ -176,18 +181,32 @@ serve(async (req: Request) => {
         throw new Error("Invalid answer structure in submission");
       }
       
-      // Use formatted raw data from request if provided, otherwise create one
+      // Search for formatted raw data in all possible locations using a priority order
+      // This ensures compatibility with both camelCase and snake_case versions
       let formattedRawData;
       
-      if (typeof answers.formattedRawData === 'string' && answers.formattedRawData.trim() !== '') {
-        console.log("[submit-form]: Using provided formattedRawData string");
-        formattedRawData = answers.formattedRawData;
-      } else if (typeof answers.formatted_raw_data === 'string' && answers.formatted_raw_data.trim() !== '') {
+      // First check for snake_case version (DB column name)
+      if (typeof answers.formatted_raw_data === 'string' && answers.formatted_raw_data.trim() !== '') {
         console.log("[submit-form]: Using provided formatted_raw_data");
         formattedRawData = answers.formatted_raw_data;
-      } else {
+      } 
+      // Then check for camelCase version
+      else if (typeof answers.formattedRawData === 'string' && answers.formattedRawData.trim() !== '') {
+        console.log("[submit-form]: Using provided formattedRawData string");
+        formattedRawData = answers.formattedRawData;
+      }
+      // Check in nested structures
+      else if (answers.rawAnswers?.formatted_raw_data) {
+        console.log("[submit-form]: Using formatted_raw_data from rawAnswers");
+        formattedRawData = answers.rawAnswers.formatted_raw_data;
+      }
+      else if (answers.rawAnswers?.formattedRawData) {
+        console.log("[submit-form]: Using formattedRawData from rawAnswers");
+        formattedRawData = answers.rawAnswers.formattedRawData;
+      }
+      // Create a simple text representation if no formatted data provided
+      else {
         console.log("[submit-form]: Creating formattedRawData from raw data");
-        // Create a simple text representation if no formatted data provided
         formattedRawData = "Patientens anamnesinformation:\n\n";
         if (typeof formData === 'object' && formData !== null) {
           Object.entries(formData).forEach(([key, value]) => {
@@ -198,17 +217,28 @@ serve(async (req: Request) => {
         }
       }
         
-      console.log("[submit-form]: Formatted raw data sample:", formattedRawData.substring(0, 100) + "...");
+      console.log("[submit-form]: Formatted raw data sample:", 
+                  formattedRawData ? formattedRawData.substring(0, 100) + "..." : "MISSING");
+      
+      if (!formattedRawData) {
+        console.warn("[submit-form]: No formatted raw data found in any field, using empty string");
+        formattedRawData = "";
+      }
       
       // Prepare the update data
       updateData = { 
         answers: formData,
-        formatted_raw_data: formattedRawData,
+        formatted_raw_data: formattedRawData, // Always use snake_case for DB column
         status: 'submitted',
         updated_at: new Date().toISOString()
       };
       
-      console.log("[submit-form]: Update data prepared successfully");
+      console.log("[submit-form]: Update data prepared successfully:", {
+        hasAnswers: !!updateData.answers,
+        answersFieldCount: Object.keys(updateData.answers || {}).length,
+        hasFormattedRawData: !!updateData.formatted_raw_data,
+        formattedRawDataLength: updateData.formatted_raw_data?.length || 0
+      });
     } catch (dataError) {
       console.error("[submit-form]: Error preparing update data:", dataError);
       return new Response(

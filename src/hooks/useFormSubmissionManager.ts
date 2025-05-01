@@ -168,9 +168,22 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
       }
       
       // Use patient submission flow and pass the formatted raw data explicitly
+      // ⚠️ Include BOTH camelCase and snake_case versions for compatibility
+      const valuesWithFormattedData = {
+        ...values,
+        formattedRawData: formattedText,   // camelCase for JavaScript
+        formatted_raw_data: formattedText, // snake_case for database column
+      };
+      
+      console.log("[useFormSubmissionManager]: Sending patient form with formatted data:", {
+        hasFormattedRawData: !!valuesWithFormattedData.formattedRawData,
+        hasFormattedRawDataSnakeCase: !!valuesWithFormattedData.formatted_raw_data,
+        dataLength: formattedText?.length || 0
+      });
+      
       return await patientSubmission.submitForm(
-        token, 
-        { ...values, formattedRawData: formattedText }, // Include formattedRawData directly in values
+        token,
+        valuesWithFormattedData,
         formTemplate?.schema
       );
     }

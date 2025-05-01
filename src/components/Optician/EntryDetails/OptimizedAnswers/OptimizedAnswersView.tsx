@@ -66,7 +66,9 @@ export const OptimizedAnswersView = ({
     hasAnswers,
     formTemplateData || null,
     (data: string) => {
+      console.log("useFormattedRawData callback triggered with data length:", data.length);
       setFormattedRawData(data);
+      // This callback is triggered when raw data is generated, make sure to save it!
       saveFormattedRawData();
     }
   );
@@ -91,6 +93,7 @@ export const OptimizedAnswersView = ({
   // Regenerate raw data if it's empty but we have answers
   useEffect(() => {
     if (hasAnswers && formattedRawData === "" && formTemplateData) {
+      console.log("Auto-generating raw data because it's empty but we have answers");
       generateRawData();
     }
   }, [hasAnswers, formattedRawData, formTemplateData, generateRawData]);
@@ -100,6 +103,7 @@ export const OptimizedAnswersView = ({
     setSaveIndicator("unsaved");
     
     try {
+      console.log("Saving changes with data length:", formattedRawData.length);
       saveFormattedRawData();
       
       toast({
@@ -135,7 +139,10 @@ export const OptimizedAnswersView = ({
     }
     
     try {
+      console.log("Regenerating formatted data with template available:", !!formTemplateData);
       await generateRawData();
+      // Explicitly call saveFormattedRawData after generating
+      saveFormattedRawData();
       toast({
         title: "Textvy uppdaterad och sparad",
         description: "Den formatterade textvyn har uppdaterats och sparats i databasen."

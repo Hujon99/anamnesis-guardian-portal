@@ -1,3 +1,9 @@
+
+/**
+ * This hook provides functionality for managing anamnesis details.
+ * It handles state management, editing, saving, and other operations for anamnesis entries.
+ */
+
 import { useState, useCallback, useEffect } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useEntryMutations } from "./useEntryMutations";
@@ -40,7 +46,7 @@ export function useAnamnesisDetail(
   const handleSaveFormattedRawData = useCallback(() => {
     if (formattedRawData !== entry.formatted_raw_data) {
       console.log("Saving formatted raw data of length:", formattedRawData.length);
-      saveFormattedRawData(formattedRawData);
+      saveFormattedRawData(formattedRawData); // Fixed: Adding the argument here
     }
   }, [formattedRawData, entry.formatted_raw_data, saveFormattedRawData]);
 

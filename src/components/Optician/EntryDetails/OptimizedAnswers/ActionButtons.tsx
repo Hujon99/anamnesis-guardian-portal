@@ -2,6 +2,7 @@
 /**
  * This component provides action buttons for the OptimizedAnswersView,
  * handling different states (editing, viewing) and actions (save, edit, etc.)
+ * It clearly communicates that the "Uppdatera och spara textvy" button both generates and saves data.
  */
 
 import { Button } from "@/components/ui/button";

@@ -85,8 +85,7 @@ export const useFormSubmission = () => {
       console.log("[useFormSubmission/submitForm]: Submission data prepared:", submissionData);
       
       // Submit the form using the edge function
-      console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form' with URL:", 
-                 `${supabase.functions.url}/submit-form`);
+      console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
                  
       // More robust error handling with retries
       let retryCount = 0;

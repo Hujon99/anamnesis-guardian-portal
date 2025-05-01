@@ -1,4 +1,3 @@
-
 /**
  * This hook unifies form submission handling for both patient and optician modes.
  * It provides a common interface but adapts to different submission methods based on mode.
@@ -12,7 +11,8 @@ import { useMutation } from '@tanstack/react-query';
 import { FormTemplateWithMeta } from './useFormTemplate';
 
 // Export the SubmissionError type for use in other components
-export { SubmissionError } from './useFormSubmission';
+// Using 'export type' syntax to comply with isolatedModules
+export type { SubmissionError } from './useFormSubmission';
 
 export type SubmissionMode = 'patient' | 'optician';
 

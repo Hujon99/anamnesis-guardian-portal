@@ -3,8 +3,8 @@
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
  * to send the processed form data to the submit-form edge function.
- * Enhanced with better error handling, detailed logging for debugging.
- * Now includes conditional validation for form submissions.
+ * Enhanced with better error handling, detailed logging for debugging,
+ * and robust recovery mechanisms for failed submissions.
  */
 
 import { useState } from "react";
@@ -13,10 +13,34 @@ import { prepareFormSubmission } from "@/utils/formSubmissionUtils";
 import { FormTemplate } from "@/types/anamnesis";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface SubmissionError extends Error {
+  status?: number;
+  details?: string;
+  recoverable?: boolean;
+}
+
 export const useFormSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<SubmissionError | null>(null);
+  const [lastAttemptValues, setLastAttemptValues] = useState<Record<string, any> | null>(null);
+  const [submissionAttempts, setSubmissionAttempts] = useState(0);
+
+  const resetError = () => {
+    setError(null);
+  };
+
+  const retrySubmission = async (): Promise<boolean> => {
+    if (!lastAttemptValues) {
+      console.error("[useFormSubmission/retrySubmission]: No values to retry with");
+      return false;
+    }
+    
+    // Extract the stored values from last attempt
+    const { token, values, formTemplate } = lastAttemptValues;
+    console.log("[useFormSubmission/retrySubmission]: Retrying submission with stored values");
+    return await submitForm(token, values, formTemplate);
+  };
 
   const submitForm = async (
     token: string, 
@@ -28,8 +52,13 @@ export const useFormSubmission = () => {
       hasToken: !!token, 
       valuesCount: Object.keys(values).length,
       hasTemplate: !!formTemplate,
-      sampleKeys: Object.keys(values).slice(0, 5)
+      sampleKeys: Object.keys(values).slice(0, 5),
+      attemptCount: submissionAttempts + 1
     });
+    
+    // Store values for potential retry
+    setLastAttemptValues({ token, values, formTemplate });
+    setSubmissionAttempts(prev => prev + 1);
     
     setIsSubmitting(true);
     setError(null);
@@ -90,6 +119,14 @@ export const useFormSubmission = () => {
         rawAnswersKeys: submissionData.rawAnswers ? Object.keys(submissionData.rawAnswers).slice(0, 3) : []
       });
       
+      // More detailed logging of the actual data structure being sent
+      console.log("[useFormSubmission/submitForm]: Data structure validation:", {
+        isRawAnswersObject: submissionData.rawAnswers && typeof submissionData.rawAnswers === 'object',
+        isFormattedAnswersObject: submissionData.formattedAnswers && typeof submissionData.formattedAnswers === 'object',
+        answersDataSample: JSON.stringify(submissionData).substring(0, 200) + '...',
+        dataType: typeof submissionData
+      });
+      
       // Submit the form using the edge function
       console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
                  
@@ -102,6 +139,16 @@ export const useFormSubmission = () => {
         try {
           console.log("[useFormSubmission/submitForm]: Sending data to edge function, attempt", retryCount + 1);
           
+          // More validation before sending
+          if (!submissionData || 
+              (typeof submissionData === 'object' && Object.keys(submissionData).length === 0)) {
+            throw new Error("Submission data is empty or invalid");
+          }
+          
+          if (!token || typeof token !== 'string') {
+            throw new Error("Invalid token format");
+          }
+          
           response = await supabase.functions.invoke('submit-form', {
             body: { 
               token,
@@ -112,7 +159,9 @@ export const useFormSubmission = () => {
           console.log("[useFormSubmission/submitForm]: Edge function response:", {
             hasError: !!response.error,
             hasData: !!response.data,
-            status: response.error?.status || 200
+            status: response.error?.status || 200,
+            data: response.data ? JSON.stringify(response.data).substring(0, 100) : null,
+            error: response.error ? JSON.stringify(response.error).substring(0, 100) : null
           });
           
           // If successful, break the retry loop
@@ -127,7 +176,7 @@ export const useFormSubmission = () => {
             await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
             console.log(`[useFormSubmission/submitForm]: Retrying submission, attempt ${retryCount + 1}/${maxRetries + 1}`);
           }
-        } catch (invocationError) {
+        } catch (invocationError: any) {
           console.error("[useFormSubmission/submitForm]: Function invocation error:", invocationError);
           retryCount++;
           
@@ -151,9 +200,17 @@ export const useFormSubmission = () => {
       // Process the response
       if (response.error) {
         console.error("[useFormSubmission/submitForm]: Form submission error after retries:", response.error);
-        throw new Error(
+        
+        // Create a more detailed error
+        const submissionError: SubmissionError = new Error(
           response.error.message || "Ett fel uppstod vid formulärinskickning"
         );
+        
+        submissionError.status = response.error.status;
+        submissionError.details = response.error.details || response.error.message;
+        submissionError.recoverable = response.error.status !== 404 && response.error.status !== 410 && response.error.status !== 401;
+        
+        throw submissionError;
       }
 
       console.log("[useFormSubmission/submitForm]: Form submission successful:", response.data);
@@ -171,21 +228,37 @@ export const useFormSubmission = () => {
       clearTimeout(submissionTimeout);
       return true;
     } catch (err: any) {
-      // Error handling
+      // Enhanced error handling
       console.error("[useFormSubmission/submitForm]: Form submission error:", err);
-      setError(err);
+      
+      // Create a proper submission error object
+      const submissionError: SubmissionError = err instanceof Error ? err : new Error(err?.message || "Ett oväntat fel uppstod.");
+      
+      if (!submissionError.status) {
+        // Set status and recoverable flag based on error type
+        if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+          submissionError.status = 0;
+          submissionError.details = "Nätverksfel - Kunde inte ansluta till servern";
+          submissionError.recoverable = true;
+        } else {
+          submissionError.status = 500;
+          submissionError.recoverable = true;
+        }
+      }
+      
+      setError(submissionError);
       
       // Show a more detailed error message based on the type of error
-      let errorMessage = err.message || "Ett oväntat fel uppstod.";
+      let errorMessage = submissionError.message || "Ett oväntat fel uppstod.";
       
       // Network error detection
-      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+      if (submissionError.message?.includes('Failed to fetch') || submissionError.message?.includes('NetworkError')) {
         errorMessage = "Kunde inte ansluta till servern. Kontrollera din internetanslutning och försök igen.";
       }
       
       // Generic API error
-      if (err.status >= 500) {
-        errorMessage = "Ett serverfel uppstod. Försök igen senare.";
+      if (submissionError.status >= 500) {
+        errorMessage = "Ett serverfel uppstod. Formuläret kunde inte skickas in just nu. Du kan försöka igen om en stund.";
       }
       
       toast({
@@ -206,5 +279,8 @@ export const useFormSubmission = () => {
     isSubmitted,
     error,
     submitForm,
+    retrySubmission,
+    resetError,
+    submissionAttempts
   };
 };

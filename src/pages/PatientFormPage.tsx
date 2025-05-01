@@ -5,11 +5,12 @@
  * using a modular approach with dedicated components and hooks.
  * Enhanced to support magic links, auto-saving functionality, and smooth transitions
  * between loading and form display using a state machine approach to prevent flashing.
+ * Now includes improved error handling with a dedicated submission error state.
  */
 
 import { useSearchParams } from "react-router-dom";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
-import { useFormSubmission } from "@/hooks/useFormSubmission";
+import { useFormSubmission, SubmissionError } from "@/hooks/useFormSubmission";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useEffect, useState, useCallback, useRef } from "react";
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
@@ -21,6 +22,8 @@ import BookingInfoCard from "@/components/PatientForm/BookingInfoCard";
 import CopyLinkButton from "@/components/PatientForm/CopyLinkButton";
 import AutoSaveIndicator from "@/components/PatientForm/AutoSaveIndicator";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 // Define a form state enum for better state management
 type FormPageState = 
@@ -31,7 +34,8 @@ type FormPageState =
   | "EXPIRED" 
   | "SUBMITTED" 
   | "FORM_READY"
-  | "SUBMITTING";
+  | "SUBMITTING"
+  | "SUBMISSION_ERROR"; // New state for submission errors
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -88,14 +92,14 @@ const PatientFormPage = () => {
   const { 
     loading, 
     formLoading,
-    error, 
+    error: verificationError, 
     errorCode, 
     diagnosticInfo, 
     expired, 
     submitted,
     formTemplate,
     entryData,
-    handleRetry,
+    handleRetry: handleVerificationRetry,
     isFullyLoaded
   } = useTokenVerification(token);
   
@@ -153,7 +157,7 @@ const PatientFormPage = () => {
     }
     
     // Error state takes precedence
-    if (error) {
+    if (verificationError) {
       console.log("[PatientFormPage]: Error detected, transitioning to ERROR state");
       setFormPageState("ERROR");
       return;
@@ -231,16 +235,43 @@ const PatientFormPage = () => {
         transitionTimeoutRef.current = null;
       }
     };
-  }, [loading, formLoading, error, expired, submitted, isFullyLoaded, formTemplate, formPageState]);
+  }, [loading, formLoading, verificationError, expired, submitted, isFullyLoaded, formTemplate, formPageState]);
   
   const { 
     isSubmitting, 
     error: submissionError, 
     isSubmitted, 
-    submitForm 
+    submitForm,
+    retrySubmission,
+    resetError,
+    submissionAttempts
   } = useFormSubmission();
 
-  // Update form state when submission starts
+  // Handle retry for submission errors
+  const handleSubmissionRetry = useCallback(() => {
+    console.log("[PatientFormPage]: Retrying submission...");
+    
+    // If we were in SUBMISSION_ERROR state, first reset the error and update the state
+    if (formPageState === "SUBMISSION_ERROR") {
+      resetError();
+      setFormPageState("FORM_READY");
+      
+      // After a short delay to let the UI update, retry the submission
+      setTimeout(async () => {
+        setFormPageState("SUBMITTING");
+        const success = await retrySubmission();
+        
+        if (!success) {
+          console.log("[PatientFormPage]: Retry submission failed");
+          setFormPageState("SUBMISSION_ERROR");
+        } else {
+          console.log("[PatientFormPage]: Retry submission succeeded");
+        }
+      }, 100);
+    }
+  }, [formPageState, resetError, retrySubmission]);
+
+  // Update form state when submission starts or completes
   useEffect(() => {
     if (isSubmitting) {
       console.log("[PatientFormPage]: Form submission started, setting SUBMITTING state");
@@ -248,9 +279,15 @@ const PatientFormPage = () => {
     } else if (isSubmitted) {
       console.log("[PatientFormPage]: Form submission completed, setting SUBMITTED state");
       setFormPageState("SUBMITTED");
-    } else if (submissionError && formPageState === "SUBMITTING") {
-      console.log("[PatientFormPage]: Form submission error, setting ERROR state");
-      setFormPageState("ERROR");
+    } else if (submissionError && (formPageState === "SUBMITTING" || formPageState === "FORM_READY")) {
+      console.log("[PatientFormPage]: Form submission error, setting SUBMISSION_ERROR state");
+      console.log("[PatientFormPage]: Error details:", {
+        message: submissionError.message,
+        status: submissionError.status,
+        details: submissionError.details,
+        recoverable: submissionError.recoverable
+      });
+      setFormPageState("SUBMISSION_ERROR");
     }
   }, [isSubmitting, isSubmitted, submissionError, formPageState]);
 
@@ -322,7 +359,7 @@ const PatientFormPage = () => {
       console.log(`[PatientFormPage/RENDER]: Rendering LoadingCard for state ${formPageState}`);
       return (
         <LoadingCard 
-          onRetry={handleRetry} 
+          onRetry={handleVerificationRetry} 
           minDisplayTime={2000}
           isFormDataReady={formDataReadyRef.current} 
         />
@@ -342,24 +379,74 @@ const PatientFormPage = () => {
       console.log("[PatientFormPage/RENDER]: Rendering ErrorCard");
       return (
         <ErrorCard 
-          error={submissionError?.message || error} 
+          error={verificationError || "Ett okänt fel har uppstått"} 
           errorCode={errorCode} 
           diagnosticInfo={diagnosticInfo} 
-          onRetry={handleRetry} 
+          onRetry={handleVerificationRetry} 
         />
       );
       
+    case "SUBMISSION_ERROR":
+      console.log("[PatientFormPage/RENDER]: Rendering SubmissionErrorCard");
+      return (
+        <Card className="w-full max-w-3xl mx-auto p-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="bg-red-100 p-4 rounded-full">
+              <RefreshCw className="h-8 w-8 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-red-600">Formuläret kunde inte skickas in</h2>
+            <p className="text-gray-700 max-w-lg">
+              {submissionError?.message || "Ett oväntat fel uppstod vid inskickning av formuläret."}
+            </p>
+            
+            {submissionError?.details && (
+              <div className="bg-gray-100 p-4 rounded-md text-sm max-w-lg w-full text-left">
+                <p className="font-medium">Detaljer:</p>
+                <p className="font-mono">{submissionError.details}</p>
+              </div>
+            )}
+            
+            <div className="flex flex-col md:flex-row gap-3 w-full max-w-md pt-4">
+              {submissionError?.recoverable && (
+                <Button 
+                  onClick={handleSubmissionRetry} 
+                  className="flex-1"
+                  disabled={submissionAttempts > 3}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Försök igen
+                </Button>
+              )}
+              
+              <Button 
+                variant="outline" 
+                onClick={handleVerificationRetry} 
+                className="flex-1"
+              >
+                Återgå till formuläret
+              </Button>
+            </div>
+            
+            {submissionAttempts > 3 && (
+              <p className="text-sm text-amber-600">
+                Vi har försökt flera gånger. Vänligen kontakta din optiker om problemet kvarstår.
+              </p>
+            )}
+          </div>
+        </Card>
+      );
+    
     case "EXPIRED":
       console.log("[PatientFormPage/RENDER]: Rendering ExpiredCard");
       return <ExpiredCard />;
       
     case "SUBMITTED":
-    case "SUBMITTING":
-      console.log(`[PatientFormPage/RENDER]: Rendering ${formPageState === "SUBMITTED" ? "SubmittedCard" : "LoadingCard for submission"}`);
-      if (isSubmitting) {
-        return <LoadingCard minDisplayTime={800} isFormDataReady={true} />;
-      }
+      console.log("[PatientFormPage/RENDER]: Rendering SubmittedCard");
       return <SubmittedCard />;
+    
+    case "SUBMITTING":
+      console.log("[PatientFormPage/RENDER]: Rendering LoadingCard for submission");
+      return <LoadingCard minDisplayTime={800} isFormDataReady={true} message="Skickar in formulär..." />;
       
     case "FORM_READY":
       console.log("[PatientFormPage/RENDER]: Rendering FORM_READY state");
@@ -383,7 +470,7 @@ const PatientFormPage = () => {
             error="Kunde inte ladda formulärmallen korrekt" 
             errorCode="invalid_template"
             diagnosticInfo={`FormTemplate exists: ${!!formTemplate}, Schema exists: ${!!formTemplate?.schema}`}
-            onRetry={handleRetry}
+            onRetry={handleVerificationRetry}
           />
         );
       }

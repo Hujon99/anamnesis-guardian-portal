@@ -43,12 +43,16 @@ serve(async (req: Request) => {
     // Enhanced debugging: log the entire request structure (excluding sensitive data)
     console.log("[submit-form]: Request structure:", JSON.stringify({
       hasToken: !!requestData?.token,
+      tokenType: typeof requestData?.token,
+      tokenLength: requestData?.token?.length,
       hasAnswers: !!requestData?.answers,
       answersType: typeof requestData?.answers,
       hasRawAnswers: !!requestData?.answers?.rawAnswers,
+      rawAnswersType: typeof requestData?.answers?.rawAnswers,
       hasFormattedAnswers: !!requestData?.answers?.formattedAnswers,
+      formattedAnswersType: typeof requestData?.answers?.formattedAnswers,
       hasMetadata: !!requestData?.answers?.metadata,
-    }));
+    }, null, 2));
     
     // Extract necessary data
     const { token, answers } = requestData;
@@ -130,33 +134,57 @@ serve(async (req: Request) => {
     let updateData;
     
     try {
-      // Extract the core form data - perform more rigorous validation and logging
+      // Enhanced answer extraction and validation
+      console.log("[submit-form]: Data inspection and validation");
       console.log("[submit-form]: Answers type:", typeof answers);
-      if (typeof answers === 'object') {
-        console.log("[submit-form]: Answers keys:", Object.keys(answers));
-      }
+      console.log("[submit-form]: Answers structure:", {
+        isObject: typeof answers === 'object',
+        hasRawAnswers: !!answers.rawAnswers,
+        rawAnswersType: typeof answers.rawAnswers,
+        hasFormattedAnswers: !!answers.formattedAnswers,
+        formattedAnswersType: typeof answers.formattedAnswers,
+        hasAnswersProperty: !!answers.answers,
+        answersPropertyType: typeof answers.answers,
+        directAnswersKeys: typeof answers === 'object' ? Object.keys(answers) : []
+      });
       
-      // Extract form data using safer access patterns
+      // Extract form data using safer access patterns with detailed validation
       let formData;
       
-      // Handle different possible structures
+      // Handle different possible structures with more explicit validation
       if (answers.rawAnswers) {
         console.log("[submit-form]: Using rawAnswers property");
         formData = answers.rawAnswers;
       } else if (answers.answers) {
         console.log("[submit-form]: Using answers property");
         formData = answers.answers;
-      } else {
+      } else if (typeof answers === 'object' && !Array.isArray(answers)) {
         console.log("[submit-form]: Using answers object directly");
-        formData = answers;
+        // Filter out special properties that aren't actual form answers
+        formData = {};
+        for (const key in answers) {
+          if (key !== 'metadata' && key !== 'formattedAnswers' && key !== 'rawAnswers') {
+            formData[key] = answers[key];
+          }
+        }
+      } else {
+        console.error("[submit-form]: Could not determine valid answer structure");
+        throw new Error("Invalid answer structure in submission");
       }
       
-      console.log("[submit-form]: Form data structure:", JSON.stringify({
+      // Verify we have valid form data after extraction
+      if (!formData || (typeof formData === 'object' && Object.keys(formData).length === 0)) {
+        console.error("[submit-form]: Form data is empty after extraction");
+        throw new Error("No valid form data found in submission");
+      }
+      
+      console.log("[submit-form]: Form data structure after extraction:", {
         dataType: typeof formData,
         isObject: typeof formData === 'object',
         hasKeys: typeof formData === 'object' ? Object.keys(formData).length : 0,
-        sampleKeys: typeof formData === 'object' ? Object.keys(formData).slice(0, 3) : []
-      }));
+        sampleKeys: typeof formData === 'object' ? Object.keys(formData).slice(0, 3) : [],
+        sampleData: typeof formData === 'object' ? JSON.stringify(formData).substring(0, 100) + '...' : String(formData).substring(0, 100)
+      });
       
       // Prepare the raw data to store
       const rawData = {
@@ -177,16 +205,26 @@ serve(async (req: Request) => {
       let formattedRawData;
       if (answers.formattedAnswers) {
         console.log("[submit-form]: Using provided formattedAnswers");
-        formattedRawData = JSON.stringify(answers.formattedAnswers);
+        if (typeof answers.formattedAnswers === 'string') {
+          formattedRawData = answers.formattedAnswers;
+        } else {
+          formattedRawData = JSON.stringify(answers.formattedAnswers);
+        }
       } else {
         console.log("[submit-form]: Creating formattedRawData from raw data");
         formattedRawData = JSON.stringify(rawData);
       }
       
-      // Ensure we have valid data for the database update
-      if (!formData || (typeof formData === 'object' && Object.keys(formData).length === 0)) {
-        console.error("[submit-form]: Form data is empty or invalid");
-        throw new Error("Form data is empty or invalid");
+      // Final validation check
+      if (!formattedRawData || formattedRawData === '{}' || formattedRawData === 'null') {
+        console.error("[submit-form]: Formatted raw data is empty or invalid");
+        throw new Error("Formatted data is empty or invalid");
+      }
+      
+      // Verify we have a non-empty object for answers
+      if (typeof formData !== 'object' || Array.isArray(formData) || Object.keys(formData).length === 0) {
+        console.error("[submit-form]: Form data is not a valid non-empty object", formData);
+        throw new Error("Form data must be a non-empty object");
       }
         
       // Prepare the update data
@@ -200,7 +238,10 @@ serve(async (req: Request) => {
       console.log("[submit-form]: Update data prepared successfully:", JSON.stringify({
         hasAnswers: !!updateData.answers,
         answersType: typeof updateData.answers,
+        answersIsArray: Array.isArray(updateData.answers),
+        answersKeyCount: Object.keys(updateData.answers).length,
         hasFormattedData: !!updateData.formatted_raw_data,
+        formattedDataLength: updateData.formatted_raw_data?.length,
         status: updateData.status
       }));
     } catch (dataError) {
@@ -216,11 +257,19 @@ serve(async (req: Request) => {
     console.log("[submit-form]: Entry ID:", entry.id);
     console.log("[submit-form]: Update data structure validation:",
       "answers is " + (updateData.answers ? "present" : "missing"),
+      "answers has " + Object.keys(updateData.answers).length + " keys",
       "formatted_raw_data is " + (updateData.formatted_raw_data ? `present (${updateData.formatted_raw_data.substring(0, 50)}...)` : "missing")
     );
     
     // Attempt to update with transaction for better atomicity
     try {
+      // Log sample of data we're about to insert
+      const sampleData = {
+        answersSample: JSON.stringify(updateData.answers).substring(0, 200) + '...',
+        formattedRawDataSample: updateData.formatted_raw_data.substring(0, 200) + '...',
+      };
+      console.log("[submit-form]: Sample of data being inserted:", sampleData);
+      
       const { data: updateResult, error: updateError } = await supabase
         .from('anamnes_entries')
         .update(updateData)

@@ -1,3 +1,4 @@
+
 /**
  * This component displays the patient's anamnesis answers in an optimized text format.
  * It directly manages the formatted raw data stored in the database and provides
@@ -47,6 +48,9 @@ export const OptimizedAnswersView = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Get the form template to use for formatting
+  const { formTemplate } = useFormTemplate();
+  
   // Use the hook with all required parameters
   const {
     formattedRawData,
@@ -59,6 +63,7 @@ export const OptimizedAnswersView = ({
     initialFormattedRawData || "", 
     answers, 
     hasAnswers,
+    formTemplate?.schema || null,
     (data: string) => {
       setFormattedRawData(data);
       saveFormattedRawData();
@@ -76,9 +81,43 @@ export const OptimizedAnswersView = ({
     }
   }, [aiSummary]);
   
+  // Effect to regenerate raw data if it's empty but we have answers
+  useEffect(() => {
+    if (hasAnswers && formattedRawData === "" && formTemplate?.schema) {
+      console.log("Automatically generating raw data because it's empty but we have answers");
+      generateRawData();
+    }
+  }, [hasAnswers, formattedRawData, formTemplate, generateRawData]);
+  
   const handleTabChange = (value: string) => {
     console.log("Tab changed to:", value);
     setActiveTab(value);
+  };
+  
+  const regenerateFormattedData = async () => {
+    if (!hasAnswers) {
+      toast({
+        title: "Kunde inte generera formatterad data",
+        description: "Det finns inga svar att formattera.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      await generateRawData();
+      toast({
+        title: "Formatterad data uppdaterad",
+        description: "Den formatterade textvyn har uppdaterats."
+      });
+    } catch (error) {
+      console.error("Error regenerating formatted data:", error);
+      toast({
+        title: "Kunde inte uppdatera formatterad data",
+        description: error instanceof Error ? error.message : "Ett oväntat fel uppstod",
+        variant: "destructive"
+      });
+    }
   };
   
   const generateSummary = async () => {
@@ -206,7 +245,10 @@ export const OptimizedAnswersView = ({
                 {isSaving || isPending ? "Sparar..." : "Spara ändringar"}
               </Button>
             </> : <>
-              
+              <Button variant="outline" size="sm" onClick={regenerateFormattedData} disabled={isRegeneratingRawData} className="flex items-center">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {isRegeneratingRawData ? "Genererar..." : "Uppdatera textvy"}
+              </Button>
               <Button variant="outline" size="sm" onClick={toggleEditing} className="flex items-center">
                 <PenLine className="h-4 w-4 mr-2" />
                 Redigera anteckningar

@@ -1,4 +1,3 @@
-
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
@@ -172,59 +171,26 @@ serve(async (req: Request) => {
         throw new Error("Invalid answer structure in submission");
       }
       
-      // Verify we have valid form data after extraction
-      if (!formData || (typeof formData === 'object' && Object.keys(formData).length === 0)) {
-        console.error("[submit-form]: Form data is empty after extraction");
-        throw new Error("No valid form data found in submission");
-      }
-      
-      console.log("[submit-form]: Form data structure after extraction:", {
-        dataType: typeof formData,
-        isObject: typeof formData === 'object',
-        hasKeys: typeof formData === 'object' ? Object.keys(formData).length : 0,
-        sampleKeys: typeof formData === 'object' ? Object.keys(formData).slice(0, 3) : [],
-        sampleData: typeof formData === 'object' ? JSON.stringify(formData).substring(0, 100) + '...' : String(formData).substring(0, 100)
-      });
-      
-      // Prepare the raw data to store
-      const rawData = {
-        answers: formData,
-        meta: {
-          submitted_at: new Date().toISOString(),
-          form_template_id: answers.metadata?.formTemplateId || null
-        }
-      };
-      
-      console.log("[submit-form]: Raw data prepared:", JSON.stringify({
-        hasAnswers: !!rawData.answers,
-        answerKeys: typeof rawData.answers === 'object' ? Object.keys(rawData.answers).length : 0,
-        hasMeta: !!rawData.meta
-      }));
-      
-      // Use either the formatted answers (if provided) or stringify the raw data
+      // Use formatted raw data from request if provided, otherwise create one
       let formattedRawData;
-      if (answers.formattedAnswers) {
-        console.log("[submit-form]: Using provided formattedAnswers");
-        if (typeof answers.formattedAnswers === 'string') {
-          formattedRawData = answers.formattedAnswers;
-        } else {
-          formattedRawData = JSON.stringify(answers.formattedAnswers);
-        }
+      
+      if (typeof answers.formattedRawData === 'string' && answers.formattedRawData.trim() !== '') {
+        console.log("[submit-form]: Using provided formattedRawData string");
+        formattedRawData = answers.formattedRawData;
+      } else if (answers.formatted_raw_data) {
+        console.log("[submit-form]: Using provided formatted_raw_data");
+        formattedRawData = answers.formatted_raw_data;
       } else {
         console.log("[submit-form]: Creating formattedRawData from raw data");
-        formattedRawData = JSON.stringify(rawData);
-      }
-      
-      // Final validation check
-      if (!formattedRawData || formattedRawData === '{}' || formattedRawData === 'null') {
-        console.error("[submit-form]: Formatted raw data is empty or invalid");
-        throw new Error("Formatted data is empty or invalid");
-      }
-      
-      // Verify we have a non-empty object for answers
-      if (typeof formData !== 'object' || Array.isArray(formData) || Object.keys(formData).length === 0) {
-        console.error("[submit-form]: Form data is not a valid non-empty object", formData);
-        throw new Error("Form data must be a non-empty object");
+        // Create a simple text representation if no formatted data provided
+        formattedRawData = "Patientens anamnesinformation:\n\n";
+        if (typeof formData === 'object' && formData !== null) {
+          Object.entries(formData).forEach(([key, value]) => {
+            if (key !== 'metadata' && key !== 'formattedAnswers' && value !== null && value !== undefined) {
+              formattedRawData += `${key}: ${JSON.stringify(value)}\n`;
+            }
+          });
+        }
       }
         
       // Prepare the update data
@@ -235,15 +201,7 @@ serve(async (req: Request) => {
         updated_at: new Date().toISOString()
       };
       
-      console.log("[submit-form]: Update data prepared successfully:", JSON.stringify({
-        hasAnswers: !!updateData.answers,
-        answersType: typeof updateData.answers,
-        answersIsArray: Array.isArray(updateData.answers),
-        answersKeyCount: Object.keys(updateData.answers).length,
-        hasFormattedData: !!updateData.formatted_raw_data,
-        formattedDataLength: updateData.formatted_raw_data?.length,
-        status: updateData.status
-      }));
+      console.log("[submit-form]: Update data prepared successfully");
     } catch (dataError) {
       console.error("[submit-form]: Error preparing update data:", dataError);
       return new Response(

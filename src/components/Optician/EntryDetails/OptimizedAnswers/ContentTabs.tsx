@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, CheckCheck, Lightbulb } from "lucide-react";
+import { Copy, CheckCheck, Lightbulb, RefreshCw } from "lucide-react";
 
 interface ContentTabsProps {
   activeTab: string;
@@ -18,6 +18,8 @@ interface ContentTabsProps {
   summary: string;
   isCopied: boolean;
   onCopy: () => void;
+  onRegenerateData?: () => void;
+  isRegenerating?: boolean;
 }
 
 export const ContentTabs = ({
@@ -28,7 +30,9 @@ export const ContentTabs = ({
   onRawDataChange,
   summary,
   isCopied,
-  onCopy
+  onCopy,
+  onRegenerateData,
+  isRegenerating = false
 }: ContentTabsProps) => {
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full w-full">
@@ -55,6 +59,21 @@ export const ContentTabs = ({
           value="raw" 
           className="flex-grow m-0 h-full border-0 p-0 overflow-auto"
         >
+          <div className="flex justify-end p-2">
+            {onRegenerateData && !isEditing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRegenerateData}
+                disabled={isRegenerating}
+                className="flex items-center text-xs"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                {isRegenerating ? "Uppdaterar..." : "Uppdatera format"}
+              </Button>
+            )}
+          </div>
+          
           {isEditing ? (
             <Textarea 
               value={formattedRawData}

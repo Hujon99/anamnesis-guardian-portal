@@ -4,11 +4,12 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useFormSubmission, SubmissionError } from './useFormSubmission';
+import { useFormSubmission } from './useFormSubmission';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { useMutation } from '@tanstack/react-query';
 import { FormTemplateWithMeta } from './useFormTemplate';
+import { createOptimizedPromptInput, extractFormattedAnswers } from "@/utils/anamnesisTextUtils";
 
 // Export the SubmissionError type for use in other components
 // Using 'export type' syntax to comply with isolatedModules
@@ -51,10 +52,41 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
       
       console.log("[useFormSubmissionManager]: Optician submitting form with values:", values);
       
+      // Generate formatted raw data for better AI understanding
+      let formattedRawData = null;
+      
+      try {
+        if (formattedAnswers) {
+          // If pre-formatted answers provided, use that
+          formattedRawData = formattedAnswers;
+        } else {
+          // Otherwise generate from the template and values
+          const formattedAnswersObj = extractFormattedAnswers(values);
+          if (formattedAnswersObj) {
+            formattedRawData = createOptimizedPromptInput(formTemplate.schema, formattedAnswersObj);
+          } else {
+            // Fallback to simple formatting
+            formattedRawData = "Patientens anamnesinformation:\n\n";
+            Object.entries(values)
+              .filter(([key]) => !['formMetadata', 'metadata'].includes(key))
+              .forEach(([key, value]) => {
+                if (value !== null && value !== undefined && value !== '') {
+                  formattedRawData += `${key}: ${JSON.stringify(value)}\n`;
+                }
+              });
+          }
+        }
+        
+        console.log("[useFormSubmissionManager]: Generated formatted raw data:", formattedRawData?.substring(0, 100) + "...");
+      } catch (error) {
+        console.error("[useFormSubmissionManager]: Error generating formatted raw data:", error);
+        // Continue with submission even if formatting fails
+      }
+      
       // Prepare submission data
       const submissionData = {
         answers: values,
-        formatted_raw_data: formattedAnswers ? JSON.stringify(formattedAnswers) : null,
+        formatted_raw_data: formattedRawData,
         status: "ready", // Set status to "ready" for optician-filled forms
         updated_at: new Date().toISOString()
       };
@@ -110,8 +142,24 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
       await opticianMutation.mutateAsync({ values, formTemplate, formattedAnswers });
       return !opticianMutation.error;
     } else {
+      // Generate formatted raw data for patient submission
+      let formattedText = formattedAnswers;
+      
+      // If no pre-formatted answers, try to generate them
+      if (!formattedText && formTemplate) {
+        try {
+          const formattedAnswersObj = extractFormattedAnswers(values);
+          if (formattedAnswersObj) {
+            formattedText = createOptimizedPromptInput(formTemplate.schema, formattedAnswersObj);
+          }
+        } catch (error) {
+          console.error("[useFormSubmissionManager]: Error generating formatted text for patient submission:", error);
+          // Continue with submission even if formatting fails
+        }
+      }
+      
       // Use patient submission flow
-      return await patientSubmission.submitForm(token, values, formTemplate?.schema, formattedAnswers);
+      return await patientSubmission.submitForm(token, values, formTemplate?.schema, formattedText);
     }
   }, [token, mode, opticianMutation, patientSubmission]);
 

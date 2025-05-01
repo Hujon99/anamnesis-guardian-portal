@@ -7,11 +7,13 @@
 
 import { useCallback, useState } from "react";
 import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData } from "@/types/anamnesis";
+import { createOptimizedPromptInput, extractFormattedAnswers } from "@/utils/anamnesisTextUtils";
 
 export function useFormattedRawData(
   initialData: string = "", 
   answers: Record<string, any> = {}, 
   hasAnswers: boolean = false,
+  formTemplate: FormTemplate | null = null,
   onSave?: (data: string) => void
 ) {
   const [formattedRawData, setFormattedRawData] = useState<string>(initialData);
@@ -75,33 +77,75 @@ export function useFormattedRawData(
   }, []);
 
   /**
-   * Generate formatted raw data from answers object
+   * Generate formatted raw data from answers object using the createOptimizedPromptInput utility
    */
   const generateRawData = useCallback(async () => {
-    if (!hasAnswers) return;
+    if (!hasAnswers || !answers) {
+      console.log("[useFormattedRawData/generateRawData]: No answers to format");
+      return;
+    }
     
     setIsGenerating(true);
     
     try {
-      // Format answers into a readable text format
+      console.log("[useFormattedRawData/generateRawData]: Starting to generate formatted data");
+      
       let formattedText = "";
       
-      if (typeof answers === 'object' && answers !== null) {
-        // Simple formatting of answers into text
-        Object.entries(answers).forEach(([key, value]) => {
-          if (key !== 'formMetadata' && key !== 'metadata' && value !== null && value !== undefined && value !== '') {
-            formattedText += `${key}: ${JSON.stringify(value)}\n`;
-          }
-        });
+      // Try to extract structured answers from the data
+      const formattedAnswersObj = extractFormattedAnswers(answers);
+      
+      if (formTemplate && formattedAnswersObj) {
+        // Use the optimized prompt input creator which properly maps questions to their labels
+        formattedText = createOptimizedPromptInput(formTemplate, formattedAnswersObj);
+        console.log("[useFormattedRawData/generateRawData]: Created formatted text using template and answers");
+      } else if (formTemplate && typeof answers === 'object' && answers !== null) {
+        // Try direct approach with raw answers
+        const rawAnswersObj = {
+          answeredSections: [{
+            section_title: "Patientens svar",
+            responses: Object.entries(answers)
+              .filter(([key]) => !['formMetadata', 'metadata'].includes(key))
+              .map(([id, answer]) => ({ id, answer }))
+          }]
+        };
+        
+        formattedText = createOptimizedPromptInput(formTemplate, rawAnswersObj);
+        console.log("[useFormattedRawData/generateRawData]: Created formatted text using template and raw answers");
+      } else {
+        // Fallback to simple key-value pairs if we can't use the optimized approach
+        console.log("[useFormattedRawData/generateRawData]: Using fallback simple formatting");
+        formattedText = "Patientens anamnesinformation:\n\n";
+        
+        if (typeof answers === 'object' && answers !== null) {
+          Object.entries(answers).forEach(([key, value]) => {
+            if (key !== 'formMetadata' && key !== 'metadata' && value !== null && value !== undefined && value !== '') {
+              // Handle arrays and objects specially
+              let displayValue = value;
+              if (Array.isArray(value)) {
+                displayValue = value.join(", ");
+              } else if (typeof value === 'object' && value !== null) {
+                displayValue = JSON.stringify(value);
+              }
+              formattedText += `${key}: ${displayValue}\n`;
+            }
+          });
+        }
       }
       
+      console.log("[useFormattedRawData/generateRawData]: Setting formatted text:", formattedText.substring(0, 100) + "...");
       setFormattedRawData(formattedText);
+      
+      // If onSave is provided, call it with the formatted text
+      if (onSave) {
+        onSave(formattedText);
+      }
     } catch (error) {
-      console.error("Error generating formatted data:", error);
+      console.error("[useFormattedRawData/generateRawData]: Error generating formatted data:", error);
     } finally {
       setIsGenerating(false);
     }
-  }, [answers, hasAnswers]);
+  }, [answers, hasAnswers, formTemplate, onSave]);
 
   return {
     formatAnswersForSubmission,

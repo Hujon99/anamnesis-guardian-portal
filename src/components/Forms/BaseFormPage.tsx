@@ -11,6 +11,7 @@ import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useFormSubmissionManager, SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { useFormStateManager } from "@/hooks/useFormStateManager";
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { SubmissionError } from "@/hooks/useFormSubmission";
 
 // Import status cards
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
@@ -213,15 +214,15 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
               {submissionError?.message || "Ett oväntat fel uppstod vid inskickning av formuläret."}
             </p>
             
-            {submissionError?.details && (
+            {(submissionError as SubmissionError)?.details && (
               <div className="bg-gray-100 p-4 rounded-md text-sm max-w-lg w-full text-left">
                 <p className="font-medium">Detaljer:</p>
-                <p className="font-mono">{submissionError.details}</p>
+                <p className="font-mono">{(submissionError as SubmissionError).details}</p>
               </div>
             )}
             
             <div className="flex flex-col md:flex-row gap-3 w-full max-w-md pt-4">
-              {submissionError?.recoverable && (
+              {(submissionError as SubmissionError)?.recoverable && (
                 <Button 
                   onClick={handleSubmissionRetry} 
                   className="flex-1"

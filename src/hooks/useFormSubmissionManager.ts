@@ -1,3 +1,4 @@
+
 /**
  * This hook unifies form submission handling for both patient and optician modes.
  * It provides a common interface but adapts to different submission methods based on mode.
@@ -31,7 +32,7 @@ interface FormSubmissionManagerProps {
 
 export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerProps) {
   const [localSubmitted, setLocalSubmitted] = useState(false);
-  const { supabase } = useSupabaseClient();
+  const { supabase, isLoading: supabaseLoading } = useSupabaseClient();
   
   // Use the standard patient form submission hook
   const patientSubmission = useFormSubmission();
@@ -108,17 +109,39 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
         formattedRawDataLength: submissionData.formatted_raw_data?.length || 0,
       });
       
-      // Update the entry with the form answers
-      const { error } = await supabase
-        .from("anamnes_entries")
-        .update(submissionData)
-        .eq("access_token", token);
-      
-      if (error) {
-        const submissionError = new Error("Kunde inte skicka formuläret: " + error.message) as SubmissionError;
-        submissionError.details = error.message;
-        submissionError.recoverable = true;
-        throw submissionError;
+      // Try edge function first
+      try {
+        console.log("[useFormSubmissionManager]: Attempting to use submit-form edge function");
+        const response = await supabase.functions.invoke('submit-form', {
+          body: { 
+            token,
+            // SIMPLIFIED: Send answers directly in the same format as patient submissions
+            answers: submissionData
+          }
+        });
+        
+        if (response.error) {
+          console.error("[useFormSubmissionManager]: Edge function error:", response.error);
+          throw new Error("Edge function error: " + response.error.message);
+        }
+        
+        console.log("[useFormSubmissionManager]: Edge function successful:", response.data);
+        // Edge function successful, no need for direct update
+      } catch (edgeFunctionError) {
+        console.error("[useFormSubmissionManager]: Edge function call failed, falling back to direct update:", edgeFunctionError);
+        
+        // Fallback to direct database update
+        const { error } = await supabase
+          .from("anamnes_entries")
+          .update(submissionData)
+          .eq("access_token", token);
+        
+        if (error) {
+          const submissionError = new Error("Kunde inte skicka formuläret: " + error.message) as SubmissionError;
+          submissionError.details = error.message;
+          submissionError.recoverable = true;
+          throw submissionError;
+        }
       }
       
       // Set local state to indicate successful submission
@@ -152,7 +175,7 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
       return false;
     }
     
-    console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode`);
+    console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode with token ${token.substring(0, 6)}...`);
     
     if (mode === 'optician') {
       // Use optician submission flow - direct database update
@@ -186,7 +209,8 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
       
       console.log("[useFormSubmissionManager]: Patient submission using simplified approach:", {
         hasFormattedRawData: !!enhancedValues.formatted_raw_data,
-        dataLength: formattedRawData?.length || 0
+        dataLength: formattedRawData?.length || 0,
+        token: token.substring(0, 6) + "..."
       });
       
       // Use patient submission flow with enhanced values

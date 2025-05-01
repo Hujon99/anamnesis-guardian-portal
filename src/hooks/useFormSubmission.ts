@@ -1,4 +1,3 @@
-
 /**
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
@@ -140,101 +139,106 @@ export const useFormSubmission = () => {
       
       // Submit the form using the edge function
       console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
-                 
-      // More robust error handling with retries
-      let retryCount = 0;
-      const maxRetries = 2;
-      let response;
       
-      while (retryCount <= maxRetries) {
-        try {
-          console.log("[useFormSubmission/submitForm]: Sending data to edge function, attempt", retryCount + 1);
-          
-          // Validate data before sending
-          if (!submissionData || 
-              (typeof submissionData === 'object' && Object.keys(submissionData).length === 0)) {
-            throw new Error("Submission data is empty or invalid");
+      // Log current Supabase URL to verify edge function endpoint
+      console.log("[useFormSubmission/submitForm]: Using Supabase URL:", supabase.functions.url);
+      
+      try {
+        // Attempt direct invocation with clear payload structure
+        console.log("[useFormSubmission/submitForm]: Sending data to edge function with payload:", {
+          token,
+          answersStructure: {
+            hasDirectValues: true,
+            hasFormattedRawData: !!submissionData.formatted_raw_data,
+            status: submissionData.status
           }
-          
-          if (!token || typeof token !== 'string') {
-            throw new Error("Invalid token format");
+        });
+        
+        const response = await supabase.functions.invoke('submit-form', {
+          body: { 
+            token,
+            // Simplified: Just send the answers directly, matching optician flow
+            answers: submissionData
           }
+        });
+        
+        console.log("[useFormSubmission/submitForm]: Edge function response:", {
+          hasError: !!response.error,
+          hasData: !!response.data,
+          status: response.error?.status || 200,
+          data: response.data ? JSON.stringify(response.data).substring(0, 100) : null,
+          error: response.error ? JSON.stringify(response.error).substring(0, 100) : null
+        });
+        
+        // Process the response
+        if (response.error) {
+          console.error("[useFormSubmission/submitForm]: Edge function returned error:", response.error);
           
-          response = await supabase.functions.invoke('submit-form', {
-            body: { 
-              token,
-              // SIMPLIFIED: Just send the answers directly, matching optician flow
-              answers: submissionData
+          // Create a more detailed error
+          const submissionError: SubmissionError = new Error(
+            response.error.message || "Ett fel uppstod vid formulärinskickning"
+          );
+          
+          submissionError.status = response.error.status;
+          submissionError.details = response.error.details || response.error.message;
+          submissionError.recoverable = response.error.status !== 404 && response.error.status !== 410 && response.error.status !== 401;
+          
+          throw submissionError;
+        }
+
+        console.log("[useFormSubmission/submitForm]: Edge function invocation successful:", response.data);
+        
+        // Success handling
+        setIsSubmitted(true);
+        
+        toast({
+          title: "Tack för dina svar!",
+          description: "Dina svar har skickats in framgångsrikt.",
+        });
+        
+        clearTimeout(submissionTimeout);
+        return true;
+      } catch (invocationError: any) {
+        // Specific error handling for edge function invocation failures
+        console.error("[useFormSubmission/submitForm]: Edge function invocation error:", invocationError);
+        
+        // Add fallback approach if the edge function fails
+        if (invocationError.message?.includes('Failed to fetch') || invocationError.message?.includes('NetworkError')) {
+          console.log("[useFormSubmission/submitForm]: Network error detected, attempting direct database update");
+          
+          try {
+            // Attempt direct database update as fallback
+            const { error: directUpdateError } = await supabase
+              .from("anamnes_entries")
+              .update(submissionData)
+              .eq("access_token", token);
+            
+            if (directUpdateError) {
+              console.error("[useFormSubmission/submitForm]: Direct database update failed:", directUpdateError);
+              throw new Error(`Fallback database update failed: ${directUpdateError.message}`);
             }
-          });
-          
-          console.log("[useFormSubmission/submitForm]: Edge function response:", {
-            hasError: !!response.error,
-            hasData: !!response.data,
-            status: response.error?.status || 200,
-            data: response.data ? JSON.stringify(response.data).substring(0, 100) : null,
-            error: response.error ? JSON.stringify(response.error).substring(0, 100) : null
-          });
-          
-          // If successful, break the retry loop
-          if (!response.error) break;
-          
-          // If there was an error, log it and retry
-          console.warn(`[useFormSubmission/submitForm]: Error attempt ${retryCount + 1}/${maxRetries + 1}:`, response.error);
-          retryCount++;
-          
-          if (retryCount <= maxRetries) {
-            // Wait before retrying (exponential backoff)
-            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
-            console.log(`[useFormSubmission/submitForm]: Retrying submission, attempt ${retryCount + 1}/${maxRetries + 1}`);
-          }
-        } catch (invocationError: any) {
-          console.error("[useFormSubmission/submitForm]: Function invocation error:", invocationError);
-          retryCount++;
-          
-          if (retryCount <= maxRetries) {
-            // Wait before retrying
-            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
-            console.log(`[useFormSubmission/submitForm]: Retrying after error, attempt ${retryCount + 1}/${maxRetries + 1}`);
-          } else {
-            throw invocationError;
+            
+            console.log("[useFormSubmission/submitForm]: Direct database update successful");
+            
+            // Success handling for fallback
+            setIsSubmitted(true);
+            
+            toast({
+              title: "Tack för dina svar!",
+              description: "Dina svar har skickats in framgångsrikt via alternativ metod.",
+            });
+            
+            clearTimeout(submissionTimeout);
+            return true;
+          } catch (fallbackError) {
+            console.error("[useFormSubmission/submitForm]: Fallback approach failed:", fallbackError);
+            throw fallbackError;
           }
         }
-      }
-
-      // No response after all retries
-      if (!response) {
-        throw new Error("Failed to get response after multiple attempts");
-      }
-
-      // Process the response
-      if (response.error) {
-        console.error("[useFormSubmission/submitForm]: Form submission error after retries:", response.error);
         
-        // Create a more detailed error
-        const submissionError: SubmissionError = new Error(
-          response.error.message || "Ett fel uppstod vid formulärinskickning"
-        );
-        
-        submissionError.status = response.error.status;
-        submissionError.details = response.error.details || response.error.message;
-        submissionError.recoverable = response.error.status !== 404 && response.error.status !== 410 && response.error.status !== 401;
-        
-        throw submissionError;
+        // Re-throw the original error if not a network error or fallback failed
+        throw invocationError;
       }
-
-      console.log("[useFormSubmission/submitForm]: Form submission successful:", response.data);
-
-      // Success handling
-      setIsSubmitted(true);
-      
-      toast({
-        title: "Tack för dina svar!",
-        description: "Dina svar har skickats in framgångsrikt.",
-      });
-      
-      clearTimeout(submissionTimeout);
-      return true;
     } catch (err: any) {
       // Enhanced error handling
       console.error("[useFormSubmission/submitForm]: Form submission error:", err);

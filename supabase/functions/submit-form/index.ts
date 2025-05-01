@@ -18,23 +18,42 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
 serve(async (req: Request) => {
+  // Better request logging
+  console.log("[submit-form]: REQUEST RECEIVED", {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries([...req.headers.entries()]),
+  });
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("[submit-form]: Handling CORS preflight request");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("[submit-form]: Received form submission request");
+    console.log("[submit-form]: Processing form submission request");
     
-    // Parse the request body
+    // Parse the request body with detailed error handling
     let requestData;
     try {
-      requestData = await req.json();
-      console.log("[submit-form]: Request body parsed successfully");
+      const text = await req.text();
+      console.log("[submit-form]: Raw request body:", text.substring(0, 200) + (text.length > 200 ? "..." : ""));
+      
+      try {
+        requestData = JSON.parse(text);
+        console.log("[submit-form]: Request body parsed successfully");
+      } catch (jsonError) {
+        console.error("[submit-form]: JSON parse error:", jsonError);
+        return new Response(
+          JSON.stringify({ error: 'Invalid JSON payload', details: jsonError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     } catch (parseError) {
-      console.error("[submit-form]: Error parsing request body:", parseError);
+      console.error("[submit-form]: Error reading request body:", parseError);
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON payload', details: parseError.message }),
+        JSON.stringify({ error: 'Failed to read request body', details: parseError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -83,6 +102,7 @@ serve(async (req: Request) => {
     console.log("[submit-form]: Form submission received for token:", token.substring(0, 6) + "...");
     
     // Initialize the Supabase client
+    console.log("[submit-form]: Initializing Supabase client with URL:", supabaseUrl.substring(0, 20) + "...");
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false }
     });
@@ -114,13 +134,14 @@ serve(async (req: Request) => {
     console.log(`[submit-form]: Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}`);
     
     // If the form was already submitted, return a success response
-    if (entry.status === 'submitted') {
-      console.log("[submit-form]: Form was already submitted, returning success");
+    if (entry.status === 'submitted' || entry.status === 'ready') {
+      console.log("[submit-form]: Form was already submitted with status:", entry.status);
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Form was already submitted',
-          submitted: true
+          submitted: true,
+          status: entry.status
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -206,7 +227,7 @@ serve(async (req: Request) => {
     try {
       const { data: verifyData, error: verifyError } = await supabase
         .from('anamnes_entries')
-        .select('id, status, answers, formatted_raw_data')
+        .select('id, status, formatted_raw_data')
         .eq('id', entry.id)
         .single();
         
@@ -216,8 +237,6 @@ serve(async (req: Request) => {
         console.log("[submit-form]: Verification read successful:", JSON.stringify({
           id: verifyData.id,
           status: verifyData.status,
-          hasAnswers: !!verifyData.answers,
-          answersSize: verifyData.answers ? Object.keys(verifyData.answers).length : 0,
           hasFormattedRawData: !!verifyData.formatted_raw_data,
           formattedRawDataLength: verifyData.formatted_raw_data ? verifyData.formatted_raw_data.length : 0
         }));

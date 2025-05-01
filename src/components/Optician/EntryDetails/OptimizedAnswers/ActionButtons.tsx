@@ -73,7 +73,7 @@ export const ActionButtons = ({
         className="flex items-center"
       >
         <RefreshCw className="h-4 w-4 mr-2" />
-        {isRegeneratingRawData ? "Genererar..." : "Uppdatera textvy"}
+        {isRegeneratingRawData ? "Genererar..." : "Uppdatera och spara textvy"}
       </Button>
       <Button 
         variant="outline" 

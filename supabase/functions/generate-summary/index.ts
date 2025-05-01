@@ -1,156 +1,181 @@
 
 /**
- * This edge function interfaces with Azure OpenAI to generate summaries of patient anamnesis data.
- * It processes optimized text inputs and returns AI-generated clinical summaries that help
- * opticians quickly understand patient history and needs.
+ * This Edge Function generates AI summaries of anamnesis entries.
+ * It can be triggered directly with prompt text or with an entry ID to fetch data from the database.
+ * It uses Azure OpenAI to provide structured summaries of patient information.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
-// Standard CORS headers for cross-origin requests
+// Define CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Set up environment variables
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+const azureOpenAIKey = Deno.env.get('AZURE_OPENAI_API_KEY') || '';
+const azureOpenAIBaseEndpoint = Deno.env.get('AZURE_OPENAI_BASE_ENDPOINT') || '';
+const azureOpenAIDeploymentName = Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME') || '';
+
+// Azure OpenAI API endpoint
+const apiUrl = `${azureOpenAIBaseEndpoint}/openai/deployments/${azureOpenAIDeploymentName}/chat/completions?api-version=2023-05-15`;
+
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('Handling OPTIONS request - CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // 1. Get values from environment variables/secrets
-    const apiKey = Deno.env.get("AZURE_OPENAI_API_KEY");
-    const baseEndpoint = Deno.env.get("AZURE_OPENAI_BASE_ENDPOINT");
-    const deploymentName = Deno.env.get("AZURE_OPENAI_DEPLOYMENT_NAME");
+    // Parse the request body
+    let requestData;
+    let promptText = '';
+    let entryId: string | null = null;
     
-    // 2. Define API version in code
-    const apiVersion = "2025-01-01-preview"; // Using a supported API version
-    
-    // Check if all values exist
-    if (!apiKey || !baseEndpoint || !deploymentName) {
-      console.error("Azure OpenAI configuration is missing or incomplete");
-      throw new Error("Azure OpenAI configuration is missing or incomplete");
-    }
-    
-    // Parse request body
-    console.log("Parsing request body...");
-    const requestBody = await req.json();
-    const { promptText } = requestBody;
-    
-    if (!promptText) {
-      console.error("No prompt text provided");
+    try {
+      requestData = await req.json();
+      promptText = requestData.promptText || '';
+      entryId = requestData.entryId || null;
+    } catch (parseError) {
       return new Response(
-        JSON.stringify({ error: "No prompt text provided" }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ error: 'Invalid JSON payload' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    console.log(`Received prompt text with length: ${promptText.length}`);
-    console.log("First 100 characters of prompt text:", promptText.substring(0, 100));
+    // Initialize the Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // If we have an entry ID but no prompt text, fetch the entry from the database
+    if (entryId && !promptText) {
+      console.log(`Fetching entry ${entryId} from the database`);
+      const { data: entry, error } = await supabase
+        .from("anamnes_entries")
+        .select("formatted_raw_data")
+        .eq("id", entryId)
+        .single();
+
+      if (error || !entry) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch entry' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!entry.formatted_raw_data) {
+        console.log("Entry has no formatted_raw_data, triggering regeneration");
+        
+        // If the entry exists but has no formatted_raw_data, regenerate it
+        // For this to work, we would need to implement a more complex flow
+        // that would require fetching answers and form template, which is beyond
+        // the scope of this function. For now, we'll return an error.
+        
+        return new Response(
+          JSON.stringify({ error: 'Entry has no formatted data to summarize' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      promptText = entry.formatted_raw_data;
+      console.log(`Using formatted_raw_data from entry ${entryId}`);
+    }
+
+    // Check if we have a prompt text to work with
+    if (!promptText) {
+      return new Response(
+        JSON.stringify({ error: 'No prompt text provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
-    // 3. Construct the complete URL dynamically
-    const requestUrl = `${baseEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`;
-    console.log(`Using Azure OpenAI endpoint: ${baseEndpoint}`);
+    console.log("Generating summary for text of length:", promptText.length);
     
-    // Define system prompt
-    const systemPrompt = `Du är en AI-assistent specialiserad på att hjälpa optiker. Din roll är att agera som en erfaren klinisk assistent som tolkar och sammanfattar patienters anamnesdata.
-
-Du kommer att få indata i form av en textlista som innehåller frågor ställda till en patient och patientens svar på dessa frågor, extraherade från ett anamnesformulär.
-
-Baserat endast på den information som finns i denna textlista, ska du generera en västrukturerad, koncis och professionell anamnessammanfattning på svenska.
-
-Använd ett objektivt och kliniskt språk med korrekta facktermer där det är relevant.
-
-Strukturera sammanfattningen tydligt, förslagsvis under följande rubriker (anpassa efter den information som finns tillgänglig i texten):
-  - Anledning till besök: (Varför patienten söker vård)
-  - Aktuella symtom/besvär: (Synproblem, huvudvärk, dubbelseende, torra ögon etc.)
-  - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar)
-  - Ärftlighet: (Ögonsjukdomar i släkten)
-  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier)
-  - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)
-
-Viktiga instruktioner:
-  1. Inkludera endast information som uttryckligen finns i den angivna fråge- och svarslistan. Gör inga egna antaganden,   tolkningar eller tillägg.
-  2. Var koncis och fokusera på det kliniskt relevanta.
-  3. Använd enkla emojis för att göra rubriker tydligare.
-  4. Formattera EJ som markdown, utan tänk txt`;
-
-    // Log request parameters for better debugging
-    console.log("Request parameters:");
-    console.log("- API version:", apiVersion);
-    console.log("- Deployment name:", deploymentName);
-    console.log("- Temperature:", 0.3);
-    console.log("- Max tokens:", 2000);
+    // Generate summary using Azure OpenAI
+    const payload = {
+      messages: [
+        {
+          role: "system",
+          content: `Du är en optiker-assistent som hjälper till att sammanfatta patientanamneser. 
+          Gör en kort och professionell sammanfattning av den bifogade anamnesen. 
+          Fokusera på relevant information för en optiker. 
+          Strukturera sammanfattningen i tydliga stycken för följande områden om informationen finns:
+          1. Patientens syfte med besöket / huvudproblem
+          2. Uppgifter om glasögonhistorik och användning
+          3. Besvär och symptom
+          4. Övrig relevant information
+          Håll sammanfattningen koncis och fokuserad.
+          Skriv på svenska.`
+        },
+        {
+          role: "user",
+          content: promptText
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 2000,
+    };
     
-    // 4. Make the fetch call
-    console.log("Calling Azure OpenAI API...");
-    const response = await fetch(requestUrl, {
+    console.log("Sending request to Azure OpenAI");
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": apiKey
+        "api-key": azureOpenAIKey,
       },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: promptText
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.3
-      })
+      body: JSON.stringify(payload),
     });
-    
+
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`Azure OpenAI API error: ${response.status} ${response.statusText}`, errorData);
+      const errorText = await response.text();
+      console.error("Azure OpenAI API error:", errorText);
+      
       return new Response(
         JSON.stringify({ 
-          error: "Failed to generate summary", 
-          details: `Status: ${response.status} ${response.statusText}` 
+          error: 'Failed to generate summary', 
+          details: `API responded with status ${response.status}`
         }),
-        { 
-          status: response.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const result = await response.json();
+    const summary = result.choices[0].message.content;
     
-    // Process the response
-    console.log("Processing Azure OpenAI response...");
-    const data = await response.json();
-    const summary = data.choices?.[0]?.message?.content || "Kunde inte generera sammanfattning.";
+    console.log("Successfully generated summary");
     
-    console.log("Summary generated successfully");
-    console.log("Summary length:", summary.length);
-    console.log("First 100 characters of summary:", summary.substring(0, 100));
+    // If we have an entry ID, update it with the summary
+    if (entryId) {
+      console.log(`Updating entry ${entryId} with the generated summary`);
+      
+      const { error: updateError } = await supabase
+        .from("anamnes_entries")
+        .update({ ai_summary: summary })
+        .eq("id", entryId);
+      
+      if (updateError) {
+        console.error("Error updating entry with summary:", updateError);
+        // We don't want to fail the whole request just because the update failed
+        // So we'll log the error but still return the summary
+      } else {
+        console.log(`Successfully updated entry ${entryId} with summary`);
+      }
+    }
     
-    // Return the summary
     return new Response(
       JSON.stringify({ summary }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+    
   } catch (error) {
-    console.error("Error in generate-summary function:", error);
+    console.error("Unexpected error:", error);
+    
     return new Response(
-      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      JSON.stringify({ error: 'Server error', details: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

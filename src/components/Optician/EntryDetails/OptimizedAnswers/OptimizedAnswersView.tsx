@@ -32,6 +32,7 @@ export const OptimizedAnswersView = ({
   answers,
   hasAnswers,
   status,
+  entryId,
   aiSummary,
   onSaveSummary,
   formattedRawData: initialFormattedRawData,
@@ -49,7 +50,7 @@ export const OptimizedAnswersView = ({
 
   // Get the form template to use for formatting
   const formTemplateQuery = useFormTemplate();
-  const formTemplateData = formTemplateQuery.data;
+  const formTemplateData = formTemplateQuery.data?.schema;
   
   // Use the hook with all required parameters
   const {
@@ -57,16 +58,25 @@ export const OptimizedAnswersView = ({
     setFormattedRawData: updateFormattedRawData,
     generateRawData,
     isGenerating: isRegeneratingRawData,
+    saveIndicator: hookSaveIndicator,
+    setSaveIndicator: setHookSaveIndicator
   } = useFormattedRawData(
     initialFormattedRawData || "", 
     answers, 
     hasAnswers,
-    formTemplateData?.schema || null,
+    formTemplateData || null,
     (data: string) => {
       setFormattedRawData(data);
       saveFormattedRawData();
     }
   );
+
+  // Sync the save indicator from hook to component state
+  useEffect(() => {
+    if (hookSaveIndicator) {
+      setSaveIndicator(hookSaveIndicator);
+    }
+  }, [hookSaveIndicator]);
 
   // Update summary when aiSummary prop changes
   useEffect(() => {
@@ -80,7 +90,7 @@ export const OptimizedAnswersView = ({
   
   // Regenerate raw data if it's empty but we have answers
   useEffect(() => {
-    if (hasAnswers && formattedRawData === "" && formTemplateData?.schema) {
+    if (hasAnswers && formattedRawData === "" && formTemplateData) {
       generateRawData();
     }
   }, [hasAnswers, formattedRawData, formTemplateData, generateRawData]);
@@ -127,8 +137,8 @@ export const OptimizedAnswersView = ({
     try {
       await generateRawData();
       toast({
-        title: "Formatterad data uppdaterad",
-        description: "Den formatterade textvyn har uppdaterats."
+        title: "Textvy uppdaterad och sparad",
+        description: "Den formatterade textvyn har uppdaterats och sparats i databasen."
       });
     } catch (error) {
       console.error("Error regenerating formatted data:", error);

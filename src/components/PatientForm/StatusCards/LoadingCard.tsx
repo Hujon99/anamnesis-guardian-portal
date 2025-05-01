@@ -16,12 +16,14 @@ interface LoadingCardProps {
   onRetry?: () => void;
   minDisplayTime?: number; // Added prop for minimum display time
   isFormDataReady?: boolean; // Flag to indicate if data is ready but still showing loading for min time
+  message?: string; // Added message prop to allow custom loading messages
 }
 
 const LoadingCard: React.FC<LoadingCardProps> = ({ 
   onRetry,
   minDisplayTime = 2000, // Increased minimum display time to reduce flickering
-  isFormDataReady = false
+  isFormDataReady = false,
+  message // Added message parameter
 }) => {
   const [loadingTime, setLoadingTime] = useState(0);
   const [canHide, setCanHide] = useState(false);
@@ -111,7 +113,10 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
   
   // Show additional messaging if loading takes longer than expected
   const getLoadingMessage = () => {
-    if (isTransitioning) {
+    // Use the custom message if provided
+    if (message) {
+      return message;
+    } else if (isTransitioning) {
       return "Visar formuläret...";
     } else if (isFormDataReady || dataReadyAcknowledgedRef.current) {
       return "Förbereder formuläret...";

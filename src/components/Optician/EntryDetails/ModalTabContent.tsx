@@ -32,13 +32,10 @@ interface ModalTabContentProps {
 
 export function ModalTabContent({
   patientIdentifier,
-  // Updated from patientEmail
   isEditing,
   toggleEditing,
   setPatientIdentifier,
-  // Updated from setPatientEmail
   savePatientIdentifier,
-  // Updated from savePatientEmail
   formattedRawData,
   setFormattedRawData,
   saveFormattedRawData,

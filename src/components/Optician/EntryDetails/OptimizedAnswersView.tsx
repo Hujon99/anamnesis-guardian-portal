@@ -1,4 +1,3 @@
-
 /**
  * This component displays the patient's anamnesis answers in an optimized text format.
  * It directly manages the formatted raw data stored in the database and provides
@@ -48,8 +47,9 @@ export const OptimizedAnswersView = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Get the form template to use for formatting
-  const { formTemplate } = useFormTemplate();
+  // Get the form template to use for formatting - fix the access to formTemplate
+  const formTemplateQuery = useFormTemplate();
+  const formTemplateData = formTemplateQuery.data;
   
   // Use the hook with all required parameters
   const {
@@ -63,7 +63,7 @@ export const OptimizedAnswersView = ({
     initialFormattedRawData || "", 
     answers, 
     hasAnswers,
-    formTemplate?.schema || null,
+    formTemplateData?.schema || null,
     (data: string) => {
       setFormattedRawData(data);
       saveFormattedRawData();
@@ -83,11 +83,11 @@ export const OptimizedAnswersView = ({
   
   // Effect to regenerate raw data if it's empty but we have answers
   useEffect(() => {
-    if (hasAnswers && formattedRawData === "" && formTemplate?.schema) {
+    if (hasAnswers && formattedRawData === "" && formTemplateData?.schema) {
       console.log("Automatically generating raw data because it's empty but we have answers");
       generateRawData();
     }
-  }, [hasAnswers, formattedRawData, formTemplate, generateRawData]);
+  }, [hasAnswers, formattedRawData, formTemplateData, generateRawData]);
   
   const handleTabChange = (value: string) => {
     console.log("Tab changed to:", value);

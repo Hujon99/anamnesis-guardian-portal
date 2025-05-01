@@ -1,3 +1,4 @@
+
 /**
  * This hook unifies form submission handling for both patient and optician modes.
  * It provides a common interface but adapts to different submission methods based on mode.
@@ -14,6 +15,12 @@ import { createOptimizedPromptInput, extractFormattedAnswers } from "@/utils/ana
 // Export the SubmissionError type for use in other components
 // Using 'export type' syntax to comply with isolatedModules
 export type { SubmissionError } from './useFormSubmission';
+
+// Define the SubmissionError type in this file to avoid TypeScript errors
+type SubmissionError = Error & {
+  details?: string;
+  recoverable?: boolean;
+};
 
 export type SubmissionMode = 'patient' | 'optician';
 

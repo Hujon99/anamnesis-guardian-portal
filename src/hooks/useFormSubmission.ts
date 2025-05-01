@@ -27,7 +27,8 @@ export const useFormSubmission = () => {
     console.log("[useFormSubmission/submitForm]: Starting form submission", { 
       hasToken: !!token, 
       valuesCount: Object.keys(values).length,
-      hasTemplate: !!formTemplate 
+      hasTemplate: !!formTemplate,
+      sampleKeys: Object.keys(values).slice(0, 5)
     });
     
     setIsSubmitting(true);
@@ -82,7 +83,12 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: cleanedValues }; // Fallback for backward compatibility
 
-      console.log("[useFormSubmission/submitForm]: Submission data prepared:", submissionData);
+      console.log("[useFormSubmission/submitForm]: Submission data prepared:", {
+        hasRawAnswers: !!submissionData.rawAnswers,
+        hasFormattedAnswers: !!submissionData.formattedAnswers,
+        hasMetadata: !!submissionData.metadata,
+        rawAnswersKeys: submissionData.rawAnswers ? Object.keys(submissionData.rawAnswers).slice(0, 3) : []
+      });
       
       // Submit the form using the edge function
       console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
@@ -94,11 +100,19 @@ export const useFormSubmission = () => {
       
       while (retryCount <= maxRetries) {
         try {
+          console.log("[useFormSubmission/submitForm]: Sending data to edge function, attempt", retryCount + 1);
+          
           response = await supabase.functions.invoke('submit-form', {
             body: { 
               token,
               answers: submissionData
             }
+          });
+          
+          console.log("[useFormSubmission/submitForm]: Edge function response:", {
+            hasError: !!response.error,
+            hasData: !!response.data,
+            status: response.error?.status || 200
           });
           
           // If successful, break the retry loop

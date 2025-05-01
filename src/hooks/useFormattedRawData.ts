@@ -89,6 +89,7 @@ export function useFormattedRawData(
     
     try {
       console.log("[useFormattedRawData/generateRawData]: Starting to generate formatted data");
+      console.log("[useFormattedRawData/generateRawData]: Form template available:", !!formTemplate);
       
       let formattedText = "";
       
@@ -105,7 +106,13 @@ export function useFormattedRawData(
           answeredSections: [{
             section_title: "Patientens svar",
             responses: Object.entries(answers)
-              .filter(([key]) => !['formMetadata', 'metadata'].includes(key))
+              .filter(([key, value]) => {
+                // Filter out metadata and empty values
+                return !['formMetadata', 'metadata'].includes(key) && 
+                       value !== null && 
+                       value !== undefined && 
+                       value !== '';
+              })
               .map(([id, answer]) => ({ id, answer }))
           }]
         };
@@ -118,8 +125,15 @@ export function useFormattedRawData(
         formattedText = "Patientens anamnesinformation:\n\n";
         
         if (typeof answers === 'object' && answers !== null) {
-          Object.entries(answers).forEach(([key, value]) => {
-            if (key !== 'formMetadata' && key !== 'metadata' && value !== null && value !== undefined && value !== '') {
+          Object.entries(answers)
+            .filter(([key, value]) => {
+              return key !== 'formMetadata' && 
+                     key !== 'metadata' && 
+                     value !== null && 
+                     value !== undefined && 
+                     value !== '';
+            })
+            .forEach(([key, value]) => {
               // Handle arrays and objects specially
               let displayValue = value;
               if (Array.isArray(value)) {
@@ -128,8 +142,7 @@ export function useFormattedRawData(
                 displayValue = JSON.stringify(value);
               }
               formattedText += `${key}: ${displayValue}\n`;
-            }
-          });
+            });
         }
       }
       

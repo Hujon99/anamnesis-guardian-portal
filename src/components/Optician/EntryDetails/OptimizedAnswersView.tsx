@@ -1,3 +1,4 @@
+
 /**
  * This component displays the patient's anamnesis answers in an optimized text format.
  * It directly manages the formatted raw data stored in the database and provides
@@ -47,7 +48,7 @@ export const OptimizedAnswersView = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Get the form template to use for formatting - fix the access to formTemplate
+  // Get the form template to use for formatting
   const formTemplateQuery = useFormTemplate();
   const formTemplateData = formTemplateQuery.data;
   
@@ -105,6 +106,7 @@ export const OptimizedAnswersView = ({
     }
     
     try {
+      console.log("Regenerating formatted data with template:", !!formTemplateData?.schema);
       await generateRawData();
       toast({
         title: "Formatterad data uppdaterad",

@@ -6,11 +6,14 @@
  */
 
 import { FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { ActionButtons } from "./ActionButtons";
 import { SaveIndicator } from "./SaveIndicator";
 import { ContentTabs } from "./ContentTabs";
+import { useFormTemplate } from "@/hooks/useFormTemplate";
+import { useFormattedRawData } from "@/hooks/useFormattedRawData";
+import { supabase } from "@/integrations/supabase/client";
 
 interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
@@ -31,7 +34,7 @@ export const OptimizedAnswersView = ({
   status,
   aiSummary,
   onSaveSummary,
-  formattedRawData,
+  formattedRawData: initialFormattedRawData,
   setFormattedRawData,
   saveFormattedRawData,
   isPending
@@ -43,6 +46,44 @@ export const OptimizedAnswersView = ({
   const [isCopied, setIsCopied] = useState(false);
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
+
+  // Get the form template to use for formatting
+  const formTemplateQuery = useFormTemplate();
+  const formTemplateData = formTemplateQuery.data;
+  
+  // Use the hook with all required parameters
+  const {
+    formattedRawData,
+    setFormattedRawData: updateFormattedRawData,
+    generateRawData,
+    isGenerating: isRegeneratingRawData,
+  } = useFormattedRawData(
+    initialFormattedRawData || "", 
+    answers, 
+    hasAnswers,
+    formTemplateData?.schema || null,
+    (data: string) => {
+      setFormattedRawData(data);
+      saveFormattedRawData();
+    }
+  );
+
+  // Update summary when aiSummary prop changes
+  useEffect(() => {
+    if (aiSummary) {
+      setSummary(aiSummary);
+      if (aiSummary.trim().length > 0) {
+        setActiveTab("summary");
+      }
+    }
+  }, [aiSummary]);
+  
+  // Regenerate raw data if it's empty but we have answers
+  useEffect(() => {
+    if (hasAnswers && formattedRawData === "" && formTemplateData?.schema) {
+      generateRawData();
+    }
+  }, [hasAnswers, formattedRawData, formTemplateData, generateRawData]);
 
   const handleSaveChanges = () => {
     setIsSaving(true);
@@ -70,6 +111,74 @@ export const OptimizedAnswersView = ({
       setSaveIndicator(null);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const regenerateFormattedData = async () => {
+    if (!hasAnswers) {
+      toast({
+        title: "Kunde inte generera formatterad data",
+        description: "Det finns inga svar att formattera.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      await generateRawData();
+      toast({
+        title: "Formatterad data uppdaterad",
+        description: "Den formatterade textvyn har uppdaterats."
+      });
+    } catch (error) {
+      console.error("Error regenerating formatted data:", error);
+      toast({
+        title: "Kunde inte uppdatera formatterad data",
+        description: error instanceof Error ? error.message : "Ett oväntat fel uppstod",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const generateSummary = async () => {
+    if (!formattedRawData) {
+      toast({
+        title: "Kunde inte generera sammanfattning",
+        description: "Det finns inga svar att sammanfatta.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsGenerating(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: {
+          promptText: formattedRawData
+        }
+      });
+      
+      if (error) {
+        throw new Error(`${error.message || 'Ett fel uppstod vid anrop till AI-sammanfattning'}`);
+      }
+      
+      if (data?.summary) {
+        setSummary(data.summary);
+        setActiveTab("summary");
+        onSaveSummary(data.summary);
+      } else {
+        throw new Error('Fick inget svar från AI-tjänsten');
+      }
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      toast({
+        title: "Kunde inte generera sammanfattning",
+        description: error instanceof Error ? error.message : "Ett oväntat fel uppstod",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -119,7 +228,7 @@ export const OptimizedAnswersView = ({
             isEditing={isEditing}
             isSaving={isSaving}
             isPending={isPending}
-            isRegeneratingRawData={false}
+            isRegeneratingRawData={isRegeneratingRawData}
             isGenerating={isGenerating}
             hasAnswers={hasAnswers}
             formattedRawData={formattedRawData}
@@ -127,11 +236,11 @@ export const OptimizedAnswersView = ({
             onEdit={() => setIsEditing(true)}
             onSave={handleSaveChanges}
             onCancel={() => {
-              setFormattedRawData(formattedRawData);
+              updateFormattedRawData(initialFormattedRawData || "");
               setIsEditing(false);
             }}
-            onRegenerateRawData={() => {}}
-            onGenerateSummary={() => {}}
+            onRegenerateRawData={regenerateFormattedData}
+            onGenerateSummary={generateSummary}
           />
         </div>
       </div>
@@ -143,12 +252,14 @@ export const OptimizedAnswersView = ({
           isEditing={isEditing}
           formattedRawData={formattedRawData}
           onRawDataChange={(value) => {
-            setFormattedRawData(value);
+            updateFormattedRawData(value);
             setSaveIndicator("unsaved");
           }}
           summary={summary}
           isCopied={isCopied}
           onCopy={copySummaryToClipboard}
+          onRegenerateData={regenerateFormattedData}
+          isRegenerating={isRegeneratingRawData}
         />
       </div>
     </div>

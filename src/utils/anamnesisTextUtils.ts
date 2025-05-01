@@ -1,15 +1,16 @@
-
 /**
  * This utility file contains functions for optimizing anamnesis data into text format.
  * It helps prepare patient form data for AI summarization by converting complex JSON structures
  * into a more token-efficient plain text representation.
  */
 
-import { FormTemplate } from "@/types/anamnesis";
+import { FormTemplate, FormQuestion, FormSection } from "@/types/anamnesis";
 
 /**
  * Creates an optimized text representation of anamnesis data by combining
  * questions from the form template with answers from the patient submission.
+ * This function preserves the original order from the form template and
+ * only includes questions that have been answered.
  * 
  * @param formTemplateJSON - The original form template with questions structure
  * @param formattedAnswersJSON - The patient's answered questions
@@ -25,68 +26,158 @@ export const createOptimizedPromptInput = (
   // Create a map of question IDs to their labels for quick lookup
   const questionLabelMap = new Map<string, string>();
   
-  // Populate the map from the form template
+  // Create a map of all answered questions for quick lookup
+  const answeredQuestionsMap = new Map<string, any>();
+  
+  // Collect all answers into a map for easier and faster lookup
+  if (formattedAnswersJSON && formattedAnswersJSON.answeredSections) {
+    formattedAnswersJSON.answeredSections.forEach((section: any) => {
+      if (section.responses && section.responses.length > 0) {
+        section.responses.forEach((response: any) => {
+          if (response && response.id && response.answer !== undefined && 
+              response.answer !== null && response.answer !== '') {
+            answeredQuestionsMap.set(response.id, response.answer);
+          }
+        });
+      }
+    });
+  }
+
+  // If we have no answers, return early with a message
+  if (answeredQuestionsMap.size === 0) {
+    return outputText + "\nIngen information tillgänglig";
+  }
+  
+  // Populate the question label map from the form template
   if (formTemplateJSON && formTemplateJSON.sections) {
     formTemplateJSON.sections.forEach(section => {
       if (section.questions) {
         section.questions.forEach(question => {
+          // Skip optician-only questions
+          if (question.show_in_mode === "optician") return;
+          
           questionLabelMap.set(question.id, question.label);
         });
       }
     });
   }
 
-  // Process all answered sections
-  if (formattedAnswersJSON && formattedAnswersJSON.answeredSections) {
-    formattedAnswersJSON.answeredSections.forEach(section => {
-      if (section.responses && section.responses.length > 0) {
-        // Add section title if available
-        if (section.section_title) {
+  // Process sections in the original template order
+  if (formTemplateJSON && formTemplateJSON.sections) {
+    formTemplateJSON.sections.forEach((section: FormSection) => {
+      // Skip sections without questions
+      if (!section.questions || section.questions.length === 0) return;
+      
+      // Track if we've added any questions from this section
+      let sectionAdded = false;
+      
+      // Process questions in the original template order
+      section.questions.forEach((question: FormQuestion) => {
+        // Skip optician-only questions
+        if (question.show_in_mode === "optician") return;
+        
+        // Get the answer if it exists
+        const answer = answeredQuestionsMap.get(question.id);
+        
+        // Skip questions without answers
+        if (answer === undefined) return;
+        
+        // If this is the first question added for this section, add the section title
+        if (!sectionAdded) {
           outputText += `\n-- ${section.section_title} --\n`;
+          sectionAdded = true;
         }
-
-        // Process each response
-        section.responses.forEach(response => {
-          if (!response) return; // Skip null/undefined responses
+        
+        // Get the question label
+        const label = questionLabelMap.get(question.id) || question.label || question.id;
+        
+        // Handle different answer types
+        let formattedAnswer = formatAnswerValue(answer);
+        
+        // Add the question-answer pair
+        outputText += `${label}: ${formattedAnswer}\n`;
+      });
+      
+      // Look for follow-up questions related to this section
+      Array.from(answeredQuestionsMap.keys()).forEach(key => {
+        // Check if this is a follow-up question (_for_ indicates this)
+        if (key.includes('_for_')) {
+          const [baseQuestionId] = key.split('_for_');
           
-          const { id, answer } = response;
-          if (!id) return; // Skip responses without an ID
+          // Check if the base question belongs to this section
+          const baseQuestionBelongsToThisSection = section.questions.some(q => q.id === baseQuestionId);
           
-          // Get the question label from our map
-          const label = questionLabelMap.get(id) || id;
-          
-          // Handle complex answer structures
-          let formattedAnswer = "";
-          if (answer === null || answer === undefined) {
-            formattedAnswer = "Inget svar";
-          } else if (typeof answer === "object") {
-            if ("value" in answer) {
-              // Handle dynamic follow-up answer format
-              formattedAnswer = String(answer.value);
-            } else if ("parent_question" in answer && "parent_value" in answer) {
-              // Handle specific follow-up question format
-              formattedAnswer = String(answer.value || answer);
-            } else if (Array.isArray(answer)) {
-              // Handle array answers (e.g., multiple choice)
-              formattedAnswer = answer.map(item => 
-                typeof item === "object" && "value" in item ? item.value : String(item)
-              ).join(", ");
-            } else {
-              // Handle other object structures
-              formattedAnswer = JSON.stringify(answer);
+          if (baseQuestionBelongsToThisSection) {
+            const followUpAnswer = answeredQuestionsMap.get(key);
+            
+            // Skip if no answer
+            if (followUpAnswer === undefined || followUpAnswer === null || followUpAnswer === '') return;
+            
+            // If this is the first question added for this section, add the section title
+            if (!sectionAdded) {
+              outputText += `\n-- ${section.section_title} --\n`;
+              sectionAdded = true;
             }
-          } else {
-            formattedAnswer = String(answer);
+            
+            // Format the follow-up question label nicely
+            const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
+            const baseQuestionLabel = questionLabelMap.get(baseQuestionId) || baseQuestionId;
+            const followUpLabel = `${baseQuestionLabel} (${parentValue})`;
+            
+            // Format the answer
+            let formattedAnswer = formatAnswerValue(followUpAnswer);
+            
+            // Add the follow-up question-answer pair
+            outputText += `${followUpLabel}: ${formattedAnswer}\n`;
           }
-          
-          outputText += `${label}: ${formattedAnswer}\n`;
-        });
-      }
+        }
+      });
     });
   }
 
   return outputText;
 };
+
+/**
+ * Helper function to format different answer types consistently
+ */
+function formatAnswerValue(answer: any): string {
+  if (answer === null || answer === undefined) {
+    return "Inget svar";
+  }
+  
+  // Handle arrays (checkboxes, multiple selections)
+  if (Array.isArray(answer)) {
+    return answer
+      .map(item => {
+        if (typeof item === 'object' && item !== null) {
+          if ('value' in item) return item.value;
+          return JSON.stringify(item);
+        }
+        return String(item);
+      })
+      .filter(value => value !== undefined && value !== null && value !== '')
+      .join(', ');
+  }
+  
+  // Handle objects with nested values
+  if (typeof answer === 'object' && answer !== null) {
+    if ('value' in answer) {
+      return String(answer.value);
+    }
+    
+    // Special handling for follow-up questions
+    if ('parent_question' in answer && 'parent_value' in answer && 'value' in answer) {
+      return String(answer.value);
+    }
+    
+    // Fallback to JSON stringify for other object types
+    return JSON.stringify(answer);
+  }
+  
+  // Simple values
+  return String(answer);
+}
 
 /**
  * Extracts the formatted answers structure from various possible answer formats
@@ -174,4 +265,3 @@ export const extractFormattedAnswers = (answers: Record<string, any>): any | und
   console.log("No valid answer structure found");
   return undefined;
 };
-

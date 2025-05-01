@@ -1,11 +1,11 @@
 
 /**
- * This component renders the action buttons for the optimized answers view.
- * It handles editing, saving, regenerating raw data, and AI summary generation.
+ * This component provides action buttons for the OptimizedAnswersView,
+ * handling different states (editing, viewing) and actions (save, edit, etc.)
  */
 
 import { Button } from "@/components/ui/button";
-import { Lightbulb, PenLine, RefreshCw, Save } from "lucide-react";
+import { PenLine, Save, RefreshCw, Lightbulb } from "lucide-react";
 
 interface ActionButtonsProps {
   isEditing: boolean;
@@ -14,8 +14,8 @@ interface ActionButtonsProps {
   isRegeneratingRawData: boolean;
   isGenerating: boolean;
   hasAnswers: boolean;
-  formattedRawData: string | null;
-  summary: string | null;
+  formattedRawData: string;
+  summary: string;
   onEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
@@ -41,19 +41,19 @@ export const ActionButtons = ({
   if (isEditing) {
     return (
       <>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onCancel}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onCancel} 
           className="flex items-center"
         >
           Återställ
         </Button>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={onSave}
-          disabled={isSaving || isPending}
+        <Button 
+          variant="default" 
+          size="sm" 
+          onClick={onSave} 
+          disabled={isSaving || isPending} 
           className="flex items-center"
         >
           <Save className="h-4 w-4 mr-2" />
@@ -65,34 +65,38 @@ export const ActionButtons = ({
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onRegenerateRawData}
-        disabled={isRegeneratingRawData || !hasAnswers}
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={onRegenerateRawData} 
+        disabled={isRegeneratingRawData || !hasAnswers} 
         className="flex items-center"
       >
-        <RefreshCw className={`h-4 w-4 mr-2 ${isRegeneratingRawData ? 'animate-spin' : ''}`} />
-        {isRegeneratingRawData ? "Genererar..." : "Generera rådata"}
+        <RefreshCw className="h-4 w-4 mr-2" />
+        {isRegeneratingRawData ? "Genererar..." : "Uppdatera textvy"}
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onEdit}
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={onEdit} 
         className="flex items-center"
       >
         <PenLine className="h-4 w-4 mr-2" />
         Redigera anteckningar
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onGenerateSummary}
-        disabled={isGenerating || !formattedRawData}
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={onGenerateSummary} 
+        disabled={isGenerating || !formattedRawData} 
         className="flex items-center"
       >
         <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
-        {isGenerating ? "Genererar..." : summary ? "Uppdatera AI-sammanfattning" : "Generera AI-sammanfattning"}
+        {isGenerating 
+          ? "Genererar..." 
+          : summary 
+            ? "Uppdatera AI-sammanfattning" 
+            : "Generera AI-sammanfattning"}
       </Button>
     </>
   );

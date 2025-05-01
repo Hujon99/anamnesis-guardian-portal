@@ -85,7 +85,7 @@ export const ContentTabs = ({
             <ScrollArea className="h-full w-full">
               <div className="p-4">
                 <pre className="whitespace-pre-wrap text-sm">
-                  {formattedRawData}
+                  {formattedRawData || ""}
                 </pre>
               </div>
             </ScrollArea>

@@ -3,7 +3,7 @@
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
  * using a modular approach with dedicated components and hooks.
- * Now uses the unified form submission approach that restores the reliable direct database update method.
+ * Uses the unified form submission approach with edge function + direct database fallback.
  */
 
 import { useSearchParams } from "react-router-dom";
@@ -14,13 +14,14 @@ const PatientFormPage = () => {
   const token = searchParams.get("token");
   
   console.log("[PatientFormPage]: Rendering with token:", token?.substring(0, 6) + "...");
+  console.log("[PatientFormPage]: Using unified submission with edge function + fallback for patient mode");
   
   return (
     <BaseFormPage 
       token={token}
       mode="patient"
       showBookingInfo={true}
-      useUnifiedSubmission={true} // Use our unified approach that preserves the working direct database update
+      useUnifiedSubmission={true} // Always use the unified approach
     />
   );
 };

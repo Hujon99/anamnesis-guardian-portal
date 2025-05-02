@@ -4,15 +4,17 @@
  * It handles the entire submission lifecycle including state management, error handling,
  * retries, and fallback mechanisms. The hook ensures that both modes use consistent
  * data structures while maintaining the reliability of the original optician submission approach.
+ * Enhanced with better authentication handling and circuit breaker patterns to prevent stuck states.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { useMutation } from '@tanstack/react-query';
 import { FormTemplateWithMeta } from './useFormTemplate';
 import { createOptimizedPromptInput, extractFormattedAnswers } from "@/utils/anamnesisTextUtils";
 import { SUPABASE_URL } from "@/integrations/supabase/client";
+import { createSupabaseClient } from "@/utils/supabaseClientUtils";
 
 // Define submission related types
 export type SubmissionMode = 'patient' | 'optician';
@@ -21,6 +23,7 @@ export interface SubmissionError extends Error {
   status?: number;
   details?: string;
   recoverable?: boolean;
+  isAuthError?: boolean;
 }
 
 interface FormSubmissionProps {
@@ -39,6 +42,20 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
   // Get Supabase client
   const { supabase, isLoading: supabaseLoading, isReady } = useSupabaseClient();
   
+  // Circuit breaker to detect stuck submissions
+  const submissionTimeoutRef = useRef<number | null>(null);
+  const MAX_SUBMISSION_TIME = 10000; // 10 seconds max submission time
+  
+  // Clear circuit breaker on unmount
+  useEffect(() => {
+    return () => {
+      if (submissionTimeoutRef.current) {
+        clearTimeout(submissionTimeoutRef.current);
+        submissionTimeoutRef.current = null;
+      }
+    };
+  }, []);
+  
   // Reset error state
   const resetError = useCallback(() => {
     setError(null);
@@ -55,11 +72,22 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
         throw new Error("Ingen åtkomsttoken hittades");
       }
       
-      if (!supabase || !isReady) {
-        throw new Error("Kunde inte ansluta till databasen");
+      // Set up circuit breaker to prevent stuck states
+      if (submissionTimeoutRef.current) {
+        clearTimeout(submissionTimeoutRef.current);
       }
       
-      const { values, formTemplate, formattedAnswers } = data;
+      submissionTimeoutRef.current = window.setTimeout(() => {
+        console.error("[useUnifiedFormSubmission]: Submission took too long, circuit breaker triggered");
+        if (isSubmitting) {
+          setIsSubmitting(false);
+          const timeoutError: SubmissionError = new Error("Tidsgränsen för inskickning överskreds");
+          timeoutError.status = 408;
+          timeoutError.recoverable = true;
+          timeoutError.details = "Servern svarade inte inom rimlig tid";
+          setError(timeoutError);
+        }
+      }, MAX_SUBMISSION_TIME);
       
       // Store values for potential retry
       setLastAttemptValues({ token, values, formTemplate, formattedAnswers });
@@ -133,13 +161,47 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
         console.log("[useUnifiedFormSubmission]: Using optician direct update approach");
         
         try {
-          // Direct database update - this was the reliable approach in the original optician form
+          // Try with the authenticated client first
+          console.log("[useUnifiedFormSubmission]: Attempting direct update with authenticated client");
+          
           const { error: directUpdateError } = await supabase
             .from("anamnes_entries")
             .update(submissionData)
             .eq("access_token", token);
           
           if (directUpdateError) {
+            // Check if this is an authentication error
+            if (directUpdateError.code === 'PGRST301' || 
+                directUpdateError.code === '401' || 
+                directUpdateError.message?.includes('JWT')) {
+              
+              console.warn("[useUnifiedFormSubmission]: JWT auth error detected, trying with anon key:", directUpdateError);
+              
+              // Create a new client with the anon key as fallback
+              console.log("[useUnifiedFormSubmission]: Creating new client with anon key");
+              const anonClient = createSupabaseClient();
+              
+              // Try the update with anon key
+              const { error: anonUpdateError } = await anonClient
+                .from("anamnes_entries")
+                .update(submissionData)
+                .eq("access_token", token);
+              
+              if (anonUpdateError) {
+                console.error("[useUnifiedFormSubmission]: Anon client update failed:", anonUpdateError);
+                const authError: SubmissionError = new Error(`Auktoriseringsfel: ${anonUpdateError.message}`);
+                authError.status = 401;
+                authError.details = "Auktoriseringsfel vid databas-uppdatering";
+                authError.recoverable = true;
+                authError.isAuthError = true;
+                throw authError;
+              }
+              
+              console.log("[useUnifiedFormSubmission]: Anon client update successful");
+              return { success: true, usedAnonFallback: true };
+            }
+            
+            // Handle other errors
             console.error("[useUnifiedFormSubmission]: Optician direct update error:", directUpdateError);
             throw new Error(`Databasfel: ${directUpdateError.message}`);
           }
@@ -148,6 +210,15 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
           return { success: true };
         } catch (error: any) {
           console.error("[useUnifiedFormSubmission]: Optician submission error:", error);
+          
+          // Add isAuthError flag for better error handling
+          if (error.message?.includes('JWT') || 
+              error.message?.includes('401') || 
+              error.message?.includes('auth') ||
+              error.isAuthError) {
+            error.isAuthError = true;
+          }
+          
           throw error;
         }
       } 
@@ -191,14 +262,39 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
           try {
             console.log("[useUnifiedFormSubmission]: Attempting direct database update as fallback");
             
-            const { error: directUpdateError } = await supabase
-              .from("anamnes_entries")
-              .update(submissionData)
-              .eq("access_token", token);
-            
-            if (directUpdateError) {
-              console.error("[useUnifiedFormSubmission]: Direct update error:", directUpdateError);
-              throw new Error(`Direct database update failed: ${directUpdateError.message}`);
+            // Try with the authenticated client first
+            try {
+              const { error: directUpdateError } = await supabase
+                .from("anamnes_entries")
+                .update(submissionData)
+                .eq("access_token", token);
+              
+              if (directUpdateError) {
+                // Check if this is an authentication error
+                if (directUpdateError.code === 'PGRST301' || 
+                    directUpdateError.code === '401' || 
+                    directUpdateError.message?.includes('JWT')) {
+                  
+                  throw new Error("JWT auth error");
+                }
+                
+                console.error("[useUnifiedFormSubmission]: Direct update error:", directUpdateError);
+                throw new Error(`Direct database update failed: ${directUpdateError.message}`);
+              }
+            } catch (authError) {
+              // If auth error, try with anon key as fallback
+              console.log("[useUnifiedFormSubmission]: Auth error, trying with anon key");
+              const anonClient = createSupabaseClient();
+              
+              const { error: anonUpdateError } = await anonClient
+                .from("anamnes_entries")
+                .update(submissionData)
+                .eq("access_token", token);
+              
+              if (anonUpdateError) {
+                console.error("[useUnifiedFormSubmission]: Anon client update failed:", anonUpdateError);
+                throw new Error(`Anon client update failed: ${anonUpdateError.message}`);
+              }
             }
             
             console.log("[useUnifiedFormSubmission]: Direct database update successful");
@@ -218,9 +314,15 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
       console.log("[useUnifiedFormSubmission]: Submission successful:", data);
       setIsSubmitted(true);
       
+      // Clear circuit breaker
+      if (submissionTimeoutRef.current) {
+        clearTimeout(submissionTimeoutRef.current);
+        submissionTimeoutRef.current = null;
+      }
+      
       toast({
         title: mode === 'optician' ? "Formuläret har skickats in" : "Tack för dina svar!",
-        description: data.usedFallback 
+        description: data.usedFallback || data.usedAnonFallback
           ? "Dina svar har skickats in framgångsrikt via alternativ metod."
           : "Dina svar har skickats in framgångsrikt.",
       });
@@ -231,8 +333,23 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
       // Reset submission state to allow retry
       setIsSubmitting(false);
       
+      // Clear circuit breaker
+      if (submissionTimeoutRef.current) {
+        clearTimeout(submissionTimeoutRef.current);
+        submissionTimeoutRef.current = null;
+      }
+      
       // Create a proper submission error object
       const submissionError: SubmissionError = error instanceof Error ? error : new Error(error?.message || "Ett oväntat fel uppstod.");
+      
+      // Add isAuthError flag if needed
+      if (error.message?.includes('JWT') || 
+          error.message?.includes('401') || 
+          error.message?.includes('auktorisering') ||
+          error.message?.includes('auth') ||
+          error.isAuthError) {
+        submissionError.isAuthError = true;
+      }
       
       if (!submissionError.status) {
         // Set status and recoverable flag based on error type
@@ -243,6 +360,10 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
         } else if (error.message?.includes('timeout')) {
           submissionError.status = 408;
           submissionError.details = "Tidsgräns överskreds vid anslutning till servern";
+          submissionError.recoverable = true;
+        } else if (submissionError.isAuthError) {
+          submissionError.status = 401;
+          submissionError.details = "Auktoriseringsfel - Försöker med alternativ metod";
           submissionError.recoverable = true;
         } else {
           submissionError.status = 500;
@@ -258,6 +379,8 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
       // Network error detection
       if (submissionError.message?.includes('Failed to fetch') || submissionError.message?.includes('NetworkError')) {
         errorMessage = "Kunde inte ansluta till servern. Kontrollera din internetanslutning och försök igen.";
+      } else if (submissionError.isAuthError) {
+        errorMessage = "Ett auktoriseringsfel uppstod. Vi försöker med en alternativ metod. Vänligen försök igen.";
       }
       
       // Generic API error

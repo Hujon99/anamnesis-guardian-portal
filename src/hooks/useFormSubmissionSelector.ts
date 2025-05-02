@@ -1,76 +1,72 @@
 
 /**
- * This hook selects the appropriate form submission hook based on configuration.
- * It serves as a compatibility layer during the transition from the legacy hooks
- * to the new unified hook, allowing gradual migration of components.
+ * This hook selects between different form submission implementations.
+ * It provides a unified interface for both patient and optician form submissions,
+ * with improved error handling and state management.
  */
 
-import { useFormSubmission, SubmissionError as LegacySubmissionError } from './useFormSubmission';
-import { useFormSubmissionManager, SubmissionMode } from './useFormSubmissionManager';
-import { useUnifiedFormSubmission, SubmissionError as UnifiedSubmissionError } from './useUnifiedFormSubmission';
+import { SubmissionMode, useUnifiedFormSubmission } from "@/hooks/useUnifiedFormSubmission";
+import { useFormSubmission } from "@/hooks/useFormSubmission";
+import { FormTemplateWithMeta } from "@/hooks/useFormTemplate";
 
-// Re-export the submission error type for compatibility
-export type SubmissionError = UnifiedSubmissionError;
+// Re-export the SubmissionError type
+export type { SubmissionError } from "@/hooks/useUnifiedFormSubmission";
 
-// Define configuration options
-export interface FormSubmissionSelectorOptions {
+interface FormSubmissionSelectorProps {
   token: string | null;
   mode: SubmissionMode;
-  useUnifiedHook?: boolean; // Toggle to use the new unified hook
+  useUnifiedHook?: boolean;
 }
 
-// Common interface that both legacy and unified hooks will conform to
-export interface FormSubmissionInterface {
-  isSubmitting: boolean;
-  isSubmitted: boolean;
-  error: SubmissionError | null;
-  submissionAttempts: number;
-  handleFormSubmit: (values: Record<string, any>, formTemplate: any, formattedAnswers?: any) => Promise<boolean>;
-  handleRetrySubmission: () => Promise<boolean>;
-  resetError: () => void;
-}
-
-export function useFormSubmissionSelector({
+export const useFormSubmissionSelector = ({
   token,
   mode,
-  useUnifiedHook = true // Default to using the unified hook
-}: FormSubmissionSelectorOptions): FormSubmissionInterface {
-  // Use the new unified hook if enabled
-  const unifiedHook = useUnifiedFormSubmission({ token, mode });
+  useUnifiedHook = true // Default to using the unified hook now
+}: FormSubmissionSelectorProps) => {
+  console.log(`[useFormSubmissionSelector]: Using ${useUnifiedHook ? 'unified' : 'legacy'} implementation for ${mode} mode`);
   
-  // For backward compatibility, also initialize the legacy hooks
-  const patientSubmission = useFormSubmission();
+  // Use unified implementation (improved with direct database updates for opticians)
+  const unifiedFormSubmission = useUnifiedFormSubmission({ token, mode });
+  
+  // Legacy implementation (kept for backwards compatibility)
+  const legacyFormSubmission = useFormSubmission();
+
+  // Choose which implementation to use
   const {
-    isSubmitting: managerIsSubmitting,
-    submissionError: managerError,
-    isSubmitted: managerIsSubmitted,
-    submissionAttempts: managerAttempts,
-    handleFormSubmit: managerSubmit,
-    handleRetrySubmission: managerRetry,
-    resetError: managerResetError
-  } = useFormSubmissionManager({ token, mode });
-  
-  // Return the appropriate hook based on configuration
-  if (useUnifiedHook) {
-    return {
-      isSubmitting: unifiedHook.isSubmitting,
-      isSubmitted: unifiedHook.isSubmitted,
-      error: unifiedHook.error,
-      submissionAttempts: unifiedHook.submissionAttempts,
-      handleFormSubmit: unifiedHook.submitForm,
-      handleRetrySubmission: unifiedHook.retrySubmission,
-      resetError: unifiedHook.resetError
-    };
-  } else {
-    // Use the legacy hooks (the existing pattern)
-    return {
-      isSubmitting: mode === 'patient' ? patientSubmission.isSubmitting : managerIsSubmitting,
-      isSubmitted: mode === 'patient' ? patientSubmission.isSubmitted : managerIsSubmitted,
-      error: mode === 'patient' ? patientSubmission.error : managerError,
-      submissionAttempts: mode === 'patient' ? patientSubmission.submissionAttempts : managerAttempts,
-      handleFormSubmit: managerSubmit,
-      handleRetrySubmission: managerRetry,
-      resetError: managerResetError
-    };
-  }
-}
+    isSubmitting,
+    isSubmitted,
+    error,
+    submissionAttempts,
+    submitForm: submissionHandler,
+    retrySubmission,
+    resetError
+  } = useUnifiedHook ? unifiedFormSubmission : legacyFormSubmission;
+
+  // Unified form submit handler that adapts to the selected implementation
+  const handleFormSubmit = async (
+    values: Record<string, any>,
+    formTemplate: FormTemplateWithMeta | null,
+    formattedAnswers?: any
+  ) => {
+    console.log(`[useFormSubmissionSelector/handleFormSubmit]: Using ${useUnifiedHook ? 'unified' : 'legacy'} implementation`);
+    
+    if (useUnifiedHook) {
+      // Unified approach
+      return await submissionHandler(values, formTemplate, formattedAnswers);
+    } else {
+      // Legacy approach
+      if (!token) return false;
+      return await legacyFormSubmission.submitForm(token, values, formTemplate?.schema, formattedAnswers);
+    }
+  };
+
+  return {
+    isSubmitting,
+    isSubmitted,
+    error,
+    submissionAttempts,
+    handleFormSubmit,
+    handleRetrySubmission: retrySubmission,
+    resetError
+  };
+};

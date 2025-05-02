@@ -1,13 +1,14 @@
+
 /**
  * This component serves as the base for both patient and optician form pages.
  * It handles common functionality like token verification, loading states,
  * error handling, and form rendering, while allowing customization for
  * specific form types.
  * Updated to use the more reliable submission approach that works for both
- * patient and optician forms.
+ * patient and optician forms with enhanced error handling and state management.
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useFormStateManager } from "@/hooks/useFormStateManager";
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -39,7 +40,7 @@ interface BaseFormPageProps {
   hideAutoSave?: boolean;
   hideCopyLink?: boolean;
   showBookingInfo?: boolean;
-  useUnifiedSubmission?: boolean; // Default will be changed to true
+  useUnifiedSubmission?: boolean;
 }
 
 export const BaseFormPage: React.FC<BaseFormPageProps> = ({
@@ -51,12 +52,16 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   hideAutoSave = false,
   hideCopyLink = false,
   showBookingInfo = false,
-  useUnifiedSubmission = true // This is now true by default
+  useUnifiedSubmission = true // Default is true now
 }) => {
   console.log(`[BaseFormPage]: Initializing with mode=${mode}, token=${token?.substring(0, 6)}..., useUnifiedSubmission=${useUnifiedSubmission}`);
   
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
+  
+  // Circuit breaker for submission state
+  const stuckSubmissionTimeoutRef = useRef<number | null>(null);
+  const MAX_SUBMISSION_UI_TIME = 15000; // 15 seconds max in submitting state UI
   
   // Use token verification hook
   const { 
@@ -73,7 +78,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     isFullyLoaded
   } = useTokenVerification(token);
   
-  // Use form submission selector hook
+  // Use form submission selector hook - always use unified hook now
   const {
     isSubmitting,
     isSubmitted,
@@ -85,7 +90,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   } = useFormSubmissionSelector({ 
     token, 
     mode,
-    useUnifiedHook: useUnifiedSubmission // Always use our unified submission
+    useUnifiedHook: true // Always use unified hook
   });
   
   // Use form state manager
@@ -105,6 +110,32 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     formTemplate,
     isFullyLoaded
   });
+  
+  // Circuit breaker for stuck submission UI state
+  useEffect(() => {
+    if (formPageState === "SUBMITTING") {
+      // Set up circuit breaker for stuck submission state
+      if (stuckSubmissionTimeoutRef.current) {
+        clearTimeout(stuckSubmissionTimeoutRef.current);
+      }
+      
+      stuckSubmissionTimeoutRef.current = window.setTimeout(() => {
+        console.warn("[BaseFormPage]: Submission UI state stuck, forcing return to FORM_READY");
+        setFormPageState("FORM_READY");
+      }, MAX_SUBMISSION_UI_TIME);
+      
+      return () => {
+        if (stuckSubmissionTimeoutRef.current) {
+          clearTimeout(stuckSubmissionTimeoutRef.current);
+          stuckSubmissionTimeoutRef.current = null;
+        }
+      };
+    } else if (stuckSubmissionTimeoutRef.current) {
+      // Clear timeout if we left the submitting state
+      clearTimeout(stuckSubmissionTimeoutRef.current);
+      stuckSubmissionTimeoutRef.current = null;
+    }
+  }, [formPageState, setFormPageState]);
   
   // Setup auto-save functionality (patient mode only)
   const {

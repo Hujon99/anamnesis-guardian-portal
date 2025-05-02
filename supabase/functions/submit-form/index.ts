@@ -148,7 +148,6 @@ serve(async (req: Request) => {
     }
     
     // SIMPLIFIED: Just use the answers object directly with minimal processing
-    // This significantly simplifies the edge function - we expect the client to give us the right structure
     const updateData = {
       // Use the answers object directly, which should already contain formatted_raw_data
       ...answers,

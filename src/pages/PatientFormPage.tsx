@@ -20,6 +20,7 @@ const PatientFormPage = () => {
       token={token}
       mode="patient"
       showBookingInfo={true}
+      useUnifiedSubmission={true} // Use the new unified submission hook
     />
   );
 };

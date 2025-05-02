@@ -1,4 +1,3 @@
-
 /**
  * This component serves as the base for both patient and optician form pages.
  * It handles common functionality like token verification, loading states,
@@ -8,10 +7,10 @@
 
 import React, { useState, useCallback } from "react";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
-import { useFormSubmissionManager, SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { useFormStateManager } from "@/hooks/useFormStateManager";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { SubmissionError } from "@/hooks/useFormSubmission";
+import { useFormSubmissionSelector, SubmissionError } from "@/hooks/useFormSubmissionSelector";
+import { SubmissionMode } from "@/hooks/useUnifiedFormSubmission";
 
 // Import status cards
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
@@ -38,6 +37,7 @@ interface BaseFormPageProps {
   hideAutoSave?: boolean;
   hideCopyLink?: boolean;
   showBookingInfo?: boolean;
+  useUnifiedSubmission?: boolean; // New prop to toggle the unified submission hook
 }
 
 export const BaseFormPage: React.FC<BaseFormPageProps> = ({
@@ -48,7 +48,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   renderCustomSubmitted,
   hideAutoSave = false,
   hideCopyLink = false,
-  showBookingInfo = false
+  showBookingInfo = false,
+  useUnifiedSubmission = true // Default to using the new unified submission
 }) => {
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
@@ -68,17 +69,20 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     isFullyLoaded
   } = useTokenVerification(token);
   
-  // Use form submission manager
+  // Use form submission selector hook
   const {
     isSubmitting,
-    submissionError,
     isSubmitted,
-    localSubmitted,
+    error: submissionError,
     submissionAttempts,
     handleFormSubmit,
     handleRetrySubmission,
     resetError
-  } = useFormSubmissionManager({ token, mode });
+  } = useFormSubmissionSelector({ 
+    token, 
+    mode,
+    useUnifiedHook: useUnifiedSubmission 
+  });
   
   // Use form state manager
   const {
@@ -119,17 +123,17 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   // Handle form submission with form template
   const handleSubmitWithFormTemplate = useCallback(async (values: any, formattedAnswers?: any) => {
     if (!token) {
-      console.error(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Cannot submit form: No token provided`);
+      console.error(`[BaseFormPage]: Cannot submit form: No token provided`);
       return;
     }
-    console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Submitting form with token:`, token.substring(0, 6) + "...");
+    console.log(`[BaseFormPage]: Submitting form with token:`, token.substring(0, 6) + "...");
     setFormPageState("SUBMITTING");
     await handleFormSubmit(values, formTemplate, formattedAnswers);
-  }, [token, handleFormSubmit, formTemplate, setFormPageState, mode]);
+  }, [token, handleFormSubmit, formTemplate, setFormPageState]);
   
   // Handle retry for submission errors
   const handleSubmissionRetry = useCallback(() => {
-    console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retrying submission...`);
+    console.log(`[BaseFormPage]: Retrying submission...`);
     
     // If in error state, reset error and update state
     if (formPageState === "SUBMISSION_ERROR") {
@@ -142,14 +146,14 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
         const success = await handleRetrySubmission();
         
         if (!success) {
-          console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission failed`);
+          console.log(`[BaseFormPage]: Retry submission failed`);
           setFormPageState("SUBMISSION_ERROR");
         } else {
-          console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission succeeded`);
+          console.log(`[BaseFormPage]: Retry submission succeeded`);
         }
       }, 100);
     }
-  }, [formPageState, resetError, handleRetrySubmission, setFormPageState, mode]);
+  }, [formPageState, resetError, handleRetrySubmission, setFormPageState]);
   
   // Extract data from entry
   const isMagicLink = entryData?.is_magic_link || false;

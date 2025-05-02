@@ -31,6 +31,7 @@ const OpticianFormPage = () => {
       mode="optician"
       hideAutoSave={true}
       hideCopyLink={true}
+      useUnifiedSubmission={true} // Use the new unified submission hook
     />
   );
 };

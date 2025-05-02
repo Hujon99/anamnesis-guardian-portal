@@ -1,4 +1,3 @@
-
 /**
  * This hook provides a unified approach to form submission for both patient and optician modes.
  * It handles the entire submission lifecycle including state management, error handling,
@@ -414,7 +413,11 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
     }
     
     try {
-      await submissionMutation.mutateAsync({ values, formTemplate, formattedAnswers });
+      await submissionMutation.mutateAsync({ 
+        values, 
+        formTemplate, 
+        formattedAnswers 
+      });
       return true;
     } catch (error) {
       return false;
@@ -431,6 +434,7 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
     console.log("[useUnifiedFormSubmission]: Retrying submission with stored values");
     
     try {
+      // Fix the type error by ensuring we pass the expected object structure
       await submissionMutation.mutateAsync(lastAttemptValues);
       return true;
     } catch (error) {

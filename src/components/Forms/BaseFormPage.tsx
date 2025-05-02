@@ -4,16 +4,14 @@
  * It handles common functionality like token verification, loading states,
  * error handling, and form rendering, while allowing customization for
  * specific form types.
- * Updated to use the more reliable submission approach that works for both
- * patient and optician forms with enhanced error handling and state management.
  */
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
+import { useFormSubmissionManager, SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { useFormStateManager } from "@/hooks/useFormStateManager";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { useFormSubmissionSelector, SubmissionError } from "@/hooks/useFormSubmissionSelector";
-import { SubmissionMode } from "@/hooks/useUnifiedFormSubmission";
+import { SubmissionError } from "@/hooks/useFormSubmission";
 
 // Import status cards
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
@@ -40,7 +38,6 @@ interface BaseFormPageProps {
   hideAutoSave?: boolean;
   hideCopyLink?: boolean;
   showBookingInfo?: boolean;
-  useUnifiedSubmission?: boolean;
 }
 
 export const BaseFormPage: React.FC<BaseFormPageProps> = ({
@@ -51,17 +48,10 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   renderCustomSubmitted,
   hideAutoSave = false,
   hideCopyLink = false,
-  showBookingInfo = false,
-  useUnifiedSubmission = true // Default is true now
+  showBookingInfo = false
 }) => {
-  console.log(`[BaseFormPage]: Initializing with mode=${mode}, token=${token?.substring(0, 6)}..., useUnifiedSubmission=${useUnifiedSubmission}`);
-  
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
-  
-  // Circuit breaker for submission state
-  const stuckSubmissionTimeoutRef = useRef<number | null>(null);
-  const MAX_SUBMISSION_UI_TIME = 15000; // 15 seconds max in submitting state UI
   
   // Use token verification hook
   const { 
@@ -78,20 +68,17 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     isFullyLoaded
   } = useTokenVerification(token);
   
-  // Use form submission selector hook - always use unified hook now
+  // Use form submission manager
   const {
     isSubmitting,
+    submissionError,
     isSubmitted,
-    error: submissionError,
+    localSubmitted,
     submissionAttempts,
     handleFormSubmit,
     handleRetrySubmission,
     resetError
-  } = useFormSubmissionSelector({ 
-    token, 
-    mode,
-    useUnifiedHook: true // Always use unified hook
-  });
+  } = useFormSubmissionManager({ token, mode });
   
   // Use form state manager
   const {
@@ -111,32 +98,6 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     isFullyLoaded
   });
   
-  // Circuit breaker for stuck submission UI state
-  useEffect(() => {
-    if (formPageState === "SUBMITTING") {
-      // Set up circuit breaker for stuck submission state
-      if (stuckSubmissionTimeoutRef.current) {
-        clearTimeout(stuckSubmissionTimeoutRef.current);
-      }
-      
-      stuckSubmissionTimeoutRef.current = window.setTimeout(() => {
-        console.warn("[BaseFormPage]: Submission UI state stuck, forcing return to FORM_READY");
-        setFormPageState("FORM_READY");
-      }, MAX_SUBMISSION_UI_TIME);
-      
-      return () => {
-        if (stuckSubmissionTimeoutRef.current) {
-          clearTimeout(stuckSubmissionTimeoutRef.current);
-          stuckSubmissionTimeoutRef.current = null;
-        }
-      };
-    } else if (stuckSubmissionTimeoutRef.current) {
-      // Clear timeout if we left the submitting state
-      clearTimeout(stuckSubmissionTimeoutRef.current);
-      stuckSubmissionTimeoutRef.current = null;
-    }
-  }, [formPageState, setFormPageState]);
-  
   // Setup auto-save functionality (patient mode only)
   const {
     lastSaved,
@@ -152,62 +113,43 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   
   // Handle form values change for auto-save
   const handleFormValuesChange = useCallback((values: Record<string, any>) => {
-    console.log(`[BaseFormPage]: Form values changed, mode=${mode}`);
     setCurrentFormValues(values);
-  }, [mode]);
+  }, []);
   
-  // Handle form submission with form template and formatted answers
+  // Handle form submission with form template
   const handleSubmitWithFormTemplate = useCallback(async (values: any, formattedAnswers?: any) => {
     if (!token) {
-      console.error(`[BaseFormPage]: Cannot submit form: No token provided`);
+      console.error(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Cannot submit form: No token provided`);
       return;
     }
-    console.log(`[BaseFormPage]: Submitting form with token:`, token.substring(0, 6) + "...");
-    console.log(`[BaseFormPage]: Formatted answers provided:`, !!formattedAnswers);
-    console.log(`[BaseFormPage]: Current form state:`, formPageState);
-    
-    // Only change state if we're not already submitting
-    if (formPageState !== "SUBMITTING") {
-      setFormPageState("SUBMITTING");
-    }
-    
-    try {
-      await handleFormSubmit(values, formTemplate, formattedAnswers);
-    } catch (error) {
-      console.error("[BaseFormPage]: Submission error in handleSubmitWithFormTemplate:", error);
-      // The submission hook will handle setting error state
-    }
-  }, [token, handleFormSubmit, formTemplate, setFormPageState, formPageState]);
+    console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Submitting form with token:`, token.substring(0, 6) + "...");
+    setFormPageState("SUBMITTING");
+    await handleFormSubmit(values, formTemplate, formattedAnswers);
+  }, [token, handleFormSubmit, formTemplate, setFormPageState, mode]);
   
   // Handle retry for submission errors
   const handleSubmissionRetry = useCallback(() => {
-    console.log(`[BaseFormPage]: Retrying submission...`);
+    console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retrying submission...`);
     
     // If in error state, reset error and update state
     if (formPageState === "SUBMISSION_ERROR") {
       resetError();
-      
-      // Set submitting state
-      setFormPageState("SUBMITTING");
+      setFormPageState("FORM_READY");
       
       // After a short delay to let the UI update, retry submission
       setTimeout(async () => {
-        try {
-          const success = await handleRetrySubmission();
-          
-          if (!success) {
-            console.log(`[BaseFormPage]: Retry submission failed`);
-            setFormPageState("SUBMISSION_ERROR");
-          } else {
-            console.log(`[BaseFormPage]: Retry submission succeeded`);
-          }
-        } catch (error) {
-          console.error("[BaseFormPage]: Error during retry:", error);
+        setFormPageState("SUBMITTING");
+        const success = await handleRetrySubmission();
+        
+        if (!success) {
+          console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission failed`);
           setFormPageState("SUBMISSION_ERROR");
+        } else {
+          console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission succeeded`);
         }
       }, 100);
     }
-  }, [formPageState, resetError, handleRetrySubmission, setFormPageState]);
+  }, [formPageState, resetError, handleRetrySubmission, setFormPageState, mode]);
   
   // Extract data from entry
   const isMagicLink = entryData?.is_magic_link || false;

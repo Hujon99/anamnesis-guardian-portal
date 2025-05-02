@@ -1,10 +1,10 @@
+
 /**
  * This context provides form state and functions for all form components.
  * It manages the multi-step form flow, validation, and submission process.
  * Enhanced to support form values change events for auto-save functionality.
  * Enhanced with better error handling and detailed logging for debugging.
  * Now supports dynamic validation based on field visibility.
- * Improved to generate formatted raw data during submission for better data consistency.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
@@ -17,7 +17,6 @@ import { useFormValidation } from "@/hooks/useFormValidation";
 import { useConditionalFields } from "@/hooks/useConditionalFields";
 import { useFormattedRawData } from "@/hooks/useFormattedRawData";
 import { toast } from "sonner";
-import { createOptimizedPromptInput } from "@/utils/anamnesisTextUtils";
 
 interface FormContextProviderProps {
   children: React.ReactNode;
@@ -129,17 +128,18 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const totalSections = visibleSections.length;
   const progress = multiStepForm.calculateProgress();
 
-  // Format answers for submission - Integrate the useFormattedRawData hook
-  const { formatAnswersForSubmission, generateRawData } = useFormattedRawData();
+  // Format answers for submission
+  const { formatAnswersForSubmission } = useFormattedRawData();
   
   // Define a stub for processSectionsWithDebounce to satisfy the interface
+  // In a future update, we could implement actual debounced processing if needed
   const processSectionsWithDebounce = useCallback((sections: any[], values: Record<string, any>) => {
     // This is a stub implementation that doesn't do anything yet
     console.log("[FormContext] Processing sections (stub implementation)");
     // In the future, this could implement debounced validation or other processing
   }, []);
   
-  // Enhanced form submission handler with formatted raw data generation
+  // Enhanced form submission handler with better error handling and debugging
   const handleFormSubmit = () => async (data: any) => {
     console.log("[FormContext/handleFormSubmit]: Form submission triggered", { 
       dataKeys: Object.keys(data).length,
@@ -176,21 +176,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       }
       
       console.log("[FormContext/handleFormSubmit]: Formatting answers for submission");
-      
-      // Generate formatted raw data from the form answers
-      const formattedAnswersObj = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
-      
-      // Convert the formatted answers object to a readable text representation
-      // This is the key improvement in the data flow
-      let formattedRawText = "";
-      try {
-        formattedRawText = createOptimizedPromptInput(formTemplate, formattedAnswersObj);
-        console.log("[FormContext/handleFormSubmit]: Successfully generated formatted raw text");
-      } catch (formatError) {
-        console.error("[FormContext/handleFormSubmit]: Error generating formatted raw text:", formatError);
-        // Continue with submission even if text formatting fails
-      }
-      
+      const formattedAnswers = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
       console.log("[FormContext/handleFormSubmit]: Answers formatted successfully");
       
       // Add circuit breaker
@@ -199,12 +185,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       }, 10000);
       
       try {
-        console.log("[FormContext/handleFormSubmit]: Calling onSubmit handler with formatted raw data");
-        // Pass both the form data and the formatted raw text to the submission handler
-        await onSubmit(data, {
-          ...formattedAnswersObj,
-          formatted_raw_data: formattedRawText
-        });
+        console.log("[FormContext/handleFormSubmit]: Calling onSubmit handler");
+        await onSubmit(data, formattedAnswers);
         console.log("[FormContext/handleFormSubmit]: Form submitted successfully");
         clearTimeout(submissionTimeout);
       } catch (error) {

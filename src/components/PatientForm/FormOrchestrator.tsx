@@ -4,6 +4,7 @@
  * and rendering the appropriate form layout. It serves as the top-level component
  * for the patient anamnesis form.
  * Enhanced to support form values change events for auto-save functionality.
+ * Now passes formatted data through the component hierarchy.
  */
 
 import React, { useEffect } from "react";

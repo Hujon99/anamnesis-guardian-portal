@@ -1,9 +1,9 @@
-
 /**
  * This hook provides a unified approach to form submission for both patient and optician modes.
  * It handles the entire submission lifecycle including state management, error handling,
  * retries, and fallback mechanisms. The hook ensures that both modes use the same
  * consistent data structure and approach for better reliability.
+ * Enhanced to properly handle and store formatted raw data from the form context.
  */
 
 import { useState, useCallback } from 'react';
@@ -68,12 +68,20 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
       console.log(`[useUnifiedFormSubmission]: Starting submission in ${mode} mode with token: ${token.substring(0, 6)}...`);
       console.log(`[useUnifiedFormSubmission]: Submission attempt #${submissionAttempts + 1}`);
       
-      // Generate formatted raw data if not already provided
-      let formattedRawData = formattedAnswers;
+      // Use the formatted raw data directly if provided in formattedAnswers
+      let formattedRawData = null;
       
-      if (!formattedRawData && formTemplate) {
+      // Check if formattedAnswers includes a preformatted text representation
+      if (formattedAnswers && typeof formattedAnswers === 'object' && 'formatted_raw_data' in formattedAnswers) {
+        formattedRawData = formattedAnswers.formatted_raw_data;
+        console.log("[useUnifiedFormSubmission]: Using pre-formatted raw data from form context");
+      }
+      // If no preformatted data, generate it
+      else if (!formattedRawData && formTemplate) {
         try {
-          const formattedAnswersObj = extractFormattedAnswers(values);
+          // Try to extract formatted answers from the values
+          const formattedAnswersObj = formattedAnswers || extractFormattedAnswers(values);
+          
           if (formattedAnswersObj) {
             formattedRawData = createOptimizedPromptInput(formTemplate.schema, formattedAnswersObj);
             console.log("[useUnifiedFormSubmission]: Generated formatted raw data:", 

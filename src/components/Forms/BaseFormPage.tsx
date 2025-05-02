@@ -3,6 +3,7 @@
  * It handles common functionality like token verification, loading states,
  * error handling, and form rendering, while allowing customization for
  * specific form types.
+ * Now uses the unified form submission hook by default for both patient and optician forms.
  */
 
 import React, { useState, useCallback } from "react";
@@ -37,7 +38,7 @@ interface BaseFormPageProps {
   hideAutoSave?: boolean;
   hideCopyLink?: boolean;
   showBookingInfo?: boolean;
-  useUnifiedSubmission?: boolean; // New prop to toggle the unified submission hook
+  useUnifiedSubmission?: boolean; // Default will be changed to true
 }
 
 export const BaseFormPage: React.FC<BaseFormPageProps> = ({
@@ -49,7 +50,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   hideAutoSave = false,
   hideCopyLink = false,
   showBookingInfo = false,
-  useUnifiedSubmission = true // Default to using the new unified submission
+  useUnifiedSubmission = true // Changed default to true
 }) => {
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
@@ -120,13 +121,15 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     setCurrentFormValues(values);
   }, []);
   
-  // Handle form submission with form template
+  // Handle form submission with form template and formatted answers
   const handleSubmitWithFormTemplate = useCallback(async (values: any, formattedAnswers?: any) => {
     if (!token) {
       console.error(`[BaseFormPage]: Cannot submit form: No token provided`);
       return;
     }
     console.log(`[BaseFormPage]: Submitting form with token:`, token.substring(0, 6) + "...");
+    console.log(`[BaseFormPage]: Formatted answers provided:`, !!formattedAnswers);
+    
     setFormPageState("SUBMITTING");
     await handleFormSubmit(values, formTemplate, formattedAnswers);
   }, [token, handleFormSubmit, formTemplate, setFormPageState]);

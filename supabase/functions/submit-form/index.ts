@@ -1,8 +1,8 @@
-
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
  * Simplified to use a consistent data structure for both patient and optician submissions.
+ * Enhanced to prioritize pre-formatted raw data from the form context.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -145,6 +145,14 @@ serve(async (req: Request) => {
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+    
+    // Better validation for formatted_raw_data presence
+    if (answers.formatted_raw_data) {
+      console.log("[submit-form]: Using pre-formatted raw data from form context");
+      console.log("[submit-form]: Formatted raw data length:", answers.formatted_raw_data.length);
+    } else {
+      console.warn("[submit-form]: No formatted_raw_data provided in submission");
     }
     
     // SIMPLIFIED: Just use the answers object directly with minimal processing

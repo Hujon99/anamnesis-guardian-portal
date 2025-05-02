@@ -5,6 +5,7 @@
  * validation of the form template structure to prevent rendering errors.
  * Enhanced to handle the new template structure with dynamic follow-up questions
  * and to support form values change events for auto-save.
+ * Now supports passing formatted raw data from form context to submission handler.
  */
 
 import React from "react";
@@ -79,13 +80,14 @@ const FormContainer: React.FC<FormContainerProps> = ({
     return true;
   }, [formTemplate]);
   
+  // Enhanced submit handler - pass formatted answers to parent
   const handleSubmit = async (values: any, formattedAnswers?: any) => {
     console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
     console.log("[FormContainer/handleSubmit]: Form values:", values);
     console.log("[FormContainer/handleSubmit]: Formatted answers:", formattedAnswers);
     
     try {
-      console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler");
+      console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler with formatted data");
       return await onSubmit(values, formattedAnswers);
     } catch (error) {
       console.error("[FormContainer/handleSubmit]: Error in form submission:", error);

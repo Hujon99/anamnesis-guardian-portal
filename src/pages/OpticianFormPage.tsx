@@ -3,6 +3,7 @@
  * This page renders a form specifically for opticians to fill out anamnesis forms for patients.
  * It extends the patient form functionality but shows additional comment fields 
  * and manages the form submission with the appropriate status for optician completion.
+ * Updated to use the unified form submission hook by default.
  */
 
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -31,7 +32,7 @@ const OpticianFormPage = () => {
       mode="optician"
       hideAutoSave={true}
       hideCopyLink={true}
-      useUnifiedSubmission={true} // Use the new unified submission hook
+      useUnifiedSubmission={true} // Now explicitly use the unified submission hook
     />
   );
 };

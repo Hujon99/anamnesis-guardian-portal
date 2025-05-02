@@ -6,6 +6,7 @@
  * Enhanced to support magic links, auto-saving functionality, and smooth transitions
  * between loading and form display using a state machine approach to prevent flashing.
  * Now includes improved error handling with a dedicated submission error state.
+ * Updated to use the unified form submission hook by default.
  */
 
 import { useSearchParams } from "react-router-dom";
@@ -20,7 +21,7 @@ const PatientFormPage = () => {
       token={token}
       mode="patient"
       showBookingInfo={true}
-      useUnifiedSubmission={true} // Use the new unified submission hook
+      useUnifiedSubmission={true} // Now explicitly use the unified submission hook
     />
   );
 };

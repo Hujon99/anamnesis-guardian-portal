@@ -56,7 +56,8 @@ export const useFormSubmissionSelector = ({
     } else {
       // Legacy approach
       if (!token) return false;
-      return await legacyFormSubmission.submitForm(token, values, formTemplate?.schema, formattedAnswers);
+      // Fix type error by explicitly casting token to string
+      return await legacyFormSubmission.submitForm(token as string, values, formTemplate?.schema, formattedAnswers);
     }
   };
 

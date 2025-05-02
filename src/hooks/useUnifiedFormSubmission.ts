@@ -90,12 +90,15 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
       }, MAX_SUBMISSION_TIME);
       
       // Store values for potential retry
-      setLastAttemptValues({ token, values, formTemplate, formattedAnswers });
+      setLastAttemptValues(data);
       setSubmissionAttempts(prev => prev + 1);
       
       console.log(`[useUnifiedFormSubmission]: Starting submission in ${mode} mode with token: ${token.substring(0, 6)}...`);
       console.log(`[useUnifiedFormSubmission]: Submission attempt #${submissionAttempts + 1}`);
       console.log(`[useUnifiedFormSubmission]: Supabase client ready:`, isReady);
+      
+      // Extract data from parameters
+      const { values, formTemplate, formattedAnswers } = data;
       
       // Generate formatted raw data for better AI understanding (for both modes)
       let formattedRawData = null;
@@ -425,12 +428,10 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
       return false;
     }
     
-    // Extract the stored values from last attempt
-    const { values, formTemplate, formattedAnswers } = lastAttemptValues;
     console.log("[useUnifiedFormSubmission]: Retrying submission with stored values");
     
     try {
-      await submissionMutation.mutateAsync({ values, formTemplate, formattedAnswers });
+      await submissionMutation.mutateAsync(lastAttemptValues);
       return true;
     } catch (error) {
       return false;

@@ -434,8 +434,16 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
     console.log("[useUnifiedFormSubmission]: Retrying submission with stored values");
     
     try {
-      // Fix the type error by ensuring we pass the expected object structure
-      await submissionMutation.mutateAsync(lastAttemptValues);
+      // To fix the type error, we need to ensure lastAttemptValues has the right structure
+      // Since lastAttemptValues should already be properly structured when set during the original submission,
+      // we just need to make TypeScript aware of this by using a type assertion
+      const typedValues = lastAttemptValues as {
+        values: Record<string, any>;
+        formTemplate: FormTemplateWithMeta | null;
+        formattedAnswers?: any;
+      };
+      
+      await submissionMutation.mutateAsync(typedValues);
       return true;
     } catch (error) {
       return false;

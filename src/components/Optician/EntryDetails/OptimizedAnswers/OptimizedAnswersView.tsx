@@ -32,7 +32,6 @@ export const OptimizedAnswersView = ({
   answers,
   hasAnswers,
   status,
-  entryId,
   aiSummary,
   onSaveSummary,
   formattedRawData: initialFormattedRawData,
@@ -50,7 +49,7 @@ export const OptimizedAnswersView = ({
 
   // Get the form template to use for formatting
   const formTemplateQuery = useFormTemplate();
-  const formTemplateData = formTemplateQuery.data?.schema;
+  const formTemplateData = formTemplateQuery.data;
   
   // Use the hook with all required parameters
   const {
@@ -58,27 +57,16 @@ export const OptimizedAnswersView = ({
     setFormattedRawData: updateFormattedRawData,
     generateRawData,
     isGenerating: isRegeneratingRawData,
-    saveIndicator: hookSaveIndicator,
-    setSaveIndicator: setHookSaveIndicator
   } = useFormattedRawData(
     initialFormattedRawData || "", 
     answers, 
     hasAnswers,
-    formTemplateData || null,
+    formTemplateData?.schema || null,
     (data: string) => {
-      console.log("useFormattedRawData callback triggered with data length:", data.length);
       setFormattedRawData(data);
-      // This callback is triggered when raw data is generated, make sure to save it!
       saveFormattedRawData();
     }
   );
-
-  // Sync the save indicator from hook to component state
-  useEffect(() => {
-    if (hookSaveIndicator) {
-      setSaveIndicator(hookSaveIndicator);
-    }
-  }, [hookSaveIndicator]);
 
   // Update summary when aiSummary prop changes
   useEffect(() => {
@@ -92,8 +80,7 @@ export const OptimizedAnswersView = ({
   
   // Regenerate raw data if it's empty but we have answers
   useEffect(() => {
-    if (hasAnswers && formattedRawData === "" && formTemplateData) {
-      console.log("Auto-generating raw data because it's empty but we have answers");
+    if (hasAnswers && formattedRawData === "" && formTemplateData?.schema) {
       generateRawData();
     }
   }, [hasAnswers, formattedRawData, formTemplateData, generateRawData]);
@@ -103,7 +90,6 @@ export const OptimizedAnswersView = ({
     setSaveIndicator("unsaved");
     
     try {
-      console.log("Saving changes with data length:", formattedRawData.length);
       saveFormattedRawData();
       
       toast({
@@ -139,13 +125,10 @@ export const OptimizedAnswersView = ({
     }
     
     try {
-      console.log("Regenerating formatted data with template available:", !!formTemplateData);
       await generateRawData();
-      // Explicitly call saveFormattedRawData after generating
-      saveFormattedRawData();
       toast({
-        title: "Textvy uppdaterad och sparad",
-        description: "Den formatterade textvyn har uppdaterats och sparats i databasen."
+        title: "Formatterad data uppdaterad",
+        description: "Den formatterade textvyn har uppdaterats."
       });
     } catch (error) {
       console.error("Error regenerating formatted data:", error);

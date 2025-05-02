@@ -2,7 +2,6 @@
 /**
  * This hook unifies form submission handling for both patient and optician modes.
  * It provides a common interface but adapts to different submission methods based on mode.
- * Simplified to ensure consistent data structure between patient and optician modes.
  */
 
 import { useState, useCallback } from 'react';
@@ -32,7 +31,7 @@ interface FormSubmissionManagerProps {
 
 export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerProps) {
   const [localSubmitted, setLocalSubmitted] = useState(false);
-  const { supabase, isLoading: supabaseLoading } = useSupabaseClient();
+  const { supabase } = useSupabaseClient();
   
   // Use the standard patient form submission hook
   const patientSubmission = useFormSubmission();
@@ -91,57 +90,25 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
         // Continue with submission even if formatting fails
       }
       
-      // SIMPLIFIED: Use a flat structure with formatted_raw_data at the top level
+      // Prepare submission data
       const submissionData = {
-        // Include the direct answers
-        ...values,
-        // Always include formatted_raw_data for database (snake_case)
+        answers: values,
         formatted_raw_data: formattedRawData,
-        // Set status to "ready" for optician-filled forms
-        status: "ready",
+        status: "ready", // Set status to "ready" for optician-filled forms
         updated_at: new Date().toISOString()
       };
       
-      console.log("[useFormSubmissionManager]: Optician submission data:", {
-        hasDirectAnswers: true,
-        directAnswersCount: Object.keys(values).length,
-        hasFormattedRawData: !!submissionData.formatted_raw_data,
-        formattedRawDataLength: submissionData.formatted_raw_data?.length || 0,
-      });
+      // Update the entry with the form answers
+      const { error } = await supabase
+        .from("anamnes_entries")
+        .update(submissionData)
+        .eq("access_token", token);
       
-      // Try edge function first
-      try {
-        console.log("[useFormSubmissionManager]: Attempting to use submit-form edge function");
-        const response = await supabase.functions.invoke('submit-form', {
-          body: { 
-            token,
-            // SIMPLIFIED: Send answers directly in the same format as patient submissions
-            answers: submissionData
-          }
-        });
-        
-        if (response.error) {
-          console.error("[useFormSubmissionManager]: Edge function error:", response.error);
-          throw new Error("Edge function error: " + response.error.message);
-        }
-        
-        console.log("[useFormSubmissionManager]: Edge function successful:", response.data);
-        // Edge function successful, no need for direct update
-      } catch (edgeFunctionError) {
-        console.error("[useFormSubmissionManager]: Edge function call failed, falling back to direct update:", edgeFunctionError);
-        
-        // Fallback to direct database update
-        const { error } = await supabase
-          .from("anamnes_entries")
-          .update(submissionData)
-          .eq("access_token", token);
-        
-        if (error) {
-          const submissionError = new Error("Kunde inte skicka formuläret: " + error.message) as SubmissionError;
-          submissionError.details = error.message;
-          submissionError.recoverable = true;
-          throw submissionError;
-        }
+      if (error) {
+        const submissionError = new Error("Kunde inte skicka formuläret: " + error.message) as SubmissionError;
+        submissionError.details = error.message;
+        submissionError.recoverable = true;
+        throw submissionError;
       }
       
       // Set local state to indicate successful submission
@@ -175,24 +142,22 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
       return false;
     }
     
-    console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode with token ${token.substring(0, 6)}...`);
+    console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode`);
     
     if (mode === 'optician') {
-      // Use optician submission flow - direct database update
+      // Use optician submission flow
       await opticianMutation.mutateAsync({ values, formTemplate, formattedAnswers });
       return !opticianMutation.error;
     } else {
-      // Generate formatted raw data for patient submission if not already provided
-      let formattedRawData = formattedAnswers;
+      // Generate formatted raw data for patient submission
+      let formattedText = formattedAnswers;
       
       // If no pre-formatted answers, try to generate them
-      if (!formattedRawData && formTemplate) {
+      if (!formattedText && formTemplate) {
         try {
           const formattedAnswersObj = extractFormattedAnswers(values);
           if (formattedAnswersObj) {
-            formattedRawData = createOptimizedPromptInput(formTemplate.schema, formattedAnswersObj);
-            console.log("[useFormSubmissionManager]: Generated formatted raw data for patient submission:", 
-              formattedRawData?.substring(0, 100) + "...");
+            formattedText = createOptimizedPromptInput(formTemplate.schema, formattedAnswersObj);
           }
         } catch (error) {
           console.error("[useFormSubmissionManager]: Error generating formatted text for patient submission:", error);
@@ -200,26 +165,8 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
         }
       }
       
-      // SIMPLIFIED: Create a flat structure with formatted_raw_data at the top level
-      // This matches what the optician mode sends
-      const enhancedValues = {
-        ...values,
-        formatted_raw_data: formattedRawData   // snake_case for database
-      };
-      
-      console.log("[useFormSubmissionManager]: Patient submission using simplified approach:", {
-        hasFormattedRawData: !!enhancedValues.formatted_raw_data,
-        dataLength: formattedRawData?.length || 0,
-        token: token.substring(0, 6) + "..."
-      });
-      
-      // Use patient submission flow with enhanced values
-      return await patientSubmission.submitForm(
-        token,
-        enhancedValues,
-        formTemplate?.schema,
-        formattedRawData // Pass formatted data explicitly as backup
-      );
+      // Use patient submission flow
+      return await patientSubmission.submitForm(token, values, formTemplate?.schema, formattedText);
     }
   }, [token, mode, opticianMutation, patientSubmission]);
 

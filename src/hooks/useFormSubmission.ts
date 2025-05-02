@@ -3,14 +3,15 @@
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
  * to send the processed form data to the submit-form edge function.
- * Simplified to use a consistent, flat data structure that matches the optician mode.
+ * Enhanced with better error handling, detailed logging for debugging,
+ * and robust recovery mechanisms for failed submissions.
  */
 
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { prepareFormSubmission } from "@/utils/formSubmissionUtils";
 import { FormTemplate } from "@/types/anamnesis";
 import { supabase } from "@/integrations/supabase/client";
-import { SUPABASE_URL } from "@/integrations/supabase/client";
 
 export interface SubmissionError extends Error {
   status?: number;
@@ -47,12 +48,12 @@ export const useFormSubmission = () => {
     formTemplate?: FormTemplate,
     preProcessedFormattedAnswers?: any
   ): Promise<boolean> => {
-    console.log("[useFormSubmission/submitForm]: Starting form submission with simplified structure", { 
+    console.log("[useFormSubmission/submitForm]: Starting form submission", { 
       hasToken: !!token, 
       valuesCount: Object.keys(values).length,
       hasTemplate: !!formTemplate,
-      attemptCount: submissionAttempts + 1,
-      hasFormattedRawData: !!values.formattedRawData || !!preProcessedFormattedAnswers
+      sampleKeys: Object.keys(values).slice(0, 5),
+      attemptCount: submissionAttempts + 1
     });
     
     // Store values for potential retry
@@ -70,24 +71,14 @@ export const useFormSubmission = () => {
     }, 15000);
 
     try {
-      // SIMPLIFICATION: Create a flat, consistent data structure similar to optician mode
-      
-      // Get formatted raw data from either provided parameter or values object
-      let formattedRawData = preProcessedFormattedAnswers;
-      if (!formattedRawData && values.formattedRawData) {
-        formattedRawData = values.formattedRawData;
-      }
-      
-      console.log("[useFormSubmission/submitForm]: Using formatted raw data:", {
-        source: preProcessedFormattedAnswers ? "preProcessed" : (values.formattedRawData ? "values object" : "none"),
-        length: formattedRawData?.length || 0,
-        sample: formattedRawData ? formattedRawData.substring(0, 100) + "..." : "N/A"
-      });
-      
-      // Clean up any metadata or unnecessary fields
-      const cleanedValues = { ...values };
+      // Extract metadata for optician submissions if present
+      const isOpticianSubmission = values._metadata?.submittedBy === 'optician';
+      console.log("[useFormSubmission/submitForm]: isOpticianSubmission:", isOpticianSubmission);
       
       // Handle conditional fields - filter out values that are not needed
+      // If values contain keys that have parent-child relationship in conditional fields,
+      // make sure we only include necessary ones
+      const cleanedValues = { ...values };
       for (const key in cleanedValues) {
         // Skip metadata fields
         if (key.startsWith('_')) continue;
@@ -116,131 +107,126 @@ export const useFormSubmission = () => {
         }
       }
       
-      // SIMPLIFIED APPROACH: Create a flat structure matching the optician mode
-      // This is the key simplification that makes both modes consistent
-      const submissionData = {
-        // Include answers directly at top level
-        ...cleanedValues,
-        
-        // Always include formatted_raw_data (snake_case for database compatibility)
-        formatted_raw_data: formattedRawData,
-        
-        // Set status to "submitted"
-        status: "submitted",
-        
-        // Update timestamp
-        updated_at: new Date().toISOString()
-      };
+      // Prepare the submission data, using the pre-processed data if available
+      const submissionData = formTemplate 
+        ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
+        : { answers: cleanedValues }; // Fallback for backward compatibility
 
-      console.log("[useFormSubmission/submitForm]: Simplified submission data structure:", {
-        directAnswersKeys: Object.keys(submissionData).slice(0, 5),
-        hasFormattedRawData: !!submissionData.formatted_raw_data,
-        formattedRawDataLength: submissionData.formatted_raw_data?.length || 0,
-        status: submissionData.status
+      console.log("[useFormSubmission/submitForm]: Submission data prepared:", {
+        hasRawAnswers: !!submissionData.rawAnswers,
+        hasFormattedAnswers: !!submissionData.formattedAnswers,
+        hasMetadata: !!submissionData.metadata,
+        rawAnswersKeys: submissionData.rawAnswers ? Object.keys(submissionData.rawAnswers).slice(0, 3) : []
+      });
+      
+      // More detailed logging of the actual data structure being sent
+      console.log("[useFormSubmission/submitForm]: Data structure validation:", {
+        isRawAnswersObject: submissionData.rawAnswers && typeof submissionData.rawAnswers === 'object',
+        isFormattedAnswersObject: submissionData.formattedAnswers && typeof submissionData.formattedAnswers === 'object',
+        answersDataSample: JSON.stringify(submissionData).substring(0, 200) + '...',
+        dataType: typeof submissionData
       });
       
       // Submit the form using the edge function
       console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
+                 
+      // More robust error handling with retries
+      let retryCount = 0;
+      const maxRetries = 2;
+      let response;
       
-      // Log current Supabase URL (without accessing protected .url property)
-      console.log("[useFormSubmission/submitForm]: Using Supabase URL:", SUPABASE_URL);
-      
-      try {
-        // Attempt direct invocation with clear payload structure
-        console.log("[useFormSubmission/submitForm]: Sending data to edge function with payload:", {
-          token,
-          answersStructure: {
-            hasDirectValues: true,
-            hasFormattedRawData: !!submissionData.formatted_raw_data,
-            status: submissionData.status
+      while (retryCount <= maxRetries) {
+        try {
+          console.log("[useFormSubmission/submitForm]: Sending data to edge function, attempt", retryCount + 1);
+          
+          // More validation before sending
+          if (!submissionData || 
+              (typeof submissionData === 'object' && Object.keys(submissionData).length === 0)) {
+            throw new Error("Submission data is empty or invalid");
           }
-        });
-        
-        const response = await supabase.functions.invoke('submit-form', {
-          body: { 
-            token,
-            // Simplified: Just send the answers directly, matching optician flow
-            answers: submissionData
+          
+          if (!token || typeof token !== 'string') {
+            throw new Error("Invalid token format");
           }
-        });
-        
-        console.log("[useFormSubmission/submitForm]: Edge function response:", {
-          hasError: !!response.error,
-          hasData: !!response.data,
-          status: response.error?.status || 200,
-          data: response.data ? JSON.stringify(response.data).substring(0, 100) : null,
-          error: response.error ? JSON.stringify(response.error).substring(0, 100) : null
-        });
-        
-        // Process the response
-        if (response.error) {
-          console.error("[useFormSubmission/submitForm]: Edge function returned error:", response.error);
           
-          // Create a more detailed error
-          const submissionError: SubmissionError = new Error(
-            response.error.message || "Ett fel uppstod vid formulärinskickning"
-          );
-          
-          submissionError.status = response.error.status;
-          submissionError.details = response.error.details || response.error.message;
-          submissionError.recoverable = response.error.status !== 404 && response.error.status !== 410 && response.error.status !== 401;
-          
-          throw submissionError;
-        }
-
-        console.log("[useFormSubmission/submitForm]: Edge function invocation successful:", response.data);
-        
-        // Success handling
-        setIsSubmitted(true);
-        
-        toast({
-          title: "Tack för dina svar!",
-          description: "Dina svar har skickats in framgångsrikt.",
-        });
-        
-        clearTimeout(submissionTimeout);
-        return true;
-      } catch (invocationError: any) {
-        // Specific error handling for edge function invocation failures
-        console.error("[useFormSubmission/submitForm]: Edge function invocation error:", invocationError);
-        
-        // Add fallback approach if the edge function fails
-        if (invocationError.message?.includes('Failed to fetch') || invocationError.message?.includes('NetworkError')) {
-          console.log("[useFormSubmission/submitForm]: Network error detected, attempting direct database update");
-          
-          try {
-            // Attempt direct database update as fallback
-            const { error: directUpdateError } = await supabase
-              .from("anamnes_entries")
-              .update(submissionData)
-              .eq("access_token", token);
-            
-            if (directUpdateError) {
-              console.error("[useFormSubmission/submitForm]: Direct database update failed:", directUpdateError);
-              throw new Error(`Fallback database update failed: ${directUpdateError.message}`);
+          response = await supabase.functions.invoke('submit-form', {
+            body: { 
+              token,
+              answers: submissionData
             }
-            
-            console.log("[useFormSubmission/submitForm]: Direct database update successful");
-            
-            // Success handling for fallback
-            setIsSubmitted(true);
-            
-            toast({
-              title: "Tack för dina svar!",
-              description: "Dina svar har skickats in framgångsrikt via alternativ metod.",
-            });
-            
-            clearTimeout(submissionTimeout);
-            return true;
-          } catch (fallbackError) {
-            console.error("[useFormSubmission/submitForm]: Fallback approach failed:", fallbackError);
-            throw fallbackError;
+          });
+          
+          console.log("[useFormSubmission/submitForm]: Edge function response:", {
+            hasError: !!response.error,
+            hasData: !!response.data,
+            status: response.error?.status || 200,
+            data: response.data ? JSON.stringify(response.data).substring(0, 100) : null,
+            error: response.error ? JSON.stringify(response.error).substring(0, 100) : null
+          });
+          
+          // If successful, break the retry loop
+          if (!response.error) break;
+          
+          // If there was an error, log it and retry
+          console.warn(`[useFormSubmission/submitForm]: Error attempt ${retryCount + 1}/${maxRetries + 1}:`, response.error);
+          retryCount++;
+          
+          if (retryCount <= maxRetries) {
+            // Wait before retrying (exponential backoff)
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+            console.log(`[useFormSubmission/submitForm]: Retrying submission, attempt ${retryCount + 1}/${maxRetries + 1}`);
+          }
+        } catch (invocationError: any) {
+          console.error("[useFormSubmission/submitForm]: Function invocation error:", invocationError);
+          retryCount++;
+          
+          if (retryCount <= maxRetries) {
+            // Wait before retrying
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+            console.log(`[useFormSubmission/submitForm]: Retrying after error, attempt ${retryCount + 1}/${maxRetries + 1}`);
+          } else {
+            throw invocationError;
           }
         }
-        
-        // Re-throw the original error if not a network error or fallback failed
-        throw invocationError;
       }
+
+      // No response after all retries
+      if (!response) {
+        throw new Error("Failed to get response after multiple attempts");
+      }
+
+      console.log("[useFormSubmission/submitForm]: Response received from edge function:", response);
+
+      // Process the response
+      if (response.error) {
+        console.error("[useFormSubmission/submitForm]: Form submission error after retries:", response.error);
+        
+        // Create a more detailed error
+        const submissionError: SubmissionError = new Error(
+          response.error.message || "Ett fel uppstod vid formulärinskickning"
+        );
+        
+        submissionError.status = response.error.status;
+        submissionError.details = response.error.details || response.error.message;
+        submissionError.recoverable = response.error.status !== 404 && response.error.status !== 410 && response.error.status !== 401;
+        
+        throw submissionError;
+      }
+
+      console.log("[useFormSubmission/submitForm]: Form submission successful:", response.data);
+
+      // Success handling
+      setIsSubmitted(true);
+      
+      toast({
+        title: "Tack för dina svar!",
+        description: isOpticianSubmission 
+          ? "Formuläret har markerats som färdigt och statusen har uppdaterats." 
+          : "Dina svar har skickats in framgångsrikt.",
+      });
+      
+      clearTimeout(submissionTimeout);
+      return true;
     } catch (err: any) {
       // Enhanced error handling
       console.error("[useFormSubmission/submitForm]: Form submission error:", err);

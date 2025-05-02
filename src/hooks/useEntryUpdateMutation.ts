@@ -56,7 +56,7 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       
       if (status) updates.status = status;
       if (formattedRawData !== undefined) {
-        console.log("Updating formatted raw data of length:", formattedRawData.length);
+        console.log("Updating formatted raw data");
         updates.formatted_raw_data = formattedRawData;
       }
       if (identifier !== undefined) updates.patient_identifier = identifier;
@@ -86,13 +86,10 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
         });
       }, 100);
       
-      // Don't show toast for all updates, it's too noisy
-      if (data.status) {
-        toast({
-          title: "Anamnesen uppdaterad",
-          description: "Ändringarna har sparats.",
-        });
-      }
+      toast({
+        title: "Anamnesen uppdaterad",
+        description: "Ändringarna har sparats.",
+      });
       
       if (onSuccess) onSuccess();
     },
@@ -126,10 +123,6 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       updateEntryMutation.mutate({ status: newStatus, formattedRawData });
     },
     saveFormattedRawData: (formattedRawData: string) => {
-      if (!formattedRawData) {
-        console.warn("Attempted to save empty formatted raw data");
-        return;
-      }
       console.log("saveFormattedRawData called with data of length:", formattedRawData.length);
       updateEntryMutation.mutate({ formattedRawData });
     },

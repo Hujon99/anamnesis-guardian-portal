@@ -78,7 +78,6 @@ export function useFormattedRawData(
 
   /**
    * Generate formatted raw data from answers object using the createOptimizedPromptInput utility
-   * and automatically save it to the database
    */
   const generateRawData = useCallback(async () => {
     if (!hasAnswers || !answers) {
@@ -150,12 +149,9 @@ export function useFormattedRawData(
       console.log("[useFormattedRawData/generateRawData]: Setting formatted text:", formattedText.substring(0, 100) + "...");
       setFormattedRawData(formattedText);
       
-      // If onSave is provided, call it with the formatted text to save to database
+      // If onSave is provided, call it with the formatted text
       if (onSave) {
-        console.log("[useFormattedRawData/generateRawData]: Saving formatted text to database");
         onSave(formattedText);
-        setSaveIndicator("saved");
-        setTimeout(() => setSaveIndicator(null), 2000);
       }
     } catch (error) {
       console.error("[useFormattedRawData/generateRawData]: Error generating formatted data:", error);

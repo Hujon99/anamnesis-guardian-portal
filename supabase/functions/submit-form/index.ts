@@ -1,8 +1,8 @@
-
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
- * Simplified to use a consistent data structure for both patient and optician submissions.
+ * Enhanced to handle both regular and magic link entries.
+ * Improved with better error handling, detailed logging, and input validation.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -18,42 +18,23 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
 serve(async (req: Request) => {
-  // Better request logging
-  console.log("[submit-form]: REQUEST RECEIVED", {
-    method: req.method,
-    url: req.url,
-    headers: Object.fromEntries([...req.headers.entries()]),
-  });
-
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log("[submit-form]: Handling CORS preflight request");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("[submit-form]: Processing form submission request");
+    console.log("[submit-form]: Received form submission request");
     
-    // Parse the request body with detailed error handling
+    // Parse the request body
     let requestData;
     try {
-      const text = await req.text();
-      console.log("[submit-form]: Raw request body:", text.substring(0, 200) + (text.length > 200 ? "..." : ""));
-      
-      try {
-        requestData = JSON.parse(text);
-        console.log("[submit-form]: Request body parsed successfully");
-      } catch (jsonError) {
-        console.error("[submit-form]: JSON parse error:", jsonError);
-        return new Response(
-          JSON.stringify({ error: 'Invalid JSON payload', details: jsonError.message }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      requestData = await req.json();
+      console.log("[submit-form]: Request body parsed successfully");
     } catch (parseError) {
-      console.error("[submit-form]: Error reading request body:", parseError);
+      console.error("[submit-form]: Error parsing request body:", parseError);
       return new Response(
-        JSON.stringify({ error: 'Failed to read request body', details: parseError.message }),
+        JSON.stringify({ error: 'Invalid JSON payload', details: parseError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -65,8 +46,11 @@ serve(async (req: Request) => {
       tokenLength: requestData?.token?.length,
       hasAnswers: !!requestData?.answers,
       answersType: typeof requestData?.answers,
-      answersKeys: typeof requestData?.answers === 'object' ? Object.keys(requestData?.answers) : [],
-      topLevelKeys: Object.keys(requestData || {})
+      hasRawAnswers: !!requestData?.answers?.rawAnswers,
+      rawAnswersType: typeof requestData?.answers?.rawAnswers,
+      hasFormattedAnswers: !!requestData?.answers?.formattedAnswers,
+      formattedAnswersType: typeof requestData?.answers?.formattedAnswers,
+      hasMetadata: !!requestData?.answers?.metadata,
     }, null, 2));
     
     // Extract necessary data
@@ -102,7 +86,6 @@ serve(async (req: Request) => {
     console.log("[submit-form]: Form submission received for token:", token.substring(0, 6) + "...");
     
     // Initialize the Supabase client
-    console.log("[submit-form]: Initializing Supabase client with URL:", supabaseUrl.substring(0, 20) + "...");
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false }
     });
@@ -134,51 +117,114 @@ serve(async (req: Request) => {
     console.log(`[submit-form]: Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}`);
     
     // If the form was already submitted, return a success response
-    if (entry.status === 'submitted' || entry.status === 'ready') {
-      console.log("[submit-form]: Form was already submitted with status:", entry.status);
+    if (entry.status === 'submitted') {
+      console.log("[submit-form]: Form was already submitted, returning success");
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Form was already submitted',
-          submitted: true,
-          status: entry.status
+          submitted: true
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // SIMPLIFIED: Just use the answers object directly with minimal processing
-    // This significantly simplifies the edge function - we expect the client to give us the right structure
-    const updateData = {
-      // Use the answers object directly, which should already contain formatted_raw_data
-      ...answers,
-      
-      // Make sure status is set correctly - this value might be overridden if it's already in answers
-      status: answers.status || 'submitted',
-      
-      // Always update timestamp
-      updated_at: new Date().toISOString()
-    };
+    // Prepare data for database update
+    let updateData;
     
-    // Log what we're about to update with
-    console.log("[submit-form]: Update data structure:", {
-      hasAnswers: true, 
-      topLevelKeys: Object.keys(updateData),
-      hasFormattedRawData: !!updateData.formatted_raw_data,
-      formattedRawDataLength: updateData.formatted_raw_data?.length || 0,
-      status: updateData.status
-    });
+    try {
+      // Enhanced answer extraction and validation
+      console.log("[submit-form]: Data inspection and validation");
+      console.log("[submit-form]: Answers type:", typeof answers);
+      console.log("[submit-form]: Answers structure:", {
+        isObject: typeof answers === 'object',
+        hasRawAnswers: !!answers.rawAnswers,
+        rawAnswersType: typeof answers.rawAnswers,
+        hasFormattedAnswers: !!answers.formattedAnswers,
+        formattedAnswersType: typeof answers.formattedAnswers,
+        hasAnswersProperty: !!answers.answers,
+        answersPropertyType: typeof answers.answers,
+        directAnswersKeys: typeof answers === 'object' ? Object.keys(answers) : []
+      });
+      
+      // Extract form data using safer access patterns with detailed validation
+      let formData;
+      
+      // Handle different possible structures with more explicit validation
+      if (answers.rawAnswers) {
+        console.log("[submit-form]: Using rawAnswers property");
+        formData = answers.rawAnswers;
+      } else if (answers.answers) {
+        console.log("[submit-form]: Using answers property");
+        formData = answers.answers;
+      } else if (typeof answers === 'object' && !Array.isArray(answers)) {
+        console.log("[submit-form]: Using answers object directly");
+        // Filter out special properties that aren't actual form answers
+        formData = {};
+        for (const key in answers) {
+          if (key !== 'metadata' && key !== 'formattedAnswers' && key !== 'rawAnswers') {
+            formData[key] = answers[key];
+          }
+        }
+      } else {
+        console.error("[submit-form]: Could not determine valid answer structure");
+        throw new Error("Invalid answer structure in submission");
+      }
+      
+      // Use formatted raw data from request if provided, otherwise create one
+      let formattedRawData;
+      
+      if (typeof answers.formattedRawData === 'string' && answers.formattedRawData.trim() !== '') {
+        console.log("[submit-form]: Using provided formattedRawData string");
+        formattedRawData = answers.formattedRawData;
+      } else if (answers.formatted_raw_data) {
+        console.log("[submit-form]: Using provided formatted_raw_data");
+        formattedRawData = answers.formatted_raw_data;
+      } else {
+        console.log("[submit-form]: Creating formattedRawData from raw data");
+        // Create a simple text representation if no formatted data provided
+        formattedRawData = "Patientens anamnesinformation:\n\n";
+        if (typeof formData === 'object' && formData !== null) {
+          Object.entries(formData).forEach(([key, value]) => {
+            if (key !== 'metadata' && key !== 'formattedAnswers' && value !== null && value !== undefined) {
+              formattedRawData += `${key}: ${JSON.stringify(value)}\n`;
+            }
+          });
+        }
+      }
+        
+      // Prepare the update data
+      updateData = { 
+        answers: formData,
+        formatted_raw_data: formattedRawData,
+        status: 'submitted',
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log("[submit-form]: Update data prepared successfully");
+    } catch (dataError) {
+      console.error("[submit-form]: Error preparing update data:", dataError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to process form data', details: dataError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // 2. Update the entry with the submitted data
     console.log("[submit-form]: Updating entry with submitted data...");
     console.log("[submit-form]: Entry ID:", entry.id);
+    console.log("[submit-form]: Update data structure validation:",
+      "answers is " + (updateData.answers ? "present" : "missing"),
+      "answers has " + Object.keys(updateData.answers).length + " keys",
+      "formatted_raw_data is " + (updateData.formatted_raw_data ? `present (${updateData.formatted_raw_data.substring(0, 50)}...)` : "missing")
+    );
     
     // Attempt to update with transaction for better atomicity
     try {
       // Log sample of data we're about to insert
       const sampleData = {
-        updateDataSample: JSON.stringify(updateData).substring(0, 200) + '...',
-        status: updateData.status
+        answersSample: JSON.stringify(updateData.answers).substring(0, 200) + '...',
+        formattedRawDataSample: updateData.formatted_raw_data.substring(0, 200) + '...',
       };
       console.log("[submit-form]: Sample of data being inserted:", sampleData);
       
@@ -227,7 +273,7 @@ serve(async (req: Request) => {
     try {
       const { data: verifyData, error: verifyError } = await supabase
         .from('anamnes_entries')
-        .select('id, status, formatted_raw_data')
+        .select('id, status, answers')
         .eq('id', entry.id)
         .single();
         
@@ -237,8 +283,8 @@ serve(async (req: Request) => {
         console.log("[submit-form]: Verification read successful:", JSON.stringify({
           id: verifyData.id,
           status: verifyData.status,
-          hasFormattedRawData: !!verifyData.formatted_raw_data,
-          formattedRawDataLength: verifyData.formatted_raw_data ? verifyData.formatted_raw_data.length : 0
+          hasAnswers: !!verifyData.answers,
+          answersSize: verifyData.answers ? Object.keys(verifyData.answers).length : 0
         }));
       }
     } catch (verifyException) {

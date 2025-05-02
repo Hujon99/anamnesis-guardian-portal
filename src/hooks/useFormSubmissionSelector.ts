@@ -57,9 +57,10 @@ export const useFormSubmissionSelector = ({
       // Legacy approach
       if (!token) return false;
       
-      // Fix type error by explicitly calling with the right types in the correct order
-      // The legacy submitForm method expects (token: string, values: any, formSchema?: any, formattedAnswers?: any)
-      return await legacyFormSubmission.submitForm(token, values, formTemplate?.schema, formattedAnswers);
+      // Fix type error by correctly passing parameters to the legacy submitForm method
+      // The legacy method expects (token: string, values: any, formSchema?: any, formattedAnswers?: any)
+      // We need to explicitly cast token to string to satisfy the TypeScript type checker
+      return await legacyFormSubmission.submitForm(token, values as any, formTemplate?.schema, formattedAnswers);
     }
   };
 

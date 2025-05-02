@@ -3,7 +3,8 @@
  * It handles common functionality like token verification, loading states,
  * error handling, and form rendering, while allowing customization for
  * specific form types.
- * Now uses the unified form submission hook by default for both patient and optician forms.
+ * Updated to use the more reliable submission approach that works for both
+ * patient and optician forms.
  */
 
 import React, { useState, useCallback } from "react";
@@ -50,8 +51,10 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   hideAutoSave = false,
   hideCopyLink = false,
   showBookingInfo = false,
-  useUnifiedSubmission = true // Changed default to true
+  useUnifiedSubmission = true // This is now true by default
 }) => {
+  console.log(`[BaseFormPage]: Initializing with mode=${mode}, token=${token?.substring(0, 6)}..., useUnifiedSubmission=${useUnifiedSubmission}`);
+  
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
   
@@ -82,7 +85,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   } = useFormSubmissionSelector({ 
     token, 
     mode,
-    useUnifiedHook: useUnifiedSubmission 
+    useUnifiedHook: useUnifiedSubmission // Always use our unified submission
   });
   
   // Use form state manager
@@ -118,8 +121,9 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   
   // Handle form values change for auto-save
   const handleFormValuesChange = useCallback((values: Record<string, any>) => {
+    console.log(`[BaseFormPage]: Form values changed, mode=${mode}`);
     setCurrentFormValues(values);
-  }, []);
+  }, [mode]);
   
   // Handle form submission with form template and formatted answers
   const handleSubmitWithFormTemplate = useCallback(async (values: any, formattedAnswers?: any) => {
@@ -129,10 +133,20 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     }
     console.log(`[BaseFormPage]: Submitting form with token:`, token.substring(0, 6) + "...");
     console.log(`[BaseFormPage]: Formatted answers provided:`, !!formattedAnswers);
+    console.log(`[BaseFormPage]: Current form state:`, formPageState);
     
-    setFormPageState("SUBMITTING");
-    await handleFormSubmit(values, formTemplate, formattedAnswers);
-  }, [token, handleFormSubmit, formTemplate, setFormPageState]);
+    // Only change state if we're not already submitting
+    if (formPageState !== "SUBMITTING") {
+      setFormPageState("SUBMITTING");
+    }
+    
+    try {
+      await handleFormSubmit(values, formTemplate, formattedAnswers);
+    } catch (error) {
+      console.error("[BaseFormPage]: Submission error in handleSubmitWithFormTemplate:", error);
+      // The submission hook will handle setting error state
+    }
+  }, [token, handleFormSubmit, formTemplate, setFormPageState, formPageState]);
   
   // Handle retry for submission errors
   const handleSubmissionRetry = useCallback(() => {
@@ -141,18 +155,24 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     // If in error state, reset error and update state
     if (formPageState === "SUBMISSION_ERROR") {
       resetError();
-      setFormPageState("FORM_READY");
+      
+      // Set submitting state
+      setFormPageState("SUBMITTING");
       
       // After a short delay to let the UI update, retry submission
       setTimeout(async () => {
-        setFormPageState("SUBMITTING");
-        const success = await handleRetrySubmission();
-        
-        if (!success) {
-          console.log(`[BaseFormPage]: Retry submission failed`);
+        try {
+          const success = await handleRetrySubmission();
+          
+          if (!success) {
+            console.log(`[BaseFormPage]: Retry submission failed`);
+            setFormPageState("SUBMISSION_ERROR");
+          } else {
+            console.log(`[BaseFormPage]: Retry submission succeeded`);
+          }
+        } catch (error) {
+          console.error("[BaseFormPage]: Error during retry:", error);
           setFormPageState("SUBMISSION_ERROR");
-        } else {
-          console.log(`[BaseFormPage]: Retry submission succeeded`);
         }
       }, 100);
     }

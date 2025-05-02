@@ -1,9 +1,9 @@
+
 /**
  * This hook provides a unified approach to form submission for both patient and optician modes.
  * It handles the entire submission lifecycle including state management, error handling,
- * retries, and fallback mechanisms. The hook ensures that both modes use the same
- * consistent data structure and approach for better reliability.
- * Enhanced to properly handle and store formatted raw data from the form context.
+ * retries, and fallback mechanisms. The hook ensures that both modes use consistent
+ * data structures while maintaining the reliability of the original optician submission approach.
  */
 
 import { useState, useCallback } from 'react';
@@ -37,7 +37,7 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
   const [lastAttemptValues, setLastAttemptValues] = useState<Record<string, any> | null>(null);
   
   // Get Supabase client
-  const { supabase, isLoading: supabaseLoading } = useSupabaseClient();
+  const { supabase, isLoading: supabaseLoading, isReady } = useSupabaseClient();
   
   // Reset error state
   const resetError = useCallback(() => {
@@ -55,7 +55,7 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
         throw new Error("Ingen åtkomsttoken hittades");
       }
       
-      if (!supabase) {
+      if (!supabase || !isReady) {
         throw new Error("Kunde inte ansluta till databasen");
       }
       
@@ -67,8 +67,9 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
       
       console.log(`[useUnifiedFormSubmission]: Starting submission in ${mode} mode with token: ${token.substring(0, 6)}...`);
       console.log(`[useUnifiedFormSubmission]: Submission attempt #${submissionAttempts + 1}`);
+      console.log(`[useUnifiedFormSubmission]: Supabase client ready:`, isReady);
       
-      // Use the formatted raw data directly if provided in formattedAnswers
+      // Generate formatted raw data for better AI understanding (for both modes)
       let formattedRawData = null;
       
       // Check if formattedAnswers includes a preformatted text representation
@@ -103,7 +104,8 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
         }
       }
       
-      // UNIFIED APPROACH: Use a consistent flat data structure for both modes
+      // SUBMISSION DATA PREPARATION
+      // Prepare data similarly for both modes but handle submission differently
       const submissionData = {
         // Include direct answers
         ...values,
@@ -118,7 +120,7 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
         updated_at: new Date().toISOString()
       };
       
-      console.log("[useUnifiedFormSubmission]: Unified submission data structure:", {
+      console.log("[useUnifiedFormSubmission]: Submission data prepared:", {
         mode,
         directAnswersCount: Object.keys(values).length,
         hasFormattedRawData: !!submissionData.formatted_raw_data,
@@ -126,55 +128,85 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
         status: submissionData.status
       });
       
-      // CONSISTENT SUBMISSION APPROACH: Try edge function first, then fall back to direct update
-      try {
-        console.log("[useUnifiedFormSubmission]: Using Supabase URL:", SUPABASE_URL);
-        console.log("[useUnifiedFormSubmission]: Attempting to call submit-form edge function");
+      // OPTICIAN MODE: Direct database update approach first (this was working in the original)
+      if (mode === 'optician') {
+        console.log("[useUnifiedFormSubmission]: Using optician direct update approach");
         
-        // Set up circuit breaker with timeout
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("Edge function timeout after 8 seconds")), 8000);
-        });
-        
-        // Call the edge function with race against timeout
-        const responsePromise = supabase.functions.invoke('submit-form', {
-          body: { 
-            token,
-            answers: submissionData
-          }
-        });
-        
-        const response = await Promise.race([responsePromise, timeoutPromise]) as any;
-        
-        if (response.error) {
-          console.error("[useUnifiedFormSubmission]: Edge function error:", response.error);
-          throw new Error(`Edge function error: ${response.error.message || JSON.stringify(response.error)}`);
-        }
-        
-        console.log("[useUnifiedFormSubmission]: Edge function successful:", response.data);
-        return { success: true, ...response.data };
-      } catch (edgeFunctionError: any) {
-        console.error("[useUnifiedFormSubmission]: Edge function failed, trying direct database update:", edgeFunctionError);
-        
-        // FALLBACK: Use direct database update if edge function fails
         try {
-          console.log("[useUnifiedFormSubmission]: Attempting direct database update as fallback");
-          
+          // Direct database update - this was the reliable approach in the original optician form
           const { error: directUpdateError } = await supabase
             .from("anamnes_entries")
             .update(submissionData)
             .eq("access_token", token);
           
           if (directUpdateError) {
-            console.error("[useUnifiedFormSubmission]: Direct update error:", directUpdateError);
-            throw new Error(`Direct database update failed: ${directUpdateError.message}`);
+            console.error("[useUnifiedFormSubmission]: Optician direct update error:", directUpdateError);
+            throw new Error(`Databasfel: ${directUpdateError.message}`);
           }
           
-          console.log("[useUnifiedFormSubmission]: Direct database update successful");
-          return { success: true, usedFallback: true };
-        } catch (fallbackError: any) {
-          console.error("[useUnifiedFormSubmission]: Fallback approach failed:", fallbackError);
-          throw fallbackError;
+          console.log("[useUnifiedFormSubmission]: Optician direct update successful");
+          return { success: true };
+        } catch (error: any) {
+          console.error("[useUnifiedFormSubmission]: Optician submission error:", error);
+          throw error;
+        }
+      } 
+      // PATIENT MODE: Try edge function first, then fallback to direct update
+      else {
+        console.log("[useUnifiedFormSubmission]: Using patient edge function approach with fallback");
+        
+        // Set up timeout for edge function calls
+        const EDGE_FUNCTION_TIMEOUT = 8000; // 8 seconds
+        
+        // Try the edge function with a timeout
+        try {
+          console.log("[useUnifiedFormSubmission]: Attempting to call submit-form edge function");
+          
+          // Set up circuit breaker with timeout
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Edge function timeout after 8 seconds")), EDGE_FUNCTION_TIMEOUT);
+          });
+          
+          // Call the edge function with race against timeout
+          const responsePromise = supabase.functions.invoke('submit-form', {
+            body: { 
+              token,
+              answers: submissionData
+            }
+          });
+          
+          const response = await Promise.race([responsePromise, timeoutPromise]) as any;
+          
+          if (response.error) {
+            console.error("[useUnifiedFormSubmission]: Edge function error:", response.error);
+            throw new Error(`Edge function error: ${response.error.message || JSON.stringify(response.error)}`);
+          }
+          
+          console.log("[useUnifiedFormSubmission]: Edge function successful:", response.data);
+          return { success: true, ...response.data };
+        } catch (edgeFunctionError: any) {
+          console.error("[useUnifiedFormSubmission]: Edge function failed, trying direct database update:", edgeFunctionError);
+          
+          // FALLBACK: Direct database update if edge function fails
+          try {
+            console.log("[useUnifiedFormSubmission]: Attempting direct database update as fallback");
+            
+            const { error: directUpdateError } = await supabase
+              .from("anamnes_entries")
+              .update(submissionData)
+              .eq("access_token", token);
+            
+            if (directUpdateError) {
+              console.error("[useUnifiedFormSubmission]: Direct update error:", directUpdateError);
+              throw new Error(`Direct database update failed: ${directUpdateError.message}`);
+            }
+            
+            console.log("[useUnifiedFormSubmission]: Direct database update successful");
+            return { success: true, usedFallback: true };
+          } catch (fallbackError: any) {
+            console.error("[useUnifiedFormSubmission]: Fallback approach failed:", fallbackError);
+            throw fallbackError;
+          }
         }
       }
     },
@@ -187,7 +219,7 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
       setIsSubmitted(true);
       
       toast({
-        title: "Tack för dina svar!",
+        title: mode === 'optician' ? "Formuläret har skickats in" : "Tack för dina svar!",
         description: data.usedFallback 
           ? "Dina svar har skickats in framgångsrikt via alternativ metod."
           : "Dina svar har skickats in framgångsrikt.",
@@ -195,6 +227,9 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
     },
     onError: (error: any) => {
       console.error("[useUnifiedFormSubmission]: Submission error:", error);
+      
+      // Reset submission state to allow retry
+      setIsSubmitting(false);
       
       // Create a proper submission error object
       const submissionError: SubmissionError = error instanceof Error ? error : new Error(error?.message || "Ett oväntat fel uppstod.");
@@ -268,7 +303,7 @@ export function useUnifiedFormSubmission({ token, mode }: FormSubmissionProps) {
     }
     
     // Extract the stored values from last attempt
-    const { token, values, formTemplate, formattedAnswers } = lastAttemptValues;
+    const { values, formTemplate, formattedAnswers } = lastAttemptValues;
     console.log("[useUnifiedFormSubmission]: Retrying submission with stored values");
     
     try {

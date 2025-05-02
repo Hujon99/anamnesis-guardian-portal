@@ -16,6 +16,17 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useOrganization, useUser } from "@clerk/clerk-react";
 import { useSyncOrganizationStore } from "@/hooks/useSyncOrganizationStore";
 
+// Helper hook to expose sync status from component scope
+const useSyncStatus = () => {
+  const { organization } = useOrganization();
+  const syncInfo = useSyncOrganizationStore(state => ({
+    isSynced: state.syncedOrgs[organization?.id || ""] || false,
+    isSyncing: state.syncingOrgs[organization?.id || ""] || false
+  }));
+  
+  return syncInfo;
+};
+
 export const NoteForm = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -133,15 +144,4 @@ export const NoteForm = () => {
       </form>
     </Card>
   );
-};
-
-// Helper hook to expose sync status from component scope
-const useSyncStatus = () => {
-  const { organization } = useOrganization();
-  const syncInfo = useSyncOrganizationStore(state => ({
-    isSynced: state.syncedOrgs[organization?.id || ""] || false,
-    isSyncing: state.syncingOrgs[organization?.id || ""] || false
-  }));
-  
-  return syncInfo;
 };

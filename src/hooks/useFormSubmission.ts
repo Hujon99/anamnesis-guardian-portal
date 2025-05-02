@@ -1,3 +1,4 @@
+
 /**
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
@@ -9,6 +10,7 @@ import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { FormTemplate } from "@/types/anamnesis";
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_URL } from "@/integrations/supabase/client";
 
 export interface SubmissionError extends Error {
   status?: number;
@@ -140,8 +142,8 @@ export const useFormSubmission = () => {
       // Submit the form using the edge function
       console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
       
-      // Log current Supabase URL to verify edge function endpoint
-      console.log("[useFormSubmission/submitForm]: Using Supabase URL:", supabase.functions.url);
+      // Log current Supabase URL (without accessing protected .url property)
+      console.log("[useFormSubmission/submitForm]: Using Supabase URL:", SUPABASE_URL);
       
       try {
         // Attempt direct invocation with clear payload structure

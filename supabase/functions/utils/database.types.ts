@@ -28,6 +28,11 @@ export interface Database {
           patient_identifier: string | null
           sent_at: string | null
           updated_at: string | null
+          booking_id?: string | null
+          store_id?: string | null
+          first_name?: string | null
+          booking_date?: string | null
+          is_magic_link?: boolean | null
         }
         Insert: {
           id?: string
@@ -47,6 +52,11 @@ export interface Database {
           patient_identifier?: string | null
           sent_at?: string | null
           updated_at?: string | null
+          booking_id?: string | null
+          store_id?: string | null
+          first_name?: string | null
+          booking_date?: string | null
+          is_magic_link?: boolean | null
         }
         Update: {
           id?: string
@@ -66,6 +76,11 @@ export interface Database {
           patient_identifier?: string | null
           sent_at?: string | null
           updated_at?: string | null
+          booking_id?: string | null
+          store_id?: string | null
+          first_name?: string | null
+          booking_date?: string | null
+          is_magic_link?: boolean | null
         }
       }
       anamnes_forms: {
@@ -89,6 +104,32 @@ export interface Database {
           organization_id?: string | null
           schema?: Json
           title?: string
+        }
+      }
+      auto_deletion_logs: {
+        Row: {
+          id: string
+          run_at: string | null
+          error: string | null
+          organizations_affected: string[] | null
+          status: string | null
+          entries_deleted: number | null
+        }
+        Insert: {
+          id?: string
+          run_at?: string | null
+          error?: string | null
+          organizations_affected?: string[] | null
+          status?: string | null
+          entries_deleted?: number | null
+        }
+        Update: {
+          id?: string
+          run_at?: string | null
+          error?: string | null
+          organizations_affected?: string[] | null
+          status?: string | null
+          entries_deleted?: number | null
         }
       }
       organization_settings: {

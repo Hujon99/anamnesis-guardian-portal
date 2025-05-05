@@ -25,6 +25,13 @@ Deno.serve(async (req) => {
   try {
     console.log('Auto deletion process started at:', new Date().toISOString())
     
+    // Validate that we have the required environment variables
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error(`Missing required environment variables: 
+        URL: ${SUPABASE_URL ? 'Set' : 'Missing'}, 
+        SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Missing'}`);
+    }
+    
     const supabase = createClient<Database>(
       SUPABASE_URL,
       SUPABASE_SERVICE_ROLE_KEY
@@ -80,7 +87,7 @@ Deno.serve(async (req) => {
 
       console.log('Successfully updated organization settings')
 
-      // Try to log to auto_deletion_logs table if it exists
+      // Log to auto_deletion_logs table
       try {
         const { error: logError } = await supabase
           .from('auto_deletion_logs')
@@ -88,6 +95,7 @@ Deno.serve(async (req) => {
             entries_deleted: entriesToDelete.length,
             organizations_affected: organizationIds,
             status: 'success',
+            run_at: new Date().toISOString()
           })
           
         if (logError) {
@@ -110,6 +118,27 @@ Deno.serve(async (req) => {
     }
 
     console.log('No entries to delete')
+    
+    // Even when no entries are deleted, log the run
+    try {
+      const { error: logError } = await supabase
+        .from('auto_deletion_logs')
+        .insert({
+          entries_deleted: 0,
+          status: 'success',
+          run_at: new Date().toISOString(),
+          organizations_affected: []
+        })
+        
+      if (logError) {
+        console.warn('Could not write empty run to auto_deletion_logs:', logError)
+      } else {
+        console.log('Successfully logged empty run to auto_deletion_logs table')
+      }
+    } catch (logErr) {
+      console.warn('Logging empty run to auto_deletion_logs failed:', logErr)
+    }
+    
     return new Response(JSON.stringify({
       message: 'No entries to delete',
       deletedEntries: 0
@@ -120,8 +149,30 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error in auto-delete function:', error)
+    
+    // Log error to auto_deletion_logs table
+    try {
+      const supabase = createClient<Database>(
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      await supabase
+        .from('auto_deletion_logs')
+        .insert({
+          entries_deleted: 0,
+          status: 'error',
+          error: error.message || String(error),
+          run_at: new Date().toISOString()
+        })
+        
+      console.log('Successfully logged error to auto_deletion_logs table')
+    } catch (logErr) {
+      console.error('Failed to log error to auto_deletion_logs:', logErr)
+    }
+    
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error.message || String(error),
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

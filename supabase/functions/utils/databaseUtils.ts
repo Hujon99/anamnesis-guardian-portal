@@ -1,3 +1,4 @@
+
 /**
  * This utility module provides database operations for edge functions.
  * It includes functions for creating Supabase clients and common database queries.
@@ -12,7 +13,7 @@ import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-
  */
 export function createSupabaseClient(): SupabaseClient | null {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY'); // Using anon key for public access
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'); // Using service role key for admin access
   
   if (!supabaseUrl || !supabaseKey) {
     console.error('Missing Supabase credentials:', { 
@@ -27,117 +28,99 @@ export function createSupabaseClient(): SupabaseClient | null {
 }
 
 /**
- * Fetches an entry by its access token
- * @param supabase Supabase client
- * @param token Access token
- * @returns Object containing the entry data or error information
+ * Runs the auto deletion process for expired anamnesis entries
+ * @returns Object containing information about the deletion process
  */
-export async function fetchEntryByToken(supabase: SupabaseClient, token: string): Promise<{
-  entry?: any;
+export async function runAutoDeletion(supabase: SupabaseClient): Promise<{
+  deletedEntries: number;
+  organizationsAffected?: string[];
   error?: any;
-  notFound?: boolean;
 }> {
-  if (!token) {
-    console.error('Missing token in fetchEntryByToken');
-    return { error: 'Missing token parameter' };
-  }
-
-  console.log('Starting fetchEntryByToken with token:', token.substring(0, 6) + '...');
-  
   try {
-    console.log('Executing query to fetch entry...');
-    const { data: entry, error } = await supabase
-      .from('anamnes_entries')
-      .select('*')
-      .eq('access_token', token)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Database error:', error);
-      return { error };
-    }
-
-    if (!entry) {
-      console.log('No entry found with token');
-      return { notFound: true };
-    }
-
-    console.log('Entry found with ID:', entry.id);
-    console.log('Entry has magic link data:', 
-      entry.is_magic_link ? 'Yes' : 'No',
-      'booking_id:', entry.booking_id || 'None',
-      'store_id:', entry.store_id || 'None'
-    );
+    console.log('Starting auto deletion process...');
     
-    return { entry };
+    // Find entries that are past their auto-deletion timestamp
+    const { data: entriesToDelete, error: fetchError } = await supabase
+      .from('anamnes_entries')
+      .select('id, organization_id, auto_deletion_timestamp, status')
+      .lt('auto_deletion_timestamp', new Date().toISOString())
+      .not('auto_deletion_timestamp', 'is', null);
+
+    if (fetchError) {
+      console.error('Error fetching entries to delete:', fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Found ${entriesToDelete?.length || 0} entries to delete`);
+
+    if (!entriesToDelete || entriesToDelete.length === 0) {
+      return { deletedEntries: 0 };
+    }
+
+    const organizationIds = [...new Set(entriesToDelete.map(entry => entry.organization_id))];
+    console.log('Organizations affected:', organizationIds);
+    
+    // Delete the entries
+    const { error: deleteError } = await supabase
+      .from('anamnes_entries')
+      .delete()
+      .in('id', entriesToDelete.map(entry => entry.id));
+
+    if (deleteError) {
+      console.error('Error deleting entries:', deleteError);
+      throw deleteError;
+    }
+
+    // Update last_auto_deletion_run for affected organizations
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        organizationIds.map(id => ({
+          organization_id: id,
+          last_auto_deletion_run: new Date().toISOString()
+        })),
+        { onConflict: 'organization_id' }
+      );
+
+    return {
+      deletedEntries: entriesToDelete.length,
+      organizationsAffected: organizationIds
+    };
   } catch (error) {
-    console.error('Unexpected error in fetchEntryByToken:', error);
-    return { error };
+    console.error('Error in runAutoDeletion:', error);
+    return {
+      deletedEntries: 0,
+      error
+    };
   }
 }
 
 /**
- * Fetches a form template for an organization, falling back to default template if none exists
+ * Logs the result of an auto deletion process
  * @param supabase Supabase client
- * @param organizationId Organization ID
- * @returns Object containing the form data or error information
+ * @param result Result of the auto deletion process
  */
-export async function fetchFormTemplate(supabase: SupabaseClient, organizationId: string): Promise<{
-  formTemplate?: any;
-  error?: any;
-  notFound?: boolean;
-}> {
-  if (!organizationId) {
-    console.error('Missing organizationId in fetchFormTemplate');
-    return { error: 'Missing organization ID parameter' };
+export async function logDeletionResult(
+  supabase: SupabaseClient, 
+  result: { 
+    deletedEntries: number; 
+    organizationsAffected?: string[]; 
+    error?: any 
   }
-  
-  console.log('Starting fetchFormTemplate for organization:', organizationId);
-  
+): Promise<void> {
   try {
-    console.log('First trying to fetch organization-specific template...');
+    await supabase
+      .from('auto_deletion_logs')
+      .insert({
+        entries_deleted: result.deletedEntries,
+        organizations_affected: result.organizationsAffected || [],
+        status: result.error ? 'error' : 'success',
+        error: result.error ? (result.error.message || String(result.error)) : null,
+        run_at: new Date().toISOString()
+      });
     
-    // First try to get the organization-specific template
-    let { data: orgTemplate, error: orgError } = await supabase
-      .from('anamnes_forms')
-      .select('*')
-      .eq('organization_id', organizationId)
-      .maybeSingle();
-      
-    if (orgError) {
-      console.error('Error fetching organization template:', orgError);
-      // Continue to try default template instead of failing
-    }
-    
-    // If we found an org template, return it
-    if (orgTemplate) {
-      console.log('Found organization-specific template with ID:', orgTemplate.id);
-      return { formTemplate: orgTemplate };
-    }
-    
-    // Otherwise, try to get the default template
-    console.log('No org template found, fetching default template...');
-    
-    let { data: defaultTemplate, error: defaultError } = await supabase
-      .from('anamnes_forms')
-      .select('*')
-      .is('organization_id', null)
-      .maybeSingle();
-      
-    if (defaultError) {
-      console.error('Error fetching default template:', defaultError);
-      return { error: defaultError };
-    }
-    
-    if (!defaultTemplate) {
-      console.log('No default template found');
-      return { notFound: true };
-    }
-    
-    console.log('Found default template with ID:', defaultTemplate.id);
-    return { formTemplate: defaultTemplate };
-  } catch (error) {
-    console.error('Unexpected error in fetchFormTemplate:', error);
-    return { error };
+    console.log('Successfully logged deletion result');
+  } catch (logError) {
+    console.error('Error logging deletion result:', logError);
   }
 }

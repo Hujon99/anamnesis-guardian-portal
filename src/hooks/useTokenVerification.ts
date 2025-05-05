@@ -173,11 +173,11 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       if (stableFormDataRef.current) {
         // console.log("[useTokenVerification]: Conditions no longer met, resetting stable data flag");
         // console.log("[useTokenVerification]: Failed conditions:", 
-          Object.entries(conditions)
-            .filter(([_, value]) => !value)
-            .map(([key]) => key)
-            .join(", ")
-        );
+        //   Object.entries(conditions)
+        //     .filter(([_, value]) => !value)
+        //     .map(([key]) => key)
+        //     .join(", ")
+        // );
         stableFormDataRef.current = false;
       }
     }

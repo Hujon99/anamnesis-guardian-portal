@@ -39,14 +39,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
   
   // More detailed template logging
   if (formTemplate) {
-    console.log("[FormContainer]: Form template structure:", {
-      hasTitle: !!formTemplate.title,
-      hasSections: !!(formTemplate.sections && Array.isArray(formTemplate.sections)),
-      sectionCount: formTemplate.sections?.length || 0,
-      firstSectionTitle: formTemplate.sections?.[0]?.section_title || 'N/A',
-      questionCount: formTemplate.sections?.reduce((count, section) => 
-        count + (section.questions?.length || 0), 0) || 0
-    });
+
   } else {
     console.error("[FormContainer]: Form template is null or undefined!");
   }
@@ -74,18 +67,18 @@ const FormContainer: React.FC<FormContainerProps> = ({
     }
     
     // Success - template structure is valid
-    console.log("[FormContainer]: Template structure validation passed!");
+    // console.log("[FormContainer]: Template structure validation passed!");
     
     return true;
   }, [formTemplate]);
   
   const handleSubmit = async (values: any, formattedAnswers?: any) => {
-    console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
-    console.log("[FormContainer/handleSubmit]: Form values:", values);
-    console.log("[FormContainer/handleSubmit]: Formatted answers:", formattedAnswers);
+    // console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
+    // console.log("[FormContainer/handleSubmit]: Form values:", values);
+    // console.log("[FormContainer/handleSubmit]: Formatted answers:", formattedAnswers);
     
     try {
-      console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler");
+      // console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler");
       return await onSubmit(values, formattedAnswers);
     } catch (error) {
       console.error("[FormContainer/handleSubmit]: Error in form submission:", error);
@@ -94,18 +87,18 @@ const FormContainer: React.FC<FormContainerProps> = ({
   };
   
   const handleValuesChange = (values: Record<string, any>) => {
-    console.log("[FormContainer]: Form values changed");
+    // console.log("[FormContainer]: Form values changed");
     if (onFormValuesChange) {
       onFormValuesChange(values);
     }
   };
   
   // Render decision logging
-  console.log(`[FormContainer/RENDER]: About to render. Template valid: ${isValidTemplate}`);
+  // console.log(`[FormContainer/RENDER]: About to render. Template valid: ${isValidTemplate}`);
   
   // If the template is not valid, show an error
   if (!isValidTemplate) {
-    console.log("[FormContainer/RENDER]: Rendering error card due to invalid template");
+    // console.log("[FormContainer/RENDER]: Rendering error card due to invalid template");
     return (
       <ErrorCard 
         error="Formulärstrukturen är ogiltig" 
@@ -116,7 +109,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
     );
   }
   
-  console.log("[FormContainer/RENDER]: Rendering FormOrchestrator");
+  // console.log("[FormContainer/RENDER]: Rendering FormOrchestrator");
   return (
     <>
       <FormOrchestrator

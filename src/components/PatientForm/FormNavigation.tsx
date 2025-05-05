@@ -26,14 +26,14 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
   onPrevious,
   onSubmit
 }) => {
-  console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
+  // console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
   
   const handleSubmitClick = () => {
-    console.log("[FormNavigation/handleSubmitClick]: Submit button clicked, calling onSubmit handler");
+    // console.log("[FormNavigation/handleSubmitClick]: Submit button clicked, calling onSubmit handler");
     // Add a detailed log to track submission flow
     try {
       onSubmit();
-      console.log("[FormNavigation/handleSubmitClick]: onSubmit handler called successfully");
+      // console.log("[FormNavigation/handleSubmitClick]: onSubmit handler called successfully");
     } catch (error) {
       console.error("[FormNavigation/handleSubmitClick]: Error calling onSubmit handler:", error);
     }
@@ -76,7 +76,7 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
         <Button 
           type="button"
           onClick={() => {
-            console.log("[FormNavigation]: Next button clicked");
+            // console.log("[FormNavigation]: Next button clicked");
             onNext();
           }}
           className={`${isFirstStep ? "ml-auto" : ""}`}

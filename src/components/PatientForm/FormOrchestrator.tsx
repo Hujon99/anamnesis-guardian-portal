@@ -33,17 +33,17 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
 }) => {
   // Add detailed logging when the component mounts/renders
   useEffect(() => {
-    console.log("[FormOrchestrator]: Rendering with formTemplate:", {
-      title: formTemplate.title,
-      sectionCount: formTemplate.sections?.length || 0,
-      isSubmitting: isSubmitting,
-      isOpticianMode: isOpticianMode,
-      hasInitialValues: !!initialValues,
-      createdByName: createdByName || 'N/A'
-    });
+    // console.log("[FormOrchestrator]: Rendering with formTemplate:", {
+    //   title: formTemplate.title,
+    //   sectionCount: formTemplate.sections?.length || 0,
+    //   isSubmitting: isSubmitting,
+    //   isOpticianMode: isOpticianMode,
+    //   hasInitialValues: !!initialValues,
+    //   createdByName: createdByName || 'N/A'
+    // });
   }, [formTemplate, isSubmitting, isOpticianMode, initialValues, createdByName]);
 
-  console.log("[FormOrchestrator/RENDER]: About to render form context provider");
+  // console.log("[FormOrchestrator/RENDER]: About to render form context provider");
   
   return (
     <FormContextProvider 

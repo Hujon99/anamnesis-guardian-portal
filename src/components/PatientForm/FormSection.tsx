@@ -30,7 +30,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
   // Log errors for debugging
   React.useEffect(() => {
     if (Object.keys(errors).length > 0) {
-      console.log(`[FormSection] Validation errors for section "${section.section_title}":`, errors);
+      // console.log(`[FormSection] Validation errors for section "${section.section_title}":`, errors);
     }
   }, [errors, section.section_title]);
 
@@ -203,7 +203,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
           
           // Log when we find an error
           if (hasError) {
-            console.log(`[FormSection] Field "${fieldId}" has error:`, errors[fieldId]);
+            // console.log(`[FormSection] Field "${fieldId}" has error:`, errors[fieldId]);
           }
 
           // Special styling for optician-specific fields

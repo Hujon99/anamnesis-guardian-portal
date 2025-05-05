@@ -48,13 +48,7 @@ export const useFormSubmission = () => {
     formTemplate?: FormTemplate,
     preProcessedFormattedAnswers?: any
   ): Promise<boolean> => {
-    console.log("[useFormSubmission/submitForm]: Starting form submission", { 
-      hasToken: !!token, 
-      valuesCount: Object.keys(values).length,
-      hasTemplate: !!formTemplate,
-      sampleKeys: Object.keys(values).slice(0, 5),
-      attemptCount: submissionAttempts + 1
-    });
+
     
     // Store values for potential retry
     setLastAttemptValues({ token, values, formTemplate });
@@ -73,7 +67,7 @@ export const useFormSubmission = () => {
     try {
       // Extract metadata for optician submissions if present
       const isOpticianSubmission = values._metadata?.submittedBy === 'optician';
-      console.log("[useFormSubmission/submitForm]: isOpticianSubmission:", isOpticianSubmission);
+      // console.log("[useFormSubmission/submitForm]: isOpticianSubmission:", isOpticianSubmission);
       
       // Handle conditional fields - filter out values that are not needed
       // If values contain keys that have parent-child relationship in conditional fields,
@@ -112,12 +106,7 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: cleanedValues }; // Fallback for backward compatibility
 
-      console.log("[useFormSubmission/submitForm]: Submission data prepared:", {
-        hasRawAnswers: !!submissionData.rawAnswers,
-        hasFormattedAnswers: !!submissionData.formattedAnswers,
-        hasMetadata: !!submissionData.metadata,
-        rawAnswersKeys: submissionData.rawAnswers ? Object.keys(submissionData.rawAnswers).slice(0, 3) : []
-      });
+
       
       // More detailed logging of the actual data structure being sent
       console.log("[useFormSubmission/submitForm]: Data structure validation:", {

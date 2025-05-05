@@ -142,7 +142,7 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
       return false;
     }
     
-    console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode`);
+    // console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode`);
     
     if (mode === 'optician') {
       // Use optician submission flow
@@ -173,11 +173,11 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
   // Retry submission handler
   const handleRetrySubmission = useCallback(async () => {
     if (mode === 'optician' && opticianMutation.error) {
-      console.log("[useFormSubmissionManager]: Retrying optician submission");
+      // console.log("[useFormSubmissionManager]: Retrying optician submission");
       opticianMutation.reset();
       return false; // Need to re-submit with complete data
     } else {
-      console.log("[useFormSubmissionManager]: Retrying patient submission");
+      // console.log("[useFormSubmissionManager]: Retrying patient submission");
       return await patientSubmission.retrySubmission();
     }
   }, [mode, opticianMutation, patientSubmission]);

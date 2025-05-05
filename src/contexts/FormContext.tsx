@@ -135,23 +135,23 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // In a future update, we could implement actual debounced processing if needed
   const processSectionsWithDebounce = useCallback((sections: any[], values: Record<string, any>) => {
     // This is a stub implementation that doesn't do anything yet
-    console.log("[FormContext] Processing sections (stub implementation)");
+    // console.log("[FormContext] Processing sections (stub implementation)");
     // In the future, this could implement debounced validation or other processing
   }, []);
   
   // Enhanced form submission handler with better error handling and debugging
   const handleFormSubmit = () => async (data: any) => {
-    console.log("[FormContext/handleFormSubmit]: Form submission triggered", { 
-      dataKeys: Object.keys(data).length,
-      isOpticianMode,
-      visibleFieldCount: visibleFieldIds.length
-    });
+    // console.log("[FormContext/handleFormSubmit]: Form submission triggered", { 
+      // dataKeys: Object.keys(data).length,
+      // isOpticianMode,
+      // visibleFieldCount: visibleFieldIds.length
+    // });
     
-    console.log("[FormContext/handleFormSubmit]: Visible field IDs:", visibleFieldIds);
+    // console.log("[FormContext/handleFormSubmit]: Visible field IDs:", visibleFieldIds);
     
     try {
       // Validate only visible fields
-      console.log("[FormContext/handleFormSubmit]: Validating visible fields only");
+      // console.log("[FormContext/handleFormSubmit]: Validating visible fields only");
       const isValid = await form.trigger(visibleFieldIds);
       
       if (!isValid) {
@@ -171,13 +171,13 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
           return;
         } else {
           // If errors are only in hidden fields, we can proceed
-          console.log("[FormContext/handleFormSubmit]: Errors only in hidden fields, proceeding with submission");
+          // console.log("[FormContext/handleFormSubmit]: Errors only in hidden fields, proceeding with submission");
         }
       }
       
-      console.log("[FormContext/handleFormSubmit]: Formatting answers for submission");
+      // console.log("[FormContext/handleFormSubmit]: Formatting answers for submission");
       const formattedAnswers = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
-      console.log("[FormContext/handleFormSubmit]: Answers formatted successfully");
+      // console.log("[FormContext/handleFormSubmit]: Answers formatted successfully");
       
       // Add circuit breaker
       const submissionTimeout = setTimeout(() => {
@@ -185,7 +185,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       }, 10000);
       
       try {
-        console.log("[FormContext/handleFormSubmit]: Calling onSubmit handler");
+        // console.log("[FormContext/handleFormSubmit]: Calling onSubmit handler");
         await onSubmit(data, formattedAnswers);
         console.log("[FormContext/handleFormSubmit]: Form submitted successfully");
         clearTimeout(submissionTimeout);
@@ -207,17 +207,17 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     const fields = getFieldsForCurrentStep();
     
     try {
-      console.log("[FormContext/nextStep]: Validating fields for current step:", fields);
+      // console.log("[FormContext/nextStep]: Validating fields for current step:", fields);
       // Only validate fields that are currently visible
       const visibleFields = fields.filter(fieldId => visibleFieldIds.includes(fieldId));
-      console.log("[FormContext/nextStep]: Visible fields for validation:", visibleFields);
+      // console.log("[FormContext/nextStep]: Visible fields for validation:", visibleFields);
       
       const isValid = await form.trigger(visibleFields);
       if (isValid) {
-        console.log("[FormContext/nextStep]: Fields valid, proceeding to next step");
+        // console.log("[FormContext/nextStep]: Fields valid, proceeding to next step");
         goToNextStep();
       } else {
-        console.log("[FormContext/nextStep]: Field validation failed, staying on current step");
+        // console.log("[FormContext/nextStep]: Field validation failed, staying on current step");
         toast.error("Vänligen åtgärda felen innan du fortsätter");
       }
     } catch (error) {
@@ -226,7 +226,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   };
   
   const previousStep = () => {
-    console.log("[FormContext/previousStep]: Moving to previous step");
+    // console.log("[FormContext/previousStep]: Moving to previous step");
     goToPreviousStep();
   };
   
@@ -245,13 +245,13 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
 
   // Log state updates
   useEffect(() => {
-    console.log("[FormContext]: State updated", { 
-      currentStep, 
-      totalSections, 
-      isLastStep, 
-      isSubmitting,
-      visibleFieldCount: visibleFieldIds.length
-    });
+    // console.log("[FormContext]: State updated", { 
+    //   currentStep, 
+    //   totalSections, 
+    //   isLastStep, 
+    //   isSubmitting,
+    //   visibleFieldCount: visibleFieldIds.length
+    // });
   }, [currentStep, totalSections, isLastStep, isSubmitting, visibleFieldIds]);
 
   return (

@@ -27,7 +27,7 @@ export const useFormTemplate = () => {
     queryKey: ["form-template", organization?.id],
     queryFn: async (): Promise<FormTemplateWithMeta | null> => {
       try {
-        console.log("[useFormTemplate]: Fetching template for org:", organization?.id || "No org ID");
+        // console.log("[useFormTemplate]: Fetching template for org:", organization?.id || "No org ID");
         
         if (!supabase) {
           console.error("[useFormTemplate]: Supabase client not initialized");
@@ -54,7 +54,7 @@ export const useFormTemplate = () => {
           
           // If we found an org-specific template, return it directly
           if (orgTemplate) {
-            console.log("[useFormTemplate]: Using organization-specific template");
+            // console.log("[useFormTemplate]: Using organization-specific template");
             const formData = orgTemplate as unknown as AnamnesForm;
             
             return {
@@ -66,7 +66,7 @@ export const useFormTemplate = () => {
           }
           
           // Otherwise, fetch the default template
-          console.log("[useFormTemplate]: No org template found, using default");
+          // console.log("[useFormTemplate]: No org template found, using default");
           const { data: defaultTemplate, error: defaultError } = await supabase
             .from('anamnes_forms')
             .select("*")
@@ -79,7 +79,7 @@ export const useFormTemplate = () => {
           }
           
           if (!defaultTemplate) {
-            console.log("[useFormTemplate]: No default template found");
+            // console.log("[useFormTemplate]: No default template found");
             return null;
           }
           
@@ -105,18 +105,14 @@ export const useFormTemplate = () => {
           }
           
           if (!data) {
-            console.log("[useFormTemplate]: No default template found");
+            // console.log("[useFormTemplate]: No default template found");
             return null;
           }
           
           // Type assertion to handle the schema property - AFTER we've checked that data exists
           const formData = data as unknown as AnamnesForm;
           
-          console.log("[useFormTemplate]: Default template found:", 
-            formData.id, 
-            "organization:", 
-            formData.organization_id || "default"
-          );
+
           
           return {
             schema: formData.schema,

@@ -82,9 +82,9 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     
     // Log token for debugging
     if (token) {
-      console.log("[useTokenVerification]: New token received:", token.substring(0, 6) + "...");
+      // console.log("[useTokenVerification]: New token received:", token.substring(0, 6) + "...");
     } else {
-      console.log("[useTokenVerification]: No token provided");
+      // console.log("[useTokenVerification]: No token provided");
     }
   }, [token]);
 
@@ -101,7 +101,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         !submitted) {
       
       isFullyLoadedAttemptCount.current += 1;
-      console.log(`[useTokenVerification]: Attempt #${isFullyLoadedAttemptCount.current} to set isFullyLoaded=true`);
+      // console.log(`[useTokenVerification]: Attempt #${isFullyLoadedAttemptCount.current} to set isFullyLoaded=true`);
       
       // Condition seems right but isFullyLoaded not set, try after a delay
       const forceFullyLoadedTimer = setTimeout(() => {
@@ -141,7 +141,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       notSubmitted: !submitted
     };
     
-    console.log("[useTokenVerification]: Fully loaded conditions:", conditions);
+    // console.log("[useTokenVerification]: Fully loaded conditions:", conditions);
     
     // Check for the ideal condition to set isFullyLoaded = true
     if (!loading && 
@@ -157,11 +157,11 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       
       // Ensure we have stable data for a minimum period before marking as loaded
       if (!stableFormDataRef.current) {
-        console.log("[useTokenVerification]: All conditions met, setting stable data flag");
+        // console.log("[useTokenVerification]: All conditions met, setting stable data flag");
         stableFormDataRef.current = true;
         // Add a small delay to ensure all React updates have propagated
         const stabilityTimer = setTimeout(() => {
-          console.log("[useTokenVerification]: All conditions met and stable, marking as fully loaded");
+          // console.log("[useTokenVerification]: All conditions met and stable, marking as fully loaded");
           setFormLoading(false);
           setIsFullyLoaded(true);
         }, 300);
@@ -171,8 +171,8 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     } else {
       // Only log and reset if it was previously stable
       if (stableFormDataRef.current) {
-        console.log("[useTokenVerification]: Conditions no longer met, resetting stable data flag");
-        console.log("[useTokenVerification]: Failed conditions:", 
+        // console.log("[useTokenVerification]: Conditions no longer met, resetting stable data flag");
+        // console.log("[useTokenVerification]: Failed conditions:", 
           Object.entries(conditions)
             .filter(([_, value]) => !value)
             .map(([key]) => key)
@@ -191,7 +191,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       return;
     }
     
-    console.log("[useTokenVerification/handleRetry]: Retrying token verification");
+    // console.log("[useTokenVerification/handleRetry]: Retrying token verification");
     setLoading(true);
     setFormLoading(true);
     setIsFullyLoaded(false);
@@ -226,13 +226,13 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   useEffect(() => {
     // Skip verification if Supabase client is not ready
     if (!isSupabaseReady) {
-      console.log("[useTokenVerification]: Supabase client not ready, skipping verification");
+      // console.log("[useTokenVerification]: Supabase client not ready, skipping verification");
       return;
     }
     
     // Skip if circuit breaker is active
     if (circuitBrokenRef.current) {
-      console.log("[useTokenVerification]: Circuit breaker active, skipping verification");
+      // console.log("[useTokenVerification]: Circuit breaker active, skipping verification");
       return;
     }
     
@@ -250,7 +250,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     
     // Skip if there's already a request in progress
     if (requestInProgressRef.current || isVerifyingRef.current) {
-      console.log("[useTokenVerification]: Request already in progress, skipping");
+      // console.log("[useTokenVerification]: Request already in progress, skipping");
       return;
     }
     
@@ -258,7 +258,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     const now = Date.now();
     const timeSinceLastVerification = now - lastVerificationTimeRef.current;
     if (timeSinceLastVerification < verificationCooldownMs) {
-      console.log(`[useTokenVerification]: Cooldown period active (${timeSinceLastVerification}ms), skipping verification`);
+      // console.log(`[useTokenVerification]: Cooldown period active (${timeSinceLastVerification}ms), skipping verification`);
       return;
     }
     
@@ -289,14 +289,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           return;
         }
         
-        console.log("[useTokenVerification]: Verifying token:", token.substring(0, 6) + "...");
+        // console.log("[useTokenVerification]: Verifying token:", token.substring(0, 6) + "...");
         
         // Verify the token first
         const verificationResult = await tokenManager.verifyToken(token);
-        console.log("[useTokenVerification]: Verification result:", 
-          verificationResult.valid ? "Valid" : "Invalid",
-          verificationResult.error || ""
-        );
         
         // Handle the different result types with proper type checking
         if (!verificationResult.valid) {
@@ -338,8 +334,6 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           return;
         }
         
-        console.log("[useTokenVerification]: Token verified successfully, entry:", 
-          `ID: ${entry.id}, Organization: ${entry.organization_id}`);
         
         // Set organization ID from the entry
         setOrganizationId(entry.organization_id);
@@ -384,7 +378,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         lastErrorRef.current = err.message || "Unknown error";
                               
         if (isNetworkError && retryCount < MAX_RETRIES && !isSameError) {
-          console.log("[useTokenVerification]: Network error, will retry automatically");
+          // console.log("[useTokenVerification]: Network error, will retry automatically");
         } else {
           // Break the circuit for non-network errors or after max retries
           circuitBrokenRef.current = true;

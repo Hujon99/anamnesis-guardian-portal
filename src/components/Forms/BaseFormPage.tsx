@@ -122,14 +122,14 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       console.error(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Cannot submit form: No token provided`);
       return;
     }
-    console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Submitting form with token:`, token.substring(0, 6) + "...");
+    // console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Submitting form with token:`, token.substring(0, 6) + "...");
     setFormPageState("SUBMITTING");
     await handleFormSubmit(values, formTemplate, formattedAnswers);
   }, [token, handleFormSubmit, formTemplate, setFormPageState, mode]);
   
   // Handle retry for submission errors
   const handleSubmissionRetry = useCallback(() => {
-    console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retrying submission...`);
+    // console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retrying submission...`);
     
     // If in error state, reset error and update state
     if (formPageState === "SUBMISSION_ERROR") {
@@ -142,10 +142,10 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
         const success = await handleRetrySubmission();
         
         if (!success) {
-          console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission failed`);
+          // console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission failed`);
           setFormPageState("SUBMISSION_ERROR");
         } else {
-          console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission succeeded`);
+          // console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission succeeded`);
         }
       }, 100);
     }
@@ -160,7 +160,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   const createdByName = entryData?.created_by_name || null;
   
   // Render different components based on form state
-  console.log(`[BaseFormPage/RENDER]: About to render with state: ${formPageState} and mode: ${mode}`);
+  // console.log(`[BaseFormPage/RENDER]: About to render with state: ${formPageState} and mode: ${mode}`);
   
   switch (formPageState) {
     case "INITIAL_LOADING":

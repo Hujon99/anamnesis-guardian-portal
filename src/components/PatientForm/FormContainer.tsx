@@ -33,9 +33,9 @@ const FormContainer: React.FC<FormContainerProps> = ({
   createdByName = null,
   onFormValuesChange
 }) => {
-  console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
-  console.log("[FormContainer]: Initializing with values:", initialValues);
-  console.log("[FormContainer]: Created by:", createdByName);
+  // console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
+  // console.log("[FormContainer]: Initializing with values:", initialValues);
+  // console.log("[FormContainer]: Created by:", createdByName);
   
   // More detailed template logging
   if (formTemplate) {

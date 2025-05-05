@@ -82,9 +82,9 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
       
       if (extractedValue !== fieldValue && extractedValue !== undefined) {
         // console.log(`[FormFieldRenderer] Normalizing value for ${fieldName}:`, {
-          from: fieldValue,
-          to: extractedValue
-        });
+        //   from: fieldValue,
+        //   to: extractedValue
+        // });
         setValue(fieldName, extractedValue);
       }
     }

@@ -157,7 +157,7 @@ serve(async (req: Request) => {
     console.log(`[submit-form]: Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}`);
     
     // If the form was already submitted, return a success response
-    if (entry.status === 'submitted') {
+    if (entry.status === 'ready') {
       console.log("[submit-form]: Form was already submitted, returning success");
       return new Response(
         JSON.stringify({ 
@@ -233,11 +233,11 @@ serve(async (req: Request) => {
         }
       }
         
-      // Prepare the update data
+      // Prepare the update data - CHANGED STATUS VALUE FROM 'submitted' to 'ready' to match allowed values
       updateData = { 
         answers: formData,
         formatted_raw_data: formattedRawData,
-        status: 'submitted',
+        status: 'ready',
         updated_at: new Date().toISOString()
       };
       

@@ -1,4 +1,3 @@
-
 /**
  * This hook unifies form submission handling for both patient and optician modes.
  * It provides a common interface but adapts to different submission methods based on mode.
@@ -115,7 +114,7 @@ export function useFormSubmissionManager({
       const submissionData = {
         answers: values,
         formatted_raw_data: formattedRawData,
-        status: "ready", // Set status to "ready" for optician-filled forms
+        status: "ready", // Status already correctly set to "ready" for optician-filled forms
         updated_at: new Date().toISOString()
       };
       

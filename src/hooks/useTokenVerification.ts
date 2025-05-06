@@ -304,7 +304,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         
         // Check if we already have a cached result
         const cachedResult = tokenManager.getTokenFromCache(token);
-        if (cachedResult && cachedResult.verificationResult) {
+        if (cachedResult && 'verificationResult' in cachedResult && cachedResult.verificationResult) {
           console.log("[useTokenVerification]: Using cached verification result");
           
           const verificationResult = cachedResult.verificationResult;

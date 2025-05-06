@@ -36,7 +36,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const verificationTimeoutRef = useRef<number | null>(null);
   
   // Get token verification result from cache if it's still valid
-  const getFromCache = useCallback((token: string) => {
+  const getFromCache = useCallback((token: string): TokenCache | { token: string } | null => {
     if (!token) return null;
     
     const now = Date.now();
@@ -225,7 +225,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
       } else {
         // Check if we have a recent cached result
         const cachedResult = getFromCache(token);
-        if (cachedResult && cachedResult.verificationResult) {
+        if (cachedResult && 'verificationResult' in cachedResult && cachedResult.verificationResult) {
           console.log("[useTokenManager]: Using cached verification result within cooldown period");
           return cachedResult.verificationResult;
         }
@@ -234,7 +234,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     
     // Check cache first before making a request
     const cachedResult = getFromCache(token);
-    if (cachedResult && cachedResult.verificationResult) {
+    if (cachedResult && 'verificationResult' in cachedResult && cachedResult.verificationResult) {
       console.log("[useTokenManager]: Using cached verification result");
       return cachedResult.verificationResult;
     }

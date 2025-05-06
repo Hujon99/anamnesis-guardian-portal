@@ -8,7 +8,8 @@
 // Standard CORS headers for cross-origin requests
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, cache-control, pragma, x-client-version',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
 };
 
 // Standard response types
@@ -120,6 +121,14 @@ export function logFunctionStart(functionName: string, version: string, request:
   console.log(`Request method: ${request.method}`);
   console.log(`Content-Type: ${request.headers.get('content-type')}`);
   console.log(`User-Agent: ${request.headers.get('user-agent')}`);
+  
+  // Log all headers to help debug CORS issues
+  const headers = {};
+  request.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  console.log(`Request headers: ${JSON.stringify(headers)}`);
+  
   console.log(separator);
 }
 

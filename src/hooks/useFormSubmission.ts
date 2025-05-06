@@ -1,3 +1,4 @@
+
 /**
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
@@ -170,12 +171,10 @@ export const useFormSubmission = () => {
         try {
           console.log("[useFormSubmission/submitForm]: Sending data to edge function, attempt", retryCount + 1);
           
-          // Fixed: Set a longer timeout for the function call (30 seconds)
+          // Modified: Simplified headers by removing cache-control and pragma
           const functionResponse = await supabase.functions.invoke('submit-form', {
             body: edgeFunctionPayload,
             headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache',
               'X-Client-Info': `useFormSubmission/${retryCount+1}`
             }
           });
@@ -206,6 +205,14 @@ export const useFormSubmission = () => {
           }
         } catch (invocationError: any) {
           console.error("[useFormSubmission/submitForm]: Function invocation error:", invocationError);
+          
+          // Check if this is likely a CORS issue
+          if (invocationError.message?.includes('NetworkError') || 
+              invocationError.message?.includes('Failed to fetch') ||
+              !invocationError.status) {
+            console.error("[useFormSubmission/submitForm]: Possible CORS or network issue detected");
+          }
+          
           responseError = invocationError;
           
           if (retryCount >= maxRetries) {
@@ -266,7 +273,7 @@ export const useFormSubmission = () => {
         // Set status and recoverable flag based on error type
         if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
           submissionError.status = 0;
-          submissionError.details = "Nätverksfel - Kunde inte ansluta till servern";
+          submissionError.details = "Nätverksfel - Kunde inte ansluta till servern. Möjligt CORS-problem.";
           submissionError.recoverable = true;
         } else if (err.message?.includes('JWT')) {
           submissionError.status = 401;

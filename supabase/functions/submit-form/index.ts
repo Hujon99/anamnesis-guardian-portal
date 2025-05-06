@@ -9,10 +9,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
-// Define CORS headers
+// Define CORS headers with expanded Access-Control-Allow-Headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, cache-control, pragma, x-client-version',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -21,11 +22,19 @@ const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("[submit-form]: Handling OPTIONS request (CORS preflight)");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     console.log("[submit-form]: Received form submission request");
+    
+    // Log the headers for debugging CORS issues
+    const headersList = {};
+    req.headers.forEach((value, key) => {
+      headersList[key] = value;
+    });
+    console.log("[submit-form]: Request headers:", JSON.stringify(headersList));
     
     // Parse the request body
     let requestData;
@@ -88,7 +97,12 @@ serve(async (req: Request) => {
     
     // Initialize the Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false }
+      auth: { persistSession: false },
+      global: { 
+        headers: { 
+          'X-Edge-Function': 'submit-form'
+        } 
+      }
     });
     
     // 1. Fetch the entry by token to get its ID and check its status

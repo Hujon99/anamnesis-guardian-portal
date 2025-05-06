@@ -19,6 +19,243 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
+// Type definitions to match frontend types
+interface FormQuestion {
+  id: string;
+  label: string;
+  type: string;
+  options?: any[];
+  show_in_mode?: string;
+}
+
+interface FormSection {
+  section_title: string;
+  questions: FormQuestion[];
+}
+
+interface FormTemplate {
+  title: string;
+  sections: FormSection[];
+}
+
+/**
+ * Creates an optimized text representation of anamnesis data
+ * Simplified version of the frontend function with the same name
+ */
+const createOptimizedPromptInput = (
+  formTemplate: FormTemplate,
+  answersData: any
+): string => {
+  // Initialize output text
+  let outputText = "Patientens anamnesinformation:\n";
+
+  // Create maps for questions and answers
+  const questionLabelMap = new Map<string, string>();
+  const answeredQuestionsMap = new Map<string, any>();
+  
+  // Extract answers into a map for easier lookup
+  if (answersData && answersData.answeredSections) {
+    answersData.answeredSections.forEach((section: any) => {
+      if (section.responses && section.responses.length > 0) {
+        section.responses.forEach((response: any) => {
+          if (response && response.id && response.answer !== undefined && 
+              response.answer !== null && response.answer !== '') {
+            answeredQuestionsMap.set(response.id, response.answer);
+          }
+        });
+      }
+    });
+  }
+
+  // If we have no answers, return early
+  if (answeredQuestionsMap.size === 0) {
+    return outputText + "\nIngen information tillgänglig";
+  }
+  
+  // Build question label map from form template
+  if (formTemplate && formTemplate.sections) {
+    formTemplate.sections.forEach(section => {
+      if (section.questions) {
+        section.questions.forEach(question => {
+          // Skip optician-only questions
+          if (question.show_in_mode === "optician") return;
+          questionLabelMap.set(question.id, question.label || question.id);
+        });
+      }
+    });
+  }
+
+  // Process sections in template order
+  if (formTemplate && formTemplate.sections) {
+    formTemplate.sections.forEach((section: FormSection) => {
+      if (!section.questions || section.questions.length === 0) return;
+      
+      let sectionAdded = false;
+      
+      // Process questions in template order
+      section.questions.forEach((question: FormQuestion) => {
+        if (question.show_in_mode === "optician") return;
+        
+        const answer = answeredQuestionsMap.get(question.id);
+        if (answer === undefined) return;
+        
+        if (!sectionAdded) {
+          outputText += `\n-- ${section.section_title} --\n`;
+          sectionAdded = true;
+        }
+        
+        const label = questionLabelMap.get(question.id) || question.label || question.id;
+        let formattedAnswer = formatAnswerValue(answer);
+        
+        outputText += `${label}: ${formattedAnswer}\n`;
+      });
+      
+      // Look for follow-up questions
+      Array.from(answeredQuestionsMap.keys()).forEach(key => {
+        if (key.includes('_for_')) {
+          const [baseQuestionId] = key.split('_for_');
+          
+          const baseQuestionBelongsToThisSection = section.questions.some(q => q.id === baseQuestionId);
+          
+          if (baseQuestionBelongsToThisSection) {
+            const followUpAnswer = answeredQuestionsMap.get(key);
+            
+            if (followUpAnswer === undefined || followUpAnswer === null || followUpAnswer === '') return;
+            
+            if (!sectionAdded) {
+              outputText += `\n-- ${section.section_title} --\n`;
+              sectionAdded = true;
+            }
+            
+            const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
+            const baseQuestionLabel = questionLabelMap.get(baseQuestionId) || baseQuestionId;
+            const followUpLabel = `${baseQuestionLabel} (${parentValue})`;
+            
+            let formattedAnswer = formatAnswerValue(followUpAnswer);
+            
+            outputText += `${followUpLabel}: ${formattedAnswer}\n`;
+          }
+        }
+      });
+    });
+  }
+
+  return outputText;
+};
+
+/**
+ * Helper function to format different answer types consistently
+ */
+function formatAnswerValue(answer: any): string {
+  if (answer === null || answer === undefined) {
+    return "Inget svar";
+  }
+  
+  // Handle arrays
+  if (Array.isArray(answer)) {
+    return answer
+      .map(item => {
+        if (typeof item === 'object' && item !== null) {
+          if ('value' in item) return item.value;
+          return JSON.stringify(item);
+        }
+        return String(item);
+      })
+      .filter(value => value !== undefined && value !== null && value !== '')
+      .join(', ');
+  }
+  
+  // Handle objects with nested values
+  if (typeof answer === 'object' && answer !== null) {
+    if ('value' in answer) {
+      return String(answer.value);
+    }
+    
+    if ('parent_question' in answer && 'parent_value' in answer && 'value' in answer) {
+      return String(answer.value);
+    }
+    
+    return JSON.stringify(answer);
+  }
+  
+  // Simple values
+  return String(answer);
+}
+
+/**
+ * Extracts the formatted answers structure from various possible answer formats
+ */
+const extractFormattedAnswers = (answers: Record<string, any>): any | undefined => {
+  if (!answers || typeof answers !== 'object') {
+    console.log("[submit-form/extractFormattedAnswers]: No answers provided or invalid format");
+    return undefined;
+  }
+
+  // Case 1: Direct structure with answeredSections
+  if ('answeredSections' in answers && Array.isArray(answers.answeredSections)) {
+    console.log("[submit-form/extractFormattedAnswers]: Found direct structure with answeredSections");
+    return answers;
+  }
+
+  // Case 2: Nested in formattedAnswers
+  if ('formattedAnswers' in answers) {
+    const formattedAnswers = answers.formattedAnswers;
+    
+    if (formattedAnswers && typeof formattedAnswers === 'object') {
+      if ('answeredSections' in formattedAnswers) {
+        console.log("[submit-form/extractFormattedAnswers]: Found single-nested formattedAnswers structure");
+        return formattedAnswers;
+      }
+      
+      if ('formattedAnswers' in formattedAnswers) {
+        console.log("[submit-form/extractFormattedAnswers]: Found double-nested formattedAnswers structure");
+        return formattedAnswers.formattedAnswers;
+      }
+    }
+  }
+
+  // Case 3: Look for answers within a metadata wrapper
+  if ('rawAnswers' in answers && typeof answers.rawAnswers === 'object') {
+    console.log("[submit-form/extractFormattedAnswers]: Found rawAnswers field, checking inside");
+    const innerResult = extractFormattedAnswers(answers.rawAnswers);
+    if (innerResult) {
+      return innerResult;
+    }
+  }
+
+  // Case 4: Raw answers format that needs transformation
+  if (Object.keys(answers).length > 0) {
+    console.log("[submit-form/extractFormattedAnswers]: Transforming raw answers to formatted structure");
+    
+    return {
+      answeredSections: [{
+        section_title: "Patientens svar",
+        responses: Object.entries(answers)
+          .filter(([key]) => !['formMetadata', 'metadata'].includes(key))
+          .map(([id, answer]) => {
+            // Handle dynamic follow-up questions
+            if (id.includes('_for_')) {
+              const [baseQuestion, parentValue] = id.split('_for_');
+              return {
+                id,
+                answer: {
+                  parent_question: baseQuestion,
+                  parent_value: parentValue.replace(/_/g, ' '),
+                  value: answer
+                }
+              };
+            }
+            // Regular questions
+            return { id, answer };
+          })
+      }]
+    };
+  }
+
+  console.log("[submit-form/extractFormattedAnswers]: No valid answer structure found");
+  return undefined;
+};
+
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -134,7 +371,7 @@ serve(async (req: Request) => {
     console.log("[submit-form]: Fetching entry by token...");
     const { data: entry, error: entryError } = await supabase
       .from('anamnes_entries')
-      .select('id, status, is_magic_link, booking_id')
+      .select('id, status, is_magic_link, booking_id, form_id')
       .eq('access_token', token)
       .maybeSingle();
     
@@ -154,7 +391,7 @@ serve(async (req: Request) => {
       );
     }
     
-    console.log(`[submit-form]: Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}`);
+    console.log(`[submit-form]: Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}, form_id: ${entry.form_id}`);
     
     // If the form was already submitted, return a success response
     if (entry.status === 'ready') {
@@ -169,6 +406,30 @@ serve(async (req: Request) => {
       );
     }
     
+    // Fetch the form template to use for better formatting
+    console.log("[submit-form]: Fetching form template with ID:", entry.form_id);
+    let formTemplate = null;
+    
+    try {
+      const { data: templateData, error: templateError } = await supabase
+        .from('anamnes_forms')
+        .select('schema')
+        .eq('id', entry.form_id)
+        .maybeSingle();
+      
+      if (templateError) {
+        console.error("[submit-form]: Error fetching form template:", templateError);
+      } else if (templateData) {
+        formTemplate = templateData.schema;
+        console.log("[submit-form]: Form template fetched successfully");
+      } else {
+        console.log("[submit-form]: No form template found with ID:", entry.form_id);
+      }
+    } catch (templateFetchError) {
+      console.error("[submit-form]: Exception when fetching template:", templateFetchError);
+      // Continue with the submission even if we can't fetch the template
+    }
+
     // Prepare data for database update
     let updateData;
     
@@ -211,9 +472,10 @@ serve(async (req: Request) => {
         throw new Error("Invalid answer structure in submission");
       }
       
-      // Use formatted raw data from request if provided, otherwise create one
+      // Generate formatted raw data using the improved algorithm
       let formattedRawData;
       
+      // Try to use provided formatted data first
       if (typeof answers.formattedRawData === 'string' && answers.formattedRawData.trim() !== '') {
         console.log("[submit-form]: Using provided formattedRawData string");
         formattedRawData = answers.formattedRawData;
@@ -221,17 +483,32 @@ serve(async (req: Request) => {
         console.log("[submit-form]: Using provided formatted_raw_data");
         formattedRawData = answers.formatted_raw_data;
       } else {
-        console.log("[submit-form]: Creating formattedRawData from raw data");
-        // Create a simple text representation if no formatted data provided
-        formattedRawData = "Patientens anamnesinformation:\n\n";
-        if (typeof formData === 'object' && formData !== null) {
-          Object.entries(formData).forEach(([key, value]) => {
-            if (key !== 'metadata' && key !== 'formattedAnswers' && value !== null && value !== undefined) {
-              formattedRawData += `${key}: ${JSON.stringify(value)}\n`;
-            }
-          });
+        console.log("[submit-form]: Generating formatted raw data using improved algorithm");
+        
+        // Try to extract formatted answers structure
+        const formattedAnswersObj = extractFormattedAnswers(answers);
+        
+        if (formTemplate && formattedAnswersObj) {
+          // Use the optimized algorithm with the form template
+          formattedRawData = createOptimizedPromptInput(formTemplate, formattedAnswersObj);
+          console.log("[submit-form]: Generated formatted raw data using template and answers");
+        } else {
+          console.log("[submit-form]: Using fallback simple text formatting");
+          // Fallback to simple formatting
+          formattedRawData = "Patientens anamnesinformation:\n\n";
+          if (typeof formData === 'object' && formData !== null) {
+            Object.entries(formData).forEach(([key, value]) => {
+              if (key !== 'metadata' && key !== 'formattedAnswers' && value !== null && value !== undefined) {
+                formattedRawData += `${key}: ${JSON.stringify(value)}\n`;
+              }
+            });
+          }
         }
       }
+      
+      // Log sample of the formatted raw data
+      console.log("[submit-form]: Formatted raw data sample:", 
+        formattedRawData ? formattedRawData.substring(0, 200) + "..." : "None generated");
         
       // Prepare the update data - CHANGED STATUS VALUE FROM 'submitted' to 'ready' to match allowed values
       updateData = { 

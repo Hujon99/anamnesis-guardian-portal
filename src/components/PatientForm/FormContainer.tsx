@@ -3,16 +3,18 @@
  * This component renders the form container, including the Toaster component
  * to ensure toast messages are properly displayed. It also adds additional
  * validation of the form template structure to prevent rendering errors.
- * Enhanced to handle the new template structure with dynamic follow-up questions
- * and to support form values change events for auto-save.
+ * Enhanced to handle the new template structure with dynamic follow-up questions,
+ * to support form values change events for auto-save, and to provide better
+ * error handling with improved diagnostics.
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import { FormTemplate } from "@/types/anamnesis";
 import { FormOrchestrator } from "./FormOrchestrator";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
+import { toast } from "sonner";
 
 interface FormContainerProps {
   formTemplate: FormTemplate;
@@ -33,16 +35,26 @@ const FormContainer: React.FC<FormContainerProps> = ({
   createdByName = null,
   onFormValuesChange
 }) => {
-  // console.log("[FormContainer]: Rendering form container with isOpticianMode:", isOpticianMode);
-  // console.log("[FormContainer]: Initializing with values:", initialValues);
-  // console.log("[FormContainer]: Created by:", createdByName);
   
-  // More detailed template logging
-  if (formTemplate) {
-
-  } else {
-    console.error("[FormContainer]: Form template is null or undefined!");
-  }
+  // Add a component mount effect to detect when form is rendered
+  useEffect(() => {
+    console.log("[FormContainer]: Mounted with template:", 
+      formTemplate?.title,
+      "isOpticianMode:", isOpticianMode,
+      "initialValues:", initialValues ? "present" : "none"
+    );
+    
+    // Validate template once on mount to provide a better user experience
+    if (!formTemplate) {
+      console.error("[FormContainer]: Form template is missing");
+    } else if (!formTemplate.sections || !Array.isArray(formTemplate.sections)) {
+      console.error("[FormContainer]: Form template has invalid sections array");
+    }
+    
+    return () => {
+      console.log("[FormContainer]: Unmounting form container");
+    };
+  }, [formTemplate, isOpticianMode, initialValues]);
   
   // Validate the form template structure before rendering
   const isValidTemplate = React.useMemo(() => {
@@ -67,49 +79,64 @@ const FormContainer: React.FC<FormContainerProps> = ({
     }
     
     // Success - template structure is valid
-    // console.log("[FormContainer]: Template structure validation passed!");
+    console.log("[FormContainer]: Template structure validation passed!");
     
     return true;
   }, [formTemplate]);
   
   const handleSubmit = async (values: any, formattedAnswers?: any) => {
-    // console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
-    // console.log("[FormContainer/handleSubmit]: Form values:", values);
-    // console.log("[FormContainer/handleSubmit]: Formatted answers:", formattedAnswers);
+    console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
     
     try {
-      // console.log("[FormContainer/handleSubmit]: Calling parent onSubmit handler");
-      return await onSubmit(values, formattedAnswers);
+      // Show a toast to inform the user the submission is in progress
+      toast.info("Skickar in formuläret...", {
+        duration: 10000, // Long duration in case submission takes time
+        id: "submit-form-toast"
+      });
+      
+      const result = await onSubmit(values, formattedAnswers);
+      
+      // Dismiss the in-progress toast
+      toast.dismiss("submit-form-toast");
+      
+      return result;
     } catch (error) {
       console.error("[FormContainer/handleSubmit]: Error in form submission:", error);
+      
+      // Dismiss the in-progress toast
+      toast.dismiss("submit-form-toast");
+      
+      // Show error toast
+      toast.error("Det uppstod ett fel vid inskickning av formuläret", {
+        description: error.message || "Försök igen om en stund",
+      });
+      
       throw error;
     }
   };
   
   const handleValuesChange = (values: Record<string, any>) => {
-    // console.log("[FormContainer]: Form values changed");
     if (onFormValuesChange) {
       onFormValuesChange(values);
     }
   };
   
-  // Render decision logging
-  // console.log(`[FormContainer/RENDER]: About to render. Template valid: ${isValidTemplate}`);
-  
   // If the template is not valid, show an error
   if (!isValidTemplate) {
-    // console.log("[FormContainer/RENDER]: Rendering error card due to invalid template");
     return (
       <ErrorCard 
         error="Formulärstrukturen är ogiltig" 
         errorCode="invalid_template"
-        diagnosticInfo={`Template: ${JSON.stringify(formTemplate, null, 2)}`}
+        diagnosticInfo={`Template: ${formTemplate ? JSON.stringify({
+          title: formTemplate.title,
+          sections: formTemplate.sections ? `${formTemplate.sections.length} sections` : "no sections",
+          hasQuestions: formTemplate.sections?.some(s => s.questions && s.questions.length > 0)
+        }) : "null"}`}
         onRetry={() => window.location.reload()}
       />
     );
   }
   
-  // console.log("[FormContainer/RENDER]: Rendering FormOrchestrator");
   return (
     <>
       <FormOrchestrator

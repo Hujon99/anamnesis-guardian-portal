@@ -4,7 +4,7 @@
  * It handles submission state, error handling, and interacts with the API
  * to send the processed form data to the submit-form edge function.
  * Enhanced with better error handling, detailed logging for debugging,
- * and robust recovery mechanisms for failed submissions.
+ * payload validation, and robust recovery mechanisms for failed submissions.
  */
 
 import { useState } from "react";
@@ -48,7 +48,30 @@ export const useFormSubmission = () => {
     formTemplate?: FormTemplate,
     preProcessedFormattedAnswers?: any
   ): Promise<boolean> => {
-
+    // Validate inputs before proceeding
+    if (!token) {
+      console.error("[useFormSubmission/submitForm]: Missing token");
+      const submissionError = new Error("Missing token") as SubmissionError;
+      submissionError.recoverable = false;
+      setError(submissionError);
+      return false;
+    }
+    
+    if (!values || typeof values !== 'object') {
+      console.error("[useFormSubmission/submitForm]: Invalid form values:", values);
+      const submissionError = new Error("Invalid form values") as SubmissionError;
+      submissionError.recoverable = false;
+      setError(submissionError);
+      return false;
+    }
+    
+    // Debug information
+    console.log("[useFormSubmission/submitForm]: Starting submission with token:", token.substring(0, 6) + "...");
+    console.log("[useFormSubmission/submitForm]: Form values structure:", {
+      keys: Object.keys(values),
+      hasMetadata: !!values._metadata,
+      valueTypes: Object.entries(values).map(([k, v]) => `${k}: ${Array.isArray(v) ? 'array' : typeof v}`).join(', ')
+    });
     
     // Store values for potential retry
     setLastAttemptValues({ token, values, formTemplate });
@@ -67,7 +90,6 @@ export const useFormSubmission = () => {
     try {
       // Extract metadata for optician submissions if present
       const isOpticianSubmission = values._metadata?.submittedBy === 'optician';
-      // console.log("[useFormSubmission/submitForm]: isOpticianSubmission:", isOpticianSubmission);
       
       // Handle conditional fields - filter out values that are not needed
       // If values contain keys that have parent-child relationship in conditional fields,
@@ -106,15 +128,23 @@ export const useFormSubmission = () => {
         ? prepareFormSubmission(formTemplate, cleanedValues, preProcessedFormattedAnswers, isOpticianSubmission)
         : { answers: cleanedValues }; // Fallback for backward compatibility
 
-
+      // Verify we have valid submission data
+      if (!submissionData) {
+        throw new Error("Failed to prepare submission data");
+      }
       
       // More detailed logging of the actual data structure being sent
-      console.log("[useFormSubmission/submitForm]: Data structure validation:", {
-        isRawAnswersObject: submissionData.rawAnswers && typeof submissionData.rawAnswers === 'object',
-        isFormattedAnswersObject: submissionData.formattedAnswers && typeof submissionData.formattedAnswers === 'object',
-        answersDataSample: JSON.stringify(submissionData).substring(0, 200) + '...',
-        dataType: typeof submissionData
+      console.log("[useFormSubmission/submitForm]: Prepared submission data:", {
+        hasRawAnswers: !!submissionData.rawAnswers,
+        hasFormattedAnswers: !!submissionData.formattedAnswers,
+        dataStructure: Object.keys(submissionData).join(', '),
+        tokenLength: token.length
       });
+      
+      // Double check that we have the necessary data
+      if (typeof submissionData !== 'object' || Object.keys(submissionData).length === 0) {
+        throw new Error("Submission data is empty or invalid");
+      }
       
       // Submit the form using the edge function
       console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
@@ -128,21 +158,20 @@ export const useFormSubmission = () => {
         try {
           console.log("[useFormSubmission/submitForm]: Sending data to edge function, attempt", retryCount + 1);
           
-          // More validation before sending
-          if (!submissionData || 
-              (typeof submissionData === 'object' && Object.keys(submissionData).length === 0)) {
-            throw new Error("Submission data is empty or invalid");
-          }
+          // Create the final payload for the edge function
+          const edgeFunctionPayload = {
+            token,
+            answers: submissionData
+          };
           
-          if (!token || typeof token !== 'string') {
-            throw new Error("Invalid token format");
-          }
+          console.log("[useFormSubmission/submitForm]: Edge function payload structure:", {
+            hasToken: !!edgeFunctionPayload.token,
+            hasAnswers: !!edgeFunctionPayload.answers,
+            payloadSize: JSON.stringify(edgeFunctionPayload).length
+          });
           
           response = await supabase.functions.invoke('submit-form', {
-            body: { 
-              token,
-              answers: submissionData
-            }
+            body: edgeFunctionPayload
           });
           
           console.log("[useFormSubmission/submitForm]: Edge function response:", {
@@ -183,8 +212,6 @@ export const useFormSubmission = () => {
       if (!response) {
         throw new Error("Failed to get response after multiple attempts");
       }
-
-      console.log("[useFormSubmission/submitForm]: Response received from edge function:", response);
 
       // Process the response
       if (response.error) {

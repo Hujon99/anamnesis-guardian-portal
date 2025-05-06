@@ -3,7 +3,8 @@
  * This utility hook manages token caching and validation for the Supabase client.
  * It provides functions to store and retrieve cached tokens with expiration management,
  * reducing unnecessary token requests and improving performance.
- * Enhanced with better debouncing and caching mechanisms to prevent race conditions.
+ * Enhanced with better debouncing, caching mechanisms, and circuit breaker pattern
+ * to prevent verification storms and race conditions.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -30,10 +31,9 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const verificationAttemptRef = useRef(0);
   const pendingRequestRef = useRef<VerificationRequest | null>(null);
-  const MAX_VERIFICATION_ATTEMPTS = 3;
-  
-  // Verification cooldown - important for preventing race conditions - reduced to allow more responsive state transitions
-  const VERIFICATION_COOLDOWN_MS = 1000; // 1 second cooldown between identical requests
+  const MAX_VERIFICATION_ATTEMPTS = 2; // Reduced for better user experience
+  const VERIFICATION_COOLDOWN_MS = 2000; // 2 seconds cooldown between identical requests
+  const verificationTimeoutRef = useRef<number | null>(null);
   
   // Get token verification result from cache if it's still valid
   const getFromCache = useCallback((token: string) => {
@@ -49,9 +49,10 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
         
         // Also check if we have a cached verification result and it's recent enough
         if (cachedData.verificationResult && cachedData.lastVerified && 
-            now - cachedData.lastVerified < 60000) { // 60 seconds max age for verification result
-          console.log("[useTokenManager]: Using cached verification result");
-          return cachedData.verificationResult;
+            now - cachedData.lastVerified < 5 * 60 * 1000) { // 5 minute max age for verification result
+          console.log("[useTokenManager]: Using cached verification result from " + 
+                     new Date(cachedData.lastVerified).toLocaleTimeString());
+          return cachedData;
         }
         
         // Token is valid but verification result is outdated or missing
@@ -103,7 +104,6 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
   const isValidToken = useCallback((token: string): boolean => {
     if (!token) return false;
     // Basic validation - token should be a non-empty string
-    // Could be extended with JWT validation if needed
     return typeof token === 'string' && token.length > 0;
   }, []);
 
@@ -175,6 +175,21 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
       throw error;
     }
   }, [supabaseClient]);
+  
+  // Reset verification state
+  const resetVerification = useCallback(() => {
+    console.log("[useTokenManager]: Resetting verification state");
+    setIsVerifying(false);
+    setVerificationError(null);
+    verificationAttemptRef.current = 0; // Reset attempt counter
+    pendingRequestRef.current = null;
+    
+    // Clear any pending verification timeout
+    if (verificationTimeoutRef.current !== null) {
+      window.clearTimeout(verificationTimeoutRef.current);
+      verificationTimeoutRef.current = null;
+    }
+  }, []);
   
   // Verify token with the edge function, falling back to direct database verification if needed
   const verifyToken = useCallback(async (token: string) => {
@@ -382,15 +397,6 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     
     return verificationPromise;
   }, [supabaseClient, verifyTokenWithDatabase, getFromCache, saveToCache, isVerificationInProgress]);
-  
-  // Reset verification state
-  const resetVerification = useCallback(() => {
-    console.log("[useTokenManager]: Resetting verification state");
-    setIsVerifying(false);
-    setVerificationError(null);
-    verificationAttemptRef.current = 0; // Reset attempt counter
-    pendingRequestRef.current = null;
-  }, []);
 
   return {
     getTokenFromCache: getFromCache,

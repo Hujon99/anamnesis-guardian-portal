@@ -3,10 +3,11 @@
  * This component serves as the base for both patient and optician form pages.
  * It handles common functionality like token verification, loading states,
  * error handling, and form rendering, while allowing customization for
- * specific form types.
+ * specific form types. Enhanced with improved error handling, better state
+ * management, and clearer feedback during token verification issues.
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useFormSubmissionManager, SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { useFormStateManager } from "@/hooks/useFormStateManager";
@@ -27,7 +28,7 @@ import CopyLinkButton from "@/components/PatientForm/CopyLinkButton";
 import AutoSaveIndicator from "@/components/PatientForm/AutoSaveIndicator";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, AlertCircle } from "lucide-react";
 
 interface BaseFormPageProps {
   token: string | null;
@@ -52,8 +53,17 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
 }) => {
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   
-  // Use token verification hook
+  // Track component mount for debugging purposes
+  useEffect(() => {
+    console.log(`[BaseFormPage]: Mounted with token: ${token ? token.substring(0, 6) + '...' : 'none'} and mode: ${mode}`);
+    return () => {
+      console.log("[BaseFormPage]: Unmounting");
+    };
+  }, [token, mode]);
+  
+  // Use token verification hook with retry counter
   const { 
     loading, 
     formLoading,
@@ -116,20 +126,34 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     setCurrentFormValues(values);
   }, []);
   
+  // Enhanced retry handler with reset of all verification state
+  const handleEnhancedRetry = useCallback(() => {
+    console.log("[BaseFormPage]: Enhanced retry initiated");
+    
+    // Increment retry attempt counter to force clean remounting
+    setRetryAttempt(prev => prev + 1);
+    
+    // After a small delay, trigger the verification retry
+    setTimeout(() => {
+      handleVerificationRetry();
+    }, 100);
+  }, [handleVerificationRetry]);
+  
   // Handle form submission with form template
   const handleSubmitWithFormTemplate = useCallback(async (values: any, formattedAnswers?: any) => {
     if (!token) {
-      console.error(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Cannot submit form: No token provided`);
+      console.error(`[BaseFormPage]: Cannot submit form: No token provided`);
       return;
     }
-    // console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Submitting form with token:`, token.substring(0, 6) + "...");
+    
+    console.log(`[BaseFormPage]: Submitting form with token: ${token.substring(0, 6) + "..."}`);
     setFormPageState("SUBMITTING");
     await handleFormSubmit(values, formTemplate, formattedAnswers);
-  }, [token, handleFormSubmit, formTemplate, setFormPageState, mode]);
+  }, [token, handleFormSubmit, formTemplate, setFormPageState]);
   
   // Handle retry for submission errors
   const handleSubmissionRetry = useCallback(() => {
-    // console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retrying submission...`);
+    console.log(`[BaseFormPage]: Retrying submission...`);
     
     // If in error state, reset error and update state
     if (formPageState === "SUBMISSION_ERROR") {
@@ -142,14 +166,14 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
         const success = await handleRetrySubmission();
         
         if (!success) {
-          // console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission failed`);
+          console.log(`[BaseFormPage]: Retry submission failed`);
           setFormPageState("SUBMISSION_ERROR");
         } else {
-          // console.log(`[${mode === 'patient' ? 'PatientFormPage' : 'OpticianFormPage'}]: Retry submission succeeded`);
+          console.log(`[BaseFormPage]: Retry submission succeeded`);
         }
       }, 100);
     }
-  }, [formPageState, resetError, handleRetrySubmission, setFormPageState, mode]);
+  }, [formPageState, resetError, handleRetrySubmission, setFormPageState]);
   
   // Extract data from entry
   const isMagicLink = entryData?.is_magic_link || false;
@@ -159,15 +183,18 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   const storeId = entryData?.store_id || null;
   const createdByName = entryData?.created_by_name || null;
   
-  // Render different components based on form state
-  // console.log(`[BaseFormPage/RENDER]: About to render with state: ${formPageState} and mode: ${mode}`);
+  // Log state transitions for debugging
+  useEffect(() => {
+    console.log(`[BaseFormPage]: State transition to: ${formPageState}`);
+  }, [formPageState]);
   
+  // Render different components based on form state
   switch (formPageState) {
     case "INITIAL_LOADING":
     case "LOADING_WITH_DATA":
       return (
         <LoadingCard 
-          onRetry={handleVerificationRetry} 
+          onRetry={handleEnhancedRetry} 
           minDisplayTime={2000}
           isFormDataReady={isFormDataReady} 
         />
@@ -186,8 +213,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
         <ErrorCard 
           error={verificationError || "Ett okänt fel har uppstått"} 
           errorCode={errorCode} 
-          diagnosticInfo={diagnosticInfo} 
-          onRetry={handleVerificationRetry} 
+          diagnosticInfo={`Retry attempt: ${retryAttempt}, ${diagnosticInfo}`} 
+          onRetry={handleEnhancedRetry} 
         />
       );
       
@@ -197,7 +224,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
         return renderCustomSubmissionError({
           error: submissionError,
           onRetry: handleSubmissionRetry,
-          onReturn: handleVerificationRetry,
+          onReturn: handleEnhancedRetry,
           submissionAttempts
         });
       }
@@ -207,7 +234,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
         <Card className="w-full max-w-3xl mx-auto p-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="bg-red-100 p-4 rounded-full">
-              <RefreshCw className="h-8 w-8 text-red-500" />
+              <AlertCircle className="h-8 w-8 text-red-500" />
             </div>
             <h2 className="text-2xl font-bold text-red-600">Formuläret kunde inte skickas in</h2>
             <p className="text-gray-700 max-w-lg">
@@ -235,7 +262,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
               
               <Button 
                 variant="outline" 
-                onClick={handleVerificationRetry} 
+                onClick={handleEnhancedRetry} 
                 className="flex-1"
               >
                 Återgå till formuläret
@@ -316,14 +343,17 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
             error="Kunde inte ladda formulärmallen korrekt" 
             errorCode="invalid_template"
             diagnosticInfo={`FormTemplate exists: ${!!formTemplate}, Schema exists: ${!!formTemplate?.schema}`}
-            onRetry={handleVerificationRetry}
+            onRetry={handleEnhancedRetry}
           />
         );
       }
       
+      // Add a key based on retry attempt to force full remounting
+      const formKey = `form-${token}-${retryAttempt}`;
+      
       // Default form UI
       return (
-        <div className="space-y-4">
+        <div className="space-y-4" key={formKey}>
           {/* Show info card for magic link entries */}
           {showBookingInfo && isMagicLink && (
             <BookingInfoCard 

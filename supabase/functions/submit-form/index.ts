@@ -105,6 +105,31 @@ serve(async (req: Request) => {
       }
     });
     
+    // *** Call set_access_token function to set the token in the database session ***
+    // This is critical for the RLS policy to work correctly
+    console.log("[submit-form]: Setting access token in database session...");
+    try {
+      const { error: setTokenError } = await supabase.rpc('set_access_token', {
+        token: token
+      });
+      
+      if (setTokenError) {
+        console.error("[submit-form]: Error setting access token:", setTokenError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to authenticate with token', details: setTokenError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log("[submit-form]: Access token set successfully");
+    } catch (tokenError) {
+      console.error("[submit-form]: Exception when setting access token:", tokenError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to authenticate with token', details: tokenError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     // 1. Fetch the entry by token to get its ID and check its status
     console.log("[submit-form]: Fetching entry by token...");
     const { data: entry, error: entryError } = await supabase
@@ -243,7 +268,7 @@ serve(async (req: Request) => {
       };
       console.log("[submit-form]: Sample of data being inserted:", sampleData);
       
-      // FIX: Use update without single() to avoid the "no rows returned" error
+      // Use update without single() to avoid the "no rows returned" error
       // Just use the regular update method and check for errors
       const { error: updateError } = await supabase
         .from('anamnes_entries')

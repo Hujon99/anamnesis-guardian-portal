@@ -1,4 +1,3 @@
-
 /**
  * This hook manages the form submission process for patient anamnesis forms.
  * It handles submission state, error handling, and interacts with the API
@@ -146,103 +145,116 @@ export const useFormSubmission = () => {
         throw new Error("Submission data is empty or invalid");
       }
       
-      // Submit the form using the edge function
+      // Create the final payload for the edge function
+      const edgeFunctionPayload = {
+        token,
+        answers: submissionData
+      };
+      
+      console.log("[useFormSubmission/submitForm]: Edge function payload structure:", {
+        hasToken: !!edgeFunctionPayload.token,
+        hasAnswers: !!edgeFunctionPayload.answers,
+        payloadSize: JSON.stringify(edgeFunctionPayload).length
+      });
+      
       console.log("[useFormSubmission/submitForm]: Calling supabase edge function 'submit-form'");
-                 
+      
+      // Submit the form using the edge function with improved error handling
       // More robust error handling with retries
       let retryCount = 0;
       const maxRetries = 2;
-      let response;
+      let response: any = null;
+      let responseError: any = null;
       
       while (retryCount <= maxRetries) {
         try {
           console.log("[useFormSubmission/submitForm]: Sending data to edge function, attempt", retryCount + 1);
           
-          // Create the final payload for the edge function
-          const edgeFunctionPayload = {
-            token,
-            answers: submissionData
-          };
-          
-          console.log("[useFormSubmission/submitForm]: Edge function payload structure:", {
-            hasToken: !!edgeFunctionPayload.token,
-            hasAnswers: !!edgeFunctionPayload.answers,
-            payloadSize: JSON.stringify(edgeFunctionPayload).length
+          // Fixed: Set a longer timeout for the function call (30 seconds)
+          const functionResponse = await supabase.functions.invoke('submit-form', {
+            body: edgeFunctionPayload,
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache',
+              'X-Client-Info': `useFormSubmission/${retryCount+1}`
+            }
           });
           
-          response = await supabase.functions.invoke('submit-form', {
-            body: edgeFunctionPayload
-          });
+          response = functionResponse;
           
-          console.log("[useFormSubmission/submitForm]: Edge function response:", {
-            hasError: !!response.error,
-            hasData: !!response.data,
-            status: response.error?.status || 200,
-            data: response.data ? JSON.stringify(response.data).substring(0, 100) : null,
-            error: response.error ? JSON.stringify(response.error).substring(0, 100) : null
-          });
-          
-          // If successful, break the retry loop
-          if (!response.error) break;
-          
-          // If there was an error, log it and retry
-          console.warn(`[useFormSubmission/submitForm]: Error attempt ${retryCount + 1}/${maxRetries + 1}:`, response.error);
-          retryCount++;
-          
-          if (retryCount <= maxRetries) {
+          // Check for errors from the edge function
+          if (response.error) {
+            responseError = response.error;
+            console.warn(`[useFormSubmission/submitForm]: Error in attempt ${retryCount + 1}/${maxRetries + 1}:`, responseError);
+            
+            // If we've reached max retries, break and handle the error
+            if (retryCount >= maxRetries) {
+              break;
+            }
+            
+            // Otherwise, increment retry counter and continue
+            retryCount++;
+            
             // Wait before retrying (exponential backoff)
             await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
             console.log(`[useFormSubmission/submitForm]: Retrying submission, attempt ${retryCount + 1}/${maxRetries + 1}`);
+          } else {
+            // Success! Break the retry loop
+            console.log("[useFormSubmission/submitForm]: Edge function responded with success");
+            responseError = null;
+            break;
           }
         } catch (invocationError: any) {
           console.error("[useFormSubmission/submitForm]: Function invocation error:", invocationError);
+          responseError = invocationError;
+          
+          if (retryCount >= maxRetries) {
+            break;
+          }
+          
           retryCount++;
           
-          if (retryCount <= maxRetries) {
-            // Wait before retrying
-            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
-            console.log(`[useFormSubmission/submitForm]: Retrying after error, attempt ${retryCount + 1}/${maxRetries + 1}`);
-          } else {
-            throw invocationError;
-          }
+          // Wait before retrying
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount)));
+          console.log(`[useFormSubmission/submitForm]: Retrying after error, attempt ${retryCount + 1}/${maxRetries + 1}`);
         }
       }
 
-      // No response after all retries
-      if (!response) {
-        throw new Error("Failed to get response after multiple attempts");
-      }
-
-      // Process the response
-      if (response.error) {
-        console.error("[useFormSubmission/submitForm]: Form submission error after retries:", response.error);
+      // If we still have an error after all retries
+      if (responseError || !response) {
+        const errorMessage = responseError?.message || "Failed to get response after multiple attempts";
+        console.error("[useFormSubmission/submitForm]: Form submission error after all retries:", errorMessage);
         
         // Create a more detailed error
-        const submissionError: SubmissionError = new Error(
-          response.error.message || "Ett fel uppstod vid formulärinskickning"
-        );
-        
-        submissionError.status = response.error.status;
-        submissionError.details = response.error.details || response.error.message;
-        submissionError.recoverable = response.error.status !== 404 && response.error.status !== 410 && response.error.status !== 401;
+        const submissionError: SubmissionError = new Error(errorMessage);
+        submissionError.status = responseError?.status || 500;
+        submissionError.details = responseError?.details || responseError?.message;
+        submissionError.recoverable = true; // Set most errors as recoverable for better UX
         
         throw submissionError;
       }
 
-      console.log("[useFormSubmission/submitForm]: Form submission successful:", response.data);
-
-      // Success handling
-      setIsSubmitted(true);
-      
-      toast({
-        title: "Tack för dina svar!",
-        description: isOpticianSubmission 
-          ? "Formuläret har markerats som färdigt och statusen har uppdaterats." 
-          : "Dina svar har skickats in framgångsrikt.",
-      });
-      
-      clearTimeout(submissionTimeout);
-      return true;
+      // Check if the response data indicates a successful submission
+      if (response.data?.success) {
+        console.log("[useFormSubmission/submitForm]: Form submission successful:", response.data);
+        
+        // Success handling
+        setIsSubmitted(true);
+        
+        toast({
+          title: "Tack för dina svar!",
+          description: isOpticianSubmission 
+            ? "Formuläret har markerats som färdigt och statusen har uppdaterats." 
+            : "Dina svar har skickats in framgångsrikt.",
+        });
+        
+        clearTimeout(submissionTimeout);
+        return true;
+      } else {
+        // The API returned a response but not a success status
+        console.error("[useFormSubmission/submitForm]: Form submission response didn't indicate success:", response.data);
+        throw new Error(response.data?.error || "Oväntat svar från servern");
+      }
     } catch (err: any) {
       // Enhanced error handling
       console.error("[useFormSubmission/submitForm]: Form submission error:", err);
@@ -255,6 +267,10 @@ export const useFormSubmission = () => {
         if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
           submissionError.status = 0;
           submissionError.details = "Nätverksfel - Kunde inte ansluta till servern";
+          submissionError.recoverable = true;
+        } else if (err.message?.includes('JWT')) {
+          submissionError.status = 401;
+          submissionError.details = "Autentiseringsfel - JWT-token har gått ut eller är ogiltig";
           submissionError.recoverable = true;
         } else {
           submissionError.status = 500;
@@ -270,10 +286,9 @@ export const useFormSubmission = () => {
       // Network error detection
       if (submissionError.message?.includes('Failed to fetch') || submissionError.message?.includes('NetworkError')) {
         errorMessage = "Kunde inte ansluta till servern. Kontrollera din internetanslutning och försök igen.";
-      }
-      
-      // Generic API error
-      if (submissionError.status >= 500) {
+      } else if (submissionError.message?.includes('JWT')) {
+        errorMessage = "Din session har gått ut. Vänligen ladda om sidan och försök igen.";
+      } else if (submissionError.status >= 500) {
         errorMessage = "Ett serverfel uppstod. Formuläret kunde inte skickas in just nu. Du kan försöka igen om en stund.";
       }
       

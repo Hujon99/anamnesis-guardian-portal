@@ -2,9 +2,10 @@
 /**
  * This hook unifies form submission handling for both patient and optician modes.
  * It provides a common interface but adapts to different submission methods based on mode.
+ * Enhanced to handle JWT expiration errors and auto-refresh functionality.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFormSubmission } from './useFormSubmission';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
@@ -19,6 +20,7 @@ export type { SubmissionError } from './useFormSubmission';
 // Define the SubmissionError type in this file to avoid TypeScript errors
 type SubmissionError = Error & {
   details?: string;
+  status?: number;
   recoverable?: boolean;
 };
 
@@ -27,14 +29,33 @@ export type SubmissionMode = 'patient' | 'optician';
 interface FormSubmissionManagerProps {
   token: string | null;
   mode: SubmissionMode;
+  onSubmissionError?: (error: SubmissionError) => void;
 }
 
-export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerProps) {
+export function useFormSubmissionManager({ 
+  token, 
+  mode,
+  onSubmissionError
+}: FormSubmissionManagerProps) {
   const [localSubmitted, setLocalSubmitted] = useState(false);
-  const { supabase } = useSupabaseClient();
+  const { supabase, refreshClient } = useSupabaseClient();
   
   // Use the standard patient form submission hook
   const patientSubmission = useFormSubmission();
+  
+  // Watch for JWT errors and try to handle them
+  useEffect(() => {
+    if (patientSubmission.error?.message?.includes('JWT')) {
+      console.log("[useFormSubmissionManager]: JWT error detected, attempting to refresh client");
+      refreshClient(true).catch(error => {
+        console.error("[useFormSubmissionManager]: Failed to refresh client:", error);
+      });
+      
+      if (onSubmissionError) {
+        onSubmissionError(patientSubmission.error);
+      }
+    }
+  }, [patientSubmission.error, refreshClient, onSubmissionError]);
   
   // Optician-specific mutation
   const opticianMutation = useMutation({
@@ -98,17 +119,53 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
         updated_at: new Date().toISOString()
       };
       
-      // Update the entry with the form answers
-      const { error } = await supabase
-        .from("anamnes_entries")
-        .update(submissionData)
-        .eq("access_token", token);
-      
-      if (error) {
-        const submissionError = new Error("Kunde inte skicka formuläret: " + error.message) as SubmissionError;
-        submissionError.details = error.message;
-        submissionError.recoverable = true;
-        throw submissionError;
+      try {
+        // Try to refresh the client once before submitting
+        await refreshClient();
+        
+        // Update the entry with the form answers
+        const { error } = await supabase
+          .from("anamnes_entries")
+          .update(submissionData)
+          .eq("access_token", token);
+        
+        if (error) {
+          // If we get an auth error, try to refresh and retry
+          if (error.message?.includes('JWT') || error.code === 'PGRST301') {
+            console.log("[useFormSubmissionManager]: JWT error detected, refreshing token and retrying");
+            await refreshClient(true);
+            
+            // Try once more after refresh
+            const { error: retryError } = await supabase
+              .from("anamnes_entries")
+              .update(submissionData)
+              .eq("access_token", token);
+              
+            if (retryError) {
+              const submissionError = new Error("Kunde inte skicka formuläret: " + retryError.message) as SubmissionError;
+              submissionError.details = retryError.message;
+              submissionError.recoverable = true;
+              throw submissionError;
+            }
+          } else {
+            const submissionError = new Error("Kunde inte skicka formuläret: " + error.message) as SubmissionError;
+            submissionError.details = error.message;
+            submissionError.recoverable = true;
+            throw submissionError;
+          }
+        }
+      } catch (error: any) {
+        // Handle JWT errors
+        if (error.message?.includes('JWT')) {
+          if (onSubmissionError) {
+            const submissionError = new Error("Autentiseringsfel: " + error.message) as SubmissionError;
+            submissionError.details = error.message;
+            submissionError.status = 401;
+            submissionError.recoverable = true;
+            onSubmissionError(submissionError);
+          }
+        }
+        throw error;
       }
       
       // Set local state to indicate successful submission
@@ -122,6 +179,14 @@ export function useFormSubmissionManager({ token, mode }: FormSubmissionManagerP
     },
     onError: (error: Error) => {
       console.error("[useFormSubmissionManager]: Optician mutation error:", error);
+      
+      // If JWT error, try to handle it
+      if (error.message?.includes('JWT') && onSubmissionError) {
+        const submissionError = error as SubmissionError;
+        submissionError.status = 401;
+        submissionError.recoverable = true;
+        onSubmissionError(submissionError);
+      }
       
       toast({
         title: "Ett fel uppstod",

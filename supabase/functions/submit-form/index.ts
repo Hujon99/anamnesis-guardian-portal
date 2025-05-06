@@ -1,3 +1,4 @@
+
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
@@ -228,12 +229,12 @@ serve(async (req: Request) => {
       };
       console.log("[submit-form]: Sample of data being inserted:", sampleData);
       
-      const { data: updateResult, error: updateError } = await supabase
+      // FIX: Use update without single() to avoid the "no rows returned" error
+      // Just use the regular update method and check for errors
+      const { error: updateError } = await supabase
         .from('anamnes_entries')
         .update(updateData)
-        .eq('id', entry.id)
-        .select('id, status')
-        .single();
+        .eq('id', entry.id);
       
       if (updateError) {
         console.error("[submit-form]: Error updating entry:", updateError);
@@ -243,7 +244,33 @@ serve(async (req: Request) => {
         );
       }
       
-      console.log("[submit-form]: Entry updated successfully:", JSON.stringify(updateResult));
+      // Perform a verification read to confirm the update was successful
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('anamnes_entries')
+        .select('id, status')
+        .eq('id', entry.id)
+        .maybeSingle();
+      
+      if (verifyError) {
+        console.error("[submit-form]: Verification read failed:", verifyError);
+        return new Response(
+          JSON.stringify({ error: 'Update verification failed', details: verifyError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (!verifyData) {
+        console.error("[submit-form]: Entry not found after update");
+        return new Response(
+          JSON.stringify({ error: 'Entry not found after update' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log("[submit-form]: Entry updated successfully:", JSON.stringify({
+        id: verifyData.id,
+        status: verifyData.status
+      }));
     } catch (updateCatchError) {
       console.error("[submit-form]: Exception during update operation:", updateCatchError);
       return new Response(
@@ -267,28 +294,6 @@ serve(async (req: Request) => {
     } catch (summaryError) {
       console.error("[submit-form]: Error triggering summary generation:", summaryError);
       // Non-critical error, continue with submission success
-    }
-    
-    // 5. Perform a verification read to confirm the data was saved
-    try {
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('anamnes_entries')
-        .select('id, status, answers')
-        .eq('id', entry.id)
-        .single();
-        
-      if (verifyError) {
-        console.error("[submit-form]: Verification read failed:", verifyError);
-      } else {
-        console.log("[submit-form]: Verification read successful:", JSON.stringify({
-          id: verifyData.id,
-          status: verifyData.status,
-          hasAnswers: !!verifyData.answers,
-          answersSize: verifyData.answers ? Object.keys(verifyData.answers).length : 0
-        }));
-      }
-    } catch (verifyException) {
-      console.error("[submit-form]: Exception during verification read:", verifyException);
     }
     
     // Return success response

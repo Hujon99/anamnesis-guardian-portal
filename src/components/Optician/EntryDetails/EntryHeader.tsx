@@ -61,7 +61,7 @@ export function EntryHeader({
       case "ready":
         return <Badge variant="success">Klar för undersökning</Badge>;
       case "reviewed":
-        return <Badge className="bg-purple-500 text-white">Granskad</Badge>;
+        return <Badge className="bg-accent_teal text-white">Granskad</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -154,7 +154,7 @@ export function EntryHeader({
       <BookingInfoPanel entry={entry} />
       
       {/* Patient link section - now always visible */}
-      <div className="mt-4 border p-3 rounded-md bg-gray-50">
+      <div className="mt-4 border p-3 rounded-xl bg-surface_light shadow-lg/20">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <Link className="h-4 w-4 text-primary" />
@@ -179,9 +179,9 @@ export function EntryHeader({
       
       {hasAnswers && (
         <div className="mt-4">
-          <Alert>
-            <FileText className="h-4 w-4" />
-            <AlertTitle>Sammanfattning</AlertTitle>
+          <Alert className="border-accent_teal/20 bg-accent_teal/10">
+            <FileText className="h-4 w-4 text-accent_teal" />
+            <AlertTitle className="text-accent_teal">Sammanfattning</AlertTitle>
             <AlertDescription>
               {getSummary()}
             </AlertDescription>

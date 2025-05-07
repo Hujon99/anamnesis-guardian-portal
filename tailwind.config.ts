@@ -1,3 +1,10 @@
+
+/**
+ * This file contains the Tailwind CSS configuration for the application.
+ * It defines theme settings such as colors, typography, spacing, and other design tokens
+ * used throughout the application for consistent styling.
+ */
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -25,7 +32,7 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					DEFAULT: 'hsl(var(--primary))',
+					DEFAULT: 'hsl(210 100% 40%)',
 					foreground: 'hsl(var(--primary-foreground))'
 				},
 				secondary: {
@@ -61,12 +68,25 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// New accent colors
+				accent_teal: 'hsl(173 64% 45%)',
+				accent_coral: 'hsl(12 90% 55%)',
+				// New surface colors
+				surface_light: 'hsl(210 20% 98%)',
+				surface_dark: 'hsl(220 15% 16%)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'calc(var(--radius) - 4px)',
+				// New border radius values
+				xl: '1rem',
+				'2xl': '1.5rem'
+			},
+			boxShadow: {
+				// New shadow
+				'lg/20': '0 8px 24px -4px hsl(210 8% 42% / .20)'
 			},
 			keyframes: {
 				'accordion-down': {

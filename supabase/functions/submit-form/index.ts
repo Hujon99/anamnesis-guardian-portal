@@ -1,9 +1,10 @@
+
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
- * Enhanced to handle both regular and magic link entries.
- * Improved with better error handling, detailed logging, and input validation.
- * Now automatically triggers AI summary generation after successful form submission.
+ * UNIFIED: Now handles both patient and optician submissions via the same endpoint.
+ * Enhanced with better error handling, detailed logging, and input validation.
+ * Sets the correct status based on submission type (patient vs optician).
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -325,10 +326,17 @@ serve(async (req: Request) => {
       hasFormattedAnswers: !!requestData?.answers?.formattedAnswers,
       formattedAnswersType: typeof requestData?.answers?.formattedAnswers,
       hasMetadata: !!requestData?.answers?.metadata,
+      isOptician: !!requestData?.answers?._isOptician || !!requestData?.answers?._metadata?.submittedBy === 'optician',
     }, null, 2));
     
     // Extract necessary data
     const { token, answers } = requestData;
+    
+    // Check if this is an optician submission
+    const isOptician = answers?._isOptician === true || 
+                      answers?._metadata?.submittedBy === 'optician';
+                      
+    console.log("[submit-form]: Submission type:", isOptician ? "Optician" : "Patient");
     
     // Validate token
     if (!token) {
@@ -490,7 +498,7 @@ serve(async (req: Request) => {
         // Filter out special properties that aren't actual form answers
         formData = {};
         for (const key in answers) {
-          if (key !== 'metadata' && key !== 'formattedAnswers' && key !== 'rawAnswers') {
+          if (!['metadata', 'formattedAnswers', 'rawAnswers', '_isOptician', '_metadata'].includes(key)) {
             formData[key] = answers[key];
           }
         }
@@ -537,11 +545,15 @@ serve(async (req: Request) => {
       console.log("[submit-form]: Formatted raw data sample:", 
         formattedRawData ? formattedRawData.substring(0, 200) + "..." : "None generated");
         
-      // Prepare the update data - CHANGED STATUS VALUE FROM 'submitted' to 'ready' to match allowed values
+      // Set correct status based on submission type
+      const status = isOptician ? 'ready' : 'submitted';
+      console.log(`[submit-form]: Setting status to '${status}' based on submission type: ${isOptician ? 'Optician' : 'Patient'}`);
+      
+      // Prepare the update data
       updateData = { 
         answers: formData,
         formatted_raw_data: formattedRawData,
-        status: 'ready',
+        status: status,
         updated_at: new Date().toISOString()
       };
       
@@ -569,6 +581,7 @@ serve(async (req: Request) => {
       const sampleData = {
         answersSample: JSON.stringify(updateData.answers).substring(0, 200) + '...',
         formattedRawDataSample: updateData.formatted_raw_data.substring(0, 200) + '...',
+        status: updateData.status
       };
       console.log("[submit-form]: Sample of data being inserted:", sampleData);
       

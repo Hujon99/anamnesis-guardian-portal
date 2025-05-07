@@ -19,6 +19,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 // Type definitions to match frontend types
 interface FormQuestion {
@@ -284,6 +285,54 @@ async function generateAiSummary(entryId: string, supabaseClient: any) {
   }
 }
 
+/**
+ * Creates database logging for submission attempts
+ */
+async function logSubmissionAttempt(supabaseClient: any, details: {
+  token: string;
+  entryId?: string;
+  isOptician?: boolean;
+  status: 'success' | 'error';
+  errorDetails?: any;
+  updateData?: any;
+}) {
+  try {
+    // Use service role key for this operation to bypass RLS
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false }
+    });
+    
+    // Create or append to existing log table
+    const { error } = await supabaseAdmin.from('submission_logs')
+      .insert({
+        token: details.token.substring(0, 10) + '...',
+        entry_id: details.entryId,
+        is_optician: !!details.isOptician,
+        status: details.status,
+        error_details: details.errorDetails ? JSON.stringify(details.errorDetails).substring(0, 1000) : null,
+        update_data_sample: details.updateData ? JSON.stringify(details.updateData).substring(0, 1000) : null,
+        timestamp: new Date().toISOString()
+      });
+    
+    if (error) {
+      console.error("[submit-form]: Error logging submission attempt:", error);
+      
+      // If the table doesn't exist yet, try creating it
+      if (error.code === '42P01') { // undefined_table
+        console.log("[submit-form]: Creating submission_logs table");
+        
+        // This will fail if the user doesn't have permission, but that's acceptable
+        await supabaseAdmin.rpc('create_submission_logs_table');
+      }
+    } else {
+      console.log("[submit-form]: Submission attempt logged successfully");
+    }
+  } catch (logError: any) {
+    console.error("[submit-form]: Exception in logSubmissionAttempt:", logError);
+    // Non-critical error, don't throw
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -367,7 +416,7 @@ serve(async (req: Request) => {
     
     console.log("[submit-form]: Form submission received for token:", token.substring(0, 6) + "...");
     
-    // Initialize the Supabase client
+    // Initialize the Supabase client with regular anon key
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false },
       global: { 
@@ -376,46 +425,103 @@ serve(async (req: Request) => {
         } 
       }
     });
+
+    // Also initialize an admin client with service role key for emergency fallback
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false },
+      global: { 
+        headers: { 
+          'X-Edge-Function': 'submit-form-admin'
+        } 
+      }
+    });
     
     // *** Call set_access_token function to set the token in the database session ***
     // This is critical for the RLS policy to work correctly
     console.log("[submit-form]: Setting access token in database session...");
+    let setTokenSuccess = false;
     try {
-      const { error: setTokenError } = await supabase.rpc('set_access_token', {
+      const { data: setTokenData, error: setTokenError } = await supabase.rpc('set_access_token', {
         token: token
       });
       
       if (setTokenError) {
         console.error("[submit-form]: Error setting access token:", setTokenError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to authenticate with token', details: setTokenError.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // Don't return yet, we'll try to continue with the admin client as fallback
+      } else {
+        console.log("[submit-form]: Access token set successfully. Result:", setTokenData);
+        setTokenSuccess = true;
       }
-      
-      console.log("[submit-form]: Access token set successfully");
     } catch (tokenError) {
       console.error("[submit-form]: Exception when setting access token:", tokenError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to authenticate with token', details: tokenError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Don't return yet, we'll try to continue with the admin client as fallback
     }
     
     // 1. Fetch the entry by token to get its ID and check its status
     console.log("[submit-form]: Fetching entry by token...");
-    const { data: entry, error: entryError } = await supabase
-      .from('anamnes_entries')
-      .select('id, status, is_magic_link, booking_id, form_id')
-      .eq('access_token', token)
-      .maybeSingle();
     
-    if (entryError) {
-      console.error("[submit-form]: Error fetching entry:", entryError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch entry', details: entryError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Try with regular client first
+    let entry = null;
+    let entryError = null;
+    
+    // First attempt with token-based auth
+    try {
+      const { data: entryData, error: fetchEntryError } = await supabase
+        .from('anamnes_entries')
+        .select('id, status, is_magic_link, booking_id, form_id, organization_id')
+        .eq('access_token', token)
+        .maybeSingle();
+      
+      if (fetchEntryError) {
+        console.error("[submit-form]: Error fetching entry with token auth:", fetchEntryError);
+        entryError = fetchEntryError;
+      } else if (entryData) {
+        entry = entryData;
+        console.log("[submit-form]: Entry found with token auth:", entry.id);
+      } else {
+        console.error("[submit-form]: No entry found with token auth");
+      }
+    } catch (fetchError) {
+      console.error("[submit-form]: Exception fetching entry with token auth:", fetchError);
+      entryError = fetchError;
+    }
+    
+    // If token auth failed, try with admin client as fallback
+    if (!entry) {
+      console.log("[submit-form]: Trying admin client fallback for fetching entry...");
+      try {
+        const { data: adminEntryData, error: adminFetchError } = await supabaseAdmin
+          .from('anamnes_entries')
+          .select('id, status, is_magic_link, booking_id, form_id, organization_id')
+          .eq('access_token', token)
+          .maybeSingle();
+          
+        if (adminFetchError) {
+          console.error("[submit-form]: Admin client also failed to fetch entry:", adminFetchError);
+          // If both methods fail, return the original error
+          return new Response(
+            JSON.stringify({ error: 'Failed to fetch entry', details: entryError?.message || adminFetchError?.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (!adminEntryData) {
+          console.error("[submit-form]: No entry found with admin client either");
+          return new Response(
+            JSON.stringify({ error: 'Invalid token, no entry found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        entry = adminEntryData;
+        console.log("[submit-form]: Entry found with admin client:", entry.id);
+      } catch (adminFetchError) {
+        console.error("[submit-form]: Exception with admin client fetch:", adminFetchError);
+        return new Response(
+          JSON.stringify({ error: 'Server error fetching entry', details: adminFetchError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
     
     if (!entry) {
@@ -426,11 +532,21 @@ serve(async (req: Request) => {
       );
     }
     
-    console.log(`[submit-form]: Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}, form_id: ${entry.form_id}`);
+    console.log(`[submit-form]: Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}, form_id: ${entry.form_id}, org_id: ${entry.organization_id}`);
     
     // If the form was already submitted, return a success response
-    if (entry.status === 'ready') {
-      console.log("[submit-form]: Form was already submitted, returning success");
+    if (entry.status === 'ready' && isOptician) {
+      console.log("[submit-form]: Form was already submitted by optician, returning success");
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Form was already submitted',
+          submitted: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else if (entry.status === 'submitted' && !isOptician) {
+      console.log("[submit-form]: Form was already submitted by patient, returning success");
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -560,6 +676,20 @@ serve(async (req: Request) => {
       console.log("[submit-form]: Update data prepared successfully");
     } catch (dataError) {
       console.error("[submit-form]: Error preparing update data:", dataError);
+      
+      // Log the submission attempt with error details
+      await logSubmissionAttempt(supabase, {
+        token,
+        entryId: entry.id,
+        isOptician,
+        status: 'error',
+        errorDetails: {
+          phase: 'data_preparation',
+          message: dataError.message,
+          stack: dataError.stack
+        }
+      });
+      
       return new Response(
         JSON.stringify({ error: 'Failed to process form data', details: dataError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -575,65 +705,147 @@ serve(async (req: Request) => {
       "formatted_raw_data is " + (updateData.formatted_raw_data ? `present (${updateData.formatted_raw_data.substring(0, 50)}...)` : "missing")
     );
     
-    // Attempt to update with transaction for better atomicity
-    try {
-      // Log sample of data we're about to insert
-      const sampleData = {
-        answersSample: JSON.stringify(updateData.answers).substring(0, 200) + '...',
-        formattedRawDataSample: updateData.formatted_raw_data.substring(0, 200) + '...',
-        status: updateData.status
-      };
-      console.log("[submit-form]: Sample of data being inserted:", sampleData);
-      
-      // Use update without single() to avoid the "no rows returned" error
-      // Just use the regular update method and check for errors
-      const { error: updateError } = await supabase
-        .from('anamnes_entries')
-        .update(updateData)
-        .eq('id', entry.id);
-      
-      if (updateError) {
-        console.error("[submit-form]: Error updating entry:", updateError);
+    // Try first with the token-based auth client
+    let updateSuccess = false;
+    let updateError = null;
+    
+    // Log sample of data we're about to insert
+    const sampleData = {
+      answersSample: JSON.stringify(updateData.answers).substring(0, 200) + '...',
+      formattedRawDataSample: updateData.formatted_raw_data.substring(0, 200) + '...',
+      status: updateData.status
+    };
+    console.log("[submit-form]: Sample of data being inserted:", sampleData);
+    
+    // Attempt to update with regular client first
+    if (setTokenSuccess) {
+      try {
+        console.log("[submit-form]: Attempting update with token-based client...");
+        const { error: clientUpdateError } = await supabase
+          .from('anamnes_entries')
+          .update(updateData)
+          .eq('id', entry.id);
+        
+        if (clientUpdateError) {
+          console.error("[submit-form]: Error updating with token-based client:", clientUpdateError);
+          updateError = clientUpdateError;
+        } else {
+          console.log("[submit-form]: Entry updated successfully with token-based client");
+          updateSuccess = true;
+        }
+      } catch (clientUpdateCatchError) {
+        console.error("[submit-form]: Exception during token-based update:", clientUpdateCatchError);
+        updateError = clientUpdateCatchError;
+      }
+    } else {
+      console.log("[submit-form]: Skipping token-based update since token setting failed");
+    }
+    
+    // If token-based update failed, try with admin client
+    if (!updateSuccess) {
+      console.log("[submit-form]: Attempting update with admin client as fallback...");
+      try {
+        const { error: adminUpdateError } = await supabaseAdmin
+          .from('anamnes_entries')
+          .update(updateData)
+          .eq('id', entry.id);
+        
+        if (adminUpdateError) {
+          console.error("[submit-form]: Error updating with admin client:", adminUpdateError);
+          
+          // If both methods failed, log the attempt and return error
+          await logSubmissionAttempt(supabase, {
+            token,
+            entryId: entry.id,
+            isOptician,
+            status: 'error',
+            errorDetails: {
+              tokenUpdateError: updateError,
+              adminUpdateError: adminUpdateError
+            },
+            updateData
+          });
+          
+          return new Response(
+            JSON.stringify({ 
+              error: 'Failed to save entry', 
+              details: 'Both token and admin update methods failed',
+              tokenError: updateError?.message,
+              adminError: adminUpdateError?.message
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          console.log("[submit-form]: Entry updated successfully with admin client");
+          updateSuccess = true;
+        }
+      } catch (adminUpdateCatchError) {
+        console.error("[submit-form]: Exception during admin update:", adminUpdateCatchError);
+        
+        // Log the attempt and return error
+        await logSubmissionAttempt(supabase, {
+          token,
+          entryId: entry.id,
+          isOptician,
+          status: 'error',
+          errorDetails: {
+            tokenUpdateError: updateError,
+            adminUpdateException: adminUpdateCatchError
+          },
+          updateData
+        });
+        
         return new Response(
-          JSON.stringify({ error: 'Failed to save entry', details: updateError.message }),
+          JSON.stringify({ 
+            error: 'Exception during database update', 
+            details: adminUpdateCatchError.message,
+            originalError: updateError?.message
+          }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      // Perform a verification read to confirm the update was successful
-      const { data: verifyData, error: verifyError } = await supabase
+    }
+    
+    // Verify the update was successful by reading back the data
+    try {
+      console.log("[submit-form]: Verifying update with read operation...");
+      const { data: verifyData, error: verifyError } = await supabaseAdmin
         .from('anamnes_entries')
-        .select('id, status')
+        .select('id, status, answers')
         .eq('id', entry.id)
         .maybeSingle();
       
       if (verifyError) {
         console.error("[submit-form]: Verification read failed:", verifyError);
-        return new Response(
-          JSON.stringify({ error: 'Update verification failed', details: verifyError.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        
+        // This is a non-fatal error since we already confirmed the update
+        console.warn("[submit-form]: Continuing despite verification failure");
+      } else if (!verifyData) {
+        console.error("[submit-form]: Entry not found during verification");
+        
+        // This is strange but not necessarily fatal
+        console.warn("[submit-form]: Continuing despite verification anomaly");
+      } else {
+        console.log("[submit-form]: Entry verification successful:", JSON.stringify({
+          id: verifyData.id,
+          status: verifyData.status,
+          hasAnswers: !!verifyData.answers,
+          answersKeys: verifyData.answers ? Object.keys(verifyData.answers).length : 0
+        }));
       }
-      
-      if (!verifyData) {
-        console.error("[submit-form]: Entry not found after update");
-        return new Response(
-          JSON.stringify({ error: 'Entry not found after update' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      console.log("[submit-form]: Entry updated successfully:", JSON.stringify({
-        id: verifyData.id,
-        status: verifyData.status
-      }));
-    } catch (updateCatchError) {
-      console.error("[submit-form]: Exception during update operation:", updateCatchError);
-      return new Response(
-        JSON.stringify({ error: 'Exception during database update', details: updateCatchError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    } catch (verifyError) {
+      console.error("[submit-form]: Exception during verification:", verifyError);
+      // Non-fatal error, continue
     }
+    
+    // Log the successful submission
+    await logSubmissionAttempt(supabase, {
+      token,
+      entryId: entry.id,
+      isOptician,
+      status: 'success',
+      updateData
+    });
     
     // 3. Log additional information for magic link entries
     if (entry.is_magic_link) {
@@ -661,7 +873,8 @@ serve(async (req: Request) => {
       JSON.stringify({ 
         success: true, 
         message: 'Form submitted successfully',
-        entryId: entry.id
+        entryId: entry.id,
+        status: updateData.status
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

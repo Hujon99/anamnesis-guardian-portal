@@ -1,7 +1,9 @@
+
 /**
  * This hook unifies form submission handling for both patient and optician modes.
  * It provides a common interface but adapts to different submission methods based on mode.
  * Enhanced to handle JWT expiration errors and auto-refresh functionality.
+ * Improved error handling and token refresh for both patient and optician modes.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -38,6 +40,7 @@ export function useFormSubmissionManager({
 }: FormSubmissionManagerProps) {
   const [localSubmitted, setLocalSubmitted] = useState(false);
   const { supabase, refreshClient } = useSupabaseClient();
+  const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   
   // Use the standard patient form submission hook
   const patientSubmission = useFormSubmission();
@@ -46,15 +49,42 @@ export function useFormSubmissionManager({
   useEffect(() => {
     if (patientSubmission.error?.message?.includes('JWT')) {
       console.log("[useFormSubmissionManager]: JWT error detected, attempting to refresh client");
-      refreshClient(true).catch(error => {
-        console.error("[useFormSubmissionManager]: Failed to refresh client:", error);
-      });
+      setIsRefreshingToken(true);
+      
+      refreshClient(true)
+        .then(() => {
+          console.log("[useFormSubmissionManager]: Client refreshed successfully");
+        })
+        .catch(error => {
+          console.error("[useFormSubmissionManager]: Failed to refresh client:", error);
+        })
+        .finally(() => {
+          setIsRefreshingToken(false);
+        });
       
       if (onSubmissionError) {
         onSubmissionError(patientSubmission.error);
       }
     }
   }, [patientSubmission.error, refreshClient, onSubmissionError]);
+  
+  // Handle JWT errors for both modes
+  const handleJwtError = useCallback(async () => {
+    console.log("[useFormSubmissionManager]: Handling JWT error, refreshing client");
+    setIsRefreshingToken(true);
+    
+    try {
+      // Try to refresh the client once
+      await refreshClient(true);
+      console.log("[useFormSubmissionManager]: Client refresh successful");
+      return true;
+    } catch (error) {
+      console.error("[useFormSubmissionManager]: Failed to refresh client:", error);
+      return false;
+    } finally {
+      setIsRefreshingToken(false);
+    }
+  }, [refreshClient]);
   
   // Optician-specific mutation
   const opticianMutation = useMutation({
@@ -118,10 +148,13 @@ export function useFormSubmissionManager({
         updated_at: new Date().toISOString()
       };
       
+      // IMPROVED: Added more robust error handling and retry mechanisms
       try {
-        // Try to refresh the client once before submitting
+        console.log("[useFormSubmissionManager]: Pre-emptively refreshing client before submission");
+        // Always refresh the client before attempting submission
         await refreshClient();
         
+        console.log("[useFormSubmissionManager]: Submitting form data to Supabase");
         // Update the entry with the form answers
         const { error } = await supabase
           .from("anamnes_entries")
@@ -129,38 +162,62 @@ export function useFormSubmissionManager({
           .eq("access_token", token);
         
         if (error) {
+          console.error("[useFormSubmissionManager]: Error during submission:", error);
+          
           // If we get an auth error, try to refresh and retry
-          if (error.message?.includes('JWT') || error.code === 'PGRST301') {
-            console.log("[useFormSubmissionManager]: JWT error detected, refreshing token and retrying");
-            await refreshClient(true);
+          if (error.message?.includes('JWT') || 
+              error.code === 'PGRST301' || 
+              error.message?.includes('auth') || 
+              error.message?.includes('token')) {
             
-            // Try once more after refresh
+            console.log("[useFormSubmissionManager]: JWT/auth error detected, refreshing token and retrying");
+            const refreshSuccess = await handleJwtError();
+            
+            if (!refreshSuccess) {
+              const submissionError = new Error("Autentiseringsfel: Kunde inte förnya din session") as SubmissionError;
+              submissionError.details = error.message;
+              submissionError.status = 401;
+              submissionError.recoverable = false;
+              throw submissionError;
+            }
+            
+            console.log("[useFormSubmissionManager]: Retrying submission after token refresh");
+            // Try once more after refresh with delay to ensure the refresh completes
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             const { error: retryError } = await supabase
               .from("anamnes_entries")
               .update(submissionData)
               .eq("access_token", token);
               
             if (retryError) {
-              const submissionError = new Error("Kunde inte skicka formuläret: " + retryError.message) as SubmissionError;
+              console.error("[useFormSubmissionManager]: Submission retry failed:", retryError);
+              const submissionError = new Error("Kunde inte skicka formuläret efter att ha förnyat sessionen: " + retryError.message) as SubmissionError;
               submissionError.details = retryError.message;
-              submissionError.recoverable = true;
+              submissionError.status = retryError.code === 'PGRST301' ? 401 : 500;
+              submissionError.recoverable = false;
               throw submissionError;
             }
           } else {
             const submissionError = new Error("Kunde inte skicka formuläret: " + error.message) as SubmissionError;
             submissionError.details = error.message;
+            submissionError.status = 500;
             submissionError.recoverable = true;
             throw submissionError;
           }
         }
+        
+        console.log("[useFormSubmissionManager]: Submission completed successfully");
       } catch (error: any) {
-        // Handle JWT errors
-        if (error.message?.includes('JWT')) {
+        // Create a more detailed error for the caller
+        console.error("[useFormSubmissionManager]: Submission process error:", error);
+        
+        if (error.message?.includes('JWT') || error.message?.toLowerCase().includes('auth') || error.message?.includes('token')) {
           if (onSubmissionError) {
             const submissionError = new Error("Autentiseringsfel: " + error.message) as SubmissionError;
             submissionError.details = error.message;
             submissionError.status = 401;
-            submissionError.recoverable = true;
+            submissionError.recoverable = false;
             onSubmissionError(submissionError);
           }
         }
@@ -169,6 +226,7 @@ export function useFormSubmissionManager({
       
       // Set local state to indicate successful submission
       setLocalSubmitted(true);
+      console.log("[useFormSubmissionManager]: Successfully set form as submitted");
     },
     onSuccess: () => {
       toast({
@@ -180,11 +238,15 @@ export function useFormSubmissionManager({
       console.error("[useFormSubmissionManager]: Optician mutation error:", error);
       
       // If JWT error, try to handle it
-      if (error.message?.includes('JWT') && onSubmissionError) {
-        const submissionError = error as SubmissionError;
-        submissionError.status = 401;
-        submissionError.recoverable = true;
-        onSubmissionError(submissionError);
+      if (error.message?.includes('JWT') || 
+          error.message?.toLowerCase().includes('auth') || 
+          error.message?.includes('token')) {
+        if (onSubmissionError) {
+          const submissionError = error as SubmissionError;
+          submissionError.status = 401;
+          submissionError.recoverable = false;
+          onSubmissionError(submissionError);
+        }
       }
       
       toast({
@@ -206,7 +268,7 @@ export function useFormSubmissionManager({
       return false;
     }
     
-    // console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode`);
+    console.log(`[useFormSubmissionManager]: Submitting form in ${mode} mode`);
     
     if (mode === 'optician') {
       // Use optician submission flow
@@ -234,17 +296,30 @@ export function useFormSubmissionManager({
     }
   }, [token, mode, opticianMutation, patientSubmission]);
 
-  // Retry submission handler
+  // Handle retry for submission errors
   const handleRetrySubmission = useCallback(async () => {
     if (mode === 'optician' && opticianMutation.error) {
-      // console.log("[useFormSubmissionManager]: Retrying optician submission");
+      console.log("[useFormSubmissionManager]: Retrying optician submission");
+      
+      // If the error is JWT related, try to refresh first
+      if (opticianMutation.error.message?.includes('JWT') || 
+          opticianMutation.error.message?.toLowerCase().includes('auth') || 
+          opticianMutation.error.message?.includes('token')) {
+        
+        const refreshSuccess = await handleJwtError();
+        if (!refreshSuccess) {
+          console.log("[useFormSubmissionManager]: Token refresh failed during retry");
+          return false;
+        }
+      }
+      
       opticianMutation.reset();
       return false; // Need to re-submit with complete data
     } else {
-      // console.log("[useFormSubmissionManager]: Retrying patient submission");
+      console.log("[useFormSubmissionManager]: Retrying patient submission");
       return await patientSubmission.retrySubmission();
     }
-  }, [mode, opticianMutation, patientSubmission]);
+  }, [mode, opticianMutation, patientSubmission, handleJwtError]);
 
   // Reset error handler
   const resetError = useCallback(() => {
@@ -262,8 +337,8 @@ export function useFormSubmissionManager({
   
   // Determine submission status
   const isSubmitting = mode === 'optician' 
-    ? opticianMutation.isPending 
-    : patientSubmission.isSubmitting;
+    ? (opticianMutation.isPending || isRefreshingToken)
+    : (patientSubmission.isSubmitting || isRefreshingToken);
   
   // Determine submitted status
   const isSubmitted = mode === 'optician'

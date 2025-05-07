@@ -4,6 +4,7 @@
  * It allows opticians to generate an immediate form for walk-in customers
  * without creating a patient record first.
  * Uses the organization-specific form template.
+ * Enhanced with longer token validity period (72 hours) for better user experience.
  */
 
 import { useState, useEffect } from "react";
@@ -88,13 +89,17 @@ export function DirectFormButton() {
       const accessToken = crypto.randomUUID();
       console.log("[DirectFormButton]: Generated access token:", accessToken.substring(0, 6) + "...");
 
+      // CHANGED: Increased token validity from 24 hours to 72 hours
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(); // 72 hours from now
+      console.log("[DirectFormButton]: Token will expire at:", expiresAt);
+
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
           organization_id: organization.id,
           access_token: accessToken,
           status: "sent",
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+          expires_at: expiresAt, // Using the 72-hour expiry
           form_id: formTemplate.id,
           patient_identifier: patientIdentifier,
           created_by: user?.id || null,

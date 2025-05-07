@@ -48,6 +48,20 @@ export function AnamnesisListItem({
   const { supabase } = useSupabaseClient();
   const hasAnswers = entry.answers && Object.keys(entry.answers as Record<string, any>).length > 0;
   const hasMagicLinkData = entry.is_magic_link || entry.booking_date || entry.store_id;
+  
+  // Choose the appropriate display name based on available data
+  const getDisplayName = () => {
+    if (entry.first_name) {
+      // If we have a first name from magic link, use it
+      return `Anamnes för ${entry.first_name}`;
+    } else if (entry.patient_identifier) {
+      // If we have a patient identifier, use it
+      return entry.patient_identifier;
+    } else {
+      // Fall back to the ID if nothing else is available
+      return `Anamnes #${entry.id.substring(0, 8)}`;
+    }
+  };
 
   const handleDelete = async () => {
     try {
@@ -120,7 +134,7 @@ export function AnamnesisListItem({
         onClick={onClick}
         tabIndex={0}
         role="button"
-        aria-label={`Visa detaljer för anamnes ${entry.patient_identifier || `#${entry.id.substring(0, 8)}`}`}
+        aria-label={`Visa detaljer för ${getDisplayName()}`}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             onClick();
@@ -133,7 +147,7 @@ export function AnamnesisListItem({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <EntryStatusIcon status={entry.status || ""} />
-                <p className="font-medium">{entry.patient_identifier || `Anamnes #${entry.id.substring(0, 8)}`}</p>
+                <p className="font-medium">{getDisplayName()}</p>
                 {!hasAnswers && entry.status === 'sent' && (
                   <Badge variant="outline" className="text-xs">Ej besvarad</Badge>
                 )}

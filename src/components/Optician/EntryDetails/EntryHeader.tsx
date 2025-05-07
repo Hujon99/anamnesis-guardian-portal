@@ -67,6 +67,17 @@ export function EntryHeader({
     }
   };
 
+  // Get the appropriate display title
+  const getDisplayTitle = () => {
+    if (entry.first_name) {
+      return `Anamnes för ${entry.first_name}`;
+    } else if (entry.patient_identifier) {
+      return entry.patient_identifier;
+    } else {
+      return `Anamnes #${entry.id.substring(0, 8)}`;
+    }
+  };
+
   const copyPatientLink = () => {
     if (!entry.access_token) {
       toast({
@@ -104,7 +115,7 @@ export function EntryHeader({
       <div className="flex justify-between items-start">
         <div>
           <CardTitle className="text-xl">
-            {entry.patient_identifier || `Anamnes #${entry.id.substring(0, 8)}`}
+            {getDisplayTitle()}
           </CardTitle>
           <CardDescription className="flex flex-col gap-1 mt-2">
             <div className="flex items-center gap-2">

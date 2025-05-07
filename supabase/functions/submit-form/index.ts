@@ -1,9 +1,9 @@
-
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
  * Enhanced to handle both regular and magic link entries.
  * Improved with better error handling, detailed logging, and input validation.
+ * Now automatically triggers AI summary generation after successful form submission.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -255,6 +255,33 @@ const extractFormattedAnswers = (answers: Record<string, any>): any | undefined 
   console.log("[submit-form/extractFormattedAnswers]: No valid answer structure found");
   return undefined;
 };
+
+/**
+ * Trigger AI summary generation for an entry
+ */
+async function generateAiSummary(entryId: string, supabaseClient: any) {
+  try {
+    console.log(`[submit-form]: Triggering generate-summary function for entry: ${entryId}`);
+    
+    // Call the generate-summary function with the entry ID
+    const { data: summaryData, error: summaryError } = await supabaseClient.functions.invoke('generate-summary', {
+      body: { entryId }
+    });
+    
+    if (summaryError) {
+      console.error("[submit-form]: Error calling generate-summary function:", summaryError);
+      return false;
+    }
+    
+    console.log("[submit-form]: AI summary successfully generated");
+    
+    // The summary will be saved by the generate-summary function directly
+    return true;
+  } catch (error: any) {
+    console.error("[submit-form]: Exception in generateAiSummary:", error);
+    return false;
+  }
+}
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -600,15 +627,18 @@ serve(async (req: Request) => {
       console.log(`[submit-form]: Magic link submission successful for booking ID: ${entry.booking_id}`);
     }
     
-    // 4. Trigger background summary generation if configured
+    // 4. Trigger AI summary generation immediately
     try {
-      console.log("[submit-form]: Triggering generate-summary function...");
-      await supabase.functions.invoke('generate-summary', {
-        body: { entryId: entry.id }
-      });
-      console.log("[submit-form]: Summary generation triggered successfully");
+      // Use the new function to generate and save AI summary
+      const summarySuccess = await generateAiSummary(entry.id, supabase);
+      
+      if (summarySuccess) {
+        console.log("[submit-form]: AI summary generation completed successfully");
+      } else {
+        console.log("[submit-form]: AI summary generation attempted but may not have completed successfully");
+      }
     } catch (summaryError) {
-      console.error("[submit-form]: Error triggering summary generation:", summaryError);
+      console.error("[submit-form]: Error in AI summary generation:", summaryError);
       // Non-critical error, continue with submission success
     }
     

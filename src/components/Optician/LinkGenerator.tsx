@@ -1,4 +1,3 @@
-
 /**
  * This component provides functionality for generating and sending personalized
  * anamnesis links to patients. It handles the collection of patient information,
@@ -12,22 +11,8 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -38,20 +23,32 @@ import { useFormTemplate } from "@/hooks/useFormTemplate";
 
 // Form schema with validation for patient info
 const formSchema = z.object({
-  patientIdentifier: z.string().min(2, { message: "Patientinformation måste vara minst 2 tecken" }),
+  patientIdentifier: z.string().min(2, {
+    message: "Patientinformation måste vara minst 2 tecken"
+  })
 });
-
 export function LinkGenerator() {
-  const { organization } = useOrganization();
-  const { user } = useUser();
-  const { sessionClaims } = useAuth();
-  const { supabase } = useSupabaseClient();
+  const {
+    organization
+  } = useOrganization();
+  const {
+    user
+  } = useUser();
+  const {
+    sessionClaims
+  } = useAuth();
+  const {
+    supabase
+  } = useSupabaseClient();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
+
   // Get the organization's form template
-  const { data: formTemplate, isLoading: isLoadingTemplate } = useFormTemplate();
+  const {
+    data: formTemplate,
+    isLoading: isLoadingTemplate
+  } = useFormTemplate();
 
   // Get the creator's name from session claims
   const creatorName = sessionClaims?.full_name as string || user?.fullName || user?.id || "Okänd";
@@ -60,10 +57,9 @@ export function LinkGenerator() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      patientIdentifier: "",
-    },
+      patientIdentifier: ""
+    }
   });
-
   useEffect(() => {
     // Reset error message when dialog opens/closes
     setErrorMessage(null);
@@ -71,15 +67,17 @@ export function LinkGenerator() {
 
   // Mutation for creating and sending a link
   const sendLinkMutation = useMutation({
-    mutationFn: async ({ patientIdentifier }: { patientIdentifier: string }) => {
+    mutationFn: async ({
+      patientIdentifier
+    }: {
+      patientIdentifier: string;
+    }) => {
       if (!organization?.id) {
         throw new Error("Organisation saknas");
       }
-      
       if (!formTemplate) {
         throw new Error("Ingen formmall hittades för denna organisation");
       }
-
       console.log("Creating anamnesis entry with patient identifier:", patientIdentifier);
       console.log("Organization ID:", organization.id);
       console.log("Creator:", creatorName);
@@ -88,23 +86,21 @@ export function LinkGenerator() {
       // Create a new anamnesis entry with a unique access token
       const accessToken = crypto.randomUUID();
       console.log("Generated access token:", accessToken.substring(0, 6) + "...");
-
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .insert({
-          organization_id: organization.id,
-          access_token: accessToken,
-          status: "sent",
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-          form_id: formTemplate.id,
-          patient_identifier: patientIdentifier,
-          created_by: user?.id || null,
-          created_by_name: creatorName,
-          sent_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
+      const {
+        data,
+        error
+      } = await supabase.from("anamnes_entries").insert({
+        organization_id: organization.id,
+        access_token: accessToken,
+        status: "sent",
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        // 7 days from now
+        form_id: formTemplate.id,
+        patient_identifier: patientIdentifier,
+        created_by: user?.id || null,
+        created_by_name: creatorName,
+        sent_at: new Date().toISOString()
+      }).select().single();
       if (error) {
         console.error("Error creating anamnesis entry:", error);
         throw error;
@@ -113,29 +109,24 @@ export function LinkGenerator() {
       // Log the URL that will be generated for debugging
       const baseUrl = window.location.origin;
       console.log("Patient form URL will be:", `${baseUrl}/patient-form?token=${accessToken}`);
-
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       console.log("Anamnesis entry created successfully:", data);
-      
       toast({
         title: "Formulär skapat",
-        description: "Formuläret har skapats och kan nu skickas till patienten",
+        description: "Formuläret har skapats och kan nu skickas till patienten"
       });
-      
       form.reset();
       setOpen(false);
     },
     onError: (error: any) => {
       console.error("Error creating anamnesis entry:", error);
-      
       setErrorMessage(error.message || "Ett oväntat fel uppstod");
-      
       toast({
         title: "Fel vid skapande av formulär",
         description: error.message || "Ett oväntat fel uppstod",
-        variant: "destructive",
+        variant: "destructive"
       });
     },
     onSettled: () => {
@@ -147,16 +138,13 @@ export function LinkGenerator() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     setErrorMessage(null);
-    sendLinkMutation.mutate({ patientIdentifier: values.patientIdentifier });
+    sendLinkMutation.mutate({
+      patientIdentifier: values.patientIdentifier
+    });
   };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
+  return <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2 whitespace-nowrap">
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Skapa</span> anamneslänk
-        </Button>
+        
       </DialogTrigger>
       
       <DialogContent>
@@ -167,67 +155,41 @@ export function LinkGenerator() {
           </DialogDescription>
         </DialogHeader>
         
-        {errorMessage && (
-          <Alert variant="destructive">
+        {errorMessage && <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-        )}
+          </Alert>}
         
-        {isLoadingTemplate ? (
-          <div className="flex justify-center py-4">
+        {isLoadingTemplate ? <div className="flex justify-center py-4">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <Form {...form}>
+          </div> : <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="patientIdentifier"
-                render={({ field }) => (
-                  <FormItem>
+              <FormField control={form.control} name="patientIdentifier" render={({
+            field
+          }) => <FormItem>
                     <FormLabel>Patientinformation</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Ange personens namn eller annan identifierare" 
-                        {...field} 
-                      />
+                      <Input placeholder="Ange personens namn eller annan identifierare" {...field} />
                     </FormControl>
                     <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  </FormItem>} />
               
               <div className="flex justify-end gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setOpen(false)}
-                >
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Avbryt
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isLoading || !formTemplate}
-                  className="flex items-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
+                <Button type="submit" disabled={isLoading || !formTemplate} className="flex items-center gap-2">
+                  {isLoading ? <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Skapar...
-                    </>
-                  ) : (
-                    <>
+                    </> : <>
                       <Link className="h-4 w-4" />
                       Skapa länk
-                    </>
-                  )}
+                    </>}
                 </Button>
               </div>
             </form>
-          </Form>
-        )}
+          </Form>}
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 }

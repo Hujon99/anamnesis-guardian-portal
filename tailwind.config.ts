@@ -25,6 +25,14 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['Inter', 'sans-serif'],
+				display: ['Poppins', 'sans-serif'],
+			},
+			lineHeight: {
+				'heading': '1.25',
+				'body': '1.6',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -109,6 +117,15 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out'
+			},
+			spacing: {
+				// Add 8px baseline grid
+				'2': '8px',
+				'4': '16px', 
+				'6': '24px',
+				'8': '32px',
+				'10': '40px',
+				'12': '48px'
 			}
 		}
 	},

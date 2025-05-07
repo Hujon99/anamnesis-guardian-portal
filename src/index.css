@@ -4,6 +4,8 @@
  * It defines CSS custom properties (variables) used for theming throughout the app.
  */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -78,6 +80,19 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans leading-body;
   }
+
+  h1, h2 {
+    @apply font-display font-semibold leading-heading;
+  }
+
+  h3, h4, h5, h6 {
+    @apply font-sans font-medium leading-heading;
+  }
+}
+
+/* Add custom icon styling for Lucide icons */
+.lucide {
+  stroke-width: 1.5px;
 }

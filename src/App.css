@@ -1,8 +1,14 @@
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+}
+
+/* Apply the 1.5px stroke width to all Lucide icons */
+svg[data-lucide] {
+  stroke-width: 1.5;
 }
 
 .logo {

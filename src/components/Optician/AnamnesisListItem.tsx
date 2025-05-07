@@ -6,7 +6,6 @@
  */
 
 import { AnamnesesEntry } from "@/types/anamnesis";
-import { Card, CardContent } from "@/components/ui/card";
 import { formatDate } from "@/lib/date-utils";
 import { EntryStatusBadge } from "./EntriesList/EntryStatusBadge";
 import { EntryStatusIcon } from "./EntriesList/EntryStatusIcon";
@@ -14,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Trash2, CalendarIcon, MapPinIcon } from "lucide-react";
 import { Clock, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnamnesCard } from "./EntriesList/AnamnesCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +48,12 @@ export function AnamnesisListItem({
   const { supabase } = useSupabaseClient();
   const hasAnswers = entry.answers && Object.keys(entry.answers as Record<string, any>).length > 0;
   const hasMagicLinkData = entry.is_magic_link || entry.booking_date || entry.store_id;
+  
+  // Map entry status to card status
+  const getCardStatus = () => {
+    if (isExpired) return "expiring";
+    return entry.status as "sent" | "pending" | "ready" | "reviewed" | "expiring";
+  };
   
   // Choose the appropriate display name based on available data
   const getDisplayName = () => {
@@ -124,82 +130,63 @@ export function AnamnesisListItem({
   
   return (
     <>
-      <Card 
-        className="cursor-pointer transition-all hover:shadow border-l-4 hover:scale-[1.01] focus-within:ring-2 focus-within:ring-ring group relative"
-        style={{ 
-          borderLeftColor: entry.status === 'sent' ? '#d1d5db' : 
-                          entry.status === 'pending' ? '#fdba74' : 
-                          entry.status === 'ready' ? '#86efac' : '#d1d5db' 
-        }}
-        onClick={onClick}
-        tabIndex={0}
-        role="button"
-        aria-label={`Visa detaljer för ${getDisplayName()}`}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            onClick();
-            e.preventDefault();
-          }
-        }}
-      >
-        <CardContent className="p-4">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <EntryStatusIcon status={entry.status || ""} />
-                <p className="font-medium">{getDisplayName()}</p>
-                {!hasAnswers && entry.status === 'sent' && (
-                  <Badge variant="outline" className="text-xs">Ej besvarad</Badge>
-                )}
-                {entry.is_magic_link && (
-                  <Badge variant="secondary" className="text-xs">Magic Link</Badge>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm text-muted-foreground">
-                  {entry.sent_at 
-                    ? `Skickad: ${formatDate(entry.sent_at)}` 
-                    : `Skapad: ${formatDate(entry.created_at || "")}`}
-                </p>
-                <EntryStatusBadge status={entry.status || ""} isExpired={isExpired} />
-                {getExpirationBadge()}
-              </div>
-              
-              {/* Display booking information when available */}
-              {hasMagicLinkData && (
-                <div className="flex flex-wrap gap-3 mt-1">
-                  {entry.booking_date && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <CalendarIcon className="h-3 w-3" />
-                      <span>{formatDate(entry.booking_date)}</span>
-                    </div>
-                  )}
-                  {entry.store_id && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MapPinIcon className="h-3 w-3" />
-                      <span>Butik: {entry.store_id}</span>
-                    </div>
-                  )}
-                </div>
+      <AnamnesCard status={getCardStatus()} onClick={onClick}>
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <EntryStatusIcon status={entry.status || ""} />
+              <p className="font-medium">{getDisplayName()}</p>
+              {!hasAnswers && entry.status === 'sent' && (
+                <Badge variant="outline" className="text-xs">Ej besvarad</Badge>
+              )}
+              {entry.is_magic_link && (
+                <Badge variant="secondary" className="text-xs">Magic Link</Badge>
               )}
             </div>
             
-            <Button
-              variant="ghost"
-              size="icon"
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDeleteDialog(true);
-              }}
-              aria-label="Ta bort anamnes"
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm text-muted-foreground">
+                {entry.sent_at 
+                  ? `Skickad: ${formatDate(entry.sent_at)}` 
+                  : `Skapad: ${formatDate(entry.created_at || "")}`}
+              </p>
+              <EntryStatusBadge status={entry.status || ""} isExpired={isExpired} />
+              {getExpirationBadge()}
+            </div>
+            
+            {/* Display booking information when available */}
+            {hasMagicLinkData && (
+              <div className="flex flex-wrap gap-3 mt-1">
+                {entry.booking_date && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CalendarIcon className="h-3 w-3" />
+                    <span>{formatDate(entry.booking_date)}</span>
+                  </div>
+                )}
+                {entry.store_id && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPinIcon className="h-3 w-3" />
+                    <span>Butik: {entry.store_id}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteDialog(true);
+            }}
+            aria-label="Ta bort anamnes"
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      </AnamnesCard>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

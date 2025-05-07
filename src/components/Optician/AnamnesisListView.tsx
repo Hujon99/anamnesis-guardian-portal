@@ -16,6 +16,7 @@ import { EntriesSummary } from "./EntriesList/EntriesSummary";
 import { EntriesList } from "./EntriesList/EntriesList";
 import { useAnamnesisList } from "@/hooks/useAnamnesisList";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Card } from "@/components/ui/card";
 
 export function AnamnesisListView() {
   const {
@@ -66,33 +67,35 @@ export function AnamnesisListView() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className={`flex ${isMobile ? 'flex-col' : 'flex-row justify-between'} gap-4 mb-6`}>
-        <div className={`${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
-          <SearchInput
-            searchQuery={filters.searchQuery}
-            onSearchChange={(value) => updateFilter("searchQuery", value)}
-            onRefresh={handleManualRefresh}
-            isRefreshing={isFetching}
-          />
+    <div className="space-y-6">
+      <Card className="mb-6 p-4 bg-surface_light rounded-2xl shadow-sm">
+        <div className={`${isMobile ? 'space-y-4' : 'md:flex md:items-center md:gap-4'}`}>
+          <div className={`${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
+            <SearchInput
+              searchQuery={filters.searchQuery}
+              onSearchChange={(value) => updateFilter("searchQuery", value)}
+              onRefresh={handleManualRefresh}
+              isRefreshing={isFetching}
+            />
+          </div>
+          
+          <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
+            <AnamnesisFilters
+              statusFilter={filters.statusFilter}
+              onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
+              timeFilter={filters.timeFilter}
+              onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
+              showOnlyUnanswered={filters.showOnlyUnanswered}
+              onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
+              sortDescending={filters.sortDescending}
+              onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
+              showOnlyBookings={filters.showOnlyBookings}
+              onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
+              onResetFilters={resetFilters}
+            />
+          </div>
         </div>
-        
-        <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-          <AnamnesisFilters
-            statusFilter={filters.statusFilter}
-            onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
-            timeFilter={filters.timeFilter}
-            onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
-            showOnlyUnanswered={filters.showOnlyUnanswered}
-            onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
-            sortDescending={filters.sortDescending}
-            onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
-            showOnlyBookings={filters.showOnlyBookings}
-            onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
-            onResetFilters={resetFilters}
-          />
-        </div>
-      </div>
+      </Card>
       
       <div>
         <EntriesSummary

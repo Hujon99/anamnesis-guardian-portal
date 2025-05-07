@@ -9,8 +9,8 @@ import { Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SearchInputProps {
-  searchQuery: string;  // Changed from value to searchQuery
-  onSearchChange: (value: string) => void;  // Changed from onChange
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }
@@ -29,7 +29,7 @@ export const SearchInput = ({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Sök efter patient (namn/nummer)..."
-          className="pl-9"
+          className="pl-9 rounded-xl bg-white border-muted"
         />
       </div>
       
@@ -40,6 +40,7 @@ export const SearchInput = ({
           onClick={onRefresh} 
           disabled={isRefreshing}
           title="Uppdatera listan"
+          className="rounded-xl"
         >
           <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
         </Button>

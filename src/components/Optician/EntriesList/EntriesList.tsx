@@ -28,7 +28,7 @@ export function EntriesList({
   }
 
   return (
-    <div className="space-y-2" role="list" aria-label="Anamnesis entries list">
+    <div className="space-y-3" role="list" aria-label="Anamnesis entries list">
       {entries.map((entry) => (
         <AnamnesisListItem
           key={entry.id}

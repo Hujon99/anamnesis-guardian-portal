@@ -4,7 +4,7 @@
  * It validates and processes the submitted form data, updating the entry status.
  * UNIFIED: Now handles both patient and optician submissions via the same endpoint.
  * Enhanced with better error handling, detailed logging, and input validation.
- * Sets the correct status based on submission type (patient vs optician).
+ * Sets the correct status to 'ready' for all completed submissions regardless of source.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -545,7 +545,7 @@ serve(async (req: Request) => {
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } else if (entry.status === 'submitted' && !isOptician) {
+    } else if (entry.status === 'ready' && !isOptician) {
       console.log("[submit-form]: Form was already submitted by patient, returning success");
       return new Response(
         JSON.stringify({ 
@@ -661,9 +661,9 @@ serve(async (req: Request) => {
       console.log("[submit-form]: Formatted raw data sample:", 
         formattedRawData ? formattedRawData.substring(0, 200) + "..." : "None generated");
         
-      // Set correct status based on submission type
-      const status = isOptician ? 'ready' : 'submitted';
-      console.log(`[submit-form]: Setting status to '${status}' based on submission type: ${isOptician ? 'Optician' : 'Patient'}`);
+      // Set status to 'ready' regardless of submission type (patient or optician)
+      const status = 'ready';
+      console.log(`[submit-form]: Setting status to '${status}' for all completed submissions`);
       
       // Prepare the update data
       updateData = { 

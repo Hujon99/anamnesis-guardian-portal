@@ -6,7 +6,7 @@
  * Enhanced to handle conditional validation when submitting the form.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import FormHeader from "@/components/PatientForm/FormHeader";
 import FormNavigation from "@/components/PatientForm/FormNavigation";
@@ -36,6 +36,32 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     visibleFieldIds
   } = useFormContext();
 
+  // Add state to track step transitions for animations
+  const [animatingStep, setAnimatingStep] = useState(false);
+  const [animationClass, setAnimationClass] = useState("");
+  const [previousStepValue, setPreviousStepValue] = useState(currentStep);
+  
+  // Run animation when step changes
+  useEffect(() => {
+    if (previousStepValue !== currentStep) {
+      // Start exit animation
+      setAnimatingStep(true);
+      setAnimationClass("page-transition-exit");
+      
+      // After exit animation completes, start enter animation
+      setTimeout(() => {
+        setPreviousStepValue(currentStep);
+        setAnimationClass("page-transition-enter");
+        
+        // Clear animation class after enter animation completes
+        setTimeout(() => {
+          setAnimatingStep(false);
+          setAnimationClass("");
+        }, 300);
+      }, 200);
+    }
+  }, [currentStep, previousStepValue]);
+
   // Log when dynamic values change to help debug follow-up questions
   useEffect(() => {
     // Log any values that might be follow-up questions (with _for_ in the key)
@@ -52,7 +78,6 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
   }, [watchedValues]);
 
   // The onSubmit handler now only prevents default behavior but doesn't trigger submission
-  // This prevents automatic form submission when pressing Enter or when the form is naturally submitted
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // console.log("[FormLayout/onSubmit]: Form submit event intercepted and prevented");
@@ -84,7 +109,7 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     }
   }, [isLastStep, form, isSubmitting, visibleFieldIds, currentStep, visibleSections]);
 
-  // New: Enhanced submit handler with better error handling and conditional validation
+  // Enhanced submit handler with better error handling and conditional validation
   const handleFormSubmission = () => {
     // console.log("[FormLayout/handleFormSubmission]: Starting form submission process");
     
@@ -184,7 +209,7 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
       <CardContent>
         <form 
           id="patient-form" 
-          onSubmit={onSubmit} // Only prevents default, doesn't trigger submission
+          onSubmit={onSubmit}
           className="space-y-6"
           aria-labelledby="form-title"
           noValidate
@@ -197,12 +222,14 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
             Steg {currentStep + 1} av {totalSections}
           </div>
           
-          {visibleSections.length > 0 && currentStep < visibleSections.length && (
-            <FormStepContent 
-              sections={visibleSections[currentStep]} 
-              currentValues={watchedValues}
-            />
-          )}
+          <div className={`transition-all ${animationClass}`}>
+            {visibleSections.length > 0 && currentStep < visibleSections.length && (
+              <FormStepContent 
+                sections={visibleSections[currentStep]} 
+                currentValues={watchedValues}
+              />
+            )}
+          </div>
         </form>
       </CardContent>
       

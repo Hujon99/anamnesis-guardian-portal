@@ -26,67 +26,86 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
   onPrevious,
   onSubmit
 }) => {
-  // console.log("[FormNavigation]: Rendering with isLastStep:", isLastStep, "isSubmitting:", isSubmitting);
-  
-  const handleSubmitClick = () => {
-    // console.log("[FormNavigation/handleSubmitClick]: Submit button clicked, calling onSubmit handler");
-    // Add a detailed log to track submission flow
-    try {
-      onSubmit();
-      // console.log("[FormNavigation/handleSubmitClick]: onSubmit handler called successfully");
-    } catch (error) {
-      console.error("[FormNavigation/handleSubmitClick]: Error calling onSubmit handler:", error);
+  // Handle next click with animation
+  const handleNextClick = () => {
+    // Add animation class to the button for visual feedback
+    const button = document.getElementById('next-button');
+    if (button) {
+      button.classList.add('animate-pulse-once');
+      // Remove the class after animation completes
+      setTimeout(() => {
+        button.classList.remove('animate-pulse-once');
+      }, 400);
     }
+    onNext();
+  };
+  
+  // Handle submit click
+  const handleSubmitClick = () => {
+    // Add animation class to the button for visual feedback
+    const button = document.getElementById('submit-button');
+    if (button) {
+      button.classList.add('animate-pulse-once');
+      // Remove the class after animation completes
+      setTimeout(() => {
+        button.classList.remove('animate-pulse-once');
+      }, 400);
+    }
+    onSubmit();
   };
   
   return (
-    <div className="flex justify-between w-full">
-      {!isFirstStep && (
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onPrevious}
-          aria-label="Gå till föregående steg"
-          disabled={isSubmitting}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-          <span>Föregående</span>
-          <span className="sr-only"> (Alt+Vänsterpil)</span>
-        </Button>
-      )}
+    <div className="flex justify-between w-full gap-2">
+      <div className="flex-1">
+        {!isFirstStep && (
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onPrevious}
+            aria-label="Gå till föregående steg"
+            disabled={isSubmitting}
+            className="w-full md:w-auto"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+            <span>Föregående</span>
+            <span className="sr-only"> (Alt+Vänsterpil)</span>
+          </Button>
+        )}
+      </div>
       
-      {isLastStep ? (
-        <Button 
-          type="button"
-          className={`${isFirstStep ? "ml-auto" : ""}`}
-          disabled={isSubmitting}
-          aria-label="Skicka formulär"
-          onClick={handleSubmitClick}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-              <span>Skickar...</span>
-            </>
-          ) : (
-            <span>Skicka svar</span>
-          )}
-        </Button>
-      ) : (
-        <Button 
-          type="button"
-          onClick={() => {
-            // console.log("[FormNavigation]: Next button clicked");
-            onNext();
-          }}
-          className={`${isFirstStep ? "ml-auto" : ""}`}
-          aria-label="Gå till nästa steg"
-        >
-          <span>Nästa</span>
-          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-          <span className="sr-only"> (Alt+Högerpil)</span>
-        </Button>
-      )}
+      <div className="flex-1 flex justify-end">
+        {isLastStep ? (
+          <Button 
+            id="submit-button"
+            type="button"
+            disabled={isSubmitting}
+            aria-label="Skicka formulär"
+            onClick={handleSubmitClick}
+            className="w-full md:w-auto transition-all"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                <span>Skickar...</span>
+              </>
+            ) : (
+              <span>Skicka svar</span>
+            )}
+          </Button>
+        ) : (
+          <Button 
+            id="next-button"
+            type="button"
+            onClick={handleNextClick}
+            aria-label="Gå till nästa steg"
+            className="w-full md:w-auto transition-all"
+          >
+            <span>Nästa</span>
+            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+            <span className="sr-only"> (Alt+Högerpil)</span>
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

@@ -1,8 +1,9 @@
 
-
--- This SQL file contains functions that need to be created in the database
--- for the submit-form edge function to work properly.
--- To use these functions, run this SQL in the Supabase SQL editor.
+/**
+ * This SQL file contains functions that need to be created in the database
+ * for the submit-form edge function to work properly.
+ * To use these functions, run this SQL in the Supabase SQL editor.
+ */
 
 -- Function to create the submission logs table
 CREATE OR REPLACE FUNCTION public.create_submission_logs_table_function()
@@ -64,3 +65,77 @@ GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_function() TO anon
 GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_function() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_function() TO service_role;
 
+-- Create a direct function for creating the logs table if the RPC method fails
+CREATE OR REPLACE FUNCTION public.create_submission_logs_table_direct()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Create the table directly
+  CREATE TABLE IF NOT EXISTS public.submission_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token TEXT,
+    entry_id UUID,
+    is_optician BOOLEAN DEFAULT false,
+    status TEXT,
+    error_details TEXT,
+    update_data_sample TEXT,
+    timestamp TIMESTAMPTZ DEFAULT now()
+  );
+  
+  -- Set up security
+  ALTER TABLE public.submission_logs ENABLE ROW LEVEL SECURITY;
+  
+  -- Create policies
+  DROP POLICY IF EXISTS "Anyone can insert logs" ON public.submission_logs;
+  CREATE POLICY "Anyone can insert logs" 
+    ON public.submission_logs 
+    FOR INSERT 
+    TO anon 
+    WITH CHECK (true);
+  
+  DROP POLICY IF EXISTS "Only service role can read logs" ON public.submission_logs;
+  CREATE POLICY "Only service role can read logs" 
+    ON public.submission_logs 
+    FOR SELECT
+    USING (auth.jwt() ->> 'role' = 'service_role');
+  
+  RETURN true;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Error in direct table creation: %', SQLERRM;
+    RETURN false;
+END;
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_direct() TO anon;
+GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_direct() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_direct() TO service_role;
+
+-- Helper function to get current database setting
+CREATE OR REPLACE FUNCTION public.current_setting(
+  setting_name TEXT,
+  missing_ok BOOLEAN DEFAULT false
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN current_setting(setting_name, missing_ok);
+EXCEPTION
+  WHEN OTHERS THEN
+    IF missing_ok THEN
+      RETURN NULL;
+    ELSE
+      RAISE;
+    END IF;
+END;
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION public.current_setting(TEXT, BOOLEAN) TO anon;
+GRANT EXECUTE ON FUNCTION public.current_setting(TEXT, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.current_setting(TEXT, BOOLEAN) TO service_role;

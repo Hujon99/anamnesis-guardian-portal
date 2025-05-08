@@ -9,6 +9,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { logSubmissionAttempt, checkAccessTokenValue, createSubmissionLogsTable } from "./utils/databaseFunctions.ts";
 
 // Define CORS headers with expanded Access-Control-Allow-Headers
 const corsHeaders = {
@@ -233,7 +234,7 @@ const extractFormattedAnswers = (answers: Record<string, any>): any | undefined 
       answeredSections: [{
         section_title: "Patientens svar",
         responses: Object.entries(answers)
-          .filter(([key]) => !['formMetadata', 'metadata'].includes(key))
+          .filter(([key]) => !['formMetadata', 'metadata', '_metadata', '_isOptician'].includes(key))
           .map(([id, answer]) => {
             // Handle dynamic follow-up questions
             if (id.includes('_for_')) {
@@ -285,51 +286,31 @@ async function generateAiSummary(entryId: string, supabaseClient: any) {
   }
 }
 
-/**
- * Creates database logging for submission attempts
- */
-async function logSubmissionAttempt(supabaseClient: any, details: {
-  token: string;
-  entryId?: string;
-  isOptician?: boolean;
-  status: 'success' | 'error';
-  errorDetails?: any;
-  updateData?: any;
-}) {
-  try {
-    // Use service role key for this operation to bypass RLS
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: { persistSession: false }
-    });
-    
-    // Create or append to existing log table
-    const { error } = await supabaseAdmin.from('submission_logs')
-      .insert({
-        token: details.token.substring(0, 10) + '...',
-        entry_id: details.entryId,
-        is_optician: !!details.isOptician,
-        status: details.status,
-        error_details: details.errorDetails ? JSON.stringify(details.errorDetails).substring(0, 1000) : null,
-        update_data_sample: details.updateData ? JSON.stringify(details.updateData).substring(0, 1000) : null,
-        timestamp: new Date().toISOString()
-      });
-    
-    if (error) {
-      console.error("[submit-form]: Error logging submission attempt:", error);
-      
-      // If the table doesn't exist yet, try creating it
-      if (error.code === '42P01') { // undefined_table
-        console.log("[submit-form]: Creating submission_logs table");
-        
-        // This will fail if the user doesn't have permission, but that's acceptable
-        await supabaseAdmin.rpc('create_submission_logs_table');
-      }
-    } else {
-      console.log("[submit-form]: Submission attempt logged successfully");
+// Create a Supabase client with admin permissions
+const createAdminClient = () => {
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: { persistSession: false },
+    global: { 
+      headers: { 
+        'X-Edge-Function': 'submit-form-admin'
+      } 
     }
-  } catch (logError: any) {
-    console.error("[submit-form]: Exception in logSubmissionAttempt:", logError);
-    // Non-critical error, don't throw
+  });
+};
+
+// Check if the submission logs table exists and create it if not
+async function ensureSubmissionLogsTableExists() {
+  try {
+    const result = await createSubmissionLogsTable();
+    if (result) {
+      console.log("[submit-form]: Submission logs table exists or was created successfully");
+    } else {
+      console.error("[submit-form]: Failed to create submission logs table");
+    }
+    return result;
+  } catch (error) {
+    console.error("[submit-form]: Error checking/creating submission logs table:", error);
+    return false;
   }
 }
 
@@ -342,6 +323,9 @@ serve(async (req: Request) => {
 
   try {
     console.log("[submit-form]: Received form submission request");
+    
+    // Create the submission logs table if it doesn't exist yet
+    await ensureSubmissionLogsTableExists();
     
     // Log the headers for debugging CORS issues
     const headersList = {};
@@ -390,6 +374,16 @@ serve(async (req: Request) => {
     // Validate token
     if (!token) {
       console.error("[submit-form]: Missing token parameter");
+      
+      await logSubmissionAttempt(
+        null,
+        null,
+        isOptician,
+        'error',
+        'Missing token parameter',
+        null
+      );
+      
       return new Response(
         JSON.stringify({ error: 'Missing token parameter' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -399,6 +393,16 @@ serve(async (req: Request) => {
     // Basic token validation
     if (typeof token !== 'string' || token.length < 10) {
       console.error("[submit-form]: Invalid token format");
+      
+      await logSubmissionAttempt(
+        token,
+        null,
+        isOptician,
+        'error',
+        'Invalid token format',
+        null
+      );
+      
       return new Response(
         JSON.stringify({ error: 'Invalid token format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -408,6 +412,16 @@ serve(async (req: Request) => {
     // Validate answers
     if (!answers) {
       console.error("[submit-form]: Missing form data");
+      
+      await logSubmissionAttempt(
+        token,
+        null,
+        isOptician,
+        'error',
+        'Missing form data',
+        null
+      );
+      
       return new Response(
         JSON.stringify({ error: 'Missing form data' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -416,7 +430,7 @@ serve(async (req: Request) => {
     
     console.log("[submit-form]: Form submission received for token:", token.substring(0, 6) + "...");
     
-    // Initialize the Supabase client with regular anon key
+    // Initialize both clients up front
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false },
       global: { 
@@ -426,20 +440,20 @@ serve(async (req: Request) => {
       }
     });
 
-    // Also initialize an admin client with service role key for emergency fallback
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: { persistSession: false },
-      global: { 
-        headers: { 
-          'X-Edge-Function': 'submit-form-admin'
-        } 
-      }
-    });
+    // Initialize admin client with service role key
+    const supabaseAdmin = createAdminClient();
     
-    // *** Call set_access_token function to set the token in the database session ***
-    // This is critical for the RLS policy to work correctly
+    // *** Step 1: First try to create the submission logs table to ensure logging works ***
+    await ensureSubmissionLogsTableExists();
+    
+    // *** Step 2: Try to get the current token setting for debugging ***
+    let currentToken = await checkAccessTokenValue();
+    console.log("[submit-form]: Before setting token, current token value:", currentToken);
+    
+    // *** Step 3: Try setting access token for RLS policies ***
     console.log("[submit-form]: Setting access token in database session...");
     let setTokenSuccess = false;
+    let setTokenErrorMessage = null;
     try {
       const { data: setTokenData, error: setTokenError } = await supabase.rpc('set_access_token', {
         token: token
@@ -447,17 +461,33 @@ serve(async (req: Request) => {
       
       if (setTokenError) {
         console.error("[submit-form]: Error setting access token:", setTokenError);
+        setTokenErrorMessage = setTokenError.message;
         // Don't return yet, we'll try to continue with the admin client as fallback
       } else {
         console.log("[submit-form]: Access token set successfully. Result:", setTokenData);
         setTokenSuccess = true;
+        
+        // Double check that token was set
+        let tokenAfterSetting = await checkAccessTokenValue();
+        console.log("[submit-form]: After setting token, current token value:", tokenAfterSetting);
       }
     } catch (tokenError) {
       console.error("[submit-form]: Exception when setting access token:", tokenError);
+      setTokenErrorMessage = tokenError.message;
       // Don't return yet, we'll try to continue with the admin client as fallback
     }
     
-    // 1. Fetch the entry by token to get its ID and check its status
+    // Log the token setting attempt
+    await logSubmissionAttempt(
+      token,
+      null,
+      isOptician,
+      setTokenSuccess ? 'success' : 'error',
+      setTokenErrorMessage ? `Token setting error: ${setTokenErrorMessage}` : null,
+      null
+    );
+    
+    // 1. First fetch the entry by token to get its ID and check its status
     console.log("[submit-form]: Fetching entry by token...");
     
     // Try with regular client first
@@ -498,6 +528,17 @@ serve(async (req: Request) => {
           
         if (adminFetchError) {
           console.error("[submit-form]: Admin client also failed to fetch entry:", adminFetchError);
+          
+          // Log the error
+          await logSubmissionAttempt(
+            token,
+            null,
+            isOptician,
+            'error',
+            `Failed to fetch entry: ${entryError?.message || adminFetchError?.message}`,
+            null
+          );
+          
           // If both methods fail, return the original error
           return new Response(
             JSON.stringify({ error: 'Failed to fetch entry', details: entryError?.message || adminFetchError?.message }),
@@ -507,6 +548,17 @@ serve(async (req: Request) => {
         
         if (!adminEntryData) {
           console.error("[submit-form]: No entry found with admin client either");
+          
+          // Log the error
+          await logSubmissionAttempt(
+            token,
+            null,
+            isOptician,
+            'error',
+            'Invalid token, no entry found',
+            null
+          );
+          
           return new Response(
             JSON.stringify({ error: 'Invalid token, no entry found' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -517,6 +569,17 @@ serve(async (req: Request) => {
         console.log("[submit-form]: Entry found with admin client:", entry.id);
       } catch (adminFetchError) {
         console.error("[submit-form]: Exception with admin client fetch:", adminFetchError);
+        
+        // Log the error
+        await logSubmissionAttempt(
+          token,
+          null,
+          isOptician,
+          'error',
+          `Server error fetching entry: ${adminFetchError.message}`,
+          null
+        );
+        
         return new Response(
           JSON.stringify({ error: 'Server error fetching entry', details: adminFetchError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -526,11 +589,32 @@ serve(async (req: Request) => {
     
     if (!entry) {
       console.error("[submit-form]: No entry found with token:", token.substring(0, 6) + "...");
+      
+      // Log the error
+      await logSubmissionAttempt(
+        token,
+        null,
+        isOptician,
+        'error',
+        'Invalid token, no entry found after multiple attempts',
+        null
+      );
+      
       return new Response(
         JSON.stringify({ error: 'Invalid token, no entry found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Log that we found the entry
+    await logSubmissionAttempt(
+      token,
+      entry.id,
+      isOptician,
+      'success',
+      null,
+      `Found entry with status: ${entry.status}`
+    );
     
     console.log(`[submit-form]: Found entry ${entry.id}, status: ${entry.status}, is_magic_link: ${entry.is_magic_link}, form_id: ${entry.form_id}, org_id: ${entry.organization_id}`);
     
@@ -562,7 +646,8 @@ serve(async (req: Request) => {
     let formTemplate = null;
     
     try {
-      const { data: templateData, error: templateError } = await supabase
+      // Try with admin client for reliability
+      const { data: templateData, error: templateError } = await supabaseAdmin
         .from('anamnes_forms')
         .select('schema')
         .eq('id', entry.form_id)
@@ -674,21 +759,29 @@ serve(async (req: Request) => {
       };
       
       console.log("[submit-form]: Update data prepared successfully");
+      
+      // Log the update preparation
+      await logSubmissionAttempt(
+        token,
+        entry.id,
+        isOptician,
+        'success',
+        null,
+        `Update data prepared with status: ${status}`
+      );
+      
     } catch (dataError) {
       console.error("[submit-form]: Error preparing update data:", dataError);
       
       // Log the submission attempt with error details
-      await logSubmissionAttempt(supabase, {
+      await logSubmissionAttempt(
         token,
-        entryId: entry.id,
+        entry.id,
         isOptician,
-        status: 'error',
-        errorDetails: {
-          phase: 'data_preparation',
-          message: dataError.message,
-          stack: dataError.stack
-        }
-      });
+        'error',
+        `Data preparation error: ${dataError.message}`,
+        null
+      );
       
       return new Response(
         JSON.stringify({ error: 'Failed to process form data', details: dataError.message }),
@@ -705,10 +798,6 @@ serve(async (req: Request) => {
       "formatted_raw_data is " + (updateData.formatted_raw_data ? `present (${updateData.formatted_raw_data.substring(0, 50)}...)` : "missing")
     );
     
-    // Try first with the token-based auth client
-    let updateSuccess = false;
-    let updateError = null;
-    
     // Log sample of data we're about to insert
     const sampleData = {
       answersSample: JSON.stringify(updateData.answers).substring(0, 200) + '...',
@@ -717,10 +806,14 @@ serve(async (req: Request) => {
     };
     console.log("[submit-form]: Sample of data being inserted:", sampleData);
     
-    // Attempt to update with regular client first
+    // Attempt database update using multiple methods
+    let updateSuccess = false;
+    let updateError = null;
+    
+    // Method 1: Try token-based client if token setting was successful
     if (setTokenSuccess) {
+      console.log("[submit-form]: Attempting update with token-based client...");
       try {
-        console.log("[submit-form]: Attempting update with token-based client...");
         const { error: clientUpdateError } = await supabase
           .from('anamnes_entries')
           .update(updateData)
@@ -729,19 +822,50 @@ serve(async (req: Request) => {
         if (clientUpdateError) {
           console.error("[submit-form]: Error updating with token-based client:", clientUpdateError);
           updateError = clientUpdateError;
+          
+          // Log the error
+          await logSubmissionAttempt(
+            token,
+            entry.id,
+            isOptician,
+            'error',
+            `Token update error: ${clientUpdateError.message}`,
+            JSON.stringify(sampleData).substring(0, 200)
+          );
+          
         } else {
           console.log("[submit-form]: Entry updated successfully with token-based client");
           updateSuccess = true;
+          
+          // Log the success
+          await logSubmissionAttempt(
+            token,
+            entry.id,
+            isOptician,
+            'success',
+            null,
+            `Updated entry with token-based client`
+          );
         }
       } catch (clientUpdateCatchError) {
         console.error("[submit-form]: Exception during token-based update:", clientUpdateCatchError);
         updateError = clientUpdateCatchError;
+        
+        // Log the error
+        await logSubmissionAttempt(
+          token,
+          entry.id,
+          isOptician,
+          'error',
+          `Token update exception: ${clientUpdateCatchError.message}`,
+          JSON.stringify(sampleData).substring(0, 200)
+        );
       }
     } else {
       console.log("[submit-form]: Skipping token-based update since token setting failed");
     }
     
-    // If token-based update failed, try with admin client
+    // Method 2: If token-based update failed, try directly with admin client
     if (!updateSuccess) {
       console.log("[submit-form]: Attempting update with admin client as fallback...");
       try {
@@ -753,19 +877,17 @@ serve(async (req: Request) => {
         if (adminUpdateError) {
           console.error("[submit-form]: Error updating with admin client:", adminUpdateError);
           
-          // If both methods failed, log the attempt and return error
-          await logSubmissionAttempt(supabase, {
+          // Log the error
+          await logSubmissionAttempt(
             token,
-            entryId: entry.id,
+            entry.id,
             isOptician,
-            status: 'error',
-            errorDetails: {
-              tokenUpdateError: updateError,
-              adminUpdateError: adminUpdateError
-            },
-            updateData
-          });
+            'error',
+            `Admin update error: ${adminUpdateError.message}`,
+            JSON.stringify(sampleData).substring(0, 200)
+          );
           
+          // If both methods failed, return error
           return new Response(
             JSON.stringify({ 
               error: 'Failed to save entry', 
@@ -778,22 +900,29 @@ serve(async (req: Request) => {
         } else {
           console.log("[submit-form]: Entry updated successfully with admin client");
           updateSuccess = true;
+          
+          // Log the success
+          await logSubmissionAttempt(
+            token,
+            entry.id,
+            isOptician,
+            'success',
+            null,
+            `Updated entry with admin client`
+          );
         }
       } catch (adminUpdateCatchError) {
         console.error("[submit-form]: Exception during admin update:", adminUpdateCatchError);
         
-        // Log the attempt and return error
-        await logSubmissionAttempt(supabase, {
+        // Log the error
+        await logSubmissionAttempt(
           token,
-          entryId: entry.id,
+          entry.id,
           isOptician,
-          status: 'error',
-          errorDetails: {
-            tokenUpdateError: updateError,
-            adminUpdateException: adminUpdateCatchError
-          },
-          updateData
-        });
+          'error',
+          `Admin update exception: ${adminUpdateCatchError.message}`,
+          JSON.stringify(sampleData).substring(0, 200)
+        );
         
         return new Response(
           JSON.stringify({ 
@@ -832,6 +961,16 @@ serve(async (req: Request) => {
           hasAnswers: !!verifyData.answers,
           answersKeys: verifyData.answers ? Object.keys(verifyData.answers).length : 0
         }));
+        
+        // Log the verification result
+        await logSubmissionAttempt(
+          token,
+          entry.id,
+          isOptician,
+          'success',
+          null,
+          `Verification successful, status: ${verifyData.status}, hasAnswers: ${!!verifyData.answers}`
+        );
       }
     } catch (verifyError) {
       console.error("[submit-form]: Exception during verification:", verifyError);
@@ -839,13 +978,14 @@ serve(async (req: Request) => {
     }
     
     // Log the successful submission
-    await logSubmissionAttempt(supabase, {
+    await logSubmissionAttempt(
       token,
-      entryId: entry.id,
+      entry.id,
       isOptician,
-      status: 'success',
-      updateData
-    });
+      'success',
+      null,
+      `Submission completed successfully`
+    );
     
     // 3. Log additional information for magic link entries
     if (entry.is_magic_link) {
@@ -855,7 +995,7 @@ serve(async (req: Request) => {
     // 4. Trigger AI summary generation immediately
     try {
       // Use the new function to generate and save AI summary
-      const summarySuccess = await generateAiSummary(entry.id, supabase);
+      const summarySuccess = await generateAiSummary(entry.id, supabaseAdmin);
       
       if (summarySuccess) {
         console.log("[submit-form]: AI summary generation completed successfully");
@@ -881,6 +1021,20 @@ serve(async (req: Request) => {
     
   } catch (error) {
     console.error("[submit-form]: Unexpected error:", error);
+    
+    // Try to log the error
+    try {
+      await logSubmissionAttempt(
+        "unknown",
+        null,
+        false,
+        'error',
+        `Unexpected error: ${error.message}`,
+        null
+      );
+    } catch (logError) {
+      console.error("[submit-form]: Failed to log error:", logError);
+    }
     
     return new Response(
       JSON.stringify({ error: 'Server error', details: error.message }),

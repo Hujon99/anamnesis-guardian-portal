@@ -179,6 +179,39 @@ export type Database = {
         }
         Relationships: []
       }
+      submission_logs: {
+        Row: {
+          entry_id: string | null
+          error_details: string | null
+          id: string
+          is_optician: boolean | null
+          status: string | null
+          timestamp: string | null
+          token: string | null
+          update_data_sample: string | null
+        }
+        Insert: {
+          entry_id?: string | null
+          error_details?: string | null
+          id?: string
+          is_optician?: boolean | null
+          status?: string | null
+          timestamp?: string | null
+          token?: string | null
+          update_data_sample?: string | null
+        }
+        Update: {
+          entry_id?: string | null
+          error_details?: string | null
+          id?: string
+          is_optician?: boolean | null
+          status?: string | null
+          timestamp?: string | null
+          token?: string | null
+          update_data_sample?: string | null
+        }
+        Relationships: []
+      }
       test_notes: {
         Row: {
           content: string | null

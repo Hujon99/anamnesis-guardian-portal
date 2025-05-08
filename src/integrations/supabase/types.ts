@@ -248,6 +248,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_submission_logs_table_function: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       set_access_token: {
         Args: { token: string }
         Returns: undefined

@@ -1,4 +1,5 @@
 
+
 -- This SQL file contains functions that need to be created in the database
 -- for the submit-form edge function to work properly.
 -- To use these functions, run this SQL in the Supabase SQL editor.
@@ -62,3 +63,4 @@ $$;
 GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_function() TO anon;
 GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_function() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_submission_logs_table_function() TO service_role;
+

@@ -5,9 +5,9 @@
  */
 
 import React from "react";
-import { Progress } from "@/components/ui/progress";
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { User } from "lucide-react";
+import SegmentProgress from "./SegmentProgress";
 
 interface FormHeaderProps {
   currentStep: number;
@@ -25,17 +25,20 @@ const FormHeader: React.FC<FormHeaderProps> = ({
   return (
     <CardHeader>
       <div className="flex justify-between items-center mb-2">
-        <CardTitle className="text-xl" id="form-title">Hälsodeklaration</CardTitle>
+        <CardTitle className="text-xl font-semibold font-display" id="form-title">Hälsodeklaration</CardTitle>
         <span className="text-sm text-muted-foreground">
           Steg {currentStep + 1} av {totalSteps}
         </span>
       </div>
       
-      <Progress value={progress} className="h-2" />
+      <SegmentProgress 
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+      />
       
       {createdByName && (
         <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
-          <User className="h-4 w-4" />
+          <User className="h-4 w-4" strokeWidth={1.5} />
           <span>Ansvarig optiker: {createdByName}</span>
         </div>
       )}

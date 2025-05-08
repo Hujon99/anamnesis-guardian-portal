@@ -176,7 +176,7 @@ export function AnamnesisListItem({
           <Button
             variant="ghost"
             size="icon"
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            className="opacity-60 hover:opacity-100 hover:bg-destructive/10 transition-all"
             onClick={(e) => {
               e.stopPropagation();
               setShowDeleteDialog(true);

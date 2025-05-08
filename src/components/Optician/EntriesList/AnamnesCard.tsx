@@ -41,7 +41,7 @@ export const AnamnesCard = ({
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-2 p-4 rounded-2xl bg-white transition-all hover:shadow-lg/20 hover:scale-[1.01] focus-within:ring-2 focus-within:ring-ring cursor-pointer",
+        "relative flex flex-col gap-2 p-4 rounded-2xl bg-white transition-all hover:shadow-lg/20 hover:scale-[1.01] hover:bg-gray-50/80 focus-within:ring-2 focus-within:ring-ring cursor-pointer group",
         className
       )}
       onClick={onClick}

@@ -118,6 +118,35 @@
   animation: fadeOut 0.2s ease-in forwards;
 }
 
+/* Ripple effect for buttons and interactive elements */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  width: 100px;
+  height: 100px;
+  margin-top: -50px;
+  margin-left: -50px;
+  animation: ripple 0.8s;
+  opacity: 0;
+}
+
 /* Focus visible styling for better keyboard navigation */
 .focus-visible-ring {
   @apply outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring focus-visible:ring-offset-background;

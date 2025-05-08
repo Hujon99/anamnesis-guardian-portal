@@ -1,4 +1,9 @@
 
+/**
+ * Button component that provides a consistent UI element for user interactions.
+ * Supports various styles, sizes, and behaviors with accessibility features built-in.
+ */
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"

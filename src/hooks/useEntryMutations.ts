@@ -1,4 +1,3 @@
-
 /**
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
@@ -10,6 +9,7 @@ import { useEntryUpdateMutation } from "./useEntryUpdateMutation";
 import { useSendLinkMutation } from "./useSendLinkMutation";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
+import { debugSupabaseAuth } from "@/integrations/supabase/client";
 
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
@@ -28,34 +28,47 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLink
   } = useSendLinkMutation(entryId, onSuccess);
 
-  // Validate UUID format
+  // Enhanced UUID validation with additional checks and logging
   const isValidUuid = (uuid: string | null): boolean => {
     if (!uuid) return true; // Null is valid for removing assignments
     
+    // Log the UUID being validated
+    console.log(`Validating UUID: ${uuid}`);
+    
     // Reject Clerk user IDs (they start with "user_")
-    if (uuid.startsWith("user_")) return false;
+    if (uuid.startsWith("user_")) {
+      console.error("Rejected Clerk user ID:", uuid);
+      return false;
+    }
     
     // Check for valid UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(uuid);
+    const isValid = uuidRegex.test(uuid);
+    
+    if (!isValid) {
+      console.error("Invalid UUID format:", uuid);
+    }
+    
+    return isValid;
   };
   
-  // Common error handler function
+  // Common error handler function with better error classification
   const handleMutationError = (error: any, operation: string) => {
     console.error(`Error during ${operation}:`, error);
     
     let errorMessage = "Ett oväntat fel uppstod";
+    let isAuthError = false;
     
     // Check if it's a JWT error
     if (error?.message?.includes("JWT") || 
         error?.message?.includes("token") || 
         error?.code === "PGRST301") {
       errorMessage = "Sessionen har upphört. Försöker återansluta...";
-      
-      // Silently try to refresh the token in the background
-      refreshClient(true).catch(e => {
-        console.error("Background token refresh failed:", e);
-      });
+      isAuthError = true;
+    } else if (error?.message?.includes("UUID") || 
+              error?.message?.includes("invalid input syntax") ||
+              error?.code === "22P02") {
+      errorMessage = "Ogiltigt ID-format. Vänligen försök igen.";
     } else {
       errorMessage = error?.message || errorMessage;
     }
@@ -66,20 +79,37 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       variant: "destructive",
     });
     
+    // Silently try to refresh the token in the background for auth errors
+    if (isAuthError) {
+      console.log("Attempting background token refresh due to auth error");
+      refreshClient(true).then(() => {
+        debugSupabaseAuth(); // Log auth state after refresh
+      }).catch(e => {
+        console.error("Background token refresh failed:", e);
+      });
+    }
+    
     throw error;
   };
 
-  // Mutation for assigning an optician to an entry
+  // Mutation for assigning an optician to an entry with enhanced validation
   const assignOpticianMutation = {
     isPending: false,
     mutateAsync: async (opticianId: string | null) => {
       try {
+        console.log("Starting optician assignment with ID:", opticianId);
+        
         // Validate UUID format to prevent database errors
         if (opticianId !== null && !isValidUuid(opticianId)) {
-          throw new Error("Invalid optician ID format");
+          const error = new Error("Invalid optician ID format");
+          console.error(error);
+          throw error;
         }
         
         assignOpticianMutation.isPending = true;
+        
+        // Log auth state before the request
+        await debugSupabaseAuth();
         
         // Pre-validate token before making the request
         await validateTokenBeforeRequest(true);
@@ -94,7 +124,10 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           .select()
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase error during assignment:", error);
+          throw error;
+        }
         
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({
@@ -103,6 +136,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         // Execute any success callback
         if (onSuccess) onSuccess();
+        
+        console.log("Assignment successful:", data);
         
         return data;
       } catch (error) {

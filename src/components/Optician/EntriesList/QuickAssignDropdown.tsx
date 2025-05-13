@@ -18,6 +18,7 @@ import {
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { debugSupabaseAuth } from "@/integrations/supabase/client";
 
 interface QuickAssignDropdownProps {
   entryId: string;
@@ -56,6 +57,11 @@ export function QuickAssignDropdown({
       try {
         // Before opening dropdown, validate token
         await validateTokenBeforeRequest(false);
+        
+        // Debug current auth state to help troubleshoot
+        if (open) {
+          await debugSupabaseAuth();
+        }
       } catch (error) {
         console.error("Token validation failed on dropdown open:", error);
         // Still allow dropdown to open - we'll handle errors during assignment
@@ -64,9 +70,43 @@ export function QuickAssignDropdown({
     setIsOpen(open);
   };
   
+  // Helper to validate UUID format
+  const isValidUuid = (id: string | null): boolean => {
+    if (!id) return true; // null is valid for unassigning
+    
+    // Reject Clerk user IDs
+    if (id.startsWith('user_')) {
+      console.error('Invalid format: Clerk user ID detected:', id);
+      return false;
+    }
+    
+    // Check UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const isValid = uuidRegex.test(id);
+    
+    if (!isValid) {
+      console.error('Invalid UUID format:', id);
+    }
+    
+    return isValid;
+  };
+  
   // Handle optician assignment with improved error recovery
   const handleAssign = async (opticianId: string | null) => {
     if (disabled || isPending) return;
+    
+    // Log assignment attempt for debugging
+    console.log(`Attempting to assign optician ID: ${opticianId || 'none'} to entry ${entryId}`);
+    
+    // Validate UUID format immediately
+    if (opticianId !== null && !isValidUuid(opticianId)) {
+      toast({
+        title: "Ogiltig optiker-ID",
+        description: "Ett fel uppstod med optiker-ID formatet. Försök igen.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     let retryCount = 0;
     const maxRetries = 2;
@@ -78,19 +118,21 @@ export function QuickAssignDropdown({
         // First ensure token is valid before making request
         await validateTokenBeforeRequest(true);
         
-        // Validate optician ID format - ensure it's a proper UUID
         if (opticianId !== null) {
-          // Check if this is a Clerk user ID (starts with "user_") instead of a database UUID
-          if (opticianId.startsWith("user_")) {
-            console.error("Invalid optician ID format: Clerk user ID passed instead of database UUID");
+          // Double-check UUID format to be extra safe
+          if (!isValidUuid(opticianId)) {
             throw new Error("Ogiltig optiker-ID format");
           }
           
           // Verify the optician exists in our list
           const validOptician = opticians.find(o => o.id === opticianId);
           if (!validOptician) {
+            console.error(`Optician with ID ${opticianId} not found in list of ${opticians.length} opticians`);
             throw new Error("Ogiltig optiker vald");
           }
+          
+          // Log the successful validation
+          console.log(`Verified optician ${opticianId} exists in list, proceeding with assignment`);
         }
         
         await onAssign(opticianId);
@@ -133,7 +175,7 @@ export function QuickAssignDropdown({
         // Show error message only for final failure or non-JWT errors
         toast({
           title: "Fel vid tilldelning",
-          description: "Det gick inte att tilldela optikern. Försök igen.",
+          description: error?.message || "Det gick inte att tilldela optikern. Försök igen.",
           variant: "destructive",
         });
         
@@ -187,7 +229,7 @@ export function QuickAssignDropdown({
                 disabled={isPending}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span>{optician.name}</span>
+                  <span>{optician.name || optician.email || optician.id}</span>
                   {optician.id === currentOpticianId && (
                     <Check className="h-4 w-4 text-primary" />
                   )}

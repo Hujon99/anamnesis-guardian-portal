@@ -9,16 +9,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth, useClerk } from "@clerk/clerk-react";
 import { Database } from "@/integrations/supabase/types";
-import { supabase as supabaseClient } from "@/integrations/supabase/client";
+import { supabase as supabaseClient, debugSupabaseAuth } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { createSupabaseClient } from "@/utils/supabaseClientUtils";
 
 // Configuration
-const TOKEN_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes - reduced from 20
-const TOKEN_COOLDOWN_PERIOD = 5000; // 5 seconds cooldown - reduced from 10
-const TOKEN_EARLY_REFRESH = 10 * 60 * 1000; // Refresh 10 minutes before expiry
-const MAX_RETRIES = 3; // Increased max retries from 2
-const INITIAL_RETRY_DELAY = 1000; // 1 second initial delay - reduced for quicker recovery
+const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes - reduced from 15
+const TOKEN_COOLDOWN_PERIOD = 3000; // 3 seconds cooldown - reduced from 5
+const TOKEN_EARLY_REFRESH = 5 * 60 * 1000; // Refresh 5 minutes before expiry - reduced from 10
+const MAX_RETRIES = 4; // Increased max retries from 3
+const INITIAL_RETRY_DELAY = 800; // 800ms initial delay - reduced for quicker recovery
 
 // Helper function for token caching
 const getTokenCache = () => {
@@ -51,8 +51,11 @@ const getTokenCache = () => {
     isExpiringSoon: () => {
       if (!cacheRef.current) return true;
       const now = Date.now();
-      // Consider token as "expiring soon" if less than 10 minutes left
+      // Consider token as "expiring soon" if less than the early refresh window
       return cacheRef.current.expiresAt - now < TOKEN_EARLY_REFRESH;
+    },
+    getExpiry: () => {
+      return cacheRef.current?.expiresAt || null;
     }
   };
 };
@@ -81,9 +84,12 @@ export const useSupabaseClient = () => {
   // Create local token cache
   const tokenCache = getTokenCache();
 
-  // Get token with debouncing, caching and retry logic
+  // Enhanced logging and debugging for token fetching
   const getTokenWithRetry = useCallback(async (force = false): Promise<string | null> => {
-    if (!session) return null;
+    if (!session) {
+      console.log("No session available for token fetch");
+      return null;
+    }
     
     // Check cooldown period to prevent excessive requests
     const now = Date.now();
@@ -99,9 +105,13 @@ export const useSupabaseClient = () => {
     if (!force) {
       const cachedToken = tokenCache.get();
       if (cachedToken) {
+        const expiryTime = new Date(tokenCache.getExpiry() || 0).toISOString();
+        console.log(`Using cached token (expires: ${expiryTime})`);
         return cachedToken;
       }
     }
+    
+    console.log(`Fetching new token (force=${force})`);
     
     let retryCount = 0;
     let retryDelay = INITIAL_RETRY_DELAY;
@@ -112,13 +122,19 @@ export const useSupabaseClient = () => {
         lastTokenTimeRef.current = now;
         pendingRefreshRef.current = false;
         
-        const token = await session.getToken();
+        const token = await session.getToken({
+          template: "supabase"
+        });
+        
         retryCountRef.current = 0; // Reset on success
         
         // Cache the token
         if (token) {
           tokenCache.set(token);
-          console.log(`Token successfully retrieved and cached (${token.substring(0, 10)}...)`);
+          const tokenPreview = token.substring(0, 10) + "...";
+          console.log(`Token successfully retrieved and cached: ${tokenPreview}`);
+        } else {
+          console.warn("Clerk returned null token");
         }
         
         return token;
@@ -132,7 +148,7 @@ export const useSupabaseClient = () => {
         
         // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, retryDelay));
-        retryDelay = Math.min(retryDelay * 2, 10000); // Cap at 10 seconds
+        retryDelay = Math.min(retryDelay * 2, 5000); // Cap at 5 seconds (reduced from 10s)
       }
     }
     
@@ -173,6 +189,7 @@ export const useSupabaseClient = () => {
       
       if (!userId || !session) {
         // Return the unauthenticated client if no user is logged in
+        console.log("No user or session, using unauthenticated client");
         setAuthenticatedClient(supabaseClient);
         initialized.current = false;
         lastTokenRef.current = null;
@@ -188,6 +205,9 @@ export const useSupabaseClient = () => {
       
       if (token) {
         await createAuthenticatedClient(token);
+      } else {
+        console.warn("Failed to get token, using unauthenticated client");
+        setAuthenticatedClient(supabaseClient);
       }
 
       // Mark client as ready
@@ -213,7 +233,7 @@ export const useSupabaseClient = () => {
       setIsLoading(false);
       isRefreshingRef.current = false;
       
-      // If there's a pending refresh request, process it after a delay
+      // If there's a pending refresh request, process it after a short delay
       if (pendingRefreshRef.current) {
         setTimeout(() => {
           if (pendingRefreshRef.current) {
@@ -224,28 +244,29 @@ export const useSupabaseClient = () => {
     }
   }, [isAuthLoaded, userId, session, getTokenWithRetry, createAuthenticatedClient]);
 
-  // Health check function - verify if token is still valid
-  // Returns true if token is healthy, false if refresh needed
+  // Improved health check function with detailed logging
   const checkTokenHealth = useCallback(async (): Promise<boolean> => {
     // If not authenticated or no session, cannot check health
     if (!userId || !session) {
+      console.log("Token health check: No user or session");
       return false;
     }
     
-    // If token is expiring soon or last health check was too long ago, refresh
+    // Check if token is expiring soon or last health check was too long ago
     const tokenExpiringSoon = tokenCache.isExpiringSoon();
     const timeSinceLastHealthCheck = Date.now() - healthCheckTimeRef.current;
     const needsRefresh = tokenExpiringSoon || timeSinceLastHealthCheck > TOKEN_REFRESH_INTERVAL;
     
     if (needsRefresh) {
-      console.log(`Token health check: refresh needed (expiring soon: ${tokenExpiringSoon}, time since last check: ${timeSinceLastHealthCheck}ms)`);
+      const expiresAt = tokenCache.getExpiry() ? new Date(tokenCache.getExpiry()!).toISOString() : "unknown";
+      console.log(`Token health check: Refresh needed (expiring soon: ${tokenExpiringSoon}, expires at: ${expiresAt}, time since last check: ${timeSinceLastHealthCheck / 1000}s)`);
       return false;
     }
     
     return true;
   }, [userId, session]);
 
-  // Setup auth listener and initial check
+  // Setup auth listener and interval-based refresh
   useEffect(() => {
     // Setup client immediately
     setupClient();
@@ -256,11 +277,32 @@ export const useSupabaseClient = () => {
       intervalRef.current = null;
     }
     
-    // Set up token refresh interval only if we have a session
+    // Set up token refresh interval (more frequent now)
     if (session) {
       intervalRef.current = window.setInterval(() => {
+        console.log("Interval token refresh triggered");
         setupClient();
       }, TOKEN_REFRESH_INTERVAL);
+      
+      // Also refresh on tab focus using Page Visibility API
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          console.log("Tab focus detected, checking token");
+          checkTokenHealth().then(isHealthy => {
+            if (!isHealthy) {
+              console.log("Token requires refresh on tab focus");
+              setupClient(true);
+            }
+          });
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
     
     return () => {
@@ -269,27 +311,46 @@ export const useSupabaseClient = () => {
         intervalRef.current = null;
       }
     };
-  }, [isAuthLoaded, userId, session, setupClient]);
+  }, [isAuthLoaded, userId, session, setupClient, checkTokenHealth]);
 
-  // Pre-request token validation
-  // This ensures the token is valid before making any critical request
+  // Enhanced pre-request token validation with detailed logging
   const validateTokenBeforeRequest = useCallback(async (forceRefresh = false) => {
-    // If token is healthy and we're not forcing a refresh, proceed
+    // Use debugSupabaseAuth to show current token state
+    await debugSupabaseAuth().catch(err => {
+      console.error("Debug auth check failed:", err);
+    });
+    
+    // Check token health
     const isHealthy = await checkTokenHealth();
     if (isHealthy && !forceRefresh) {
+      console.log("Pre-request validation: Token is healthy");
       return true;
     }
     
     // Token needs refresh
-    console.log("Pre-request validation: refreshing token");
+    console.log(`Pre-request validation: Refreshing token (force=${forceRefresh})`);
     await setupClient(true);
+    
+    // Verify refresh worked
+    const verifyHealthy = await checkTokenHealth();
+    if (!verifyHealthy) {
+      console.warn("Token still unhealthy after refresh");
+    }
+    
     return true;
   }, [checkTokenHealth, setupClient]);
 
-  // Expose a manual refresh method for components to use with force option
+  // Force refresh method with detailed logging
   const refreshClient = useCallback(async (force = false) => {
-    return setupClient(force);
-  }, [setupClient]);
+    console.log(`Manual client refresh requested (force=${force})`);
+    await setupClient(force);
+    
+    // Verify the refresh worked
+    const healthy = await checkTokenHealth();
+    console.log(`Refresh complete, token health: ${healthy ? 'good' : 'needs attention'}`);
+    
+    return healthy;
+  }, [setupClient, checkTokenHealth]);
 
   return { 
     supabase: authenticatedClient, 
@@ -297,6 +358,6 @@ export const useSupabaseClient = () => {
     error,
     isReady, 
     refreshClient,
-    validateTokenBeforeRequest // New function to validate token before critical operations
+    validateTokenBeforeRequest
   };
 };

@@ -23,7 +23,7 @@ export const supabase = createClient<Database>(
     },
     global: {
       headers: {
-        'x-client-info': `lovable_app/1.1` // Add client info for better debugging
+        'x-client-info': `lovable_app/1.2` // Add client info for better debugging
       },
     },
     db: {
@@ -41,11 +41,21 @@ export const supabase = createClient<Database>(
 export const debugSupabaseAuth = async () => {
   try {
     const session = await supabase.auth.getSession();
-    console.log("Current Supabase session state:", {
+    
+    const sessionInfo = {
       hasSession: !!session.data.session,
-      expiresAt: session.data.session?.expires_at,
-      user: session.data.session?.user?.id || "No user"
-    });
+      expiresAt: session.data.session?.expires_at 
+        ? new Date(session.data.session?.expires_at * 1000).toISOString() 
+        : "No expiration",
+      user: session.data.session?.user?.id || "No user",
+      email: session.data.session?.user?.email || "No email",
+      accessTokenExpires: session.data.session?.access_token 
+        ? `${Math.round((session.data.session?.expires_at || 0) - Date.now() / 1000)} seconds` 
+        : "No token",
+      refreshToken: session.data.session?.refresh_token ? "Present" : "Missing"
+    };
+    
+    console.log("Current Supabase session state:", sessionInfo);
     return session;
   } catch (err) {
     console.error("Error checking Supabase session:", err);

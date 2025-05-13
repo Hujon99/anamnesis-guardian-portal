@@ -14,7 +14,8 @@ type ToastProps = {
   duration?: number;
 };
 
-export function toast({
+// Define the base toast function
+function toast({
   title,
   description,
   action,
@@ -50,22 +51,25 @@ export function toast({
   });
 }
 
-// Export the toast-related hooks/functions from sonner
-// Instead of importing useToast directly, we'll create a custom hook
+// Add helper methods to the toast function
+toast.success = (message: string, options?: Partial<ToastProps>) => 
+  toast({ title: message, ...options, variant: "success" });
+
+toast.error = (message: string, options?: Partial<ToastProps>) => 
+  toast({ title: message, ...options, variant: "destructive" });
+
+toast.info = (message: string, options?: Partial<ToastProps>) => 
+  toast({ title: message, ...options });
+
+toast.dismiss = sonnerToast.dismiss;
+
+// Export the toast function with its helper methods
+export { toast };
+
+// Create and export a custom useToast hook
 export const useToast = () => {
-  // Return the toast API from sonner
   return {
-    // Re-export the toast function with our own implementation
     toast,
-    // Re-export any other toast-related functionality we need
-    dismiss: sonnerToast.dismiss,
-    error: (message: string, options?: any) => 
-      toast({ title: message, ...options, variant: "destructive" }),
-    success: (message: string, options?: any) => 
-      toast({ title: message, ...options, variant: "success" }),
-    info: (message: string, options?: any) => 
-      toast({ title: message, ...options }),
-    // These are used by the Toaster component
-    toasts: [] as any[],
+    toasts: [] as any[], // Used by the Toaster component
   };
 };

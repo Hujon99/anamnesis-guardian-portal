@@ -29,7 +29,7 @@ export function OpticianSelector({
   const [isPending, setIsPending] = useState(false);
   
   // Check if user has permission to assign opticians - check organization roles
-  const hasPermission = organization?.membershipList?.some(member => {
+  const hasPermission = organization?.memberships?.data?.some(member => {
     return member.publicUserData?.userId === user?.id && 
       (member.role === 'admin' || member.role === 'org:admin');
   }) || false;

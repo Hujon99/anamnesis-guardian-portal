@@ -11,6 +11,9 @@ import { useSendLinkMutation } from "./useSendLinkMutation";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
   const { supabase } = useSupabaseClient();
@@ -28,12 +31,33 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLink
   } = useSendLinkMutation(entryId, onSuccess);
 
+  // Validate UUID format
+  const validateUUID = (id: string | null, fieldName: string): boolean => {
+    if (id === null) return true; // null is valid for clearing assignments
+    if (!UUID_REGEX.test(id)) {
+      console.error(`Invalid UUID format for ${fieldName}:`, id);
+      return false;
+    }
+    return true;
+  };
+
   // Mutation for assigning an optician to an entry
   const assignOpticianMutation = {
-    isPending: false, // Add this property
+    isPending: false,
     mutateAsync: async (opticianId: string | null) => {
       try {
-        assignOpticianMutation.isPending = true; // Set pending state
+        console.log(`Starting optician assignment. Entry ID: ${entryId}, Optician ID: ${opticianId}`);
+        assignOpticianMutation.isPending = true;
+        
+        // Validate IDs
+        if (!validateUUID(entryId, 'entryId')) {
+          throw new Error(`Invalid entry ID format: ${entryId}`);
+        }
+        
+        if (opticianId !== null && !validateUUID(opticianId, 'opticianId')) {
+          throw new Error(`Invalid optician ID format: ${opticianId}`);
+        }
+        
         const { data, error } = await supabase
           .from("anamnes_entries")
           .update({ optician_id: opticianId })
@@ -41,7 +65,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           .select()
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase error in assignOpticianMutation:", error);
+          throw error;
+        }
+        
+        console.log("Assignment successful, response data:", data);
         
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({
@@ -65,23 +94,35 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         toast({
           title: "Fel vid tilldelning av optiker",
-          description: "Det gick inte att tilldela optiker till anamnesen",
+          description: error instanceof Error 
+            ? error.message
+            : "Det gick inte att tilldela optiker till anamnesen",
           variant: "destructive",
         });
         
         throw error;
       } finally {
-        assignOpticianMutation.isPending = false; // Reset pending state
+        assignOpticianMutation.isPending = false;
       }
     }
   };
 
   // Mutation for assigning a store to an entry
   const assignStoreMutation = {
-    isPending: false, // Add this property
+    isPending: false,
     mutateAsync: async (storeId: string | null) => {
       try {
-        assignStoreMutation.isPending = true; // Set pending state
+        assignStoreMutation.isPending = true;
+        
+        // Validate IDs
+        if (!validateUUID(entryId, 'entryId')) {
+          throw new Error(`Invalid entry ID format: ${entryId}`);
+        }
+        
+        if (storeId !== null && !validateUUID(storeId, 'storeId')) {
+          throw new Error(`Invalid store ID format: ${storeId}`);
+        }
+        
         const { data, error } = await supabase
           .from("anamnes_entries")
           .update({ store_id: storeId })
@@ -119,7 +160,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         throw error;
       } finally {
-        assignStoreMutation.isPending = false; // Reset pending state
+        assignStoreMutation.isPending = false;
       }
     }
   };
@@ -130,6 +171,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     mutateAsync: async (entryId: string) => {
       try {
         deleteMutation.isPending = true;
+        
+        // Validate ID
+        if (!validateUUID(entryId, 'entryId')) {
+          throw new Error(`Invalid entry ID format: ${entryId}`);
+        }
+        
         const { error } = await supabase
           .from("anamnes_entries")
           .delete()
@@ -167,7 +214,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLinkMutation,
     assignOpticianMutation,
     assignStoreMutation,
-    deleteMutation, // Export the delete mutation
+    deleteMutation,
     updateStatus,
     saveFormattedRawData,
     savePatientIdentifier,
@@ -175,8 +222,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLink,
     assignOptician: assignOpticianMutation.mutateAsync,
     assignStore: assignStoreMutation.mutateAsync,
-    deleteEntry: deleteMutation.mutateAsync, // Export the delete function
-    isDeleting: deleteMutation.isPending, // Export the pending state
+    deleteEntry: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
     refreshData: () => {
       // Provide a more selective refresh that only refreshes the current view
       queryClient.invalidateQueries({

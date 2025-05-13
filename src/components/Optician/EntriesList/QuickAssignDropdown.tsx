@@ -40,11 +40,23 @@ export function QuickAssignDropdown({
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
   
+  // Validate UUID format
+  const isValidUUID = (id: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+  
   // Handle optician assignment
   const handleAssign = async (opticianId: string | null) => {
     setIsPending(true);
     
     try {
+      // Validate UUID format if an ID is provided
+      if (opticianId !== null && !isValidUUID(opticianId)) {
+        throw new Error(`Invalid optician ID format: ${opticianId}`);
+      }
+      
+      console.log(`Assigning optician with ID: ${opticianId}`);
       await onAssign(opticianId);
       
       // Show success message
@@ -112,7 +124,7 @@ export function QuickAssignDropdown({
                 disabled={isPending}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span>{optician.name}</span>
+                  <span>{optician.name || optician.email || "Okänd optiker"}</span>
                   {optician.id === currentOpticianId && (
                     <Check className="h-4 w-4 text-primary" />
                   )}

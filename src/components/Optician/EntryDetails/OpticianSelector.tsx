@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, User } from 'lucide-react';
 import { useOpticians } from '@/hooks/useOpticians';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/components/ui/use-toast';
 
 interface OpticianSelectorProps {
   currentOpticianId: string | null;
@@ -26,6 +27,26 @@ export function OpticianSelector({
   const { organization } = useOrganization();
   const { opticians, isLoading } = useOpticians();
   const [isPending, setIsPending] = useState(false);
+  
+  // Validate UUID format
+  const isValidUUID = (id: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+
+  // Log optician IDs to help debug
+  if (opticians.length > 0) {
+    console.log('Available opticians:', opticians.map(o => ({
+      id: o.id,
+      clerk_user_id: o.clerk_user_id,
+      name: o.name
+    })));
+  }
+  
+  // Check if current optician ID is valid
+  if (currentOpticianId && !isValidUUID(currentOpticianId)) {
+    console.warn(`Current optician ID is not a valid UUID: ${currentOpticianId}`);
+  }
   
   // Check if user has permission to assign opticians - check organization roles
   const hasPermission = user && organization ? (async () => {
@@ -53,11 +74,29 @@ export function OpticianSelector({
       // Handle "none" value to unassign
       if (value === 'none') {
         await onAssignOptician(null);
-      } else {
-        await onAssignOptician(value);
+        return;
       }
+      
+      // Validate UUID
+      if (!isValidUUID(value)) {
+        console.error('Invalid optician ID format:', value);
+        toast({
+          title: "Fel vid tilldelning",
+          description: "Ogiltigt format på optiker-ID",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log(`Assigning optician with ID: ${value}`);
+      await onAssignOptician(value);
     } catch (error) {
       console.error('Failed to assign optician:', error);
+      toast({
+        title: "Fel vid tilldelning",
+        description: "Kunde inte tilldela optiker",
+        variant: "destructive",
+      });
     } finally {
       setIsPending(false);
     }

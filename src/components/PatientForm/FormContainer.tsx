@@ -1,4 +1,3 @@
-
 /**
  * This component renders the form container, including the Toaster component
  * to ensure toast messages are properly displayed. It also adds additional
@@ -89,7 +88,8 @@ const FormContainer: React.FC<FormContainerProps> = ({
     
     try {
       // Show a toast to inform the user the submission is in progress
-      toast.info("Skickar in formuläret...", {
+      toast({
+        title: "Skickar in formuläret...",
         duration: 10000, // Long duration in case submission takes time
         id: "submit-form-toast"
       });

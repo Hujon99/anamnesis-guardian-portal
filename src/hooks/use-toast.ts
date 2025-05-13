@@ -1,4 +1,3 @@
-
 /**
  * This hook provides a centralized toast notification system.
  * It allows for consistent toast notifications throughout the application.
@@ -7,7 +6,7 @@
  */
 
 import * as React from "react";
-import { toast as sonnerToast, type ToasterProps } from "sonner";
+import { toast as sonnerToast } from "sonner";
 
 const TOAST_LIMIT = 10;
 const TOAST_REMOVE_DELAY = 1000;
@@ -19,7 +18,7 @@ type ToasterToast = {
   description?: React.ReactNode;
   action?: React.ReactNode;
   variant?: "default" | "destructive"; // Match the variants from toast.tsx
-  duration?: number; // Add duration property
+  duration?: number;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
@@ -147,8 +146,9 @@ function dispatch(action: Action) {
   });
 }
 
-// Explicitly define toast options interface to include duration
-interface ToastOptions {
+// Explicitly define toast options interface to include duration and id
+export interface ToastProps {
+  id?: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactNode;
@@ -157,11 +157,7 @@ interface ToastOptions {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
-  id?: string;
 }
-
-// Enhanced toast interface with typed methods
-type ToastProps = Omit<ToastOptions, "id">;
 
 interface ToastAPI {
   (props: ToastProps): string;

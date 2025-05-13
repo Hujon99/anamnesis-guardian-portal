@@ -4,8 +4,6 @@
  * to maintain consistent imports throughout the application.
  */
 
-import { useToast, toast } from "@/hooks/use-toast";
+import { useToast, toast, ToastProps } from "@/hooks/use-toast";
 
-export { useToast, toast };
-
-export type { ToastProps } from "@/hooks/use-toast";
+export { useToast, toast, ToastProps };

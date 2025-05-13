@@ -13,7 +13,8 @@ import {
   Settings, 
   Users,
   User,
-  LayoutDashboard
+  LayoutDashboard,
+  Clipboard
 } from "lucide-react";
 import {
   Sidebar,
@@ -95,6 +96,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               
+              {/* Always show My Anamneses link for opticians */}
               {isUserOptician && (
                 <SidebarMenuItem>
                   <SidebarMenuButton 
@@ -103,9 +105,9 @@ export function AppSidebar() {
                     tooltip="Mina tilldelade anamneser"
                   >
                     <Link to="/my-anamneses">
-                      <User />
+                      <Clipboard />
                       <span>Mina anamneser</span>
-                      <Badge variant="outline" className="ml-auto">Personlig</Badge>
+                      <Badge variant="outline" className="ml-auto bg-accent-1/10 text-accent-1">Personlig</Badge>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

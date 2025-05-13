@@ -2,6 +2,7 @@
 /**
  * This file re-exports the toast functionality from our custom hook
  * to maintain consistent imports throughout the application.
+ * It ensures all toasts use the same styling and behavior patterns.
  */
 
 import { toast as toastFunction } from "@/hooks/use-toast";

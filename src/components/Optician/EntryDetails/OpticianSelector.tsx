@@ -29,7 +29,7 @@ export function OpticianSelector({
   const { opticians, isLoading } = useOpticians();
   const [isPending, setIsPending] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean>(false);
-  const { refreshClient } = useSupabaseClient();
+  const { validateTokenBeforeRequest } = useSupabaseClient();
   
   // Check if user has permission to assign opticians - check organization roles
   useEffect(() => {
@@ -56,46 +56,84 @@ export function OpticianSelector({
     checkPermissions();
   }, [user, organization]);
   
+  // Pre-validate token on component mount
+  useEffect(() => {
+    validateTokenBeforeRequest(false).catch(err => {
+      console.error("Background token validation failed:", err);
+    });
+  }, [validateTokenBeforeRequest]);
+  
   // Find the name of the currently assigned optician if any
   const currentOptician = opticians.find(opt => opt.id === currentOpticianId);
   const currentOpticianLabel = currentOptician?.name || currentOptician?.email || 'Ingen optiker tilldelad';
   
   const handleOpticianChange = async (value: string) => {
-    if (disabled || !hasPermission) return;
+    if (disabled || !hasPermission || isPending) return;
     
-    try {
-      setIsPending(true);
-      
-      // Ensure the Supabase client has a valid token
-      await refreshClient(true);
-      
-      // Handle "none" value to unassign
-      if (value === 'none') {
-        await onAssignOptician(null);
-      } else {
-        // Verify valid optician ID
-        const validOptician = opticians.find(opt => opt.id === value);
-        if (!validOptician) {
-          throw new Error("Invalid optician selected");
+    let retryCount = 0;
+    const maxRetries = 2;
+    
+    while (retryCount <= maxRetries) {
+      try {
+        setIsPending(true);
+        
+        // Ensure the Supabase client has a valid token
+        await validateTokenBeforeRequest(true);
+        
+        // Handle "none" value to unassign
+        if (value === 'none') {
+          await onAssignOptician(null);
+        } else {
+          // Verify valid optician ID
+          const validOptician = opticians.find(opt => opt.id === value);
+          if (!validOptician) {
+            throw new Error("Invalid optician selected");
+          }
+          await onAssignOptician(value);
         }
-        await onAssignOptician(value);
-      }
 
-      toast({
-        title: value !== 'none' ? "Optiker tilldelad" : "Tilldelning borttagen",
-        description: value !== 'none' 
-          ? "Anamnesen har tilldelats en optiker" 
-          : "Optikertilldelningen har tagits bort"
-      });
-    } catch (error) {
-      console.error('Failed to assign optician:', error);
-      toast({
-        title: "Fel vid tilldelning",
-        description: "Det gick inte att tilldela optikern",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPending(false);
+        toast({
+          title: value !== 'none' ? "Optiker tilldelad" : "Tilldelning borttagen",
+          description: value !== 'none' 
+            ? "Anamnesen har tilldelats en optiker" 
+            : "Optikertilldelningen har tagits bort"
+        });
+        
+        break; // Success - exit retry loop
+      } catch (error) {
+        console.error(`Failed to assign optician (attempt ${retryCount + 1}):`, error);
+        
+        // Check if it's a JWT-related error
+        const isJwtError = error?.message?.includes("JWT") || 
+                          error?.message?.includes("token") ||
+                          error?.code === "PGRST301";
+        
+        if (isJwtError && retryCount < maxRetries) {
+          // For JWT errors, try to retry
+          retryCount++;
+          
+          try {
+            // Force token refresh and wait a moment
+            await validateTokenBeforeRequest(true);
+            await new Promise(r => setTimeout(r, 500));
+            console.log(`Retrying assignment after token refresh (attempt ${retryCount})`);
+            continue; // Try again
+          } catch (refreshError) {
+            console.error("Token refresh failed during retry:", refreshError);
+          }
+        }
+        
+        // Show error message for final failure
+        toast({
+          title: "Fel vid tilldelning",
+          description: "Det gick inte att tilldela optikern",
+          variant: "destructive",
+        });
+        
+        break; // Exit retry loop
+      } finally {
+        setIsPending(false);
+      }
     }
   };
   

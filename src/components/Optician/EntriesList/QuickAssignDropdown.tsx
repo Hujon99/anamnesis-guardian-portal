@@ -4,7 +4,7 @@
  * directly from the list view.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, ChevronDown, Loader2, User } from "lucide-react";
 import { useOpticians } from "@/hooks/useOpticians";
 import { Button } from "@/components/ui/button";
@@ -37,48 +37,103 @@ export function QuickAssignDropdown({
   const { opticians, isLoading } = useOpticians();
   const { has } = useAuth();
   const { user } = useUser();
-  const { refreshClient } = useSupabaseClient();
+  const { validateTokenBeforeRequest, refreshClient } = useSupabaseClient();
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
   
-  // Handle optician assignment
-  const handleAssign = async (opticianId: string | null) => {
-    setIsPending(true);
-    
-    try {
-      // Ensure the Supabase client has a valid token before making the request
-      await refreshClient(true);
-      
-      // Make sure the opticianId is valid
-      if (opticianId !== null) {
-        const validOptician = opticians.find(o => o.id === opticianId);
-        if (!validOptician) {
-          throw new Error("Invalid optician selected");
-        }
+  // Ensure token is valid on component mount and before dropdown opens
+  useEffect(() => {
+    // Silently validate token on mount
+    validateTokenBeforeRequest(false).catch(err => 
+      console.error("Background token validation failed:", err)
+    );
+  }, []); // Only run once on mount
+  
+  // Pre-validate token before opening dropdown
+  const handleOpenChange = async (open: boolean) => {
+    if (open && !isOpen) {
+      try {
+        // Before opening dropdown, validate token
+        await validateTokenBeforeRequest(false);
+      } catch (error) {
+        console.error("Token validation failed on dropdown open:", error);
+        // Still allow dropdown to open - we'll handle errors during assignment
       }
-      
-      await onAssign(opticianId);
-      
-      // Show success message
-      toast({
-        title: opticianId ? "Optiker tilldelad" : "Tilldelning borttagen",
-        description: opticianId 
-          ? "Anamnesen har tilldelats en optiker" 
-          : "Optikertilldelningen har tagits bort",
-      });
-      
-      setIsOpen(false);
-    } catch (error) {
-      console.error("Error assigning optician:", error);
-      
-      toast({
-        title: "Fel vid tilldelning",
-        description: "Det gick inte att tilldela optikern. Försök igen.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPending(false);
+    }
+    setIsOpen(open);
+  };
+  
+  // Handle optician assignment with improved error recovery
+  const handleAssign = async (opticianId: string | null) => {
+    if (disabled || isPending) return;
+    
+    let retryCount = 0;
+    const maxRetries = 2;
+    
+    while (retryCount <= maxRetries) {
+      try {
+        setIsPending(true);
+        
+        // First ensure token is valid before making request
+        await validateTokenBeforeRequest(true);
+        
+        // Make sure the opticianId is valid
+        if (opticianId !== null) {
+          const validOptician = opticians.find(o => o.id === opticianId);
+          if (!validOptician) {
+            throw new Error("Ogiltig optiker vald");
+          }
+        }
+        
+        await onAssign(opticianId);
+        
+        // Show success message
+        toast({
+          title: opticianId ? "Optiker tilldelad" : "Tilldelning borttagen",
+          description: opticianId 
+            ? "Anamnesen har tilldelats en optiker" 
+            : "Optikertilldelningen har tagits bort",
+        });
+        
+        setIsOpen(false);
+        break; // Success - exit retry loop
+      } catch (error) {
+        console.error(`Error assigning optician (attempt ${retryCount + 1}):`, error);
+        
+        // Check if it's a JWT-related error
+        const isJwtError = error?.message?.includes("JWT") || 
+                          error?.message?.includes("token") ||
+                          error?.code === "PGRST301";
+        
+        if (isJwtError && retryCount < maxRetries) {
+          // For JWT errors, try to refresh token and retry
+          retryCount++;
+          setIsPending(true);
+          
+          try {
+            // Force token refresh
+            await refreshClient(true);
+            // Small delay before retry
+            await new Promise(r => setTimeout(r, 500));
+            console.log(`Retrying assignment after token refresh (attempt ${retryCount})`);
+            continue; // Try again
+          } catch (refreshError) {
+            console.error("Token refresh failed during retry:", refreshError);
+          }
+        }
+        
+        // Show error message only for final failure or non-JWT errors
+        toast({
+          title: "Fel vid tilldelning",
+          description: "Det gick inte att tilldela optikern. Försök igen.",
+          variant: "destructive",
+        });
+        
+        break; // Exit retry loop on non-JWT error or max retries reached
+      } finally {
+        setIsPending(false);
+      }
     }
   };
 
@@ -86,7 +141,7 @@ export function QuickAssignDropdown({
   const selectedOptician = opticians.find(o => o.id === currentOpticianId);
   
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild disabled={disabled || isPending}>
         <Button
           variant="outline"

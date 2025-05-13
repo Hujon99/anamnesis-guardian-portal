@@ -13,7 +13,7 @@ import { toast } from "@/components/ui/use-toast";
 
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
-  const { supabase, refreshClient } = useSupabaseClient();
+  const { supabase, refreshClient, validateTokenBeforeRequest } = useSupabaseClient();
   
   const {
     updateEntryMutation,
@@ -34,6 +34,35 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
   };
+  
+  // Common error handler function
+  const handleMutationError = (error: any, operation: string) => {
+    console.error(`Error during ${operation}:`, error);
+    
+    let errorMessage = "Ett oväntat fel uppstod";
+    
+    // Check if it's a JWT error
+    if (error?.message?.includes("JWT") || 
+        error?.message?.includes("token") || 
+        error?.code === "PGRST301") {
+      errorMessage = "Sessionen har upphört. Försöker återansluta...";
+      
+      // Silently try to refresh the token in the background
+      refreshClient(true).catch(e => {
+        console.error("Background token refresh failed:", e);
+      });
+    } else {
+      errorMessage = error?.message || errorMessage;
+    }
+    
+    toast({
+      title: `Fel vid ${operation}`,
+      description: errorMessage,
+      variant: "destructive",
+    });
+    
+    throw error;
+  };
 
   // Mutation for assigning an optician to an entry
   const assignOpticianMutation = {
@@ -47,8 +76,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         assignOpticianMutation.isPending = true;
         
-        // Ensure token is refreshed to prevent JWT errors
-        await refreshClient(true);
+        // Pre-validate token before making the request
+        await validateTokenBeforeRequest(true);
         
         const { data, error } = await supabase
           .from("anamnes_entries")
@@ -69,15 +98,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         return data;
       } catch (error) {
-        console.error("Error assigning optician:", error);
-        
-        toast({
-          title: "Fel vid tilldelning av optiker",
-          description: "Det gick inte att tilldela optiker till anamnesen",
-          variant: "destructive",
-        });
-        
-        throw error;
+        return handleMutationError(error, "tilldelning av optiker");
       } finally {
         assignOpticianMutation.isPending = false;
       }
@@ -96,8 +117,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         assignStoreMutation.isPending = true;
         
-        // Ensure token is refreshed to prevent JWT errors
-        await refreshClient(true);
+        // Pre-validate token before making the request
+        await validateTokenBeforeRequest(true);
         
         const { data, error } = await supabase
           .from("anamnes_entries")
@@ -126,15 +147,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         return data;
       } catch (error) {
-        console.error("Error assigning store:", error);
-        
-        toast({
-          title: "Fel vid tilldelning av butik",
-          description: "Det gick inte att koppla anamnes till butik",
-          variant: "destructive",
-        });
-        
-        throw error;
+        return handleMutationError(error, "tilldelning av butik");
       } finally {
         assignStoreMutation.isPending = false;
       }
@@ -148,8 +161,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       try {
         deleteMutation.isPending = true;
         
-        // Ensure token is refreshed to prevent JWT errors
-        await refreshClient(true);
+        // Pre-validate token before making the request
+        await validateTokenBeforeRequest(true);
         
         const { error } = await supabase
           .from("anamnes_entries")
@@ -168,15 +181,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         return true;
       } catch (error) {
-        console.error("Error deleting entry:", error);
-        
-        toast({
-          title: "Fel vid borttagning",
-          description: "Det gick inte att ta bort anamnesen",
-          variant: "destructive",
-        });
-        
-        throw error;
+        return handleMutationError(error, "borttagning");
       } finally {
         deleteMutation.isPending = false;
       }

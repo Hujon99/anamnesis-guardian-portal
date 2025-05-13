@@ -5,10 +5,10 @@
  * providing a comprehensive overview of all organization entries.
  */
 
-import { useOrganization, useUser } from "@clerk/clerk-react";
+import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2, User } from "lucide-react";
+import { AlertCircle, Clipboard, Loader2, User } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
@@ -45,10 +45,14 @@ const LoadingState = () => (
 
 const Dashboard = () => {
   const { organization } = useOrganization();
+  const { userId, has } = useAuth();
   const { user } = useUser();
   const { isReady, refreshClient, supabase } = useSupabaseClient();
   const [isUserOptician, setIsUserOptician] = useState(false);
   
+  // Check user roles
+  const isAdmin = has({ role: "org:admin" });
+
   // Ensure Supabase client is refreshed when dashboard mounts
   useEffect(() => {
     console.log("Dashboard mounted, ensuring Supabase client is ready");
@@ -60,13 +64,13 @@ const Dashboard = () => {
   // Check if user is an optician
   useEffect(() => {
     const checkOpticianRole = async () => {
-      if (!user || !isReady) return;
+      if (!userId || !isReady) return;
       
       try {
         const { data } = await supabase
           .from('users')
           .select('role')
-          .eq('clerk_user_id', user.id)
+          .eq('clerk_user_id', userId)
           .single();
           
         setIsUserOptician(data?.role === 'optician');
@@ -77,7 +81,10 @@ const Dashboard = () => {
     };
     
     checkOpticianRole();
-  }, [user, isReady, supabase]);
+  }, [userId, isReady, supabase]);
+
+  // Determine if user can access optician features
+  const canAccessOpticianFeatures = isUserOptician || isAdmin;
 
   if (!organization) {
     return (
@@ -103,10 +110,10 @@ const Dashboard = () => {
           <p className="text-muted-foreground mt-2">Hantering av samtliga anamneser i organisationen</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          {isUserOptician && (
-            <Button variant="outline" asChild className="flex items-center gap-2">
+          {canAccessOpticianFeatures && (
+            <Button variant="outline" asChild className="flex items-center gap-2 font-medium border-accent-1/30 hover:bg-accent-1/10 hover:text-accent-1 hover:border-accent-1">
               <Link to="/my-anamneses">
-                <User className="h-4 w-4" />
+                <Clipboard className="h-4 w-4" />
                 <span>Till mina anamneser</span>
               </Link>
             </Button>

@@ -28,48 +28,60 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useOpticians } from "@/hooks/useOpticians";
-import { useEffect, useState } from "react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
 
 export function AppSidebar() {
-  const { has } = useAuth();
+  const { has, userId } = useAuth();
   const { user } = useUser();
   const location = useLocation();
   const { supabase, isReady } = useSupabaseClient();
   
-  // Check if current user is an optician
+  // Check if current user has optician role
   const [isUserOptician, setIsUserOptician] = useState(false);
   const [isCheckingRole, setIsCheckingRole] = useState(true);
   
+  // Check organization roles
+  const isAdmin = has({ role: "org:admin" });
+  const isMember = has({ role: "org:member" }) || isAdmin;
+
   useEffect(() => {
     const checkOpticianRole = async () => {
-      if (!user || !isReady) return;
+      if (!userId || !isReady) return;
       
       try {
         setIsCheckingRole(true);
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('users')
           .select('role')
-          .eq('clerk_user_id', user.id)
+          .eq('clerk_user_id', userId)
           .single();
           
+        if (error) {
+          console.error("Error checking optician role:", error);
+          return;
+        }
+        
         setIsUserOptician(data?.role === 'optician');
+        
+        // User is marked as optician but doesn't have the necessary Clerk role
+        if (data?.role === 'optician' && !isAdmin && !isMember) {
+          console.warn("User has optician role in database but not in Clerk");
+        }
       } catch (error) {
         console.error("Error checking optician role:", error);
-        setIsUserOptician(false);
       } finally {
         setIsCheckingRole(false);
       }
     };
     
     checkOpticianRole();
-  }, [user, isReady, supabase]);
-  
-  // Check user roles
-  const isAdmin = has({ role: "org:admin" });
-  const isMember = has({ role: "org:member" }) || isAdmin;
+  }, [userId, isReady, supabase, isAdmin, isMember]);
+
+  // Determine if user can access optician features (optician role OR admin)
+  const canAccessOpticianFeatures = isUserOptician || isAdmin;
 
   return (
     <Sidebar>
@@ -96,18 +108,22 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               
-              {/* Always show My Anamneses link for opticians */}
-              {isUserOptician && (
+              {canAccessOpticianFeatures && (
                 <SidebarMenuItem>
                   <SidebarMenuButton 
                     asChild 
                     isActive={location.pathname === '/my-anamneses'}
                     tooltip="Mina tilldelade anamneser"
                   >
-                    <Link to="/my-anamneses">
+                    <Link to="/my-anamneses" className="relative">
                       <Clipboard />
                       <span>Mina anamneser</span>
-                      <Badge variant="outline" className="ml-auto bg-accent-1/10 text-accent-1">Personlig</Badge>
+                      <Badge 
+                        variant="outline" 
+                        className="ml-auto bg-accent-1/10 text-accent-1 font-medium"
+                      >
+                        {isAdmin ? "Admin" : "Personlig"}
+                      </Badge>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

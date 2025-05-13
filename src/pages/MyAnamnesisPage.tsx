@@ -4,7 +4,7 @@
  * It provides a personalized view with statistics and filtered entries specific to the user.
  */
 
-import { useUser } from "@clerk/clerk-react";
+import { useUser, useAuth } from "@clerk/clerk-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, LayoutDashboard, Loader2 } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
@@ -44,6 +44,10 @@ const LoadingState = () => (
 const MyAnamnesisPage = () => {
   const { user } = useUser();
   const { isReady, refreshClient } = useSupabaseClient();
+  const { has } = useAuth();
+  
+  // Check if user is admin
+  const isAdmin = has({ role: "org:admin" });
   
   // Ensure Supabase client is refreshed when dashboard mounts
   useEffect(() => {
@@ -74,7 +78,11 @@ const MyAnamnesisPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Mina anamneser</h1>
-          <p className="text-muted-foreground mt-2">Hantering av anamneser tilldelade till dig</p>
+          <p className="text-muted-foreground mt-2">
+            {isAdmin 
+              ? "Hantering av alla anamneser med administratörsbehörighet" 
+              : "Hantering av anamneser tilldelade till dig"}
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <Button variant="outline" asChild className="flex items-center gap-2">

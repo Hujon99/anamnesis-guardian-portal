@@ -9,6 +9,7 @@ import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -23,6 +24,9 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
   const { supabase, isReady } = useSupabaseClient();
   const [isOpticianRoleChecked, setIsOpticianRoleChecked] = useState(!requireOpticianRole);
   const [isUserOptician, setIsUserOptician] = useState(false);
+
+  // Check if user is Admin through Clerk roles
+  const isAdmin = has({ role: "org:admin" });
 
   // Check Clerk roles
   useEffect(() => {
@@ -63,13 +67,18 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
       if (!userId || !isReady || !requireOpticianRole) return;
 
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('users')
           .select('role')
           .eq('clerk_user_id', userId)
           .single();
           
-        setIsUserOptician(data?.role === 'optician');
+        if (error) {
+          console.error("Error fetching user role:", error);
+          setIsUserOptician(false);
+        } else {
+          setIsUserOptician(data?.role === 'optician');
+        }
       } catch (error) {
         console.error("Error checking optician role:", error);
         setIsUserOptician(false);
@@ -83,8 +92,10 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
     }
   }, [userId, isReady, supabase, requireOpticianRole]);
 
-  // Combine both authorization checks
-  const isFinallyAuthorized = isAuthorized && (!requireOpticianRole || isUserOptician);
+  // Admins can bypass optician role requirement
+  const isFinallyAuthorized = isAuthorized && (
+    !requireOpticianRole || isUserOptician || isAdmin
+  );
 
   // Show loading state
   if (!isAuthLoaded || !isOrgLoaded || isAuthorized === null || !isOpticianRoleChecked) {
@@ -107,7 +118,7 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h2 className="text-2xl font-bold mb-4">Behörighet saknas</h2>
         <p className="text-gray-600 mb-6 text-center">
-          {requireOpticianRole && !isUserOptician
+          {requireOpticianRole && !isUserOptician && !isAdmin
             ? "Du har inte optikerbehörighet för denna sida."
             : "Du har inte tillräckliga behörigheter för att komma åt denna sida."}
         </p>

@@ -5,12 +5,12 @@
  */
 
 import * as React from "react";
-import { toast as sonnerToast, Toast, ToastProps } from "sonner";
+import { toast as sonnerToast, ToasterToast as SonnerToast, ToasterProps } from "sonner";
 
 const TOAST_LIMIT = 10;
 const TOAST_REMOVE_DELAY = 1000;
 
-type ToasterToast = Toast & {
+type ToasterToast = SonnerToast & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
@@ -140,9 +140,20 @@ function dispatch(action: Action) {
   });
 }
 
-type Toast = Omit<ToasterToast, "id">;
+// Enhanced toast interface with typed methods
+type ToastProps = Omit<ToasterToast, "id">;
 
-function toast(props: Toast) {
+interface ToastAPI {
+  (props: ToastProps): string;
+  success: (message: string, options?: Omit<ToastProps, "variant">) => string;
+  error: (title: string, options?: Omit<ToastProps, "variant">) => string;
+  warning: (title: string, options?: Omit<ToastProps, "variant">) => string;
+  info: (title: string, options?: Omit<ToastProps, "variant">) => string;
+  dismiss: (toastId?: string) => void;
+}
+
+// Create enhanced toast function
+const toast = ((props: ToastProps) => {
   const { variant = "default", ...data } = props;
   const id = genId();
 
@@ -176,7 +187,47 @@ function toast(props: Toast) {
   });
 
   return id;
-}
+}) as ToastAPI;
+
+// Add the typed methods to toast
+toast.success = (message, options = {}) => {
+  return toast({
+    title: message,
+    variant: "default",
+    className: "bg-green-500 text-white border-green-600",
+    ...options,
+  });
+};
+
+toast.error = (title, options = {}) => {
+  return toast({
+    title,
+    variant: "destructive",
+    ...options,
+  });
+};
+
+toast.warning = (title, options = {}) => {
+  return toast({
+    title,
+    variant: "default",
+    className: "bg-yellow-500 text-white border-yellow-600",
+    ...options,
+  });
+};
+
+toast.info = (title, options = {}) => {
+  return toast({
+    title,
+    variant: "default",
+    className: "bg-blue-500 text-white border-blue-600",
+    ...options,
+  });
+};
+
+toast.dismiss = (toastId?: string) => {
+  dispatch({ type: actionTypes.DISMISS_TOAST, toastId });
+};
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState);

@@ -5,12 +5,13 @@
  * that allows for account management and sign out functionality.
  */
 
-import { UserButton, OrganizationSwitcher, useAuth } from "@clerk/clerk-react";
+import { UserButton, OrganizationSwitcher, useAuth, useUser } from "@clerk/clerk-react";
 import { User } from "lucide-react";
 
 const Navbar = () => {
-  const { sessionClaims } = useAuth();
-  const firstName = sessionClaims?.first_name as string || "";
+  const { userId } = useAuth();
+  const { user } = useUser();
+  const firstName = user?.firstName || "";
 
   return (
     <header className="border-b">

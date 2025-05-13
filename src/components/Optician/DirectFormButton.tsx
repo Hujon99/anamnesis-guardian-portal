@@ -20,7 +20,7 @@ import { useFormTemplate } from "@/hooks/useFormTemplate";
 export function DirectFormButton() {
   const { organization } = useOrganization();
   const { user } = useUser();
-  const { sessionClaims } = useAuth();
+  const { userId } = useAuth();
   const { supabase, isReady: isSupabaseReady } = useSupabaseClient();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -59,8 +59,8 @@ export function DirectFormButton() {
     }
   }, [templateError]);
   
-  // Get the creator's name from session claims
-  const creatorName = sessionClaims?.full_name as string || user?.fullName || user?.id || "Okänd";
+  // Get the creator's name from user object
+  const creatorName = user?.fullName || user?.id || "Okänd";
 
   // Mutation for creating a direct form entry
   const createDirectFormEntry = useMutation({
@@ -78,7 +78,7 @@ export function DirectFormButton() {
       }
 
       console.log("[DirectFormButton]: Creating direct form entry with organization ID:", organization.id);
-      console.log("[DirectFormButton]: Current user ID:", user?.id || null);
+      console.log("[DirectFormButton]: Current user ID:", userId || null);
       console.log("[DirectFormButton]: Creator name:", creatorName);
       console.log("[DirectFormButton]: Using form template ID:", formTemplate.id);
 
@@ -102,7 +102,7 @@ export function DirectFormButton() {
           expires_at: expiresAt, // Using the 72-hour expiry
           form_id: formTemplate.id,
           patient_identifier: patientIdentifier,
-          created_by: user?.id || null,
+          created_by: userId || null,
           created_by_name: creatorName, // Add the creator's name
           sent_at: new Date().toISOString()
         })

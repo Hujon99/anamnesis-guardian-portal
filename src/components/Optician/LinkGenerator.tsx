@@ -1,3 +1,4 @@
+
 /**
  * This component provides functionality for generating and sending personalized
  * anamnesis links to patients. It handles the collection of patient information,
@@ -27,6 +28,7 @@ const formSchema = z.object({
     message: "Patientinformation måste vara minst 2 tecken"
   })
 });
+
 export function LinkGenerator() {
   const {
     organization
@@ -35,7 +37,7 @@ export function LinkGenerator() {
     user
   } = useUser();
   const {
-    sessionClaims
+    userId
   } = useAuth();
   const {
     supabase
@@ -50,8 +52,8 @@ export function LinkGenerator() {
     isLoading: isLoadingTemplate
   } = useFormTemplate();
 
-  // Get the creator's name from session claims
-  const creatorName = sessionClaims?.full_name as string || user?.fullName || user?.id || "Okänd";
+  // Get the creator's name from user object
+  const creatorName = user?.fullName || user?.id || "Okänd";
 
   // Create form with validation
   const form = useForm<z.infer<typeof formSchema>>({
@@ -60,6 +62,7 @@ export function LinkGenerator() {
       patientIdentifier: ""
     }
   });
+
   useEffect(() => {
     // Reset error message when dialog opens/closes
     setErrorMessage(null);
@@ -97,7 +100,7 @@ export function LinkGenerator() {
         // 7 days from now
         form_id: formTemplate.id,
         patient_identifier: patientIdentifier,
-        created_by: user?.id || null,
+        created_by: userId || null,
         created_by_name: creatorName,
         sent_at: new Date().toISOString()
       }).select().single();
@@ -142,9 +145,13 @@ export function LinkGenerator() {
       patientIdentifier: values.patientIdentifier
     });
   };
+
   return <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        
+        <Button variant="default" className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Skapa ny anamneslänk
+        </Button>
       </DialogTrigger>
       
       <DialogContent>

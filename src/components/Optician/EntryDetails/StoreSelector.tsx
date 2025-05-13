@@ -28,10 +28,18 @@ export function StoreSelector({
   const [isPending, setIsPending] = useState(false);
   
   // Check if user has permission to assign stores - check organization roles
-  const hasPermission = organization?.memberships?.data?.some(member => {
-    return member.publicUserData?.userId === user?.id && 
-      (member.role === 'admin' || member.role === 'org:admin');
-  }) || false;
+  const hasPermission = user && organization ? (async () => {
+    try {
+      const members = await organization.getMemberships();
+      return members.data?.some(member => 
+        member.publicUserData?.userId === user.id && 
+        (member.role === 'admin' || member.role === 'org:admin')
+      ) || false;
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      return false;
+    }
+  })() : false;
   
   // Find the name of the currently assigned store if any
   const currentStore = stores.find(store => store.id === currentStoreId);

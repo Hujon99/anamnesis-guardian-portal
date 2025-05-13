@@ -60,7 +60,7 @@ export function useOpticians() {
                 name: member?.publicUserData?.firstName 
                   ? `${member.publicUserData.firstName} ${member.publicUserData.lastName || ''}`
                   : undefined,
-                email: member?.publicUserData?.emailAddress
+                email: member?.publicUserData?.identifier // Using identifier instead of emailAddress
               };
             } catch (err) {
               console.error('Error fetching Clerk user data:', err);

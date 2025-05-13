@@ -7,7 +7,6 @@
 import { useState } from 'react';
 import { useUser, useOrganization } from '@clerk/clerk-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import { Loader2, User } from 'lucide-react';
 import { useOpticians } from '@/hooks/useOpticians';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,10 +28,18 @@ export function OpticianSelector({
   const [isPending, setIsPending] = useState(false);
   
   // Check if user has permission to assign opticians - check organization roles
-  const hasPermission = organization?.memberships?.data?.some(member => {
-    return member.publicUserData?.userId === user?.id && 
-      (member.role === 'admin' || member.role === 'org:admin');
-  }) || false;
+  const hasPermission = user && organization ? (async () => {
+    try {
+      const members = await organization.getMemberships();
+      return members.data?.some(member => 
+        member.publicUserData?.userId === user.id && 
+        (member.role === 'admin' || member.role === 'org:admin')
+      ) || false;
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      return false;
+    }
+  })() : false;
   
   // Find the name of the currently assigned optician if any
   const currentOptician = opticians.find(opt => opt.id === currentOpticianId);

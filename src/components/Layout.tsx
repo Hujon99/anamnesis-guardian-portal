@@ -4,6 +4,7 @@ import Navbar from "./Navbar";
 import { useAuth, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { NavigationBreadcrumbs } from "./NavigationBreadcrumbs";
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const { isLoaded, userId } = useAuth();
@@ -24,8 +25,9 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
           <div className="flex flex-col min-h-full">
             <Navbar />
             <div className="p-4 sm:p-6 flex-grow">
-              <div className="sidebar-trigger-container mb-4">
+              <div className="sidebar-trigger-container mb-4 flex items-center space-x-4">
                 <SidebarTrigger />
+                <NavigationBreadcrumbs className="hidden sm:flex" />
               </div>
               {children || <Outlet />}
             </div>

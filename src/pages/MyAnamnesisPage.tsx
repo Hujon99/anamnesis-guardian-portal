@@ -6,7 +6,7 @@
 
 import { useUser } from "@clerk/clerk-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, LayoutDashboard, Loader2 } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
@@ -14,6 +14,8 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEffect } from "react";
 import { MyAnamnesisView } from "@/components/Optician/MyAnamnesisView";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 // Error fallback component 
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -75,6 +77,12 @@ const MyAnamnesisPage = () => {
           <p className="text-muted-foreground mt-2">Hantering av anamneser tilldelade till dig</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" asChild className="flex items-center gap-2">
+            <Link to="/dashboard">
+              <LayoutDashboard className="h-4 w-4" />
+              <span>Till översikten</span>
+            </Link>
+          </Button>
           <DirectFormButton />
         </div>
       </div>

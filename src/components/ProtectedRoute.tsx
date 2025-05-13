@@ -1,18 +1,30 @@
 
+/**
+ * Protected route component that restricts access to routes based on authentication
+ * and role requirements. Provides custom UI for unauthorized access scenarios.
+ */
+
 import { useAuth, useOrganization, RedirectToSignIn } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireRole?: string | string[]; // Modified to accept array of roles
+  requireOpticianRole?: boolean; // Added for optician-specific pages
 }
 
-const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: ProtectedRouteProps) => {
   const { isLoaded: isAuthLoaded, userId, has } = useAuth();
   const { isLoaded: isOrgLoaded, organization } = useOrganization();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const { supabase, isReady } = useSupabaseClient();
+  const [isOpticianRoleChecked, setIsOpticianRoleChecked] = useState(!requireOpticianRole);
+  const [isUserOptician, setIsUserOptician] = useState(false);
 
+  // Check Clerk roles
   useEffect(() => {
     if (isAuthLoaded && isOrgLoaded) {
       // Check if user is logged in
@@ -22,7 +34,7 @@ const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
       }
 
       // If no specific role is required, just check user authentication
-      if (!requireRole) {
+      if (!requireRole && !requireOpticianRole) {
         setIsAuthorized(true);
         return;
       }
@@ -45,9 +57,43 @@ const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
     }
   }, [isAuthLoaded, isOrgLoaded, userId, organization, requireRole, has]);
 
+  // Check Supabase optician role if needed
+  useEffect(() => {
+    const checkOpticianRole = async () => {
+      if (!userId || !isReady || !requireOpticianRole) return;
+
+      try {
+        const { data } = await supabase
+          .from('users')
+          .select('role')
+          .eq('clerk_user_id', userId)
+          .single();
+          
+        setIsUserOptician(data?.role === 'optician');
+      } catch (error) {
+        console.error("Error checking optician role:", error);
+        setIsUserOptician(false);
+      } finally {
+        setIsOpticianRoleChecked(true);
+      }
+    };
+    
+    if (requireOpticianRole && userId && isReady) {
+      checkOpticianRole();
+    }
+  }, [userId, isReady, supabase, requireOpticianRole]);
+
+  // Combine both authorization checks
+  const isFinallyAuthorized = isAuthorized && (!requireOpticianRole || isUserOptician);
+
   // Show loading state
-  if (!isAuthLoaded || !isOrgLoaded || isAuthorized === null) {
-    return <div className="flex items-center justify-center min-h-screen">Laddar...</div>;
+  if (!isAuthLoaded || !isOrgLoaded || isAuthorized === null || !isOpticianRoleChecked) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Verifierar behörighet...</p>
+      </div>
+    );
   }
 
   // Redirect to sign-in if not authorized
@@ -56,19 +102,27 @@ const ProtectedRoute = ({ children, requireRole }: ProtectedRouteProps) => {
   }
 
   // If not authorized due to missing role
-  if (userId && !isAuthorized) {
+  if (userId && !isFinallyAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h2 className="text-2xl font-bold mb-4">Behörighet saknas</h2>
         <p className="text-gray-600 mb-6 text-center">
-          Du har inte tillräckliga behörigheter för att komma åt denna sida.
+          {requireOpticianRole && !isUserOptician
+            ? "Du har inte optikerbehörighet för denna sida."
+            : "Du har inte tillräckliga behörigheter för att komma åt denna sida."}
         </p>
+        <a 
+          href="/dashboard" 
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Återgå till översikten
+        </a>
       </div>
     );
   }
 
   // If no organization, show a message
-  if (isAuthorized && !organization && requireRole) {
+  if (isFinallyAuthorized && !organization && requireRole) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h2 className="text-2xl font-bold mb-4">Organisation krävs</h2>

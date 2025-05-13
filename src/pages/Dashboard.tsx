@@ -5,17 +5,19 @@
  * providing a comprehensive overview of all organization entries.
  */
 
-import { useOrganization } from "@clerk/clerk-react";
+import { useOrganization, useUser } from "@clerk/clerk-react";
 import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, User } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { LinkGenerator } from "@/components/Optician/LinkGenerator";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -43,7 +45,9 @@ const LoadingState = () => (
 
 const Dashboard = () => {
   const { organization } = useOrganization();
-  const { isReady, refreshClient } = useSupabaseClient();
+  const { user } = useUser();
+  const { isReady, refreshClient, supabase } = useSupabaseClient();
+  const [isUserOptician, setIsUserOptician] = useState(false);
   
   // Ensure Supabase client is refreshed when dashboard mounts
   useEffect(() => {
@@ -52,6 +56,28 @@ const Dashboard = () => {
       refreshClient(false);
     }
   }, [isReady, refreshClient]);
+
+  // Check if user is an optician
+  useEffect(() => {
+    const checkOpticianRole = async () => {
+      if (!user || !isReady) return;
+      
+      try {
+        const { data } = await supabase
+          .from('users')
+          .select('role')
+          .eq('clerk_user_id', user.id)
+          .single();
+          
+        setIsUserOptician(data?.role === 'optician');
+      } catch (error) {
+        console.error("Error checking optician role:", error);
+        setIsUserOptician(false);
+      }
+    };
+    
+    checkOpticianRole();
+  }, [user, isReady, supabase]);
 
   if (!organization) {
     return (
@@ -77,6 +103,14 @@ const Dashboard = () => {
           <p className="text-muted-foreground mt-2">Hantering av samtliga anamneser i organisationen</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
+          {isUserOptician && (
+            <Button variant="outline" asChild className="flex items-center gap-2">
+              <Link to="/my-anamneses">
+                <User className="h-4 w-4" />
+                <span>Till mina anamneser</span>
+              </Link>
+            </Button>
+          )}
           <DirectFormButton />
           <LinkGenerator />
         </div>

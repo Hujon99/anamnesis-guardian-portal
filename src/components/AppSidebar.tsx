@@ -2,7 +2,7 @@
 /**
  * This component renders the application's sidebar navigation.
  * It displays different menu items based on the user's role and authentication status.
- * The navigation now includes links to the Overview (all anamneses) and My Anamneses views.
+ * The navigation includes links to the Overview (all anamneses) and My Anamneses views.
  */
 
 import { useAuth, useUser } from "@clerk/clerk-react";
@@ -12,7 +12,8 @@ import {
   Home, 
   Settings, 
   Users,
-  User
+  User,
+  LayoutDashboard
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,6 +30,7 @@ import {
 import { useOpticians } from "@/hooks/useOpticians";
 import { useEffect, useState } from "react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { Badge } from "@/components/ui/badge";
 
 export function AppSidebar() {
   const { has } = useAuth();
@@ -84,9 +86,10 @@ export function AppSidebar() {
                 <SidebarMenuButton 
                   asChild 
                   isActive={location.pathname === '/dashboard'}
+                  tooltip="Översikt över alla anamneser"
                 >
                   <Link to="/dashboard">
-                    <Home />
+                    <LayoutDashboard />
                     <span>Översikt</span>
                   </Link>
                 </SidebarMenuButton>
@@ -97,10 +100,12 @@ export function AppSidebar() {
                   <SidebarMenuButton 
                     asChild 
                     isActive={location.pathname === '/my-anamneses'}
+                    tooltip="Mina tilldelade anamneser"
                   >
                     <Link to="/my-anamneses">
                       <User />
                       <span>Mina anamneser</span>
+                      <Badge variant="outline" className="ml-auto">Personlig</Badge>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

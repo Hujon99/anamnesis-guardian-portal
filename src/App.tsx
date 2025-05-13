@@ -14,7 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import SignInPage from "@/pages/SignInPage";
 import SignUpPage from "@/pages/SignUpPage";
 import Dashboard from "@/pages/Dashboard";
-import MyAnamnesisPage from "@/pages/MyAnamnesisPage"; // Add the new page
+import MyAnamnesisPage from "@/pages/MyAnamnesisPage";
 import OpticianView from "@/pages/OpticianView";
 import AdminPanel from "@/pages/AdminPanel";
 import NotFound from "@/pages/NotFound";
@@ -55,9 +55,23 @@ function App() {
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/my-anamneses" element={<MyAnamnesisPage />} /> {/* New route */}
+            <Route 
+              path="/my-anamneses" 
+              element={
+                <ProtectedRoute requireOpticianRole={true}>
+                  <MyAnamnesisPage />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/optician" element={<OpticianView />} />
-            <Route path="/admin" element={<AdminPanel />} />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requireRole="org:admin">
+                  <AdminPanel />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/optician-form" element={<OpticianFormPage />} />
           </Route>
           

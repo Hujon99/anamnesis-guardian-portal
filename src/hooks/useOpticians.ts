@@ -48,7 +48,12 @@ export function useOpticians() {
             try {
               // Try to get user info from organization members
               const members = await organization.getMemberships();
-              const member = members.find(m => m.publicUserData?.userId === optician.clerk_user_id);
+              // members is possibly a pagination response, so check if it has data property
+              const membersList = Array.isArray(members) ? members : members.data || [];
+              
+              const member = membersList.find(m => 
+                m.publicUserData?.userId === optician.clerk_user_id
+              );
               
               return {
                 ...optician,

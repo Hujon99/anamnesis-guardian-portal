@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { useOrganization } from '@clerk/clerk-react';
+import { useUser, useOrganization } from '@clerk/clerk-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Store } from 'lucide-react';
 import { useStores } from '@/hooks/useStores';
@@ -22,13 +22,16 @@ export function StoreSelector({
   onAssignStore,
   disabled = false
 }: StoreSelectorProps) {
+  const { user } = useUser();
   const { organization } = useOrganization();
   const { stores, isLoading } = useStores();
   const [isPending, setIsPending] = useState(false);
   
-  // Check if user has permission to assign stores
-  const hasPermission = organization?.membership?.role === 'admin' || 
-                       organization?.membership?.role === 'org:admin';
+  // Check if user has permission to assign stores - check organization roles
+  const hasPermission = organization?.membershipList?.some(member => {
+    return member.publicUserData?.userId === user?.id && 
+      (member.role === 'admin' || member.role === 'org:admin');
+  }) || false;
   
   // Find the name of the currently assigned store if any
   const currentStore = stores.find(store => store.id === currentStoreId);

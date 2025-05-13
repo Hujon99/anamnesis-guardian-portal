@@ -28,9 +28,11 @@ export function OpticianSelector({
   const { opticians, isLoading } = useOpticians();
   const [isPending, setIsPending] = useState(false);
   
-  // Check if user has permission to assign opticians
-  const hasPermission = organization?.membership?.role === 'admin' || 
-                       organization?.membership?.role === 'org:admin';
+  // Check if user has permission to assign opticians - check organization roles
+  const hasPermission = organization?.membershipList?.some(member => {
+    return member.publicUserData?.userId === user?.id && 
+      (member.role === 'admin' || member.role === 'org:admin');
+  }) || false;
   
   // Find the name of the currently assigned optician if any
   const currentOptician = opticians.find(opt => opt.id === currentOpticianId);

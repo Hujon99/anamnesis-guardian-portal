@@ -30,8 +30,10 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
 
   // Mutation for assigning an optician to an entry
   const assignOpticianMutation = {
+    isPending: false, // Add this property
     mutateAsync: async (opticianId: string | null) => {
       try {
+        assignOpticianMutation.isPending = true; // Set pending state
         const { data, error } = await supabase
           .from("anamnes_entries")
           .update({ optician_id: opticianId })
@@ -68,14 +70,18 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         });
         
         throw error;
+      } finally {
+        assignOpticianMutation.isPending = false; // Reset pending state
       }
     }
   };
 
   // Mutation for assigning a store to an entry
   const assignStoreMutation = {
+    isPending: false, // Add this property
     mutateAsync: async (storeId: string | null) => {
       try {
+        assignStoreMutation.isPending = true; // Set pending state
         const { data, error } = await supabase
           .from("anamnes_entries")
           .update({ store_id: storeId })
@@ -112,6 +118,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         });
         
         throw error;
+      } finally {
+        assignStoreMutation.isPending = false; // Reset pending state
       }
     }
   };

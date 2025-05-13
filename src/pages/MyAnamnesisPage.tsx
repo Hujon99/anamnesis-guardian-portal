@@ -1,12 +1,10 @@
 
 /**
- * Dashboard page that serves as the main landing page after authentication.
- * It displays the anamnesis list with enhanced filtering options for stores and opticians,
- * providing a comprehensive overview of all organization entries.
+ * My Anamnesis page that displays anamnesis entries assigned to the logged-in optician.
+ * It provides a personalized view with statistics and filtered entries specific to the user.
  */
 
-import { useOrganization } from "@clerk/clerk-react";
-import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
+import { useUser } from "@clerk/clerk-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
@@ -14,10 +12,10 @@ import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEffect } from "react";
-import { LinkGenerator } from "@/components/Optician/LinkGenerator";
+import { MyAnamnesisView } from "@/components/Optician/MyAnamnesisView";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 
-// Error fallback component for the Dashboard
+// Error fallback component 
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
   return (
     <Alert variant="destructive" className="mb-6">
@@ -35,30 +33,30 @@ const LoadingState = () => (
   <div className="flex items-center justify-center py-10">
     <div className="text-center">
       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-      <h2 className="text-xl font-medium mb-2">Förbereder översikt</h2>
-      <p className="text-muted-foreground">Ansluter till databasen...</p>
+      <h2 className="text-xl font-medium mb-2">Förbereder din översikt</h2>
+      <p className="text-muted-foreground">Hämtar dina tilldelade anamneser...</p>
     </div>
   </div>
 );
 
-const Dashboard = () => {
-  const { organization } = useOrganization();
+const MyAnamnesisPage = () => {
+  const { user } = useUser();
   const { isReady, refreshClient } = useSupabaseClient();
   
   // Ensure Supabase client is refreshed when dashboard mounts
   useEffect(() => {
-    console.log("Dashboard mounted, ensuring Supabase client is ready");
+    console.log("My Anamnesis page mounted, ensuring Supabase client is ready");
     if (!isReady) {
       refreshClient(false);
     }
   }, [isReady, refreshClient]);
 
-  if (!organization) {
+  if (!user) {
     return (
       <div className="text-center py-10">
-        <h2 className="text-2xl font-bold mb-4">Du måste tillhöra en organisation</h2>
+        <h2 className="text-2xl font-bold mb-4">Du måste vara inloggad för att se denna sida</h2>
         <p className="text-gray-600 mb-6">
-          Kontakta din administratör för att bli tillagd i en organisation.
+          Logga in för att se dina tilldelade anamneser.
         </p>
       </div>
     );
@@ -73,12 +71,11 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Översikt</h1>
-          <p className="text-muted-foreground mt-2">Hantering av samtliga anamneser i organisationen</p>
+          <h1 className="text-3xl font-bold">Mina anamneser</h1>
+          <p className="text-muted-foreground mt-2">Hantering av anamneser tilldelade till dig</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <DirectFormButton />
-          <LinkGenerator />
         </div>
       </div>
 
@@ -86,7 +83,7 @@ const Dashboard = () => {
         {({ reset }) => (
           <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
             <AnamnesisProvider>
-              <AnamnesisListView showAdvancedFilters={true} />
+              <MyAnamnesisView />
             </AnamnesisProvider>
           </ErrorBoundary>
         )}
@@ -95,4 +92,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default MyAnamnesisPage;

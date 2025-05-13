@@ -1,11 +1,10 @@
 
 /**
- * This component provides a unified list view of all anamnesis entries
- * with filtering, searching, and sorting capabilities. It implements
- * Supabase's realtime functionality for live updates to entries.
+ * This component provides a personal view of anamnesis entries assigned to the current optician.
+ * It displays personal statistics and a filtered list of entries.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisDetailModal } from "./AnamnesisDetailModal";
 import { AnamnesisFilters } from "./AnamnesisFilters";
@@ -14,23 +13,19 @@ import { LoadingState } from "./EntriesList/LoadingState";
 import { SearchInput } from "./EntriesList/SearchInput";
 import { EntriesSummary } from "./EntriesList/EntriesSummary";
 import { EntriesList } from "./EntriesList/EntriesList";
-import { useAnamnesisList } from "@/hooks/useAnamnesisList";
+import { useCurrentOpticianEntries } from "@/hooks/useCurrentOpticianEntries";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
-import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { Store } from "@/types/anamnesis";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
-import { AdvancedFilters } from "./AdvancedFilters";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { OpticianStatsCards } from "./OpticianStatsCards";
 
-interface AnamnesisListViewProps {
-  showAdvancedFilters?: boolean;
-}
-
-export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisListViewProps) {
+export function MyAnamnesisView() {
   const {
-    filteredEntries,
-    entries,
+    myFilteredEntries,
+    myEntries,
     filters,
     updateFilter,
     resetFilters,
@@ -39,15 +34,13 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     isFetching,
     handleRetry,
     refetch,
-    dataLastUpdated
-  } = useAnamnesisList();
+    dataLastUpdated,
+    stats,
+    isOpticianIdLoaded
+  } = useCurrentOpticianEntries();
   
-  // State for selected entry and advanced filters
+  // State for selected entry
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
-  const [storeFilter, setStoreFilter] = useState<string | null>(null);
-  const [opticianFilter, setOpticianFilter] = useState<string | null>(null);
-  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
-  
   const isMobile = useIsMobile();
   const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
@@ -71,18 +64,14 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   
   // Create a map of store IDs to store names for quick lookup
   const storeMap = new Map<string, string>();
-  
-  useEffect(() => {
-    // Build store map when stores data changes
-    stores.forEach(store => {
-      storeMap.set(store.id, store.name);
-    });
-  }, [stores]);
+  stores.forEach(store => {
+    storeMap.set(store.id, store.name);
+  });
 
-  // Manual refresh handler with debug console log
+  // Manual refresh handler
   const handleManualRefresh = () => {
-    console.log("Manual refresh triggered in AnamnesisListView");
-    refetch();
+    console.log("Manual refresh triggered in MyAnamnesisView");
+    refetch?.();
   };
 
   const getEntryExpirationInfo = (entry: AnamnesesEntry) => {
@@ -100,42 +89,31 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     return { isExpired, daysUntilExpiration };
   };
   
-  // Apply additional filters (store, optician, assignment)
-  const advancedFilteredEntries = filteredEntries.filter(entry => {
-    // Filter by store
-    if (storeFilter && entry.store_id !== storeFilter) {
-      return false;
-    }
-    
-    // Filter by optician
-    if (opticianFilter && entry.optician_id !== opticianFilter) {
-      return false;
-    }
-    
-    // Filter by assignment status
-    if (assignmentFilter === 'assigned' && !entry.optician_id) {
-      return false;
-    }
-    
-    if (assignmentFilter === 'unassigned' && entry.optician_id) {
-      return false;
-    }
-    
-    return true;
-  });
-  
   // Enhance entries with store information
-  const enhancedEntries = advancedFilteredEntries.map(entry => {
+  const enhancedEntries = myFilteredEntries.map(entry => {
     // Get store name if available
     const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
     return {
       ...entry,
       ...getEntryExpirationInfo(entry),
-      storeName // Add store name to entry
+      storeName
     };
   });
 
-  if ((isLoading && !entries.length)) {
+  if (!isOpticianIdLoaded) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <div className="text-center">
+          <h2 className="text-xl font-medium mb-2">Du är inte registrerad som optiker</h2>
+          <p className="text-muted-foreground">
+            Kontakta systemadministratören om du anser att detta är fel.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if ((isLoading && !myEntries.length)) {
     return <LoadingState />;
   }
 
@@ -145,6 +123,8 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
 
   return (
     <div className="space-y-6">
+      <OpticianStatsCards stats={stats} />
+      
       <Card className="mb-6 p-4 bg-surface_light rounded-2xl shadow-sm">
         <div className={`${isMobile ? 'space-y-4' : 'md:flex md:items-center md:gap-4'}`}>
           <div className={`${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
@@ -172,25 +152,12 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
             />
           </div>
         </div>
-        
-        {showAdvancedFilters && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <AdvancedFilters 
-              storeFilter={storeFilter}
-              onStoreFilterChange={setStoreFilter}
-              opticianFilter={opticianFilter}
-              onOpticianFilterChange={setOpticianFilter}
-              assignmentFilter={assignmentFilter}
-              onAssignmentFilterChange={setAssignmentFilter}
-            />
-          </div>
-        )}
       </Card>
       
       <div>
         <EntriesSummary
           filteredCount={enhancedEntries.length}
-          totalCount={entries.length}
+          totalCount={myEntries.length}
           statusFilter={filters.statusFilter}
           isFetching={isFetching}
           lastUpdated={dataLastUpdated}
@@ -211,7 +178,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
             if (!open) setSelectedEntry(null);
           }}
           onEntryUpdated={() => {
-            refetch();
+            refetch?.();
             setSelectedEntry(null);
           }}
         />

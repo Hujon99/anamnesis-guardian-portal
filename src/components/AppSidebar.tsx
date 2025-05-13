@@ -2,16 +2,17 @@
 /**
  * This component renders the application's sidebar navigation.
  * It displays different menu items based on the user's role and authentication status.
- * The navigation is now more intuitive with the overview showing the anamnesis list directly.
+ * The navigation now includes links to the Overview (all anamneses) and My Anamneses views.
  */
 
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { Link, useLocation } from "react-router-dom";
 import { 
   ClipboardList, 
   Home, 
   Settings, 
-  Users 
+  Users,
+  User
 } from "lucide-react";
 import {
   Sidebar,
@@ -25,10 +26,43 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useOpticians } from "@/hooks/useOpticians";
+import { useEffect, useState } from "react";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 export function AppSidebar() {
   const { has } = useAuth();
+  const { user } = useUser();
   const location = useLocation();
+  const { supabase, isReady } = useSupabaseClient();
+  
+  // Check if current user is an optician
+  const [isUserOptician, setIsUserOptician] = useState(false);
+  const [isCheckingRole, setIsCheckingRole] = useState(true);
+  
+  useEffect(() => {
+    const checkOpticianRole = async () => {
+      if (!user || !isReady) return;
+      
+      try {
+        setIsCheckingRole(true);
+        const { data } = await supabase
+          .from('users')
+          .select('role')
+          .eq('clerk_user_id', user.id)
+          .single();
+          
+        setIsUserOptician(data?.role === 'optician');
+      } catch (error) {
+        console.error("Error checking optician role:", error);
+        setIsUserOptician(false);
+      } finally {
+        setIsCheckingRole(false);
+      }
+    };
+    
+    checkOpticianRole();
+  }, [user, isReady, supabase]);
   
   // Check user roles
   const isAdmin = has({ role: "org:admin" });
@@ -57,6 +91,20 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              
+              {isUserOptician && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={location.pathname === '/my-anamneses'}
+                  >
+                    <Link to="/my-anamneses">
+                      <User />
+                      <span>Mina anamneser</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               
               {isAdmin && (
                 <SidebarMenuItem>

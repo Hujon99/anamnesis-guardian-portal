@@ -12,6 +12,7 @@ type ToastProps = {
   action?: React.ReactNode;
   variant?: "default" | "destructive" | "success";
   duration?: number;
+  id?: string; // Add the id property to the ToastProps interface
 };
 
 // Define the base toast function
@@ -21,6 +22,7 @@ function toast({
   action,
   variant = "default", 
   duration = 5000,
+  id, // Add id parameter
   ...props
 }: ToastProps) {
   // Set styling based on variant
@@ -47,6 +49,7 @@ function toast({
     duration,
     className,
     descriptionClassName,
+    id, // Pass id to sonnerToast
     ...props,
   });
 }

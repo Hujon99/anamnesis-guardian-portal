@@ -50,4 +50,22 @@ export function toast({
   });
 }
 
-export { useToast } from "sonner";
+// Export the toast-related hooks/functions from sonner
+// Instead of importing useToast directly, we'll create a custom hook
+export const useToast = () => {
+  // Return the toast API from sonner
+  return {
+    // Re-export the toast function with our own implementation
+    toast,
+    // Re-export any other toast-related functionality we need
+    dismiss: sonnerToast.dismiss,
+    error: (message: string, options?: any) => 
+      toast({ title: message, ...options, variant: "destructive" }),
+    success: (message: string, options?: any) => 
+      toast({ title: message, ...options, variant: "success" }),
+    info: (message: string, options?: any) => 
+      toast({ title: message, ...options }),
+    // These are used by the Toaster component
+    toasts: [] as any[],
+  };
+};

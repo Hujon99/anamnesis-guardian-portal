@@ -1,4 +1,3 @@
-
 /**
  * This component renders the form container, including the Toaster component
  * to ensure toast messages are properly displayed. It also adds additional
@@ -12,9 +11,9 @@ import React, { useEffect } from "react";
 import { FormTemplate } from "@/types/anamnesis";
 import { FormOrchestrator } from "./FormOrchestrator";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as SonnerToaster } from "sonner";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 interface FormContainerProps {
   formTemplate: FormTemplate;

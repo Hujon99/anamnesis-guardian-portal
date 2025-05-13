@@ -78,8 +78,15 @@ export function QuickAssignDropdown({
         // First ensure token is valid before making request
         await validateTokenBeforeRequest(true);
         
-        // Make sure the opticianId is valid
+        // Validate optician ID format - ensure it's a proper UUID
         if (opticianId !== null) {
+          // Check if this is a Clerk user ID (starts with "user_") instead of a database UUID
+          if (opticianId.startsWith("user_")) {
+            console.error("Invalid optician ID format: Clerk user ID passed instead of database UUID");
+            throw new Error("Ogiltig optiker-ID format");
+          }
+          
+          // Verify the optician exists in our list
           const validOptician = opticians.find(o => o.id === opticianId);
           if (!validOptician) {
             throw new Error("Ogiltig optiker vald");

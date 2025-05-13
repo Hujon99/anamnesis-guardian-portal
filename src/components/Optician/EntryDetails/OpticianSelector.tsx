@@ -84,6 +84,11 @@ export function OpticianSelector({
         if (value === 'none') {
           await onAssignOptician(null);
         } else {
+          // Check if value is a Clerk user ID instead of database UUID
+          if (value.startsWith("user_")) {
+            throw new Error("Invalid optician ID format: Clerk user ID passed instead of database UUID");
+          }
+          
           // Verify valid optician ID
           const validOptician = opticians.find(opt => opt.id === value);
           if (!validOptician) {

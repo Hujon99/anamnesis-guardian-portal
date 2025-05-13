@@ -31,6 +31,11 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   // Validate UUID format
   const isValidUuid = (uuid: string | null): boolean => {
     if (!uuid) return true; // Null is valid for removing assignments
+    
+    // Reject Clerk user IDs (they start with "user_")
+    if (uuid.startsWith("user_")) return false;
+    
+    // Check for valid UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
   };
@@ -78,6 +83,9 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         // Pre-validate token before making the request
         await validateTokenBeforeRequest(true);
+        
+        // Log the optician ID for debugging
+        console.log("Assigning optician with ID:", opticianId);
         
         const { data, error } = await supabase
           .from("anamnes_entries")

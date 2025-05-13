@@ -20,7 +20,7 @@ interface Optician {
 
 export function useOpticians() {
   const { organization } = useOrganization();
-  const { supabase, isReady } = useSupabaseClient();
+  const { supabase, isReady, validateTokenBeforeRequest } = useSupabaseClient();
   const [error, setError] = useState<Error | null>(null);
   
   // Query to fetch all opticians for the organization
@@ -34,6 +34,9 @@ export function useOpticians() {
       if (!organization?.id || !isReady) return [];
       
       try {
+        // Validate token before fetching
+        await validateTokenBeforeRequest(false);
+        
         const { data, error } = await supabase
           .from('users')
           .select('*')

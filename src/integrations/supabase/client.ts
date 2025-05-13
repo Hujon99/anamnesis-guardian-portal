@@ -23,7 +23,7 @@ export const supabase = createClient<Database>(
     },
     global: {
       headers: {
-        'x-client-info': `lovable_app/1.0` // Add client info for better debugging
+        'x-client-info': `lovable_app/1.1` // Add client info for better debugging
       },
     },
     db: {
@@ -36,3 +36,19 @@ export const supabase = createClient<Database>(
     }
   }
 );
+
+// Export debug functions to help with development
+export const debugSupabaseAuth = async () => {
+  try {
+    const session = await supabase.auth.getSession();
+    console.log("Current Supabase session state:", {
+      hasSession: !!session.data.session,
+      expiresAt: session.data.session?.expires_at,
+      user: session.data.session?.user?.id || "No user"
+    });
+    return session;
+  } catch (err) {
+    console.error("Error checking Supabase session:", err);
+    return null;
+  }
+};

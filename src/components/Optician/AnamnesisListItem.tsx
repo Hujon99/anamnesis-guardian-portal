@@ -29,6 +29,37 @@ interface AnamnesisListItemProps {
   showAssignmentIndicator?: boolean; 
 }
 
+// Helper function to get proper patient display name
+const getPatientDisplayName = (entry: AnamnesesEntry): string => {
+  // First priority: patient_identifier if it looks like a name
+  if (entry.patient_identifier && entry.patient_identifier.length > 1 && 
+      !entry.patient_identifier.match(/^[0-9]+$/) && // Not just numbers
+      entry.patient_identifier !== "undefined" && 
+      entry.patient_identifier !== "null") {
+    return entry.patient_identifier;
+  }
+  
+  // Second priority: first_name if available
+  if (entry.first_name && 
+      entry.first_name.length > 0 && 
+      entry.first_name !== "undefined" && 
+      entry.first_name !== "null") {
+    return entry.first_name;
+  }
+  
+  // Third priority: Use both if available and different
+  if (entry.first_name && entry.patient_identifier && 
+      entry.first_name !== entry.patient_identifier &&
+      entry.first_name.length > 0 &&
+      entry.first_name !== "undefined" && 
+      entry.first_name !== "null") {
+    return `${entry.first_name} (${entry.patient_identifier})`;
+  }
+  
+  // Fallback
+  return "Okänd patient";
+};
+
 export function AnamnesisListItem({
   entry,
   onClick,
@@ -61,6 +92,9 @@ export function AnamnesisListItem({
     setIsDeleteDialogOpen(true);
   };
 
+  // Get the appropriate patient display name
+  const patientName = getPatientDisplayName(entry);
+
   return (
     <>
       <AnamnesCard
@@ -75,7 +109,7 @@ export function AnamnesisListItem({
             <div className="space-y-1">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                 <h3 className="text-base font-medium">
-                  {entry.patient_identifier || "Okänd patient"}
+                  {patientName}
                 </h3>
                 <div className="flex flex-wrap gap-1 items-center">
                   <EntryStatusBadge status={entry.status} />

@@ -13,7 +13,7 @@ import { toast } from "@/components/ui/use-toast";
 
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
-  const { supabase } = useSupabaseClient();
+  const { supabase, refreshClient } = useSupabaseClient();
   
   const {
     updateEntryMutation,
@@ -28,12 +28,28 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLink
   } = useSendLinkMutation(entryId, onSuccess);
 
+  // Validate UUID format
+  const isValidUuid = (uuid: string | null): boolean => {
+    if (!uuid) return true; // Null is valid for removing assignments
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
+
   // Mutation for assigning an optician to an entry
   const assignOpticianMutation = {
-    isPending: false, // Add this property
+    isPending: false,
     mutateAsync: async (opticianId: string | null) => {
       try {
-        assignOpticianMutation.isPending = true; // Set pending state
+        // Validate UUID format to prevent database errors
+        if (opticianId !== null && !isValidUuid(opticianId)) {
+          throw new Error("Invalid optician ID format");
+        }
+        
+        assignOpticianMutation.isPending = true;
+        
+        // Ensure token is refreshed to prevent JWT errors
+        await refreshClient(true);
+        
         const { data, error } = await supabase
           .from("anamnes_entries")
           .update({ optician_id: opticianId })
@@ -46,14 +62,6 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({
           queryKey: ["anamnes-entries"]
-        });
-        
-        // Show success message
-        toast({
-          title: "Optiker tilldelad",
-          description: opticianId 
-            ? "Anamnes har tilldelats till optiker" 
-            : "Optikertilldelning har tagits bort",
         });
         
         // Execute any success callback
@@ -71,17 +79,26 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         throw error;
       } finally {
-        assignOpticianMutation.isPending = false; // Reset pending state
+        assignOpticianMutation.isPending = false;
       }
     }
   };
 
   // Mutation for assigning a store to an entry
   const assignStoreMutation = {
-    isPending: false, // Add this property
+    isPending: false,
     mutateAsync: async (storeId: string | null) => {
       try {
-        assignStoreMutation.isPending = true; // Set pending state
+        // Validate UUID format to prevent database errors
+        if (storeId !== null && !isValidUuid(storeId)) {
+          throw new Error("Invalid store ID format");
+        }
+        
+        assignStoreMutation.isPending = true;
+        
+        // Ensure token is refreshed to prevent JWT errors
+        await refreshClient(true);
+        
         const { data, error } = await supabase
           .from("anamnes_entries")
           .update({ store_id: storeId })
@@ -119,7 +136,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         throw error;
       } finally {
-        assignStoreMutation.isPending = false; // Reset pending state
+        assignStoreMutation.isPending = false;
       }
     }
   };
@@ -130,6 +147,10 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     mutateAsync: async (entryId: string) => {
       try {
         deleteMutation.isPending = true;
+        
+        // Ensure token is refreshed to prevent JWT errors
+        await refreshClient(true);
+        
         const { error } = await supabase
           .from("anamnes_entries")
           .delete()
@@ -167,7 +188,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLinkMutation,
     assignOpticianMutation,
     assignStoreMutation,
-    deleteMutation, // Export the delete mutation
+    deleteMutation,
     updateStatus,
     saveFormattedRawData,
     savePatientIdentifier,
@@ -175,8 +196,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLink,
     assignOptician: assignOpticianMutation.mutateAsync,
     assignStore: assignStoreMutation.mutateAsync,
-    deleteEntry: deleteMutation.mutateAsync, // Export the delete function
-    isDeleting: deleteMutation.isPending, // Export the pending state
+    deleteEntry: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
     refreshData: () => {
       // Provide a more selective refresh that only refreshes the current view
       queryClient.invalidateQueries({

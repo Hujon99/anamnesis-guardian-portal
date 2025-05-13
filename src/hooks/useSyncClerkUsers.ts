@@ -5,7 +5,7 @@
  * with the correct roles.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useOrganization, useAuth, useUser } from '@clerk/clerk-react';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
@@ -14,6 +14,9 @@ export const useSyncClerkUsers = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [hasSynced, setHasSynced] = useState(false);
+  // Use ref to prevent multiple syncs on mount
+  const initialSyncDone = useRef(false);
   
   const { organization } = useOrganization();
   const { userId } = useAuth();
@@ -22,18 +25,23 @@ export const useSyncClerkUsers = () => {
   
   // Function to check if a user already exists in the database
   const checkUserExists = async (clerkUserId: string) => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, role')
-      .eq('clerk_user_id', clerkUserId)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, role')
+        .eq('clerk_user_id', clerkUserId)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Error checking user existence:', error);
+        return null;
+      }
       
-    if (error) {
-      console.error('Error checking user existence:', error);
+      return data;
+    } catch (err) {
+      console.error('Error in checkUserExists:', err);
       return null;
     }
-    
-    return data;
   };
   
   // Function to determine the role based on Clerk memberships
@@ -46,7 +54,7 @@ export const useSyncClerkUsers = () => {
   };
   
   // Main sync function
-  const syncUsers = useCallback(async () => {
+  const syncUsers = useCallback(async (showToast = false) => {
     if (!organization || !isReady || !userId) {
       return { success: false, message: 'Organization, Supabase client, or user ID not available' };
     }
@@ -69,9 +77,9 @@ export const useSyncClerkUsers = () => {
       
       // Process each member
       for (const member of memberships.data) {
-        const clerkUserId = member.publicUserData.userId;
+        if (!member.publicUserData?.userId) continue;
         
-        if (!clerkUserId) continue;
+        const clerkUserId = member.publicUserData.userId;
         
         // Check if user already exists in Supabase
         const existingUser = await checkUserExists(clerkUserId);
@@ -112,48 +120,61 @@ export const useSyncClerkUsers = () => {
       // Update sync timestamp
       const now = new Date();
       setLastSyncedAt(now);
+      setHasSynced(true);
       
       setIsSyncing(false);
       
-      return { 
+      const result = { 
         success: true, 
         message: `Sync completed: ${createdCount} users created, ${updatedCount} users updated`,
         createdCount,
         updatedCount
       };
+      
+      // Only show toast if there were changes or if explicitly requested
+      if (showToast && (createdCount > 0 || updatedCount > 0)) {
+        toast({
+          title: "Användare synkroniserade",
+          description: result.message,
+        });
+      }
+      
+      return result;
     } catch (err) {
       const error = err as Error;
       console.error('Error syncing users:', error);
       setError(error);
       setIsSyncing(false);
       
+      if (showToast) {
+        toast({
+          title: "Synkronisering misslyckades",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+      
       return { success: false, message: error.message };
     }
   }, [organization, userId, isReady, supabase]);
   
-  // Sync users and show toast notification
-  const syncUsersWithToast = useCallback(async () => {
-    const result = await syncUsers();
-    
-    if (result.success) {
-      toast({
-        title: "Användare synkroniserade",
-        description: result.message,
-      });
-    } else {
-      toast({
-        title: "Synkronisering misslyckades",
-        description: result.message,
-        variant: "destructive",
-      });
+  // Run sync once when component mounts - use ref to prevent multiple syncs
+  useEffect(() => {
+    if (isReady && organization?.id && !initialSyncDone.current) {
+      initialSyncDone.current = true;
+      syncUsers(false); // Don't show toast on initial sync
     }
-    
-    return result;
+  }, [isReady, organization?.id, syncUsers]);
+  
+  // Sync users and show toast notification only when explicitly called
+  const syncUsersWithToast = useCallback(async () => {
+    return syncUsers(true); // Show toast when manually triggered
   }, [syncUsers]);
   
   return {
     isSyncing,
     lastSyncedAt,
+    hasSynced,
     error,
     syncUsers,
     syncUsersWithToast

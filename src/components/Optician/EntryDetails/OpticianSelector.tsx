@@ -4,12 +4,14 @@
  * It displays a list of opticians in the organization and allows authorized users to make assignments.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser, useOrganization } from '@clerk/clerk-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, User } from 'lucide-react';
 import { useOpticians } from '@/hooks/useOpticians';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
+import { toast } from '@/components/ui/use-toast';
 
 interface OpticianSelectorProps {
   currentOpticianId: string | null;
@@ -26,20 +28,33 @@ export function OpticianSelector({
   const { organization } = useOrganization();
   const { opticians, isLoading } = useOpticians();
   const [isPending, setIsPending] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean>(false);
+  const { refreshClient } = useSupabaseClient();
   
   // Check if user has permission to assign opticians - check organization roles
-  const hasPermission = user && organization ? (async () => {
-    try {
-      const members = await organization.getMemberships();
-      return members.data?.some(member => 
-        member.publicUserData?.userId === user.id && 
-        (member.role === 'admin' || member.role === 'org:admin')
-      ) || false;
-    } catch (error) {
-      console.error('Error checking permissions:', error);
-      return false;
-    }
-  })() : false;
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (!user || !organization) {
+        setHasPermission(false);
+        return;
+      }
+
+      try {
+        const members = await organization.getMemberships();
+        const isAdmin = members.data?.some(member => 
+          member.publicUserData?.userId === user.id && 
+          (member.role === 'admin' || member.role === 'org:admin')
+        ) || false;
+        
+        setHasPermission(isAdmin);
+      } catch (error) {
+        console.error('Error checking permissions:', error);
+        setHasPermission(false);
+      }
+    };
+
+    checkPermissions();
+  }, [user, organization]);
   
   // Find the name of the currently assigned optician if any
   const currentOptician = opticians.find(opt => opt.id === currentOpticianId);
@@ -50,14 +65,35 @@ export function OpticianSelector({
     
     try {
       setIsPending(true);
+      
+      // Ensure the Supabase client has a valid token
+      await refreshClient(true);
+      
       // Handle "none" value to unassign
       if (value === 'none') {
         await onAssignOptician(null);
       } else {
+        // Verify valid optician ID
+        const validOptician = opticians.find(opt => opt.id === value);
+        if (!validOptician) {
+          throw new Error("Invalid optician selected");
+        }
         await onAssignOptician(value);
       }
+
+      toast({
+        title: value !== 'none' ? "Optiker tilldelad" : "Tilldelning borttagen",
+        description: value !== 'none' 
+          ? "Anamnesen har tilldelats en optiker" 
+          : "Optikertilldelningen har tagits bort"
+      });
     } catch (error) {
       console.error('Failed to assign optician:', error);
+      toast({
+        title: "Fel vid tilldelning",
+        description: "Det gick inte att tilldela optikern",
+        variant: "destructive",
+      });
     } finally {
       setIsPending(false);
     }

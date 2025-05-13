@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 interface QuickAssignDropdownProps {
   entryId: string;
@@ -36,6 +37,7 @@ export function QuickAssignDropdown({
   const { opticians, isLoading } = useOpticians();
   const { has } = useAuth();
   const { user } = useUser();
+  const { refreshClient } = useSupabaseClient();
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
@@ -45,6 +47,17 @@ export function QuickAssignDropdown({
     setIsPending(true);
     
     try {
+      // Ensure the Supabase client has a valid token before making the request
+      await refreshClient(true);
+      
+      // Make sure the opticianId is valid
+      if (opticianId !== null) {
+        const validOptician = opticians.find(o => o.id === opticianId);
+        if (!validOptician) {
+          throw new Error("Invalid optician selected");
+        }
+      }
+      
       await onAssign(opticianId);
       
       // Show success message
@@ -61,7 +74,7 @@ export function QuickAssignDropdown({
       
       toast({
         title: "Fel vid tilldelning",
-        description: "Det gick inte att tilldela optikern",
+        description: "Det gick inte att tilldela optikern. Försök igen.",
         variant: "destructive",
       });
     } finally {

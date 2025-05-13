@@ -22,6 +22,7 @@ import { AnamnesisProvider, useAnamnesis } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 
 // Error fallback component
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -56,9 +57,18 @@ const OpticianContent = () => {
   const { error: contextError, clearError, refreshData } = useAnamnesis();
   const [error, setError] = useState<Error | null>(null);
   const queryClient = useQueryClient();
+  const { syncUsers } = useSyncClerkUsers();
 
   const isReady = !supabaseLoading && !isSyncing && isSynced;
   const combinedError = error || supabaseError || syncError || contextError;
+
+  // Synchronize users with database but don't show toast notifications
+  useEffect(() => {
+    if (isReady && organization?.id) {
+      // Sync users quietly without showing toasts
+      syncUsers();
+    }
+  }, [isReady, organization?.id, syncUsers]);
 
   // Fetch data when component mounts and all dependencies are ready
   useEffect(() => {
@@ -71,7 +81,7 @@ const OpticianContent = () => {
   const handleRetry = async () => {
     setError(null);
     clearError();
-    await refreshClient();
+    await refreshClient(true);
   };
 
   if (combinedError) {

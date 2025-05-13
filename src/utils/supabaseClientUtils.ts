@@ -142,6 +142,34 @@ export const storesUtils = {
     }
     
     return data || [];
+  },
+  
+  /**
+   * Get a store by ID
+   * @param supabase Supabase client
+   * @param storeId Store ID
+   * @returns The store if found, null otherwise
+   */
+  async getById(supabase, storeId: string) {
+    if (!storeId) {
+      return null;
+    }
+    
+    const { data, error } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('id', storeId)
+      .single();
+      
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Not found
+        return null;
+      }
+      throw handleSupabaseError(error);
+    }
+    
+    return data;
   }
 };
 
@@ -192,6 +220,30 @@ export const opticianUtils = {
       .select('*')
       .eq('organization_id', organizationId)
       .eq('optician_id', opticianId);
+      
+    if (error) {
+      throw handleSupabaseError(error);
+    }
+    
+    return data || [];
+  },
+  
+  /**
+   * Get all opticians in an organization
+   * @param supabase Supabase client
+   * @param organizationId Organization ID
+   * @returns List of opticians
+   */
+  async getOrganizationOpticians(supabase, organizationId: string) {
+    if (!organizationId) {
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('role', 'optician');
       
     if (error) {
       throw handleSupabaseError(error);

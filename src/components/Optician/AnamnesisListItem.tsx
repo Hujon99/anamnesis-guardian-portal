@@ -29,9 +29,10 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
 
 interface AnamnesisListItemProps {
-  entry: AnamnesesEntry;
+  entry: AnamnesesEntry & { storeName?: string | null };
   isExpired: boolean;
   daysUntilExpiration: number | null;
+  storeName?: string | null;
   onClick: () => void;
   onDelete?: () => void;
 }
@@ -40,6 +41,7 @@ export function AnamnesisListItem({
   entry, 
   isExpired,
   daysUntilExpiration,
+  storeName,
   onClick,
   onDelete 
 }: AnamnesisListItemProps) {
@@ -128,6 +130,9 @@ export function AnamnesisListItem({
     );
   };
   
+  // Get store display name, using either the passed storeName or entry.storeName
+  const displayStoreName = storeName || entry.storeName;
+  
   return (
     <>
       <AnamnesCard status={getCardStatus()} onClick={onClick}>
@@ -163,12 +168,20 @@ export function AnamnesisListItem({
                     <span>{formatDate(entry.booking_date)}</span>
                   </div>
                 )}
-                {entry.store_id && (
+                {displayStoreName && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <MapPinIcon className="h-3 w-3" />
-                    <span>Butik: {entry.store_id}</span>
+                    <span>Butik: {displayStoreName}</span>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {entry.optician_id && (
+              <div className="mt-1">
+                <Badge variant="outline" className="text-xs">
+                  Tilldelad optiker
+                </Badge>
               </div>
             )}
           </div>

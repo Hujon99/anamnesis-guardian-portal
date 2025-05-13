@@ -1,4 +1,3 @@
-
 /**
  * This Edge Function generates access tokens for magic link anamnes forms.
  * It creates a new entry in the anamnes_entries table with booking information
@@ -30,7 +29,7 @@ serve(async (req: Request) => {
     console.log("Request received:", req.method);
     
     // Parse the request body
-    const { bookingId, firstName, storeId, bookingDate, formId } = await req.json();
+    const { bookingId, firstName, storeId, storeName, bookingDate, formId } = await req.json();
     
     // Validate required parameters
     if (!bookingId || !formId) {
@@ -46,7 +45,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("Parameters received:", { bookingId, firstName, storeId, bookingDate, formId });
+    console.log("Parameters received:", { bookingId, firstName, storeId, storeName, bookingDate, formId });
     
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -78,6 +77,57 @@ serve(async (req: Request) => {
       console.log("Using form for organization:", formData.organization_id);
     }
     
+    // Handle store reference
+    let finalStoreId = storeId;
+    
+    // If only store name is provided, find or create the store
+    if (!storeId && storeName && formData.organization_id) {
+      console.log("Looking up store by name:", storeName);
+      
+      try {
+        // Find store by name
+        const { data: existingStore, error: storeError } = await supabase
+          .from('stores')
+          .select('id')
+          .eq('organization_id', formData.organization_id)
+          .ilike('name', storeName)
+          .limit(1)
+          .single();
+          
+        if (storeError && storeError.code !== 'PGRST116') {
+          throw storeError;
+        }
+        
+        // If store exists, use it
+        if (existingStore) {
+          console.log("Found existing store:", existingStore.id);
+          finalStoreId = existingStore.id;
+        } else {
+          // Otherwise create a new store
+          console.log("Creating new store with name:", storeName);
+          const { data: newStore, error: createError } = await supabase
+            .from('stores')
+            .insert({
+              name: storeName,
+              organization_id: formData.organization_id
+            })
+            .select('id')
+            .single();
+            
+          if (createError) {
+            throw createError;
+          }
+          
+          finalStoreId = newStore.id;
+          console.log("Created new store with ID:", finalStoreId);
+        }
+      } catch (storeError) {
+        console.error("Error handling store:", storeError);
+        // Continue without store ID if there was an error
+        finalStoreId = null;
+      }
+    }
+    
     // Generate access token
     const accessToken = uuidv4();
     
@@ -94,7 +144,7 @@ serve(async (req: Request) => {
         access_token: accessToken,
         booking_id: bookingId,
         first_name: firstName || null,
-        store_id: storeId || null,
+        store_id: finalStoreId,
         booking_date: bookingDate ? new Date(bookingDate).toISOString() : null,
         is_magic_link: true,
         status: 'sent',

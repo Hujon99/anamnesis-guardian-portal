@@ -5,7 +5,7 @@
  * Supabase's realtime functionality for live updates to entries.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisDetailModal } from "./AnamnesisDetailModal";
 import { AnamnesisFilters } from "./AnamnesisFilters";
@@ -17,6 +17,10 @@ import { EntriesList } from "./EntriesList/EntriesList";
 import { useAnamnesisList } from "@/hooks/useAnamnesisList";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { Store } from "@/types/anamnesis";
+import { useQuery } from "@tanstack/react-query";
+import { useOrganization } from "@clerk/clerk-react";
 
 export function AnamnesisListView() {
   const {
@@ -36,6 +40,35 @@ export function AnamnesisListView() {
   // State for selected entry
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
   const isMobile = useIsMobile();
+  const { supabase } = useSupabaseClient();
+  const { organization } = useOrganization();
+  
+  // Fetch stores for enhancing display
+  const { data: stores = [] } = useQuery({
+    queryKey: ["stores", organization?.id],
+    queryFn: async () => {
+      if (!organization?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('organization_id', organization.id);
+        
+      if (error) throw error;
+      return data as Store[];
+    },
+    enabled: !!organization?.id
+  });
+  
+  // Create a map of store IDs to store names for quick lookup
+  const storeMap = new Map<string, string>();
+  
+  useEffect(() => {
+    // Build store map when stores data changes
+    stores.forEach(store => {
+      storeMap.set(store.id, store.name);
+    });
+  }, [stores]);
 
   // Manual refresh handler with debug console log
   const handleManualRefresh = () => {
@@ -57,6 +90,17 @@ export function AnamnesisListView() {
     
     return { isExpired, daysUntilExpiration };
   };
+  
+  // Enhance entries with store information
+  const enhancedEntries = filteredEntries.map(entry => {
+    // Get store name if available
+    const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
+    return {
+      ...entry,
+      ...getEntryExpirationInfo(entry),
+      storeName // Add store name to entry
+    };
+  });
 
   if ((isLoading && !entries.length)) {
     return <LoadingState />;
@@ -99,7 +143,7 @@ export function AnamnesisListView() {
       
       <div>
         <EntriesSummary
-          filteredCount={filteredEntries.length}
+          filteredCount={enhancedEntries.length}
           totalCount={entries.length}
           statusFilter={filters.statusFilter}
           isFetching={isFetching}
@@ -107,10 +151,7 @@ export function AnamnesisListView() {
         />
         
         <EntriesList
-          entries={filteredEntries.map(entry => ({
-            ...entry,
-            ...getEntryExpirationInfo(entry)
-          }))}
+          entries={enhancedEntries}
           onSelectEntry={setSelectedEntry}
           onEntryDeleted={refetch}
         />

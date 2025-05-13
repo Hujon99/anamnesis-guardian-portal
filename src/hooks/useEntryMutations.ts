@@ -124,11 +124,50 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     }
   };
 
+  // Add deleteEntry mutation
+  const deleteMutation = {
+    isPending: false,
+    mutateAsync: async (entryId: string) => {
+      try {
+        deleteMutation.isPending = true;
+        const { error } = await supabase
+          .from("anamnes_entries")
+          .delete()
+          .eq("id", entryId);
+          
+        if (error) throw error;
+        
+        // Invalidate queries to refetch data
+        queryClient.invalidateQueries({
+          queryKey: ["anamnes-entries"]
+        });
+        
+        // Execute any success callback
+        if (onSuccess) onSuccess();
+        
+        return true;
+      } catch (error) {
+        console.error("Error deleting entry:", error);
+        
+        toast({
+          title: "Fel vid borttagning",
+          description: "Det gick inte att ta bort anamnesen",
+          variant: "destructive",
+        });
+        
+        throw error;
+      } finally {
+        deleteMutation.isPending = false;
+      }
+    }
+  };
+
   return {
     updateEntryMutation,
     sendLinkMutation,
     assignOpticianMutation,
     assignStoreMutation,
+    deleteMutation, // Export the delete mutation
     updateStatus,
     saveFormattedRawData,
     savePatientIdentifier,
@@ -136,6 +175,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLink,
     assignOptician: assignOpticianMutation.mutateAsync,
     assignStore: assignStoreMutation.mutateAsync,
+    deleteEntry: deleteMutation.mutateAsync, // Export the delete function
+    isDeleting: deleteMutation.isPending, // Export the pending state
     refreshData: () => {
       // Provide a more selective refresh that only refreshes the current view
       queryClient.invalidateQueries({

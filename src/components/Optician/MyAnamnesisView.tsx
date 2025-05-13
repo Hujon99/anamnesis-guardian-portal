@@ -32,7 +32,6 @@ export function MyAnamnesisView() {
     isLoading,
     error,
     isFetching,
-    handleRetry,
     refetch,
     dataLastUpdated,
     stats,
@@ -44,6 +43,7 @@ export function MyAnamnesisView() {
   const isMobile = useIsMobile();
   const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
+  const { refreshClient } = useSupabaseClient();
   
   // Fetch stores for enhancing display
   const { data: stores = [] } = useQuery({
@@ -71,6 +71,12 @@ export function MyAnamnesisView() {
   // Manual refresh handler
   const handleManualRefresh = () => {
     console.log("Manual refresh triggered in MyAnamnesisView");
+    refetch?.();
+  };
+
+  // Add handleRetry function for error state
+  const handleRetry = async () => {
+    await refreshClient(true);
     refetch?.();
   };
 

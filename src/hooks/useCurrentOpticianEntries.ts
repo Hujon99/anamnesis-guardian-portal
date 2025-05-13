@@ -12,8 +12,8 @@ import { useSupabaseClient } from './useSupabaseClient';
 
 export const useCurrentOpticianEntries = () => {
   const { user } = useUser();
-  const { supabase, isReady } = useSupabaseClient();
-  const { entries, filteredEntries, filters, updateFilter, resetFilters, isLoading, error, refetch, isFetching, dataLastUpdated } = useAnamnesisList();
+  const { supabase, isReady, refreshClient } = useSupabaseClient();
+  const { entries, filteredEntries, filters, updateFilter, resetFilters, isLoading, error, refetch, isFetching, dataLastUpdated, handleRetry } = useAnamnesisList();
   
   // State for storing the current user's optician ID
   const [opticianId, setOpticianId] = useState<string | null>(null);
@@ -83,6 +83,15 @@ export const useCurrentOpticianEntries = () => {
     };
   }, [myEntries]);
   
+  // Create a local handleRetry function for error cases
+  const handleRetryLocal = async () => {
+    await refreshClient(true); // Refresh the Supabase client
+    if (handleRetry) {
+      await handleRetry(); // Call the handleRetry from the parent hook
+    }
+    refetch(); // Refetch data
+  };
+  
   return {
     myEntries,
     myFilteredEntries,
@@ -96,6 +105,7 @@ export const useCurrentOpticianEntries = () => {
     dataLastUpdated,
     stats,
     isOpticianIdLoaded: !isLoadingOpticianId && opticianId !== null,
-    opticianId
+    opticianId,
+    handleRetry: handleRetryLocal
   };
 };

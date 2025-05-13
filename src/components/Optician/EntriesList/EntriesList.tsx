@@ -11,8 +11,8 @@ import { EmptyState } from "./EmptyState";
 
 interface EntriesListProps {
   entries: (AnamnesesEntry & {
-    isExpired: boolean;
-    daysUntilExpiration: number | null;
+    isExpired?: boolean;
+    daysUntilExpiration?: number | null;
     storeName?: string | null;
   })[];
   onSelectEntry: (entry: AnamnesesEntry) => void;
@@ -34,9 +34,6 @@ export function EntriesList({
         <AnamnesisListItem
           key={entry.id}
           entry={entry}
-          isExpired={entry.isExpired}
-          daysUntilExpiration={entry.daysUntilExpiration}
-          storeName={entry.storeName}
           onClick={() => onSelectEntry(entry)}
           onDelete={onEntryDeleted}
         />

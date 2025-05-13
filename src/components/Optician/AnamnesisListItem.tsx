@@ -20,8 +20,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
-    isExpired: boolean;
-    daysUntilExpiration: number | null;
+    isExpired?: boolean;
+    daysUntilExpiration?: number | null;
     storeName?: string | null;
   };
   onClick: () => void;
@@ -36,7 +36,7 @@ export function AnamnesisListItem({
   showAssignmentIndicator = true,
 }: AnamnesisListItemProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { deleteEntry, isDeleting } = useEntryMutations();
+  const { deleteEntry, isDeleting } = useEntryMutations(entry.id);
 
   const handleDelete = async () => {
     try {
@@ -64,6 +64,7 @@ export function AnamnesisListItem({
   return (
     <>
       <AnamnesCard
+        status={entry.status as any}
         onClick={onClick}
         className="relative overflow-visible"
         data-testid="anamnesis-card"
@@ -133,7 +134,7 @@ export function AnamnesisListItem({
               </div>
               <p className="text-sm text-muted-foreground">
                 {entry.sent_at
-                  ? `Skickad ${formatDate(new Date(entry.sent_at))}`
+                  ? `Skickad ${formatDate(entry.sent_at)}`
                   : "Datum saknas"}
               </p>
             </div>

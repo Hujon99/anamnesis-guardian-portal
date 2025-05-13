@@ -18,7 +18,8 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: ProtectedRouteProps) => {
-  const { isLoaded: isAuthLoaded, userId, has } = useAuth();
+  const auth = useAuth();
+  const { isLoaded: isAuthLoaded, userId } = auth;
   const { isLoaded: isOrgLoaded, organization } = useOrganization();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const { supabase, isReady } = useSupabaseClient();
@@ -26,7 +27,7 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
   const [isUserOptician, setIsUserOptician] = useState(false);
 
   // Check if user is Admin through Clerk roles
-  const isAdmin = has({ role: "org:admin" });
+  const isAdmin = auth.has && auth.has({ role: "org:admin" });
 
   // Check Clerk roles
   useEffect(() => {
@@ -44,13 +45,13 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
       }
 
       // Check if user has any of the required roles
-      if (requireRole && organization) {
+      if (requireRole && organization && auth.has) {
         // Handle both string and array of strings
         if (Array.isArray(requireRole)) {
-          const hasAnyRole = requireRole.some(role => has({ role }));
+          const hasAnyRole = requireRole.some(role => auth.has({ role }));
           setIsAuthorized(hasAnyRole);
         } else {
-          const hasRole = has({ role: requireRole });
+          const hasRole = auth.has({ role: requireRole });
           setIsAuthorized(hasRole);
         }
       } else if (requireRole) {
@@ -59,7 +60,7 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
         setIsAuthorized(true);
       }
     }
-  }, [isAuthLoaded, isOrgLoaded, userId, organization, requireRole, has]);
+  }, [isAuthLoaded, isOrgLoaded, userId, organization, requireRole, auth]);
 
   // Check Supabase optician role if needed
   useEffect(() => {

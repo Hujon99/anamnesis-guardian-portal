@@ -29,6 +29,7 @@ const LinkPage = () => {
   const bookingId = searchParams.get("booking_id");
   const firstName = searchParams.get("first_name");
   const storeId = searchParams.get("store_id");
+  const storeName = searchParams.get("store_name"); // Add explicit store_name parameter
   const bookingDate = searchParams.get("booking_date");
   const formId = searchParams.get("form_id"); // Form ID is required
   
@@ -95,6 +96,7 @@ const LinkPage = () => {
           bookingId,
           firstName,
           storeId,
+          storeName, // Pass both storeId and storeName to the edge function
           bookingDate,
           formId
         }
@@ -178,6 +180,9 @@ const LinkPage = () => {
     );
   }
   
+  // Display store information based on what's available
+  const storeDisplay = storeName || storeId || null;
+  
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
       <Card className="w-full max-w-lg">
@@ -217,12 +222,12 @@ const LinkPage = () => {
             </div>
           )}
           
-          {storeId && (
+          {storeDisplay && (
             <div className="flex items-start space-x-2 text-sm">
               <MapPinIcon className="h-4 w-4 mt-0.5" />
               <div>
-                <p className="font-medium">Butiks-ID:</p>
-                <p className="text-muted-foreground">{storeId}</p>
+                <p className="font-medium">Butik:</p>
+                <p className="text-muted-foreground">{storeDisplay}</p>
               </div>
             </div>
           )}

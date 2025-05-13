@@ -78,11 +78,29 @@ serve(async (req: Request) => {
     }
     
     // Handle store reference
-    let finalStoreId = storeId;
+    let finalStoreId = null;
     
-    // If only store name is provided, find or create the store
-    if (!storeId && storeName && formData.organization_id) {
-      console.log("Looking up store by name:", storeName);
+    // FIXED: This is the issue - we need to handle both store ID and store name cases properly
+    if (storeId) {
+      // Check if storeId is a UUID or a store name
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      if (uuidPattern.test(storeId)) {
+        // If it's already a valid UUID, use it directly
+        console.log("Using provided store ID (valid UUID):", storeId);
+        finalStoreId = storeId;
+      } else {
+        // If it's not a UUID, treat it as a store name
+        console.log("Received store ID that is not a UUID, treating as store name:", storeId);
+        storeName = storeId; // Use storeId as storeName
+      }
+    }
+    
+    // If we have a store name but no valid UUID, find or create the store
+    if (!finalStoreId && (storeName || storeId) && formData.organization_id) {
+      // Use either storeName if provided or storeId as the name
+      const nameToUse = storeName || storeId;
+      console.log("Looking up store by name:", nameToUse);
       
       try {
         // Find store by name
@@ -90,7 +108,7 @@ serve(async (req: Request) => {
           .from('stores')
           .select('id')
           .eq('organization_id', formData.organization_id)
-          .ilike('name', storeName)
+          .ilike('name', nameToUse)
           .limit(1)
           .single();
           
@@ -104,11 +122,11 @@ serve(async (req: Request) => {
           finalStoreId = existingStore.id;
         } else {
           // Otherwise create a new store
-          console.log("Creating new store with name:", storeName);
+          console.log("Creating new store with name:", nameToUse);
           const { data: newStore, error: createError } = await supabase
             .from('stores')
             .insert({
-              name: storeName,
+              name: nameToUse,
               organization_id: formData.organization_id
             })
             .select('id')

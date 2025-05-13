@@ -5,7 +5,7 @@
  */
 
 import * as React from "react";
-import { toast as sonnerToast, ToasterToast as SonnerToast, ToasterProps } from "sonner";
+import { toast as sonnerToast, type Toast as SonnerToast, type ToasterProps } from "sonner";
 
 const TOAST_LIMIT = 10;
 const TOAST_REMOVE_DELAY = 1000;

@@ -83,6 +83,28 @@ export const updateEntryAiSummary = async (
 };
 
 /**
+ * Assigns an optician to an anamnesis entry
+ */
+export const assignOpticianToEntry = async (
+  supabase: SupabaseClient,
+  entryId: string,
+  opticianId: string | null
+) => {
+  return updateEntry(supabase, entryId, { optician_id: opticianId });
+};
+
+/**
+ * Associates an entry with a store
+ */
+export const assignStoreToEntry = async (
+  supabase: SupabaseClient,
+  entryId: string,
+  storeId: string | null
+) => {
+  return updateEntry(supabase, entryId, { store_id: storeId });
+};
+
+/**
  * Creates a new entry with patient identifier
  */
 export const createEntryWithPatientIdentifier = async (

@@ -27,6 +27,7 @@ export type Database = {
           id: string
           internal_notes: string | null
           is_magic_link: boolean | null
+          optician_id: string | null
           organization_id: string
           patient_identifier: string | null
           sent_at: string | null
@@ -51,6 +52,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           is_magic_link?: boolean | null
+          optician_id?: string | null
           organization_id: string
           patient_identifier?: string | null
           sent_at?: string | null
@@ -75,6 +77,7 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           is_magic_link?: boolean | null
+          optician_id?: string | null
           organization_id?: string
           patient_identifier?: string | null
           sent_at?: string | null
@@ -82,7 +85,15 @@ export type Database = {
           store_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "anamnes_entries_optician_id_fkey"
+            columns: ["optician_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       anamnes_forms: {
         Row: {
@@ -178,6 +189,53 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      stores: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          external_id: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          organization_id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          organization_id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          organization_id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stores_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       submission_logs: {
         Row: {

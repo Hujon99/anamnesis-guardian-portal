@@ -27,6 +27,8 @@ export type AnamnesesEntry = {
   first_name?: string | null;
   booking_date?: string | null;
   is_magic_link?: boolean | null;
+  // New properties
+  optician_id?: string | null;
 };
 
 export type FormQuestionOption = string | {
@@ -106,3 +108,17 @@ export interface DynamicFollowupQuestion extends FormQuestion {
   runtimeId: string;
   originalId: string;
 }
+
+// New type for stores
+export type Store = {
+  id: string;
+  name: string;
+  organization_id: string;
+  external_id: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+};

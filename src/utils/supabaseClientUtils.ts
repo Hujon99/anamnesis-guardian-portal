@@ -66,3 +66,137 @@ export const handleSupabaseError = (error: any): Error => {
   
   return standardizedError;
 };
+
+/**
+ * Utilities for working with stores
+ */
+export const storesUtils = {
+  /**
+   * Find a store by name within an organization, or create it if it doesn't exist
+   * @param supabase Supabase client
+   * @param organizationId Organization ID
+   * @param storeName Store name
+   * @param storeData Additional store data (optional)
+   * @returns The found or created store
+   */
+  async findOrCreateByName(
+    supabase, 
+    organizationId: string, 
+    storeName: string,
+    storeData?: Partial<Database['public']['Tables']['stores']['Insert']>
+  ) {
+    if (!storeName || !organizationId) {
+      throw new Error("Store name and organization ID are required");
+    }
+    
+    // Try to find the store first
+    const { data: existingStore, error: findError } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .ilike('name', storeName)
+      .limit(1)
+      .single();
+      
+    if (!findError && existingStore) {
+      return existingStore;
+    }
+    
+    // Create the store if it doesn't exist
+    const { data: newStore, error: createError } = await supabase
+      .from('stores')
+      .insert({
+        organization_id: organizationId,
+        name: storeName,
+        ...storeData
+      })
+      .select()
+      .single();
+      
+    if (createError) {
+      throw handleSupabaseError(createError);
+    }
+    
+    return newStore;
+  },
+  
+  /**
+   * Get all stores for an organization
+   * @param supabase Supabase client
+   * @param organizationId Organization ID
+   * @returns List of stores
+   */
+  async getByOrganization(supabase, organizationId: string) {
+    if (!organizationId) {
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('name');
+      
+    if (error) {
+      throw handleSupabaseError(error);
+    }
+    
+    return data || [];
+  }
+};
+
+/**
+ * Utilities for working with optician assignments
+ */
+export const opticianUtils = {
+  /**
+   * Assign an optician to an anamnesis entry
+   * @param supabase Supabase client
+   * @param entryId Entry ID
+   * @param opticianId Optician ID
+   * @returns Updated entry
+   */
+  async assignToEntry(supabase, entryId: string, opticianId: string | null) {
+    if (!entryId) {
+      throw new Error("Entry ID is required");
+    }
+    
+    const { data, error } = await supabase
+      .from('anamnes_entries')
+      .update({ optician_id: opticianId })
+      .eq('id', entryId)
+      .select()
+      .single();
+      
+    if (error) {
+      throw handleSupabaseError(error);
+    }
+    
+    return data;
+  },
+  
+  /**
+   * Get entries assigned to a specific optician
+   * @param supabase Supabase client
+   * @param organizationId Organization ID
+   * @param opticianId Optician ID
+   * @returns List of entries assigned to the optician
+   */
+  async getAssignedEntries(supabase, organizationId: string, opticianId: string) {
+    if (!organizationId || !opticianId) {
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('anamnes_entries')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('optician_id', opticianId);
+      
+    if (error) {
+      throw handleSupabaseError(error);
+    }
+    
+    return data || [];
+  }
+};

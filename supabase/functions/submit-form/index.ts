@@ -1,3 +1,4 @@
+
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
@@ -889,3 +890,154 @@ serve(async (req: Request) => {
           );
           
           // If both methods failed, return error
+          if (!updateSuccess) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'Failed to save form data', 
+                details: updateError?.message || clientUpdateError.message 
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } else {
+          console.log("[submit-form]: Entry updated successfully with token-based client");
+          updateSuccess = true;
+          
+          // Log the success
+          await logSubmissionAttempt(
+            token,
+            entry.id,
+            isOptician,
+            'success',
+            null,
+            `Updated entry with token-based client`
+          );
+        }
+      } catch (clientUpdateCatchError) {
+        console.error("[submit-form]: Exception during token-based update:", clientUpdateCatchError);
+        
+        // Log the error
+        await logSubmissionAttempt(
+          token,
+          entry.id,
+          isOptician,
+          'error',
+          `Token update exception: ${clientUpdateCatchError.message}`,
+          JSON.stringify(sampleData).substring(0, 200)
+        );
+        
+        // If both methods failed, return error
+        if (!updateSuccess) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Failed to save form data', 
+              details: updateError?.message || clientUpdateCatchError.message 
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+    
+    // Log the final update result
+    if (updateSuccess) {
+      console.log("[submit-form]: Entry successfully updated with final status:", updateData.status);
+      
+      // Check if entry was actually updated correctly by verifying it in the database
+      console.log("[submit-form]: Verifying update was applied in database...");
+      
+      try {
+        // Use admin client for reliable verification
+        const { data: verifyData, error: verifyError } = await supabaseAdmin
+          .from('anamnes_entries')
+          .select('status, answers, formatted_raw_data')
+          .eq('id', entry.id)
+          .maybeSingle();
+          
+        if (verifyError) {
+          console.error("[submit-form]: Error verifying update:", verifyError);
+        } else if (verifyData) {
+          console.log("[submit-form]: Verification result:", {
+            status: verifyData.status,
+            hasAnswers: verifyData.answers !== null,
+            hasFormattedRawData: verifyData.formatted_raw_data !== null
+          });
+          
+          if (verifyData.status !== updateData.status) {
+            console.error("[submit-form]: WARNING - Status mismatch after update");
+          }
+          
+          if (verifyData.answers === null) {
+            console.error("[submit-form]: WARNING - Answers field is NULL after update");
+          }
+          
+          if (verifyData.formatted_raw_data === null) {
+            console.error("[submit-form]: WARNING - formatted_raw_data field is NULL after update");
+          }
+        } else {
+          console.error("[submit-form]: WARNING - Entry not found during verification");
+        }
+      } catch (verifyError) {
+        console.error("[submit-form]: Exception during verification:", verifyError);
+      }
+      
+      // 3. Try to generate AI summary in background (don't block the response)
+      console.log("[submit-form]: Attempting to trigger AI summary generation...");
+      
+      try {
+        // Use EdgeRuntime.waitUntil for background processing to prevent blocking the response
+        if (typeof EdgeRuntime !== 'undefined') {
+          console.log("[submit-form]: Using EdgeRuntime.waitUntil for background summary generation");
+          
+          // Run AI summary generation in the background
+          EdgeRuntime.waitUntil(generateAiSummary(entry.id, supabaseAdmin).catch((summaryError) => {
+            console.error("[submit-form] Background AI summary generation failed:", summaryError);
+          }));
+        } else {
+          console.log("[submit-form]: EdgeRuntime not available, attempting direct summary generation");
+          
+          // Try to generate but don't wait for the result
+          generateAiSummary(entry.id, supabaseAdmin).catch((summaryError) => {
+            console.error("[submit-form] Direct AI summary generation failed:", summaryError);
+          });
+        }
+      } catch (aiError) {
+        // Log the error but don't fail the submission
+        console.error("[submit-form]: Error initiating AI summary generation:", aiError);
+      }
+      
+      // Return success response to client
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Form successfully submitted',
+          submitted: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      // This should not happen as we should have returned earlier if both update methods failed
+      console.error("[submit-form]: No update method was successful");
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to save form data', 
+          details: 'Both update methods failed' 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+  } catch (error) {
+    // Handle unexpected errors
+    console.error("[submit-form]: Unexpected error:", error);
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Server error', 
+        details: error.message 
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

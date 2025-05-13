@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useEntryMutations } from "./useEntryMutations";
@@ -22,11 +23,15 @@ export function useAnamnesisDetail(
   const {
     updateEntryMutation,
     sendLinkMutation,
+    assignOpticianMutation,
+    assignStoreMutation,
     updateStatus,
     saveFormattedRawData,
     savePatientIdentifier,
     saveAiSummary,
-    sendLink
+    sendLink,
+    assignOptician,
+    assignStore
   } = useEntryMutations(entry.id, onEntryUpdated);
 
   // Derived values
@@ -65,6 +70,14 @@ export function useAnamnesisDetail(
     saveAiSummary(summary);
   };
 
+  const handleAssignOptician = async (opticianId: string | null) => {
+    await assignOptician(opticianId);
+  };
+
+  const handleAssignStore = async (storeId: string | null) => {
+    await assignStore(storeId);
+  };
+
   const copyLinkToClipboard = () => {
     if (entry.access_token) {
       const baseUrl = window.location.origin;
@@ -101,6 +114,8 @@ export function useAnamnesisDetail(
     // Mutations
     updateEntryMutation,
     sendLinkMutation,
+    assignOpticianMutation,
+    assignStoreMutation,
     
     // Actions
     setFormattedRawData,
@@ -111,6 +126,8 @@ export function useAnamnesisDetail(
     handleSendLink,
     handleStatusUpdate,
     handleSaveAiSummary,
+    handleAssignOptician,
+    handleAssignStore,
     copyLinkToClipboard
   };
 }

@@ -11,13 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PatientInfo } from "./PatientInfo";
 import { OptimizedAnswersView } from "./OptimizedAnswersView";
 import { AnamnesesEntry } from "@/types/anamnesis";
+import { AssignmentSection } from "./AssignmentSection";
 
 interface ModalTabContentProps {
-  patientIdentifier: string; // Updated from patientEmail
+  patientIdentifier: string; 
   isEditing: boolean;
   toggleEditing: () => void;
-  setPatientIdentifier: (value: string) => void; // Updated from setPatientEmail
-  savePatientIdentifier: () => void; // Updated from savePatientEmail
+  setPatientIdentifier: (value: string) => void;
+  savePatientIdentifier: () => void;
   formattedRawData: string;
   setFormattedRawData: (data: string) => void;
   saveFormattedRawData: () => void;
@@ -28,6 +29,8 @@ interface ModalTabContentProps {
   showPatientInfoSection: boolean;
   entry: AnamnesesEntry;
   onSaveAiSummary: (summary: string) => void;
+  onAssignOptician: (opticianId: string | null) => Promise<void>;
+  onAssignStore: (storeId: string | null) => Promise<void>;
 }
 
 export function ModalTabContent({
@@ -45,15 +48,19 @@ export function ModalTabContent({
   status,
   showPatientInfoSection,
   entry,
-  onSaveAiSummary
+  onSaveAiSummary,
+  onAssignOptician,
+  onAssignStore
 }: ModalTabContentProps) {
   // Calculate if we have tabs to show
   const hasAnswersTab = hasAnswers || status === "sent";
   const hasPatientInfoTab = showPatientInfoSection;
+  const hasAssignmentTab = true; // Always show assignments tab
   
   console.log("ModalTabContent rendering with:", {
     hasAnswers,
     hasPatientInfoTab,
+    hasAssignmentTab,
     aiSummary: entry.ai_summary ? `length: ${entry.ai_summary.length}` : "none",
     formattedRawData: formattedRawData ? `length: ${formattedRawData.length}` : "none"
   });
@@ -62,8 +69,8 @@ export function ModalTabContent({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* If we have at least one type of content to show */}
-      {(hasAnswersTab || hasPatientInfoTab) ? (
-        <Tabs defaultValue={hasAnswersTab ? "answers" : "patient-info"} className="flex flex-col h-full">
+      {(hasAnswersTab || hasPatientInfoTab || hasAssignmentTab) ? (
+        <Tabs defaultValue={hasAnswersTab ? "answers" : hasPatientInfoTab ? "patient-info" : "assignments"} className="flex flex-col h-full">
           <TabsList className="mx-4 mb-2">
             {hasAnswersTab && (
               <TabsTrigger value="answers">Patientens svar</TabsTrigger>
@@ -71,6 +78,7 @@ export function ModalTabContent({
             {hasPatientInfoTab && (
               <TabsTrigger value="patient-info">Patientuppgifter</TabsTrigger>
             )}
+            <TabsTrigger value="assignments">Tilldelningar</TabsTrigger>
           </TabsList>
           
           <div className="flex-grow overflow-hidden">
@@ -109,6 +117,18 @@ export function ModalTabContent({
                 />
               </TabsContent>
             )}
+            
+            <TabsContent 
+              value="assignments" 
+              className="h-full m-0 border-0 p-0 flex flex-col"
+            >
+              <AssignmentSection 
+                entry={entry}
+                onAssignOptician={onAssignOptician}
+                onAssignStore={onAssignStore}
+                isPending={isPending}
+              />
+            </TabsContent>
           </div>
         </Tabs>
       ) : (

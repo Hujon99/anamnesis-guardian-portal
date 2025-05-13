@@ -1,3 +1,4 @@
+
 /**
  * This component displays detailed information about an anamnesis entry
  * in a modal dialog. It's been refactored to improve maintainability
@@ -38,6 +39,8 @@ export function AnamnesisDetailModal({
     // Mutations
     updateEntryMutation,
     sendLinkMutation,
+    assignOpticianMutation,
+    assignStoreMutation,
     
     // Actions
     setFormattedRawData,
@@ -48,11 +51,20 @@ export function AnamnesisDetailModal({
     handleSendLink,
     handleStatusUpdate,
     handleSaveAiSummary,
+    handleAssignOptician,
+    handleAssignStore,
     copyLinkToClipboard
   } = useAnamnesisDetail(entry, onEntryUpdated, () => onOpenChange(false));
 
   // Determines if we need to show the patient info section
-  const showPatientInfoSection = !entry.patient_identifier; // Updated from patient_email
+  const showPatientInfoSection = !entry.patient_identifier;
+  
+  // Combine all pending states
+  const isPending = 
+    updateEntryMutation.isPending || 
+    sendLinkMutation.isPending || 
+    assignOpticianMutation.isPending || 
+    assignStoreMutation.isPending;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -70,21 +82,23 @@ export function AnamnesisDetailModal({
         
         <div className="flex-1 overflow-hidden">
           <ModalTabContent
-            patientIdentifier={patientIdentifier} // Updated from patientEmail
+            patientIdentifier={patientIdentifier}
             isEditing={isEditing}
             toggleEditing={toggleEditing}
-            setPatientIdentifier={setPatientIdentifier} // Updated from setPatientEmail
-            savePatientIdentifier={handleSavePatientIdentifier} // Updated from savePatientEmail
+            setPatientIdentifier={setPatientIdentifier}
+            savePatientIdentifier={handleSavePatientIdentifier}
             formattedRawData={formattedRawData}
             setFormattedRawData={setFormattedRawData}
             saveFormattedRawData={handleSaveFormattedRawData}
-            isPending={updateEntryMutation.isPending}
+            isPending={isPending}
             answers={answers}
             hasAnswers={hasAnswers}
             status={entry.status || ""}
             showPatientInfoSection={showPatientInfoSection}
             entry={entry}
             onSaveAiSummary={handleSaveAiSummary}
+            onAssignOptician={handleAssignOptician}
+            onAssignStore={handleAssignStore}
           />
         </div>
         

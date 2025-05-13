@@ -2,20 +2,26 @@
 /**
  * This hook provides a centralized toast notification system.
  * It allows for consistent toast notifications throughout the application.
+ * It provides typed methods for different kinds of toasts (success, error, etc.)
+ * and follows the Blue Pulse design system with appropriate styling.
  */
 
 import * as React from "react";
-import { toast as sonnerToast, type Toast as SonnerToast, type ToasterProps } from "sonner";
+import { toast as sonnerToast, type ToasterProps } from "sonner";
 
 const TOAST_LIMIT = 10;
 const TOAST_REMOVE_DELAY = 1000;
 
-type ToasterToast = SonnerToast & {
+// Define our toast type based on what's available in sonner
+type ToasterToast = {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactNode;
   variant?: "default" | "destructive" | "success";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  className?: string;
 };
 
 const actionTypes = {

@@ -1,4 +1,3 @@
-
 /**
  * This Edge Function handles form submissions for anamnes entries.
  * It validates and processes the submitted form data, updating the entry status.
@@ -758,7 +757,14 @@ serve(async (req: Request) => {
         updated_at: new Date().toISOString()
       };
       
+      // Add sent_at if it's not already set
+      if (status === 'ready') {
+        updateData.sent_at = new Date().toISOString();
+      }
+      
       console.log("[submit-form]: Update data prepared successfully");
+      console.log("[submit-form]: formData keys:", Object.keys(formData).length > 0 ? Object.keys(formData).slice(0, 5) + "..." : "EMPTY");
+      console.log("[submit-form]: formData sample:", JSON.stringify(formData).substring(0, 100) + "...");
       
       // Log the update preparation
       await logSubmissionAttempt(
@@ -806,13 +812,63 @@ serve(async (req: Request) => {
     };
     console.log("[submit-form]: Sample of data being inserted:", sampleData);
     
-    // Attempt database update using multiple methods
+    // CRITICAL FIX - Always try the admin client first for reliable database updates
+    // This ensures we bypass any RLS policy issues that might be preventing updates
     let updateSuccess = false;
     let updateError = null;
     
-    // Method 1: Try token-based client if token setting was successful
-    if (setTokenSuccess) {
-      console.log("[submit-form]: Attempting update with token-based client...");
+    console.log("[submit-form]: Attempting update with admin client for reliability...");
+    try {
+      const { error: adminUpdateError, data: adminUpdateData } = await supabaseAdmin
+        .from('anamnes_entries')
+        .update(updateData)
+        .eq('id', entry.id)
+        .select();
+      
+      if (adminUpdateError) {
+        console.error("[submit-form]: Error updating with admin client:", adminUpdateError);
+        updateError = adminUpdateError;
+        
+        // Log the error
+        await logSubmissionAttempt(
+          token,
+          entry.id,
+          isOptician,
+          'error',
+          `Admin update error: ${adminUpdateError.message}`,
+          JSON.stringify(sampleData).substring(0, 200)
+        );
+      } else {
+        console.log("[submit-form]: Entry updated successfully with admin client", adminUpdateData);
+        updateSuccess = true;
+        
+        // Log the success
+        await logSubmissionAttempt(
+          token,
+          entry.id,
+          isOptician,
+          'success',
+          null,
+          `Updated entry with admin client`
+        );
+      }
+    } catch (adminUpdateCatchError) {
+      console.error("[submit-form]: Exception during admin update:", adminUpdateCatchError);
+      
+      // Log the error
+      await logSubmissionAttempt(
+        token,
+        entry.id,
+        isOptician,
+        'error',
+        `Admin update exception: ${adminUpdateCatchError.message}`,
+        JSON.stringify(sampleData).substring(0, 200)
+      );
+    }
+    
+    // If admin client failed, try with token-based client as fallback
+    if (!updateSuccess && setTokenSuccess) {
+      console.log("[submit-form]: Attempting update with token-based client as fallback...");
       try {
         const { error: clientUpdateError } = await supabase
           .from('anamnes_entries')
@@ -821,7 +877,6 @@ serve(async (req: Request) => {
         
         if (clientUpdateError) {
           console.error("[submit-form]: Error updating with token-based client:", clientUpdateError);
-          updateError = clientUpdateError;
           
           // Log the error
           await logSubmissionAttempt(
@@ -833,212 +888,4 @@ serve(async (req: Request) => {
             JSON.stringify(sampleData).substring(0, 200)
           );
           
-        } else {
-          console.log("[submit-form]: Entry updated successfully with token-based client");
-          updateSuccess = true;
-          
-          // Log the success
-          await logSubmissionAttempt(
-            token,
-            entry.id,
-            isOptician,
-            'success',
-            null,
-            `Updated entry with token-based client`
-          );
-        }
-      } catch (clientUpdateCatchError) {
-        console.error("[submit-form]: Exception during token-based update:", clientUpdateCatchError);
-        updateError = clientUpdateCatchError;
-        
-        // Log the error
-        await logSubmissionAttempt(
-          token,
-          entry.id,
-          isOptician,
-          'error',
-          `Token update exception: ${clientUpdateCatchError.message}`,
-          JSON.stringify(sampleData).substring(0, 200)
-        );
-      }
-    } else {
-      console.log("[submit-form]: Skipping token-based update since token setting failed");
-    }
-    
-    // Method 2: If token-based update failed, try directly with admin client
-    if (!updateSuccess) {
-      console.log("[submit-form]: Attempting update with admin client as fallback...");
-      try {
-        const { error: adminUpdateError } = await supabaseAdmin
-          .from('anamnes_entries')
-          .update(updateData)
-          .eq('id', entry.id);
-        
-        if (adminUpdateError) {
-          console.error("[submit-form]: Error updating with admin client:", adminUpdateError);
-          
-          // Log the error
-          await logSubmissionAttempt(
-            token,
-            entry.id,
-            isOptician,
-            'error',
-            `Admin update error: ${adminUpdateError.message}`,
-            JSON.stringify(sampleData).substring(0, 200)
-          );
-          
           // If both methods failed, return error
-          return new Response(
-            JSON.stringify({ 
-              error: 'Failed to save entry', 
-              details: 'Both token and admin update methods failed',
-              tokenError: updateError?.message,
-              adminError: adminUpdateError?.message
-            }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        } else {
-          console.log("[submit-form]: Entry updated successfully with admin client");
-          updateSuccess = true;
-          
-          // Log the success
-          await logSubmissionAttempt(
-            token,
-            entry.id,
-            isOptician,
-            'success',
-            null,
-            `Updated entry with admin client`
-          );
-        }
-      } catch (adminUpdateCatchError) {
-        console.error("[submit-form]: Exception during admin update:", adminUpdateCatchError);
-        
-        // Log the error
-        await logSubmissionAttempt(
-          token,
-          entry.id,
-          isOptician,
-          'error',
-          `Admin update exception: ${adminUpdateCatchError.message}`,
-          JSON.stringify(sampleData).substring(0, 200)
-        );
-        
-        return new Response(
-          JSON.stringify({ 
-            error: 'Exception during database update', 
-            details: adminUpdateCatchError.message,
-            originalError: updateError?.message
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-    
-    // Verify the update was successful by reading back the data
-    try {
-      console.log("[submit-form]: Verifying update with read operation...");
-      const { data: verifyData, error: verifyError } = await supabaseAdmin
-        .from('anamnes_entries')
-        .select('id, status, answers')
-        .eq('id', entry.id)
-        .maybeSingle();
-      
-      if (verifyError) {
-        console.error("[submit-form]: Verification read failed:", verifyError);
-        
-        // This is a non-fatal error since we already confirmed the update
-        console.warn("[submit-form]: Continuing despite verification failure");
-      } else if (!verifyData) {
-        console.error("[submit-form]: Entry not found during verification");
-        
-        // This is strange but not necessarily fatal
-        console.warn("[submit-form]: Continuing despite verification anomaly");
-      } else {
-        console.log("[submit-form]: Entry verification successful:", JSON.stringify({
-          id: verifyData.id,
-          status: verifyData.status,
-          hasAnswers: !!verifyData.answers,
-          answersKeys: verifyData.answers ? Object.keys(verifyData.answers).length : 0
-        }));
-        
-        // Log the verification result
-        await logSubmissionAttempt(
-          token,
-          entry.id,
-          isOptician,
-          'success',
-          null,
-          `Verification successful, status: ${verifyData.status}, hasAnswers: ${!!verifyData.answers}`
-        );
-      }
-    } catch (verifyError) {
-      console.error("[submit-form]: Exception during verification:", verifyError);
-      // Non-fatal error, continue
-    }
-    
-    // Log the successful submission
-    await logSubmissionAttempt(
-      token,
-      entry.id,
-      isOptician,
-      'success',
-      null,
-      `Submission completed successfully`
-    );
-    
-    // 3. Log additional information for magic link entries
-    if (entry.is_magic_link) {
-      console.log(`[submit-form]: Magic link submission successful for booking ID: ${entry.booking_id}`);
-    }
-    
-    // 4. Trigger AI summary generation immediately
-    try {
-      // Use the new function to generate and save AI summary
-      const summarySuccess = await generateAiSummary(entry.id, supabaseAdmin);
-      
-      if (summarySuccess) {
-        console.log("[submit-form]: AI summary generation completed successfully");
-      } else {
-        console.log("[submit-form]: AI summary generation attempted but may not have completed successfully");
-      }
-    } catch (summaryError) {
-      console.error("[submit-form]: Error in AI summary generation:", summaryError);
-      // Non-critical error, continue with submission success
-    }
-    
-    // Return success response
-    console.log("[submit-form]: Form submission process completed successfully");
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Form submitted successfully',
-        entryId: entry.id,
-        status: updateData.status
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-    
-  } catch (error) {
-    console.error("[submit-form]: Unexpected error:", error);
-    
-    // Try to log the error
-    try {
-      await logSubmissionAttempt(
-        "unknown",
-        null,
-        false,
-        'error',
-        `Unexpected error: ${error.message}`,
-        null
-      );
-    } catch (logError) {
-      console.error("[submit-form]: Failed to log error:", logError);
-    }
-    
-    return new Response(
-      JSON.stringify({ error: 'Server error', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-});

@@ -5,21 +5,18 @@
  */
 
 import { Card, CardContent } from "@/components/ui/card";
-import { FolderX } from "lucide-react";
 
 interface EmptyStateProps {
-  status?: string;
+  status: string;
 }
 
-export function EmptyState({ status = "pending" }: EmptyStateProps) {
+export const EmptyState = ({ status }: EmptyStateProps) => {
   const getMessage = () => {
     switch (status) {
-      case "pending":
-        return "Inga väntande anamneser";
       case "sent":
-        return "Inga utskickade anamneser";
-      case "reviewed":
-        return "Inga granskade anamneser";
+        return "Inga skickade anamneser";
+      case "pending":
+        return "Inga anamneser att granska";
       case "ready":
         return "Inga färdiga anamneser";
       case "all":
@@ -32,14 +29,12 @@ export function EmptyState({ status = "pending" }: EmptyStateProps) {
   };
 
   return (
-    <Card className="w-full border-dashed">
-      <CardContent className="flex flex-col items-center justify-center py-10">
-        <FolderX className="h-10 w-10 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold">{getMessage()}</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Det finns inga anamneser att visa just nu
+    <Card>
+      <CardContent className="pt-6">
+        <p className="text-center text-muted-foreground">
+          {getMessage()}
         </p>
       </CardContent>
     </Card>
   );
-}
+};

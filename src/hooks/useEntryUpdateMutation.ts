@@ -17,14 +17,14 @@ import {
 import { AnamnesesEntry } from "@/types/anamnesis";
 
 export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) => {
-  const { supabase, validateTokenBeforeRequest } = useSupabaseClient();
+  const { supabase, refreshClient } = useSupabaseClient();
   const queryClient = useQueryClient();
 
   // Helper function to ensure authentication before making requests
   const ensureAuthenticated = async (force = false) => {
     try {
       console.log(`Ensuring authentication for update mutation (force=${force})`);
-      await validateTokenBeforeRequest(force);
+      await refreshClient(force);
       return true;
     } catch (error) {
       console.error("Authentication refresh failed:", error);
@@ -50,7 +50,7 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       aiSummary?: string 
     }) => {
       // Ensure we have a valid authentication token
-      await ensureAuthenticated(true);
+      await ensureAuthenticated();
       
       const updates: Partial<AnamnesesEntry> = {};
       
@@ -104,7 +104,7 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       
       // Try to recover from auth issues with a forced refresh
       if (error.message?.includes("auth") || error.code === "PGRST301") {
-        validateTokenBeforeRequest(true);
+        refreshClient(true);
       }
     },
     retry: (failureCount, error) => {

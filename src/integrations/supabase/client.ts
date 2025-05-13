@@ -12,53 +12,5 @@ import type { Database } from './types';
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://jawtwwwelxaaprzsqfyp.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk";
 
-// Create the supabase client with optimized configuration for better performance and reliability
-export const supabase = createClient<Database>(
-  SUPABASE_URL, 
-  SUPABASE_PUBLISHABLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,  // We handle token refresh ourselves
-      persistSession: true      // We still want to save session locally
-    },
-    global: {
-      headers: {
-        'x-client-info': `lovable_app/1.2` // Add client info for better debugging
-      },
-    },
-    db: {
-      schema: 'public'
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10    // Limit events to prevent flooding
-      }
-    }
-  }
-);
-
-// Export debug functions to help with development
-export const debugSupabaseAuth = async () => {
-  try {
-    const session = await supabase.auth.getSession();
-    
-    const sessionInfo = {
-      hasSession: !!session.data.session,
-      expiresAt: session.data.session?.expires_at 
-        ? new Date(session.data.session?.expires_at * 1000).toISOString() 
-        : "No expiration",
-      user: session.data.session?.user?.id || "No user",
-      email: session.data.session?.user?.email || "No email",
-      accessTokenExpires: session.data.session?.access_token 
-        ? `${Math.round((session.data.session?.expires_at || 0) - Date.now() / 1000)} seconds` 
-        : "No token",
-      refreshToken: session.data.session?.refresh_token ? "Present" : "Missing"
-    };
-    
-    console.log("Current Supabase session state:", sessionInfo);
-    return session;
-  } catch (err) {
-    console.error("Error checking Supabase session:", err);
-    return null;
-  }
-};
+// Export the supabase client for use throughout the application
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

@@ -22,6 +22,7 @@ import { Store } from "@/types/anamnesis";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
 import { AdvancedFilters } from "./AdvancedFilters";
+import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 
 interface AnamnesisListViewProps {
   showAdvancedFilters?: boolean;
@@ -51,6 +52,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const isMobile = useIsMobile();
   const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
+  const { syncUsersWithToast } = useSyncClerkUsers();
   
   // Fetch stores for enhancing display
   const { data: stores = [] } = useQuery({
@@ -77,11 +79,20 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     stores.forEach(store => {
       storeMap.set(store.id, store.name);
     });
-  }, [stores]);
+    
+    // Sync Clerk users with Supabase on component mount
+    syncUsersWithToast();
+  }, [stores, syncUsersWithToast]);
 
   // Manual refresh handler with debug console log
   const handleManualRefresh = () => {
     console.log("Manual refresh triggered in AnamnesisListView");
+    refetch();
+  };
+
+  // Handle optician assignment
+  const handleEntryAssigned = (entryId: string, opticianId: string | null) => {
+    console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
     refetch();
   };
 
@@ -200,6 +211,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
           entries={enhancedEntries}
           onSelectEntry={setSelectedEntry}
           onEntryDeleted={refetch}
+          onEntryAssigned={handleEntryAssigned}
         />
       </div>
       

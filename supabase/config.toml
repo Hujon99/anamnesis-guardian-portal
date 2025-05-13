@@ -9,6 +9,10 @@ version = 0
 
 [realtime]
 enabled = true
+# Enable specific changers for the anamnes_entries table
+[realtime.postgres_changes]
+schemas = ["public"]
+tables = ["anamnes_entries", "users"]
 
 [storage]
 enabled = false

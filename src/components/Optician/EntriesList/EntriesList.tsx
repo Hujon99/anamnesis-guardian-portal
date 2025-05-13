@@ -1,13 +1,14 @@
 
 /**
- * This component renders a list of anamnesis entries.
- * It handles the display of the entries, empty state,
- * and selection of entries for detailed view.
+ * This component renders a list of anamnesis entries with proper handling for empty state and item selection.
+ * It now includes support for quick-assign functionality directly in the list view.
  */
 
-import { AnamnesesEntry } from "@/types/anamnesis";
-import { AnamnesisListItem } from "../AnamnesisListItem";
 import { EmptyState } from "./EmptyState";
+import { AnamnesisListItem } from "../AnamnesisListItem";
+import { AnamnesesEntry } from "@/types/anamnesis";
+import { useOpticians } from "@/hooks/useOpticians";
+import { useAuth } from "@clerk/clerk-react";
 
 interface EntriesListProps {
   entries: (AnamnesesEntry & {
@@ -17,25 +18,45 @@ interface EntriesListProps {
   })[];
   onSelectEntry: (entry: AnamnesesEntry) => void;
   onEntryDeleted?: () => void;
+  onEntryAssigned?: (entryId: string, opticianId: string | null) => void;
+  showQuickAssign?: boolean;
 }
 
 export function EntriesList({
   entries,
   onSelectEntry,
-  onEntryDeleted
+  onEntryDeleted,
+  onEntryAssigned,
+  showQuickAssign = true
 }: EntriesListProps) {
+  const { opticians } = useOpticians();
+  const { has } = useAuth();
+  
+  // Check if user is admin
+  const isAdmin = has && has({ role: "org:admin" });
+  
+  // Create a map of optician IDs to names for quick lookup
+  const opticianMap = new Map<string, string>();
+  opticians.forEach(optician => {
+    opticianMap.set(optician.id, optician.name);
+  });
+  
   if (entries.length === 0) {
-    return <EmptyState status="all" />;
+    return <EmptyState />;
   }
 
   return (
-    <div className="space-y-3" role="list" aria-label="Anamnesis entries list">
+    <div className="space-y-4 mt-4">
       {entries.map((entry) => (
         <AnamnesisListItem
           key={entry.id}
           entry={entry}
           onClick={() => onSelectEntry(entry)}
           onDelete={onEntryDeleted}
+          onAssign={onEntryAssigned}
+          showAssignmentIndicator={true}
+          showQuickAssign={showQuickAssign && (isAdmin || true)}
+          opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}
         />
       ))}
     </div>

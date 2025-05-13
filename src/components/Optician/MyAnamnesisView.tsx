@@ -80,6 +80,12 @@ export function MyAnamnesisView() {
     refetch?.();
   };
 
+  // Handle entry assignment
+  const handleEntryAssigned = (entryId: string, opticianId: string | null) => {
+    console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
+    refetch?.();
+  };
+
   const getEntryExpirationInfo = (entry: AnamnesesEntry) => {
     if (!entry.auto_deletion_timestamp) return { isExpired: false, daysUntilExpiration: null };
     
@@ -173,6 +179,7 @@ export function MyAnamnesisView() {
           entries={enhancedEntries}
           onSelectEntry={setSelectedEntry}
           onEntryDeleted={refetch}
+          onEntryAssigned={handleEntryAssigned}
         />
       </div>
       

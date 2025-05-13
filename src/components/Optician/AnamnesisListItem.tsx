@@ -8,6 +8,7 @@ import { useState } from "react";
 import { AnamnesCard } from "./EntriesList/AnamnesCard";
 import { EntryStatusBadge } from "./EntriesList/EntryStatusBadge";
 import { EntryStatusIcon } from "./EntriesList/EntryStatusIcon";
+import { QuickAssignDropdown } from "./EntriesList/QuickAssignDropdown";
 import { formatDate } from "@/lib/date-utils";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -17,6 +18,7 @@ import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@clerk/clerk-react";
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
@@ -26,7 +28,10 @@ interface AnamnesisListItemProps {
   };
   onClick: () => void;
   onDelete?: () => void;
-  showAssignmentIndicator?: boolean; 
+  onAssign?: (entryId: string, opticianId: string | null) => void;
+  showAssignmentIndicator?: boolean;
+  showQuickAssign?: boolean;
+  opticianName?: string | null;
 }
 
 // Helper function to get proper patient display name
@@ -64,10 +69,18 @@ export function AnamnesisListItem({
   entry,
   onClick,
   onDelete,
+  onAssign,
   showAssignmentIndicator = true,
+  showQuickAssign = false,
+  opticianName = null,
 }: AnamnesisListItemProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { deleteEntry, isDeleting } = useEntryMutations(entry.id);
+  const { deleteEntry, isDeleting, assignOptician } = useEntryMutations(entry.id);
+  const { has } = useAuth();
+  
+  // Check if user is admin
+  const isAdmin = has && has({ role: "org:admin" });
+  const canAssign = isAdmin || showQuickAssign;
 
   const handleDelete = async () => {
     try {
@@ -91,9 +104,30 @@ export function AnamnesisListItem({
     e.stopPropagation();
     setIsDeleteDialogOpen(true);
   };
+  
+  // Handle optician assignment
+  const handleAssignOptician = async (opticianId: string | null) => {
+    try {
+      // Use the mutation from the hook
+      await assignOptician(opticianId);
+      
+      // If parent provided a callback, call it
+      if (onAssign) {
+        onAssign(entry.id, opticianId);
+      }
+    } catch (error) {
+      console.error("Error in quick-assign:", error);
+      throw error;
+    }
+  };
 
   // Get the appropriate patient display name
   const patientName = getPatientDisplayName(entry);
+
+  // Determine the display name for the optician badge
+  const opticianDisplayName = opticianName || (entry.optician_id ? "Tilldelad" : "Ej tilldelad");
+  const assignmentBadgeVariant = entry.optician_id ? "default" : "outline";
+  const assignmentBadgeClass = entry.optician_id ? "bg-accent-1 text-xs" : "bg-gray-100 text-xs";
 
   return (
     <>
@@ -132,16 +166,16 @@ export function AnamnesisListItem({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Badge 
-                            variant={entry.optician_id ? "default" : "outline"} 
-                            className={entry.optician_id ? "bg-accent-1 text-xs" : "bg-gray-100 text-xs"}
+                            variant={assignmentBadgeVariant} 
+                            className={assignmentBadgeClass}
                           >
                             <User className="h-3 w-3 mr-1" />
-                            {entry.optician_id ? "Tilldelad" : "Ej tilldelad"}
+                            {opticianDisplayName}
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent>
                           {entry.optician_id 
-                            ? "Anamnesen är tilldelad en optiker" 
+                            ? `Anamnesen är tilldelad till ${opticianName || "en optiker"}` 
                             : "Anamnesen är inte tilldelad någon optiker"}
                         </TooltipContent>
                       </Tooltip>
@@ -174,18 +208,29 @@ export function AnamnesisListItem({
             </div>
           </div>
 
-          {/* Delete button */}
-          {(entry.status === "sent" || entry.status === "pending") && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDeleteClick}
-              className="h-8 w-8 rounded-full"
-              aria-label="Ta bort"
-            >
-              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Quick assign dropdown */}
+            {canAssign && (
+              <QuickAssignDropdown 
+                entryId={entry.id}
+                currentOpticianId={entry.optician_id || null}
+                onAssign={handleAssignOptician}
+              />
+            )}
+          
+            {/* Delete button */}
+            {(entry.status === "sent" || entry.status === "pending") && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDeleteClick}
+                className="h-8 w-8 rounded-full"
+                aria-label="Ta bort"
+              >
+                <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+              </Button>
+            )}
+          </div>
         </div>
       </AnamnesCard>
 

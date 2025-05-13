@@ -56,9 +56,10 @@ export const useSyncClerkUsers = () => {
       setError(null);
       
       // Get all organization members from Clerk
-      const members = await organization.getMemberships();
+      const memberships = await organization.getMemberships();
       
-      if (!members || members.length === 0) {
+      // Check if memberships is valid and has data
+      if (!memberships || !memberships.data || memberships.data.length === 0) {
         setIsSyncing(false);
         return { success: false, message: 'No organization members found' };
       }
@@ -67,7 +68,7 @@ export const useSyncClerkUsers = () => {
       let updatedCount = 0;
       
       // Process each member
-      for (const member of members) {
+      for (const member of memberships.data) {
         const clerkUserId = member.publicUserData.userId;
         
         if (!clerkUserId) continue;

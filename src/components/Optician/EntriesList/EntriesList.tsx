@@ -20,6 +20,7 @@ interface EntriesListProps {
   onEntryDeleted?: () => void;
   onEntryAssigned?: (entryId: string, opticianId: string | null) => void;
   showQuickAssign?: boolean;
+  status?: string;
 }
 
 export function EntriesList({
@@ -27,7 +28,8 @@ export function EntriesList({
   onSelectEntry,
   onEntryDeleted,
   onEntryAssigned,
-  showQuickAssign = true
+  showQuickAssign = true,
+  status = "pending" // Default status to handle the empty state
 }: EntriesListProps) {
   const { opticians } = useOpticians();
   const { has } = useAuth();
@@ -42,7 +44,7 @@ export function EntriesList({
   });
   
   if (entries.length === 0) {
-    return <EmptyState />;
+    return <EmptyState status={status} />;
   }
 
   return (

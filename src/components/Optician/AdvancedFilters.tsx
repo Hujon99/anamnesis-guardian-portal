@@ -86,8 +86,8 @@ export function AdvancedFilters({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <Select 
-            value={storeFilter || ''} 
-            onValueChange={(value) => onStoreFilterChange(value || null)}
+            value={storeFilter || 'all'} 
+            onValueChange={(value) => onStoreFilterChange(value === 'all' ? null : value)}
           >
             <SelectTrigger className="w-full">
               <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export function AdvancedFilters({
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Butiker</SelectLabel>
-                <SelectItem value="">Alla butiker</SelectItem>
+                <SelectItem value="all">Alla butiker</SelectItem>
                 {isLoadingStores ? (
                   <div className="flex items-center justify-center py-2">
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -118,8 +118,8 @@ export function AdvancedFilters({
         
         <div>
           <Select 
-            value={opticianFilter || ''} 
-            onValueChange={(value) => onOpticianFilterChange(value || null)}
+            value={opticianFilter || 'all'} 
+            onValueChange={(value) => onOpticianFilterChange(value === 'all' ? null : value)}
           >
             <SelectTrigger className="w-full">
               <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ export function AdvancedFilters({
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Optiker</SelectLabel>
-                <SelectItem value="">Alla optiker</SelectItem>
+                <SelectItem value="all">Alla optiker</SelectItem>
                 <SelectItem value="none">Inga tilldelade</SelectItem>
                 {isLoadingOpticians ? (
                   <div className="flex items-center justify-center py-2">

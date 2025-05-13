@@ -12,13 +12,14 @@ import { toast as sonnerToast, type ToasterProps } from "sonner";
 const TOAST_LIMIT = 10;
 const TOAST_REMOVE_DELAY = 1000;
 
-// Define our toast type based on what's available in sonner
+// Define our toast type based on what's available in sonner + our custom properties
 type ToasterToast = {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactNode;
-  variant?: "default" | "destructive" | "success";
+  variant?: "default" | "destructive"; // Match the variants from toast.tsx
+  duration?: number; // Add duration property
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
@@ -146,22 +147,35 @@ function dispatch(action: Action) {
   });
 }
 
+// Explicitly define toast options interface to include duration
+interface ToastOptions {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  variant?: "default" | "destructive";
+  duration?: number;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  className?: string;
+  id?: string;
+}
+
 // Enhanced toast interface with typed methods
-type ToastProps = Omit<ToasterToast, "id">;
+type ToastProps = Omit<ToastOptions, "id">;
 
 interface ToastAPI {
   (props: ToastProps): string;
-  success: (message: string, options?: Omit<ToastProps, "variant">) => string;
-  error: (title: string, options?: Omit<ToastProps, "variant">) => string;
-  warning: (title: string, options?: Omit<ToastProps, "variant">) => string;
-  info: (title: string, options?: Omit<ToastProps, "variant">) => string;
+  success: (message: string, options?: ToastProps) => string;
+  error: (title: string, options?: ToastProps) => string;
+  warning: (title: string, options?: ToastProps) => string;
+  info: (title: string, options?: ToastProps) => string;
   dismiss: (toastId?: string) => void;
 }
 
 // Create enhanced toast function
 const toast = ((props: ToastProps) => {
   const { variant = "default", ...data } = props;
-  const id = genId();
+  const id = props.id || genId();
 
   // Enhanced error logging
   if (variant === 'destructive') {

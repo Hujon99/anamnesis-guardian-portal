@@ -1,3 +1,4 @@
+
 /**
  * This Edge Function generates access tokens for magic link anamnes forms.
  * It creates a new entry in the anamnes_entries table with booking information
@@ -29,7 +30,10 @@ serve(async (req: Request) => {
     console.log("Request received:", req.method);
     
     // Parse the request body
-    const { bookingId, firstName, storeId, storeName, bookingDate, formId } = await req.json();
+    const { bookingId, firstName, storeId, storeName: inputStoreName, bookingDate, formId } = await req.json();
+    
+    // Create mutable variable for store name
+    let effectiveStoreName = inputStoreName;
     
     // Validate required parameters
     if (!bookingId || !formId) {
@@ -45,7 +49,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("Parameters received:", { bookingId, firstName, storeId, storeName, bookingDate, formId });
+    console.log("Parameters received:", { bookingId, firstName, storeId, storeName: inputStoreName, bookingDate, formId });
     
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -80,7 +84,7 @@ serve(async (req: Request) => {
     // Handle store reference
     let finalStoreId = null;
     
-    // FIXED: This is the issue - we need to handle both store ID and store name cases properly
+    // Handle both store ID and store name cases properly
     if (storeId) {
       // Check if storeId is a UUID or a store name
       const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -92,14 +96,14 @@ serve(async (req: Request) => {
       } else {
         // If it's not a UUID, treat it as a store name
         console.log("Received store ID that is not a UUID, treating as store name:", storeId);
-        storeName = storeId; // Use storeId as storeName
+        effectiveStoreName = storeId; // Use storeId as storeName (using our mutable variable)
       }
     }
     
     // If we have a store name but no valid UUID, find or create the store
-    if (!finalStoreId && (storeName || storeId) && formData.organization_id) {
-      // Use either storeName if provided or storeId as the name
-      const nameToUse = storeName || storeId;
+    if (!finalStoreId && (effectiveStoreName || storeId) && formData.organization_id) {
+      // Use either effectiveStoreName if provided or storeId as the name
+      const nameToUse = effectiveStoreName || storeId;
       console.log("Looking up store by name:", nameToUse);
       
       try {

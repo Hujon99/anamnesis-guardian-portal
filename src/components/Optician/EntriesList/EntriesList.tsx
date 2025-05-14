@@ -19,7 +19,7 @@ interface EntriesListProps {
   })[];
   onSelectEntry: (entry: AnamnesesEntry) => void;
   onEntryDeleted?: () => void;
-  onEntryAssigned?: (entryId: string, opticianId: string | null) => void;
+  onEntryAssigned?: (entryId: string, opticianId: string | null) => Promise<void>;
   showQuickAssign?: boolean;
   status?: string;
 }

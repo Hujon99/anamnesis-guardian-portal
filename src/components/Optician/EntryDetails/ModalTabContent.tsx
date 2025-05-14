@@ -79,6 +79,7 @@ export function ModalTabContent({
             <OptimizedAnswersView
               answers={answers}
               formattedRawData={formattedRawData}
+              setFormattedRawData={setFormattedRawData}
               status={status}
               saveFormattedRawData={saveFormattedRawData}
               onSaveSummary={onSaveAiSummary}

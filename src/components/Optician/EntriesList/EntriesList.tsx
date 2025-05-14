@@ -39,9 +39,12 @@ export function EntriesList({
   const isAdmin = has && has({ role: "org:admin" });
   
   // Create a map of optician IDs to names for quick lookup
+  // Important: Map using clerk_user_id instead of database id since entry.optician_id contains Clerk User IDs
   const opticianMap = new Map<string, string>();
   opticians.forEach(optician => {
-    opticianMap.set(optician.id, getOpticianDisplayName(optician));
+    if (optician.clerk_user_id) {
+      opticianMap.set(optician.clerk_user_id, getOpticianDisplayName(optician));
+    }
   });
   
   if (entries.length === 0) {

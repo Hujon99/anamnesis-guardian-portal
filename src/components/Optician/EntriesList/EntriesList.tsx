@@ -31,7 +31,7 @@ export function EntriesList({
   showQuickAssign = true,
   status = "pending" // Default status to handle the empty state
 }: EntriesListProps) {
-  const { opticians, getOpticianDisplayName } = useOpticians();
+  const { opticians } = useOpticians();
   const { has } = useAuth();
   
   // Check if user is admin
@@ -40,7 +40,7 @@ export function EntriesList({
   // Create a map of optician IDs to names for quick lookup
   const opticianMap = new Map<string, string>();
   opticians.forEach(optician => {
-    opticianMap.set(optician.id, getOpticianDisplayName(optician));
+    opticianMap.set(optician.id, optician.name);
   });
   
   if (entries.length === 0) {

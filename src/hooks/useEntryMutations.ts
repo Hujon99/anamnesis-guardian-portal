@@ -1,3 +1,4 @@
+
 /**
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
@@ -9,7 +10,9 @@ import { useEntryUpdateMutation } from "./useEntryUpdateMutation";
 import { useSendLinkMutation } from "./useSendLinkMutation";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
-import { ensureDatabaseUuid, isValidUUID } from "@/utils/idConversionUtils";
+
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
@@ -27,6 +30,16 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLinkMutation,
     sendLink
   } = useSendLinkMutation(entryId, onSuccess);
+
+  // Validate UUID format
+  const validateUUID = (id: string | null, fieldName: string): boolean => {
+    if (id === null) return true; // null is valid for clearing assignments
+    if (!UUID_REGEX.test(id)) {
+      console.error(`Invalid UUID format for ${fieldName}:`, id);
+      return false;
+    }
+    return true;
+  };
 
   // Helper function to handle JWT errors with retry capability
   const handleJwtErrorWithRetry = async (operation: () => Promise<any>, retryCount = 0): Promise<any> => {
@@ -68,24 +81,20 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         console.log(`Starting optician assignment. Entry ID: ${entryId}, Optician ID: ${opticianId}`);
         assignOpticianMutation.isPending = true;
         
-        // Validate entry ID
-        if (!isValidUUID(entryId)) {
+        // Validate IDs
+        if (!validateUUID(entryId, 'entryId')) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
-        // Convert and validate optician ID if provided
-        const validatedOpticianId = await ensureDatabaseUuid(supabase, opticianId, 'opticianId');
-        
-        // Log the ID transformation if any
-        if (opticianId !== validatedOpticianId && opticianId !== null) {
-          console.log(`Optician ID transformed from ${opticianId} to ${validatedOpticianId}`);
+        if (opticianId !== null && !validateUUID(opticianId, 'opticianId')) {
+          throw new Error(`Invalid optician ID format: ${opticianId}`);
         }
         
         // Use the helper function to handle JWT errors with retry
         const data = await handleJwtErrorWithRetry(async () => {
           const { data, error } = await supabase
             .from("anamnes_entries")
-            .update({ optician_id: validatedOpticianId })
+            .update({ optician_id: opticianId })
             .eq("id", entryId)
             .select()
             .single();
@@ -143,11 +152,11 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         assignStoreMutation.isPending = true;
         
         // Validate IDs
-        if (!isValidUUID(entryId)) {
+        if (!validateUUID(entryId, 'entryId')) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
-        if (storeId !== null && !isValidUUID(storeId)) {
+        if (storeId !== null && !validateUUID(storeId, 'storeId')) {
           throw new Error(`Invalid store ID format: ${storeId}`);
         }
         
@@ -205,7 +214,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         deleteMutation.isPending = true;
         
         // Validate ID
-        if (!isValidUUID(entryId)) {
+        if (!validateUUID(entryId, 'entryId')) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         

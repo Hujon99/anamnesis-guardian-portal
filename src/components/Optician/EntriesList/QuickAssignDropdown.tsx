@@ -1,12 +1,12 @@
 
 /**
  * This component provides a dropdown for quickly assigning opticians to anamnesis entries
- * directly from the list view. It handles the conversion between Clerk user IDs and Supabase UUIDs.
+ * directly from the list view.
  */
 
 import { useState } from "react";
 import { Check, ChevronDown, Loader2, User } from "lucide-react";
-import { useOpticians, Optician } from "@/hooks/useOpticians";
+import { useOpticians } from "@/hooks/useOpticians";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
-import { isValidUUID } from "@/utils/idConversionUtils";
 
 interface QuickAssignDropdownProps {
   entryId: string;
@@ -34,27 +33,30 @@ export function QuickAssignDropdown({
 }: QuickAssignDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const { opticians, isLoading, getOpticianDisplayName } = useOpticians();
+  const { opticians, isLoading } = useOpticians();
   const { has } = useAuth();
   const { user } = useUser();
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
   
-  // Handle optician assignment - with type safety
+  // Validate UUID format
+  const isValidUUID = (id: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+  
+  // Handle optician assignment
   const handleAssign = async (opticianId: string | null) => {
     setIsPending(true);
     
     try {
       // Validate UUID format if an ID is provided
-      if (opticianId !== null) {
-        if (!isValidUUID(opticianId)) {
-          console.error(`Invalid optician ID format (not a UUID): ${opticianId}`);
-          throw new Error(`Invalid optician ID format: Expected UUID but received ${opticianId}`);
-        }
+      if (opticianId !== null && !isValidUUID(opticianId)) {
+        throw new Error(`Invalid optician ID format: ${opticianId}`);
       }
       
-      console.log(`Assigning optician with ID: ${opticianId} to entry ${entryId}`);
+      console.log(`Assigning optician with ID: ${opticianId}`);
       await onAssign(opticianId);
       
       // Show success message
@@ -69,17 +71,9 @@ export function QuickAssignDropdown({
     } catch (error) {
       console.error("Error assigning optician:", error);
       
-      // Determine the specific error message
-      let errorMessage = "Det gick inte att tilldela optikern";
-      if (error instanceof Error) {
-        if (error.message.includes("UUID")) {
-          errorMessage = "ID-formatet är ogiltigt. Kontakta support.";
-        }
-      }
-      
       toast({
         title: "Fel vid tilldelning",
-        description: errorMessage,
+        description: "Det gick inte att tilldela optikern",
         variant: "destructive",
       });
     } finally {
@@ -87,7 +81,7 @@ export function QuickAssignDropdown({
     }
   };
 
-  // Get currently selected optician
+  // Get currently selected optician name
   const selectedOptician = opticians.find(o => o.id === currentOpticianId);
   
   return (
@@ -105,7 +99,7 @@ export function QuickAssignDropdown({
             <User className="h-3 w-3 mr-1" />
           )}
           <span className="max-w-[100px] truncate">
-            {getOpticianDisplayName(selectedOptician)}
+            {selectedOptician ? selectedOptician.name : "Tilldela"}
           </span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
@@ -130,7 +124,7 @@ export function QuickAssignDropdown({
                 disabled={isPending}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span>{getOpticianDisplayName(optician)}</span>
+                  <span>{optician.name || optician.email || "Okänd optiker"}</span>
                   {optician.id === currentOpticianId && (
                     <Check className="h-4 w-4 text-primary" />
                   )}

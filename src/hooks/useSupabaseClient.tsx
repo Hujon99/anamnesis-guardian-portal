@@ -1,3 +1,4 @@
+
 /**
  * This hook provides a Supabase client authenticated with the current Clerk session.
  * It handles token management, client creation, and authentication state synchronization.

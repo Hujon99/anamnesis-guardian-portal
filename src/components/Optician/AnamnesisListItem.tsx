@@ -1,3 +1,4 @@
+
 /**
  * This component renders a single anamnesis list item with detailed information,
  * status indicators, and assignment indicators.
@@ -107,8 +108,6 @@ export function AnamnesisListItem({
   // Handle optician assignment
   const handleAssignOptician = async (opticianId: string | null) => {
     try {
-      console.log(`List item handling assignment of optician ${opticianId} to entry ${entry.id}`);
-      
       // Use the mutation from the hook
       await assignOptician(opticianId);
       

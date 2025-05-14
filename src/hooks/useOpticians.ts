@@ -12,13 +12,18 @@ import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { isValidUUID } from '@/utils/idConversionUtils';
 
-export interface Optician {
+// Base interface representing data directly from Supabase database
+interface OpticianDatabaseRecord {
   id: string;               // Supabase database ID (UUID format)
   clerk_user_id: string;    // Clerk user ID (string format "user_...")
+  organization_id: string;  // Organization ID
+  role: string;             // Role in the system
+}
+
+// Enhanced interface with additional fields from Clerk
+export interface Optician extends OpticianDatabaseRecord {
   name?: string;            // Display name from Clerk
   email?: string;           // Email from Clerk
-  role: string;             // Role in the system
-  organization_id: string;  // Organization ID
 }
 
 export function useOpticians() {
@@ -88,7 +93,7 @@ export function useOpticians() {
       
       // Get user data from Clerk for each optician
       const enhancedOpticians: Optician[] = await Promise.all(
-        data.map(async (optician) => {
+        data.map(async (optician: OpticianDatabaseRecord) => {
           try {
             // Try to get user info from organization members
             const members = await organization.getMemberships();
@@ -100,10 +105,7 @@ export function useOpticians() {
             );
             
             const enhancedOptician: Optician = {
-              id: optician.id, // Ensure we're using the Supabase UUID
-              clerk_user_id: optician.clerk_user_id,
-              organization_id: optician.organization_id,
-              role: optician.role,
+              ...optician, // Include all base fields
               name: member?.publicUserData?.firstName 
                 ? `${member.publicUserData.firstName} ${member.publicUserData.lastName || ''}`
                 : undefined,
@@ -122,10 +124,7 @@ export function useOpticians() {
             console.error('Error fetching Clerk user data:', err);
             // Return a properly typed object even if enhancement fails
             return {
-              id: optician.id,
-              clerk_user_id: optician.clerk_user_id,
-              organization_id: optician.organization_id,
-              role: optician.role,
+              ...optician, // Keep all base fields
               name: undefined,
               email: undefined
             };
@@ -185,7 +184,13 @@ export function useOpticians() {
   // Helper function to get optician display name - ensures type safety
   const getOpticianDisplayName = (optician: Optician | null | undefined): string => {
     if (!optician) return "Okänd optiker";
-    return optician.name || optician.email || "Okänd optiker";
+    
+    // Check for name first, then email, then fallback
+    if (optician.name) return optician.name;
+    if (optician.email) return optician.email;
+    
+    // Last resort: Use ID or fallback
+    return optician.clerk_user_id ? `Optiker (${optician.clerk_user_id.substring(0, 8)})` : "Okänd optiker";
   };
   
   // Provide detailed logging about what's being returned

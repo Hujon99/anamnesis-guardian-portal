@@ -1,7 +1,8 @@
 
 /**
  * This component renders the appropriate action buttons based on the entry's status.
- * It displays different buttons for different stages in the workflow.
+ * It displays different buttons for different stages in the workflow, with support
+ * for both "journaled" and legacy "reviewed" status values.
  */
 
 import { Button } from "@/components/ui/button";

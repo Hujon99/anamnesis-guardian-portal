@@ -17,6 +17,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPatientDisplayName } from "@/lib/utils";
 
 type TestNote = Tables<"test_notes">;
 type StoreData = Tables<"stores">;
@@ -153,35 +154,54 @@ export const NotesList = ({ retryCount, onRetry }: NotesListProps) => {
 
   return (
     <div className="space-y-4">
-      {notes.map((note) => (
-        <Card key={note.id} className="overflow-hidden">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle>{note.title || "Onamngiven anteckning"}</CardTitle>
-                <CardDescription>
-                  Skapad: {new Date(note.created_at).toLocaleDateString('sv-SE')}
-                </CardDescription>
+      {notes.map((note) => {
+        // Get the store name if note has a store_id
+        const storeName = note.store_id ? storeMap.get(note.store_id) || "Okänd butik" : null;
+        
+        return (
+          <Card key={note.id} className="overflow-hidden">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle>
+                    {getPatientDisplayName(note) || note.title || "Onamngiven anteckning"}
+                  </CardTitle>
+                  <CardDescription>
+                    Skapad: {new Date(note.created_at).toLocaleDateString('sv-SE')}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="outline" className="bg-primary/5 flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    <span>{note.user_id || "Okänd användare"}</span>
+                  </Badge>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Badge variant="outline" className="bg-primary/5 flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  <span>{note.user_id || "Okänd användare"}</span>
-                </Badge>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap">{note.content}</p>
+              
+              {/* Display organization and store information */}
+              <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-3 items-center text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <FileText className="h-4 w-4" />
+                  <span>Organisation: {organization?.name || note.organization_id}</span>
+                </div>
+                
+                {/* Show store information if available */}
+                {note.store_id && (
+                  <div className="flex items-center gap-1">
+                    <Store className="h-4 w-4" />
+                    <Badge variant="outline" className="bg-primary/5">
+                      {storeName}
+                    </Badge>
+                  </div>
+                )}
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap">{note.content}</p>
-            
-            {/* Display organization information */}
-            <div className="mt-3 pt-3 border-t border-border flex items-center gap-2 text-sm text-muted-foreground">
-              <FileText className="h-4 w-4" />
-              <span>Organisation: {organization?.name || note.organization_id}</span>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 };

@@ -34,7 +34,7 @@ export function QuickAssignDropdown({
 }: QuickAssignDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const { opticians, isLoading } = useOpticians();
+  const { opticians, isLoading, getOpticianDisplayName } = useOpticians();
   const { has } = useAuth();
   const { user } = useUser();
   
@@ -87,23 +87,8 @@ export function QuickAssignDropdown({
     }
   };
 
-  // Get currently selected optician name
+  // Get currently selected optician
   const selectedOptician = opticians.find(o => o.id === currentOpticianId);
-  
-  // Log opticians for debugging
-  if (opticians.length > 0 && !isLoading) {
-    console.log("Available opticians in dropdown:", opticians.map(o => ({ 
-      id: o.id, 
-      clerk_user_id: o.clerk_user_id,
-      name: o.name || 'Unnamed'
-    })));
-  }
-  
-  // Helper function to get display name
-  const getOpticianDisplayName = (optician: Optician | undefined): string => {
-    if (!optician) return "Tilldela";
-    return optician.name || optician.email || "Optiker";
-  };
   
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>

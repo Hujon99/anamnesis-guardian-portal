@@ -182,6 +182,12 @@ export function useOpticians() {
     }
   }, [refreshClient, refetch]);
   
+  // Helper function to get optician display name - ensures type safety
+  const getOpticianDisplayName = (optician: Optician | null | undefined): string => {
+    if (!optician) return "Okänd optiker";
+    return optician.name || optician.email || "Okänd optiker";
+  };
+  
   // Provide detailed logging about what's being returned
   console.log('useOpticians hook returning opticians:', opticians.map(o => ({
     id: o.id,
@@ -195,6 +201,7 @@ export function useOpticians() {
     isLoading,
     error,
     refetch,
-    handleRetry
+    handleRetry,
+    getOpticianDisplayName
   };
 }

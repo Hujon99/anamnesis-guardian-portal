@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react';
 import { useUser, useOrganization } from '@clerk/clerk-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, User, RefreshCw } from 'lucide-react';
-import { useOpticians } from '@/hooks/useOpticians';
+import { useOpticians, Optician } from '@/hooks/useOpticians';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
@@ -29,7 +29,7 @@ export function OpticianSelector({
 }: OpticianSelectorProps) {
   const { user } = useUser();
   const { organization } = useOrganization();
-  const { opticians, isLoading, refetch, handleRetry } = useOpticians();
+  const { opticians, isLoading, refetch, handleRetry, getOpticianDisplayName } = useOpticians();
   const [isPending, setIsPending] = useState(false);
   const [hasError, setHasError] = useState(false);
   const { refreshClient } = useSupabaseClient();
@@ -73,7 +73,7 @@ export function OpticianSelector({
   
   // Find the name of the currently assigned optician if any
   const currentOptician = opticians.find(opt => opt.id === currentOpticianId);
-  const currentOpticianLabel = currentOptician?.name || currentOptician?.email || 'Ingen optiker tilldelad';
+  const currentOpticianLabel = currentOptician ? getOpticianDisplayName(currentOptician) : 'Ingen optiker tilldelad';
   
   // Handle refresh button click - force token refresh and refetch data
   const handleRefresh = async () => {
@@ -282,7 +282,7 @@ export function OpticianSelector({
           <SelectItem value="none">Ingen optiker tilldelad</SelectItem>
           {opticians.map((optician) => (
             <SelectItem key={optician.id} value={optician.id}>
-              {optician.name || optician.email || 'Okänd optiker'}
+              {getOpticianDisplayName(optician)}
             </SelectItem>
           ))}
         </SelectContent>

@@ -41,7 +41,7 @@ export function AdvancedFilters({
 }: AdvancedFiltersProps) {
   const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
-  const { opticians, isLoading: isLoadingOpticians } = useOpticians();
+  const { opticians, isLoading: isLoadingOpticians, getOpticianDisplayName } = useOpticians();
   
   // Fetch stores for filtering
   const { data: stores = [], isLoading: isLoadingStores } = useQuery({
@@ -140,7 +140,7 @@ export function AdvancedFilters({
                 ) : (
                   opticians.map((optician) => (
                     <SelectItem key={optician.id} value={optician.id}>
-                      {optician.name || optician.email || 'Okänd optiker'}
+                      {getOpticianDisplayName(optician)}
                     </SelectItem>
                   ))
                 )}

@@ -16,7 +16,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-
 
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
-  const { supabase } = useSupabaseClient();
+  const { supabase, handleJwtError, refreshClient } = useSupabaseClient();
   
   const {
     updateEntryMutation,
@@ -41,6 +41,38 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     return true;
   };
 
+  // Helper function to handle JWT errors with retry capability
+  const handleJwtErrorWithRetry = async (operation: () => Promise<any>, retryCount = 0): Promise<any> => {
+    const MAX_RETRIES = 2;
+    
+    try {
+      return await operation();
+    } catch (error: any) {
+      console.error("Error in operation:", error);
+      
+      // Check if it's a JWT error (PGRST301 or similar)
+      const isJwtError = error?.code === "PGRST301" || 
+                         error?.message?.includes("JWT") || 
+                         error?.message?.includes("401");
+      
+      if (isJwtError && retryCount < MAX_RETRIES) {
+        console.log(`JWT error detected, refreshing token and retrying (attempt ${retryCount + 1})`);
+        
+        // Wait a moment before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Force refresh the token
+        await refreshClient(true);
+        
+        // Try again with refreshed token
+        return handleJwtErrorWithRetry(operation, retryCount + 1);
+      }
+      
+      // If not a JWT error or max retries reached, rethrow
+      throw error;
+    }
+  };
+
   // Mutation for assigning an optician to an entry
   const assignOpticianMutation = {
     isPending: false,
@@ -58,17 +90,22 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           throw new Error(`Invalid optician ID format: ${opticianId}`);
         }
         
-        const { data, error } = await supabase
-          .from("anamnes_entries")
-          .update({ optician_id: opticianId })
-          .eq("id", entryId)
-          .select()
-          .single();
+        // Use the helper function to handle JWT errors with retry
+        const data = await handleJwtErrorWithRetry(async () => {
+          const { data, error } = await supabase
+            .from("anamnes_entries")
+            .update({ optician_id: opticianId })
+            .eq("id", entryId)
+            .select()
+            .single();
+            
+          if (error) {
+            console.error("Supabase error in assignOpticianMutation:", error);
+            throw error;
+          }
           
-        if (error) {
-          console.error("Supabase error in assignOpticianMutation:", error);
-          throw error;
-        }
+          return data;
+        });
         
         console.log("Assignment successful, response data:", data);
         
@@ -123,14 +160,18 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           throw new Error(`Invalid store ID format: ${storeId}`);
         }
         
-        const { data, error } = await supabase
-          .from("anamnes_entries")
-          .update({ store_id: storeId })
-          .eq("id", entryId)
-          .select()
-          .single();
-          
-        if (error) throw error;
+        // Use the helper function to handle JWT errors with retry
+        const data = await handleJwtErrorWithRetry(async () => {
+          const { data, error } = await supabase
+            .from("anamnes_entries")
+            .update({ store_id: storeId })
+            .eq("id", entryId)
+            .select()
+            .single();
+            
+          if (error) throw error;
+          return data;
+        });
         
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({
@@ -177,12 +218,15 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
-        const { error } = await supabase
-          .from("anamnes_entries")
-          .delete()
-          .eq("id", entryId);
-          
-        if (error) throw error;
+        // Use the helper function to handle JWT errors with retry
+        await handleJwtErrorWithRetry(async () => {
+          const { error } = await supabase
+            .from("anamnes_entries")
+            .delete()
+            .eq("id", entryId);
+            
+          if (error) throw error;
+        });
         
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({

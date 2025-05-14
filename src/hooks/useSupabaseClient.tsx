@@ -14,12 +14,13 @@ import { toast } from "@/components/ui/use-toast";
 import { createSupabaseClient } from "@/utils/supabaseClientUtils";
 
 // Configuration
-const TOKEN_REFRESH_INTERVAL = 20 * 60 * 1000; // 20 minutes - reduced frequency
-const TOKEN_COOLDOWN_PERIOD = 10000; // 10 seconds cooldown between token requests (increased)
-const MAX_RETRIES = 2; // Reduced max retries
-const INITIAL_RETRY_DELAY = 2000; // 2 seconds initial delay (increased)
+const TOKEN_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes - more frequent refreshes
+const TOKEN_COOLDOWN_PERIOD = 5000; // 5 seconds cooldown between token requests (reduced from 10s)
+const TOKEN_EXPIRY_BUFFER = 10 * 60 * 1000; // 10 minutes before expiry
+const MAX_RETRIES = 3; // Increased max retries
+const INITIAL_RETRY_DELAY = 1000; // 1 second initial delay (reduced)
 
-// Helper function for token caching (moved from useTokenManager)
+// Helper function for token caching
 const getTokenCache = () => {
   const cacheRef = useRef<{
     token: string;
@@ -30,7 +31,8 @@ const getTokenCache = () => {
     get: () => {
       if (!cacheRef.current) return null;
       const now = Date.now();
-      if (cacheRef.current.expiresAt > now + 5 * 60 * 1000) {
+      // Return cached token only if it's not nearing expiry (buffer time)
+      if (cacheRef.current.expiresAt > now + TOKEN_EXPIRY_BUFFER) {
         return cacheRef.current.token;
       }
       return null;
@@ -44,6 +46,12 @@ const getTokenCache = () => {
     },
     clear: () => {
       cacheRef.current = null;
+    },
+    isNearExpiry: () => {
+      if (!cacheRef.current) return true;
+      const now = Date.now();
+      // Check if token is nearing expiry
+      return cacheRef.current.expiresAt - now < TOKEN_EXPIRY_BUFFER;
     }
   };
 };
@@ -67,6 +75,7 @@ export const useSupabaseClient = () => {
   const retryCountRef = useRef(0);
   const isRefreshingRef = useRef(false);
   const pendingRefreshRef = useRef(false);
+  const jwtExpiryWarningShown = useRef(false);
   
   // Create local token cache
   const tokenCache = getTokenCache();
@@ -75,18 +84,21 @@ export const useSupabaseClient = () => {
   const getTokenWithRetry = useCallback(async (force = false): Promise<string | null> => {
     if (!session) return null;
     
+    // Always refresh if we're approaching expiry
+    const shouldRefreshDueToExpiry = tokenCache.isNearExpiry();
+    
     // Check cooldown period to prevent excessive requests
     const now = Date.now();
     const timeSinceLastRequest = now - lastTokenTimeRef.current;
     
-    if (!force && timeSinceLastRequest < TOKEN_COOLDOWN_PERIOD) {
-      console.log(`Token request debounced (${timeSinceLastRequest}ms < ${TOKEN_COOLDOWN_PERIOD}ms cooldown)`);
+    if (!force && !shouldRefreshDueToExpiry && timeSinceLastRequest < TOKEN_COOLDOWN_PERIOD) {
+      console.log(`[useSupabaseClient] Token request debounced (${timeSinceLastRequest}ms < ${TOKEN_COOLDOWN_PERIOD}ms cooldown)`);
       pendingRefreshRef.current = true;
       return lastTokenRef.current;
     }
     
-    // Check token cache first if not forcing refresh
-    if (!force) {
+    // Check token cache first if not forcing refresh and not near expiry
+    if (!force && !shouldRefreshDueToExpiry) {
       const cachedToken = tokenCache.get();
       if (cachedToken) {
         return cachedToken;
@@ -98,21 +110,25 @@ export const useSupabaseClient = () => {
 
     while (retryCount < MAX_RETRIES) {
       try {
-        console.log(`Requesting new token from Clerk (attempt ${retryCount + 1})`);
+        console.log(`[useSupabaseClient] Requesting new token from Clerk (attempt ${retryCount + 1})`);
         lastTokenTimeRef.current = now;
         pendingRefreshRef.current = false;
         
         const token = await session.getToken();
         retryCountRef.current = 0; // Reset on success
         
+        // Reset JWT expiry warning flag when we successfully get a new token
+        jwtExpiryWarningShown.current = false;
+        
         // Cache the token
         if (token) {
           tokenCache.set(token);
+          console.log("[useSupabaseClient] New token successfully obtained and cached");
         }
         
         return token;
       } catch (err) {
-        console.warn(`Token fetch attempt ${retryCount + 1} failed:`, err);
+        console.warn(`[useSupabaseClient] Token fetch attempt ${retryCount + 1} failed:`, err);
         retryCount++;
         
         if (retryCount >= MAX_RETRIES) {
@@ -134,7 +150,7 @@ export const useSupabaseClient = () => {
       return; // Skip if token hasn't changed
     }
     
-    console.log("Creating new Supabase client with updated token");
+    console.log("[useSupabaseClient] Creating new Supabase client with updated token");
     lastTokenRef.current = token;
     
     const client = createSupabaseClient(token);
@@ -177,21 +193,27 @@ export const useSupabaseClient = () => {
       
       if (token) {
         await createAuthenticatedClient(token);
+      } else {
+        console.warn("[useSupabaseClient] No token obtained after attempts");
       }
 
       // Mark client as ready
       setIsReady(true);
     } catch (err) {
-      console.error("Error setting up Supabase client with Clerk session token:", err);
+      console.error("[useSupabaseClient] Error setting up Supabase client:", err);
       setError(err instanceof Error ? err : new Error(String(err)));
       
       // Show toast only on critical failures after retries
       if (retryCountRef.current >= MAX_RETRIES) {
-        toast({
-          title: "Autentiseringsfel",
-          description: "Ett problem uppstod med din inloggning. Vänligen ladda om sidan.",
-          variant: "destructive",
-        });
+        // Only show JWT expiry warning once to avoid spamming users
+        if (!jwtExpiryWarningShown.current) {
+          toast({
+            title: "Sessionen har löpt ut",
+            description: "Din inloggning har upphört. Ladda om sidan för att fortsätta.",
+            variant: "destructive",
+          });
+          jwtExpiryWarningShown.current = true;
+        }
       }
       
       retryCountRef.current++;
@@ -199,16 +221,24 @@ export const useSupabaseClient = () => {
       setIsLoading(false);
       isRefreshingRef.current = false;
       
-      // If there's a pending refresh request, process it after a longer delay
+      // If there's a pending refresh request, process it after a delay
       if (pendingRefreshRef.current) {
         setTimeout(() => {
           if (pendingRefreshRef.current) {
             setupClient();
           }
-        }, TOKEN_COOLDOWN_PERIOD * 2); // Use a longer delay for pending refreshes
+        }, TOKEN_COOLDOWN_PERIOD); // Use standard delay for pending refreshes
       }
     }
   }, [isAuthLoaded, userId, session, getTokenWithRetry, createAuthenticatedClient]);
+
+  // Handle JWT expiry errors during requests
+  const handleJwtError = useCallback(async () => {
+    console.log("[useSupabaseClient] Handling JWT error, initiating forced refresh");
+    // Force a client refresh to get a new token
+    await setupClient(true);
+    return true;
+  }, [setupClient]);
 
   // Setup auth listener and initial check
   useEffect(() => {
@@ -224,7 +254,12 @@ export const useSupabaseClient = () => {
     // Set up token refresh interval only if we have a session
     if (session) {
       intervalRef.current = window.setInterval(() => {
-        setupClient();
+        if (tokenCache.isNearExpiry()) {
+          console.log("[useSupabaseClient] Token nearing expiry, refreshing proactively");
+          setupClient(true); // Force refresh when nearing expiry
+        } else {
+          setupClient();
+        }
       }, TOKEN_REFRESH_INTERVAL);
     }
     
@@ -237,7 +272,8 @@ export const useSupabaseClient = () => {
   }, [isAuthLoaded, userId, session, setupClient]);
 
   // Expose a manual refresh method for components to use with force option
-  const refreshClient = useCallback((force = false) => {
+  const refreshClient = useCallback(async (force = false) => {
+    console.log(`[useSupabaseClient] Manual refresh requested (force=${force})`);
     return setupClient(force);
   }, [setupClient]);
 
@@ -245,7 +281,8 @@ export const useSupabaseClient = () => {
     supabase: authenticatedClient, 
     isLoading, 
     error,
-    isReady, // New state to indicate client is fully initialized
-    refreshClient // Expose refresh method with force option
+    isReady, 
+    refreshClient, 
+    handleJwtError // New exposed method to handle JWT errors
   };
 };

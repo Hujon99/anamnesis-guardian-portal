@@ -47,7 +47,10 @@ export const useCurrentOpticianEntries = () => {
       total: myEntries.length,
       pending: myEntries.filter(entry => entry.status === 'pending').length,
       ready: myEntries.filter(entry => entry.status === 'ready').length,
-      reviewed: myEntries.filter(entry => entry.status === 'reviewed').length,
+      // Count both "journaled" and legacy "reviewed" entries for backward compatibility
+      reviewed: myEntries.filter(entry => 
+        entry.status === 'journaled' || entry.status === 'reviewed'
+      ).length,
       sent: myEntries.filter(entry => entry.status === 'sent').length
     };
   }, [myEntries]);

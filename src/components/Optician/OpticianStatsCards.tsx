@@ -5,7 +5,7 @@
  */
 
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Clock, InboxIcon, Send, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Clock, InboxIcon, Send, Archive } from "lucide-react";
 
 interface OpticianStatsProps {
   stats: {
@@ -38,9 +38,9 @@ export function OpticianStatsCards({ stats }: OpticianStatsProps) {
       color: "bg-green-500 text-white",
     },
     {
-      title: "Granskade",
+      title: "Journalförda",
       value: stats.reviewed,
-      icon: ShieldCheck,
+      icon: Archive,
       color: "bg-accent-1 text-white",
     },
     {

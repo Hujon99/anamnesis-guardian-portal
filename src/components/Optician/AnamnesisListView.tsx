@@ -139,10 +139,15 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const enhancedEntries = advancedFilteredEntries.map(entry => {
     // Get store name if available
     const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
+    
+    // Check if this is a booking without a store assigned
+    const isBookingWithoutStore = (entry.is_magic_link || entry.booking_id || entry.booking_date) && !entry.store_id;
+    
     return {
       ...entry,
       ...getEntryExpirationInfo(entry),
-      storeName // Add store name to entry
+      storeName,
+      isBookingWithoutStore
     };
   });
 

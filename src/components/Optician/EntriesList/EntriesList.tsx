@@ -15,6 +15,7 @@ interface EntriesListProps {
     isExpired?: boolean;
     daysUntilExpiration?: number | null;
     storeName?: string | null;
+    isBookingWithoutStore?: boolean;
   })[];
   onSelectEntry: (entry: AnamnesesEntry) => void;
   onEntryDeleted?: () => void;
@@ -59,6 +60,8 @@ export function EntriesList({
           showAssignmentIndicator={true}
           showQuickAssign={showQuickAssign && (isAdmin || true)}
           opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}
+          storeName={entry.storeName}
+          isBookingWithoutStore={entry.isBookingWithoutStore}
         />
       ))}
     </div>

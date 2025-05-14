@@ -1,267 +1,272 @@
 
 /**
- * This component renders a single anamnesis list item with detailed information,
- * status indicators, and assignment indicators.
+ * This component displays a single anamnesis entry in the list view.
+ * It shows important information about the entry like status, creation date,
+ * and patient information if available.
  */
 
-import { useState } from "react";
-import { AnamnesCard } from "./EntriesList/AnamnesCard";
+import React, { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle } from "lucide-react";
+import { AnamnesesEntry } from "@/types/anamnesis";
+import { formatDistanceToNow } from "date-fns";
+import { sv } from "date-fns/locale";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { EntryStatusBadge } from "./EntriesList/EntryStatusBadge";
 import { EntryStatusIcon } from "./EntriesList/EntryStatusIcon";
 import { QuickAssignDropdown } from "./EntriesList/QuickAssignDropdown";
-import { formatDate } from "@/lib/date-utils";
-import { AnamnesesEntry } from "@/types/anamnesis";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Loader2, Store as StoreIcon, Trash2, User } from "lucide-react";
-import { useEntryMutations } from "@/hooks/useEntryMutations";
-import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useAuth } from "@clerk/clerk-react";
+import { useEntryMutations } from "@/hooks/useEntryMutations";
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
     isExpired?: boolean;
     daysUntilExpiration?: number | null;
     storeName?: string | null;
+    isBookingWithoutStore?: boolean;
   };
-  onClick: () => void;
+  onClick?: () => void;
   onDelete?: () => void;
   onAssign?: (entryId: string, opticianId: string | null) => void;
   showAssignmentIndicator?: boolean;
   showQuickAssign?: boolean;
   opticianName?: string | null;
+  storeName?: string | null;
+  isBookingWithoutStore?: boolean;
 }
 
-// Helper function to get proper patient display name
-const getPatientDisplayName = (entry: AnamnesesEntry): string => {
-  // First priority: patient_identifier if it looks like a name
-  if (entry.patient_identifier && entry.patient_identifier.length > 1 && 
-      !entry.patient_identifier.match(/^[0-9]+$/) && // Not just numbers
-      entry.patient_identifier !== "undefined" && 
-      entry.patient_identifier !== "null") {
-    return entry.patient_identifier;
-  }
-  
-  // Second priority: first_name if available
-  if (entry.first_name && 
-      entry.first_name.length > 0 && 
-      entry.first_name !== "undefined" && 
-      entry.first_name !== "null") {
-    return entry.first_name;
-  }
-  
-  // Third priority: Use both if available and different
-  if (entry.first_name && entry.patient_identifier && 
-      entry.first_name !== entry.patient_identifier &&
-      entry.first_name.length > 0 &&
-      entry.first_name !== "undefined" && 
-      entry.first_name !== "null") {
-    return `${entry.first_name} (${entry.patient_identifier})`;
-  }
-  
-  // Fallback
-  return "Okänd patient";
-};
-
-export function AnamnesisListItem({
+export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   entry,
   onClick,
   onDelete,
   onAssign,
-  showAssignmentIndicator = true,
+  showAssignmentIndicator = false,
   showQuickAssign = false,
-  opticianName = null,
-}: AnamnesisListItemProps) {
+  opticianName,
+  storeName,
+  isBookingWithoutStore,
+}) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { deleteEntry, isDeleting, assignOptician } = useEntryMutations(entry.id);
-  const { has } = useAuth();
-  
-  // Check if user is admin
-  const isAdmin = has && has({ role: "org:admin" });
-  const canAssign = isAdmin || showQuickAssign;
+  const { deleteEntry, isDeleting } = useEntryMutations();
 
   const handleDelete = async () => {
-    try {
-      await deleteEntry(entry.id);
-      toast({
-        title: "Anamnes borttagen",
-        description: "Anamnesen har tagits bort från systemet",
-      });
-      if (onDelete) onDelete();
-      setIsDeleteDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Fel vid borttagning",
-        description: "Kunde inte ta bort anamnesen. Försök igen senare.",
-        variant: "destructive",
-      });
+    await deleteEntry(entry.id);
+    if (onDelete) onDelete();
+    setIsDeleteDialogOpen(false);
+  };
+
+  const formattedDate = entry.created_at
+    ? formatDistanceToNow(new Date(entry.created_at), {
+        addSuffix: true,
+        locale: sv,
+      })
+    : "";
+
+  const handleAssign = (opticianId: string | null) => {
+    if (onAssign) {
+      onAssign(entry.id, opticianId);
     }
   };
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsDeleteDialogOpen(true);
-  };
-  
-  // Handle optician assignment
-  const handleAssignOptician = async (opticianId: string | null) => {
-    try {
-      // Use the mutation from the hook
-      await assignOptician(opticianId);
-      
-      // If parent provided a callback, call it
-      if (onAssign) {
-        onAssign(entry.id, opticianId);
-      }
-    } catch (error) {
-      console.error("Error in quick-assign:", error);
-      throw error;
-    }
-  };
-
-  // Get the appropriate patient display name
-  const patientName = getPatientDisplayName(entry);
-
-  // Determine the display name for the optician badge
-  const opticianDisplayName = opticianName || (entry.optician_id ? "Tilldelad" : "Ej tilldelad");
-  const assignmentBadgeVariant = entry.optician_id ? "default" : "outline";
-  const assignmentBadgeClass = entry.optician_id ? "bg-accent-1 text-xs" : "bg-gray-100 text-xs";
+  const hasBookingInfo = entry.is_magic_link || entry.booking_id || entry.booking_date || entry.store_id;
 
   return (
     <>
-      <AnamnesCard
-        status={entry.status as any}
+      <Card
         onClick={onClick}
-        className="relative overflow-visible"
-        data-testid="anamnesis-card"
+        className={`cursor-pointer hover:shadow-md transition-shadow ${
+          entry.isExpired ? "opacity-50" : ""
+        }`}
       >
-        <div className="flex justify-between items-start gap-2">
-          <div className="flex items-start gap-3">
-            <EntryStatusIcon status={entry.status} />
-            <div className="space-y-1">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                <h3 className="text-base font-medium">
-                  {patientName}
-                </h3>
-                <div className="flex flex-wrap gap-1 items-center">
-                  <EntryStatusBadge status={entry.status} />
-                  
-                  {entry.is_magic_link && (
-                    <Badge variant="outline" className="bg-gray-100 text-xs">
-                      Direktlänk
-                    </Badge>
-                  )}
-                  
-                  {entry.booking_id && (
-                    <Badge variant="outline" className="bg-gray-100 text-xs">
-                      Bokning
-                    </Badge>
-                  )}
-
-                  {/* Assignment status indicator */}
-                  {showAssignmentIndicator && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge 
-                            variant={assignmentBadgeVariant} 
-                            className={assignmentBadgeClass}
-                          >
-                            <User className="h-3 w-3 mr-1" />
-                            {opticianDisplayName}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {entry.optician_id 
-                            ? `Anamnesen är tilldelad till ${opticianName || "en optiker"}` 
-                            : "Anamnesen är inte tilldelad någon optiker"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  
-                  {/* Store indicator if available */}
-                  {entry.storeName && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge variant="outline" className="bg-gray-100 text-xs">
-                            <StoreIcon className="h-3 w-3 mr-1" />
-                            {entry.storeName}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Butik: {entry.storeName}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </div>
+        <CardHeader className="py-3 px-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <EntryStatusIcon status={entry.status || "sent"} />
+              <div>
+                <CardTitle className="text-base">
+                  {entry.patient_identifier || "Anonym patient"}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Skapad {formattedDate}
+                </CardDescription>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {entry.sent_at
-                  ? `Skickad ${formatDate(entry.sent_at)}`
-                  : "Datum saknas"}
-              </p>
+            </div>
+
+            <div className="flex gap-2">
+              {/* Store needs attention indicator */}
+              {isBookingWithoutStore && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Bokning utan butik tilldelad</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
+              <EntryStatusBadge
+                status={entry.status || "sent"}
+                showLabel={true}
+              />
+              
+              {/* Delete button dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="sr-only">Öppna meny</span>
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Ta bort
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
+        </CardHeader>
 
-          <div className="flex items-center gap-2">
-            {/* Quick assign dropdown */}
-            {canAssign && (
-              <QuickAssignDropdown 
-                entryId={entry.id}
-                currentOpticianId={entry.optician_id || null}
-                onAssign={handleAssignOptician}
-              />
-            )}
-          
-            {/* Delete button */}
-            {(entry.status === "sent" || entry.status === "pending") && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleDeleteClick}
-                className="h-8 w-8 rounded-full"
-                aria-label="Ta bort"
-              >
-                <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-              </Button>
-            )}
+        <CardContent className="py-2 px-4">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+              {entry.daysUntilExpiration !== null && (
+                <p className="text-xs text-muted-foreground">
+                  Gallras om {entry.daysUntilExpiration} dagar
+                </p>
+              )}
+              
+              {/* Display booking info and store info */}
+              {hasBookingInfo && (
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                  {entry.booking_id && (
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded-sm">
+                      Bokning: {entry.booking_id}
+                    </span>
+                  )}
+                  
+                  {/* Display store name or ID if available */}
+                  {entry.store_id && (
+                    <div className="flex items-center gap-1">
+                      <Store className="h-3 w-3 text-muted-foreground" />
+                      <Badge variant="outline" className="py-0 h-5 bg-primary/5">
+                        {storeName || entry.store_id}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {showAssignmentIndicator && (
+                <div className="flex items-center gap-1">
+                  {entry.optician_id ? (
+                    <div className="flex items-center">
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        <span>{opticianName || "Optiker"}</span>
+                      </Badge>
+                    </div>
+                  ) : (
+                    showQuickAssign && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <QuickAssignDropdown
+                          entryId={entry.id}
+                          onAssign={handleAssign}
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                          >
+                            <User className="h-3 w-3 mr-1" />
+                            <span>Tilldela</span>
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+                        </QuickAssignDropdown>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </AnamnesCard>
+        </CardContent>
+      </Card>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Är du säker?</AlertDialogTitle>
             <AlertDialogDescription>
-              Detta kommer permanent ta bort anamnesen från systemet.
-              Denna åtgärd kan inte ångras.
+              Detta kommer permanent radera anamnesformuläret. Denna handling
+              kan inte ångras.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <AlertDialogCancel
+              onClick={(e) => e.stopPropagation()}
               disabled={isDeleting}
             >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Tar bort...
-                </>
-              ) : (
-                "Ta bort"
-              )}
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/80"
+            >
+              {isDeleting ? "Raderar..." : "Ta bort"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
   );
-}
+};

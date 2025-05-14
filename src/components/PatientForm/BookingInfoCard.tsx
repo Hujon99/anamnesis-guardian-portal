@@ -6,21 +6,24 @@
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { CalendarIcon, MapPinIcon, UserIcon } from "lucide-react";
+import { CalendarIcon, MapPinIcon, UserIcon, Store } from "lucide-react";
 import { formatDate } from "@/lib/date-utils";
+import { Badge } from "@/components/ui/badge";
 
 interface BookingInfoCardProps {
   firstName?: string | null;
   bookingId?: string | null;
   bookingDate?: string | null;
   storeId?: string | null;
+  storeName?: string | null;
 }
 
 const BookingInfoCard: React.FC<BookingInfoCardProps> = ({
   firstName,
   bookingId,
   bookingDate,
-  storeId
+  storeId,
+  storeName
 }) => {
   // Don't render anything if there's no booking information
   if (!firstName && !bookingId && !bookingDate && !storeId) {
@@ -59,11 +62,18 @@ const BookingInfoCard: React.FC<BookingInfoCardProps> = ({
             </div>
           )}
           
+          {/* Store information with proper icon and name when available */}
           {storeId && (
             <div className="flex items-start space-x-2">
-              <MapPinIcon className="h-4 w-4 mt-0.5 text-muted-foreground" />
-              <div>
-                <p>Butiks-ID: {storeId}</p>
+              <Store className="h-4 w-4 mt-0.5 text-muted-foreground" />
+              <div className="flex flex-col">
+                {storeName ? (
+                  <Badge variant="outline" className="bg-primary/5 w-fit">
+                    {storeName}
+                  </Badge>
+                ) : (
+                  <p>Butiks-ID: {storeId}</p>
+                )}
               </div>
             </div>
           )}

@@ -18,6 +18,7 @@ export interface Optician {
   name?: string;            // Display name from Clerk
   email?: string;           // Email from Clerk
   role: string;             // Role in the system
+  organization_id: string;  // Organization ID
 }
 
 export function useOpticians() {
@@ -99,8 +100,10 @@ export function useOpticians() {
             );
             
             const enhancedOptician: Optician = {
-              ...optician,
               id: optician.id, // Ensure we're using the Supabase UUID
+              clerk_user_id: optician.clerk_user_id,
+              organization_id: optician.organization_id,
+              role: optician.role,
               name: member?.publicUserData?.firstName 
                 ? `${member.publicUserData.firstName} ${member.publicUserData.lastName || ''}`
                 : undefined,
@@ -117,7 +120,15 @@ export function useOpticians() {
             return enhancedOptician;
           } catch (err) {
             console.error('Error fetching Clerk user data:', err);
-            return optician as Optician;
+            // Return a properly typed object even if enhancement fails
+            return {
+              id: optician.id,
+              clerk_user_id: optician.clerk_user_id,
+              organization_id: optician.organization_id,
+              role: optician.role,
+              name: undefined,
+              email: undefined
+            };
           }
         })
       );

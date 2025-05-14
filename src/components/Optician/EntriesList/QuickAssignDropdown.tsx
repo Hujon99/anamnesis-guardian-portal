@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { Check, ChevronDown, Loader2, User } from "lucide-react";
-import { useOpticians } from "@/hooks/useOpticians";
+import { useOpticians, Optician } from "@/hooks/useOpticians";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -99,6 +99,12 @@ export function QuickAssignDropdown({
     })));
   }
   
+  // Helper function to get display name
+  const getOpticianDisplayName = (optician: Optician | undefined): string => {
+    if (!optician) return "Tilldela";
+    return optician.name || optician.email || "Optiker";
+  };
+  
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild disabled={disabled || isPending}>
@@ -114,7 +120,7 @@ export function QuickAssignDropdown({
             <User className="h-3 w-3 mr-1" />
           )}
           <span className="max-w-[100px] truncate">
-            {selectedOptician ? selectedOptician.name || selectedOptician.email : "Tilldela"}
+            {getOpticianDisplayName(selectedOptician)}
           </span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
@@ -139,7 +145,7 @@ export function QuickAssignDropdown({
                 disabled={isPending}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span>{optician.name || optician.email || "Okänd optiker"}</span>
+                  <span>{getOpticianDisplayName(optician)}</span>
                   {optician.id === currentOpticianId && (
                     <Check className="h-4 w-4 text-primary" />
                   )}

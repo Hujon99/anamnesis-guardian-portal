@@ -41,6 +41,7 @@ import { QuickAssignDropdown } from "./EntriesList/QuickAssignDropdown";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
+import { getPatientDisplayName } from "@/lib/utils";
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
@@ -93,6 +94,9 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   };
 
   const hasBookingInfo = entry.is_magic_link || entry.booking_id || entry.booking_date || entry.store_id;
+  
+  // Use the patient display name helper
+  const patientDisplayName = getPatientDisplayName(entry);
 
   return (
     <>
@@ -108,7 +112,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
               <EntryStatusIcon status={entry.status || "sent"} />
               <div>
                 <CardTitle className="text-base">
-                  {entry.patient_identifier || "Anonym patient"}
+                  {patientDisplayName}
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Skapad {formattedDate}

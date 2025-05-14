@@ -81,8 +81,11 @@ export function ModalTabContent({
               formattedRawData={formattedRawData}
               status={status}
               saveFormattedRawData={saveFormattedRawData}
-              onSaveAiSummary={onSaveAiSummary}
+              onSaveSummary={onSaveAiSummary}
               aiSummary={entry.ai_summary || ""}
+              hasAnswers={hasAnswers}
+              entryId={entry.id}
+              isPending={isPending}
             />
           ) : (
             <EntryAnswers
@@ -144,6 +147,7 @@ export function ModalTabContent({
               toggleEditing={toggleEditing}
               setPatientIdentifier={setPatientIdentifier}
               savePatientIdentifier={savePatientIdentifier}
+              status={status}
             />
           )}
         </TabsContent>

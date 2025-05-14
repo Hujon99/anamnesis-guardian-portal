@@ -22,10 +22,10 @@ interface OptimizedAnswersViewProps {
   status: string;
   entryId: string;
   aiSummary: string | null;
-  onSaveSummary: (summary: string) => void;
+  onSaveSummary: (summary: string) => Promise<void>;
   formattedRawData: string;
   setFormattedRawData: (data: string) => void;
-  saveFormattedRawData: () => void;
+  saveFormattedRawData: () => Promise<void>;
   isPending: boolean;
 }
 
@@ -148,7 +148,7 @@ export const OptimizedAnswersView = ({
         setSummary(data.summary);
         setActiveTab("summary");
         console.log("Successfully generated summary:", data.summary.substring(0, 50) + "...");
-        onSaveSummary(data.summary);
+        await onSaveSummary(data.summary);
       } else {
         throw new Error('Fick inget svar från AI-tjänsten');
       }

@@ -1,3 +1,4 @@
+
 /**
  * This component renders the form container, including the Toaster component
  * to ensure toast messages are properly displayed. It also adds additional
@@ -13,7 +14,7 @@ import { FormOrchestrator } from "./FormOrchestrator";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import ErrorCard from "@/components/PatientForm/StatusCards/ErrorCard";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 
 interface FormContainerProps {
   formTemplate: FormTemplate;
@@ -91,20 +92,19 @@ const FormContainer: React.FC<FormContainerProps> = ({
       toast({
         title: "Skickar in formuläret...",
         duration: 10000, // Long duration in case submission takes time
-        id: "submit-form-toast"
       });
       
       const result = await onSubmit(values, formattedAnswers);
       
-      // Dismiss the in-progress toast
-      toast.dismiss("submit-form-toast");
+      // Dismiss any previous toast
+      toast.dismiss();
       
       return result;
     } catch (error) {
       console.error("[FormContainer/handleSubmit]: Error in form submission:", error);
       
-      // Dismiss the in-progress toast
-      toast.dismiss("submit-form-toast");
+      // Dismiss any previous toast
+      toast.dismiss();
       
       // Show error toast
       toast.error("Det uppstod ett fel vid inskickning av formuläret", {

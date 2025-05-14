@@ -51,7 +51,7 @@ interface AnamnesisListItemProps {
   };
   onClick?: () => void;
   onDelete?: () => void;
-  onAssign?: (entryId: string, opticianId: string | null) => void;
+  onAssign?: (entryId: string, opticianId: string | null) => Promise<void>;
   showAssignmentIndicator?: boolean;
   showQuickAssign?: boolean;
   opticianName?: string | null;
@@ -88,7 +88,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
   const handleAssign = async (opticianId: string | null) => {
     if (onAssign) {
-      onAssign(entry.id, opticianId);
+      await onAssign(entry.id, opticianId);
     }
   };
 
@@ -212,7 +212,8 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                       <div onClick={(e) => e.stopPropagation()}>
                         <QuickAssignDropdown
                           entryId={entry.id}
-                          onAssign={(opticianId) => handleAssign(opticianId)}
+                          currentOpticianId={entry.optician_id}
+                          onAssign={handleAssign}
                         >
                           <Button
                             variant="outline"

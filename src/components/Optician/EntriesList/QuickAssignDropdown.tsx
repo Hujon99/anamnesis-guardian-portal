@@ -21,9 +21,10 @@ import { toast } from "@/components/ui/use-toast";
 
 interface QuickAssignDropdownProps {
   entryId: string;
-  currentOpticianId: string | null;
+  currentOpticianId?: string | null;
   onAssign: (opticianId: string | null) => Promise<void>;
   disabled?: boolean;
+  children?: React.ReactNode; // Added children prop
 }
 
 export function QuickAssignDropdown({
@@ -31,6 +32,7 @@ export function QuickAssignDropdown({
   currentOpticianId,
   onAssign,
   disabled = false,
+  children
 }: QuickAssignDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -84,22 +86,24 @@ export function QuickAssignDropdown({
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild disabled={disabled || isPending}>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-1 h-7 px-2"
-          disabled={disabled || isPending}
-        >
-          {isPending ? (
-            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-          ) : (
-            <User className="h-3 w-3 mr-1" />
-          )}
-          <span className="max-w-[100px] truncate">
-            {selectedOptician ? selectedOpticianName : "Tilldela"}
-          </span>
-          <ChevronDown className="h-3 w-3 opacity-50" />
-        </Button>
+        {children || (
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1 h-7 px-2"
+            disabled={disabled || isPending}
+          >
+            {isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <User className="h-3 w-3 mr-1" />
+            )}
+            <span className="max-w-[100px] truncate">
+              {selectedOptician ? selectedOpticianName : "Tilldela"}
+            </span>
+            <ChevronDown className="h-3 w-3 opacity-50" />
+          </Button>
+        )}
       </DropdownMenuTrigger>
       
       <DropdownMenuContent align="end" className="w-56">

@@ -1,4 +1,3 @@
-
 /**
  * This component provides a dropdown for assigning or unassigning opticians to anamnesis entries.
  * It displays a list of opticians in the organization and allows authorized users to make assignments.

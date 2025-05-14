@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '@clerk/clerk-react';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
+import { isValidUUID } from '@/utils/idConversionUtils';
 
 export interface Optician {
   id: string;               // Supabase database ID (UUID format)
@@ -58,7 +59,7 @@ export function useOpticians() {
         
         // Verify that we have valid UUIDs for the optician IDs
         data.forEach(optician => {
-          const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(optician.id);
+          const isValidUuid = isValidUUID(optician.id);
           if (!isValidUuid) {
             console.warn(`Optician with invalid UUID format found: ${optician.id}`);
           }
@@ -116,7 +117,7 @@ export function useOpticians() {
     id: o.id,
     clerk_user_id: o.clerk_user_id,
     name: o.name,
-    validUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(o.id)
+    validUUID: isValidUUID(o.id)
   })));
   
   return {

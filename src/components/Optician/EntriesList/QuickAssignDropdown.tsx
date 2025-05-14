@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
+import { isValidUUID } from "@/utils/idConversionUtils";
 
 interface QuickAssignDropdownProps {
   entryId: string;
@@ -39,12 +40,6 @@ export function QuickAssignDropdown({
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
-  
-  // Validate UUID format
-  const isValidUUID = (id: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(id);
-  };
   
   // Handle optician assignment - with type safety
   const handleAssign = async (opticianId: string | null) => {

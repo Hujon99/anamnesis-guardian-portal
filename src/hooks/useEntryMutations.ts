@@ -1,4 +1,3 @@
-
 /**
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
@@ -10,9 +9,7 @@ import { useEntryUpdateMutation } from "./useEntryUpdateMutation";
 import { useSendLinkMutation } from "./useSendLinkMutation";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
-
-// UUID validation regex
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { ensureDatabaseUuid, isValidUUID } from "@/utils/idConversionUtils";
 
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
@@ -30,59 +27,6 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLinkMutation,
     sendLink
   } = useSendLinkMutation(entryId, onSuccess);
-
-  // Validate UUID format
-  const validateUUID = (id: string | null, fieldName: string): boolean => {
-    if (id === null) return true; // null is valid for clearing assignments
-    if (!UUID_REGEX.test(id)) {
-      console.error(`Invalid UUID format for ${fieldName}:`, id);
-      return false;
-    }
-    return true;
-  };
-
-  /**
-   * Helper function to convert potential Clerk user IDs to Supabase UUIDs
-   * Currently just validates, but could be expanded to fetch corresponding UUIDs
-   */
-  const ensureDatabaseUUID = async (id: string | null, fieldName: string): Promise<string | null> => {
-    // If null, acceptable for clearing assignments
-    if (id === null) return null;
-    
-    // If already a valid UUID, return as is
-    if (UUID_REGEX.test(id)) {
-      return id;
-    }
-    
-    console.log(`Checking if ID ${id} for ${fieldName} is a Clerk ID that needs conversion`);
-    
-    try {
-      // Try to fetch the corresponding database UUID from the users table
-      const { data, error } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_user_id', id)
-        .single();
-        
-      if (error) {
-        console.error(`Error fetching database ID for Clerk ID ${id}:`, error);
-        throw new Error(`Kunde inte hitta en giltig optiker med ID: ${id}`);
-      }
-      
-      if (!data?.id) {
-        console.error(`No database ID found for Clerk ID ${id}`);
-        throw new Error(`Ingen matchande optiker hittades för ID: ${id}`);
-      }
-      
-      const databaseId = data.id;
-      console.log(`Successfully converted Clerk ID ${id} to database UUID ${databaseId}`);
-      
-      return databaseId;
-    } catch (error) {
-      console.error(`Failed to convert ID ${id} to database UUID:`, error);
-      throw new Error(`ID-konverteringsfel: ${error instanceof Error ? error.message : 'Okänt fel'}`);
-    }
-  };
 
   // Helper function to handle JWT errors with retry capability
   const handleJwtErrorWithRetry = async (operation: () => Promise<any>, retryCount = 0): Promise<any> => {
@@ -125,12 +69,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         assignOpticianMutation.isPending = true;
         
         // Validate entry ID
-        if (!validateUUID(entryId, 'entryId')) {
+        if (!isValidUUID(entryId)) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
         // Convert and validate optician ID if provided
-        const validatedOpticianId = await ensureDatabaseUUID(opticianId, 'opticianId');
+        const validatedOpticianId = await ensureDatabaseUuid(supabase, opticianId, 'opticianId');
         
         // Log the ID transformation if any
         if (opticianId !== validatedOpticianId && opticianId !== null) {
@@ -199,11 +143,11 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         assignStoreMutation.isPending = true;
         
         // Validate IDs
-        if (!validateUUID(entryId, 'entryId')) {
+        if (!isValidUUID(entryId)) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
-        if (storeId !== null && !validateUUID(storeId, 'storeId')) {
+        if (storeId !== null && !isValidUUID(storeId)) {
           throw new Error(`Invalid store ID format: ${storeId}`);
         }
         
@@ -261,7 +205,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         deleteMutation.isPending = true;
         
         // Validate ID
-        if (!validateUUID(entryId, 'entryId')) {
+        if (!isValidUUID(entryId)) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         

@@ -1,4 +1,3 @@
-
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -90,10 +89,10 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     refetch();
   };
 
-  // Handle optician assignment
-  const handleEntryAssigned = (entryId: string, opticianId: string | null) => {
+  // Handle optician assignment - Updated to return a Promise
+  const handleEntryAssigned = async (entryId: string, opticianId: string | null): Promise<void> => {
     console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
-    refetch();
+    await refetch();
   };
 
   const getEntryExpirationInfo = (entry: AnamnesesEntry) => {

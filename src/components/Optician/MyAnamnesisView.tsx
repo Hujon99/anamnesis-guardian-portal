@@ -1,4 +1,3 @@
-
 /**
  * This component provides a personal view of anamnesis entries assigned to the current optician.
  * It displays personal statistics and a filtered list of entries.
@@ -80,10 +79,10 @@ export function MyAnamnesisView() {
     refetch?.();
   };
 
-  // Handle entry assignment
-  const handleEntryAssigned = (entryId: string, opticianId: string | null) => {
+  // Handle entry assignment - Updated to return a Promise
+  const handleEntryAssigned = async (entryId: string, opticianId: string | null): Promise<void> => {
     console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
-    refetch?.();
+    await refetch?.();
   };
 
   const getEntryExpirationInfo = (entry: AnamnesesEntry) => {

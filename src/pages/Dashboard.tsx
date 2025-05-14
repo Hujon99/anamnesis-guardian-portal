@@ -8,7 +8,7 @@
 import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Clipboard, Loader2, User } from "lucide-react";
+import { AlertCircle, Clipboard, Loader2, User, RefreshCw } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
@@ -18,6 +18,7 @@ import { LinkGenerator } from "@/components/Optician/LinkGenerator";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { SyncUsersButton } from "@/components/Admin/SyncUsersButton";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -49,6 +50,7 @@ const Dashboard = () => {
   const { user } = useUser();
   const { isReady, refreshClient, supabase } = useSupabaseClient();
   const [isUserOptician, setIsUserOptician] = useState(false);
+  const [isConnectionActive, setIsConnectionActive] = useState(true);
   
   // Check user roles
   const isAdmin = has({ role: "org:admin" });
@@ -57,7 +59,10 @@ const Dashboard = () => {
   useEffect(() => {
     console.log("Dashboard mounted, ensuring Supabase client is ready");
     if (!isReady) {
-      refreshClient(false);
+      refreshClient(true); // Force refresh on dashboard mount
+      setIsConnectionActive(false);
+    } else {
+      setIsConnectionActive(true);
     }
   }, [isReady, refreshClient]);
 
@@ -67,24 +72,51 @@ const Dashboard = () => {
       if (!userId || !isReady) return;
       
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('users')
           .select('role')
           .eq('clerk_user_id', userId)
           .single();
           
+        if (error) {
+          console.error("Error checking optician role:", error);
+          
+          // Check if it's an authentication error and refresh the client
+          if (error.code === "PGRST301" || error.message?.includes("JWT")) {
+            console.log("JWT authentication error detected, refreshing client...");
+            await refreshClient(true);
+          }
+          
+          setIsUserOptician(false);
+          return;
+        }
+        
         setIsUserOptician(data?.role === 'optician');
+        setIsConnectionActive(true);
       } catch (error) {
-        console.error("Error checking optician role:", error);
+        console.error("Unexpected error checking optician role:", error);
         setIsUserOptician(false);
+        setIsConnectionActive(false);
       }
     };
     
     checkOpticianRole();
-  }, [userId, isReady, supabase]);
+  }, [userId, isReady, supabase, refreshClient]);
 
   // Determine if user can access optician features
   const canAccessOpticianFeatures = isUserOptician || isAdmin;
+  
+  // Handle manual connection refresh
+  const handleRefreshConnection = async () => {
+    try {
+      setIsConnectionActive(false);
+      await refreshClient(true);
+      setIsConnectionActive(true);
+    } catch (error) {
+      console.error("Failed to refresh connection:", error);
+      setIsConnectionActive(false);
+    }
+  };
 
   if (!organization) {
     return (
@@ -120,8 +152,43 @@ const Dashboard = () => {
           )}
           <DirectFormButton />
           <LinkGenerator />
+          {isAdmin && (
+            <SyncUsersButton 
+              variant="outline"
+              size="default"
+              buttonText="Synka användare"
+            />
+          )}
+          <Button
+            variant="ghost" 
+            size="icon"
+            className={`h-10 w-10 ${!isConnectionActive ? 'text-destructive' : 'text-green-500'}`}
+            onClick={handleRefreshConnection}
+            title="Uppdatera anslutningen"
+          >
+            <RefreshCw className={`h-4 w-4 ${!isReady ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
       </div>
+
+      {!isConnectionActive && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Anslutningsproblem</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>Det uppstod ett problem med databasanslutningen. Detta kan bero på en utgången session.</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefreshConnection}
+              className="mt-2"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Uppdatera anslutningen
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <QueryErrorResetBoundary>
         {({ reset }) => (

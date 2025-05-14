@@ -41,7 +41,8 @@ export function EntriesSummary({
             {statusFilter === "sent" ? "Skickade" : 
              statusFilter === "pending" ? "Att granska" : 
              statusFilter === "ready" ? "Klara" : 
-             statusFilter === "reviewed" ? "Granskade" : statusFilter}
+             statusFilter === "journaled" ? "Journalförda" : 
+             statusFilter === "reviewed" ? "Journalförda" : statusFilter}
           </Badge>
         )}
       </div>

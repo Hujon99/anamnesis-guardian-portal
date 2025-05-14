@@ -18,7 +18,9 @@ export const EntryStatusIcon = ({ status }: EntryStatusIconProps) => {
       return <AlertCircle className="h-4 w-4 text-accent_coral stroke-[1.5px]" />;
     case "ready":
       return <CheckCircle className="h-4 w-4 text-green-500 stroke-[1.5px]" />;
-    case "reviewed":
+    case "journaled":
+      return <Star className="h-4 w-4 text-accent_teal stroke-[1.5px]" />;
+    case "reviewed": // Keep for backward compatibility
       return <Star className="h-4 w-4 text-accent_teal stroke-[1.5px]" />;
     default:
       return <Clock className="h-4 w-4 stroke-[1.5px]" />;

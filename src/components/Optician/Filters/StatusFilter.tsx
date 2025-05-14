@@ -25,7 +25,7 @@ export function StatusFilter({ statusFilter, onStatusFilterChange }: StatusFilte
         <SelectItem value="sent">Skickade</SelectItem>
         <SelectItem value="pending">Att granska</SelectItem>
         <SelectItem value="ready">Klara</SelectItem>
-        <SelectItem value="reviewed">Granskade</SelectItem>
+        <SelectItem value="journaled">Journalförda</SelectItem>
       </SelectContent>
     </Select>
   );

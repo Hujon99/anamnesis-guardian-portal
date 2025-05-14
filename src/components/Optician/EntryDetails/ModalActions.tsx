@@ -102,13 +102,13 @@ export function ModalActions({
       {status === "ready" && (
         <>
           <Button 
-            onClick={() => onUpdateStatus("reviewed")}
+            onClick={() => onUpdateStatus("journaled")}
             disabled={isPending}
             className="flex-1"
-            aria-label="Markera som granskad"
+            aria-label="Markera som journalförd"
           >
             <Star className="h-4 w-4 mr-2" />
-            Markera som granskad
+            Markera som journalförd
           </Button>
           
           <Button 
@@ -124,7 +124,7 @@ export function ModalActions({
         </>
       )}
       
-      {status === "reviewed" && (
+      {(status === "journaled" || status === "reviewed") && (
         <Button 
           onClick={() => onUpdateStatus("ready")}
           variant="outline"

@@ -54,6 +54,11 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
       
       const updates: Partial<AnamnesesEntry> = {};
       
+      // If status is "reviewed", map it to "journaled"
+      if (status === "reviewed") {
+        status = "journaled";
+      }
+      
       if (status) updates.status = status;
       if (formattedRawData !== undefined) {
         console.log("Updating formatted raw data");

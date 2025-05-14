@@ -3,13 +3,14 @@
  * This component provides a dropdown for assigning or unassigning opticians to anamnesis entries.
  * It displays a list of opticians in the organization and allows authorized users to make assignments.
  * Enhanced with better error handling, retry logic, and user feedback for JWT authentication issues.
+ * Updated to work with Clerk user IDs instead of database UUIDs.
  */
 
 import { useState, useCallback } from 'react';
 import { useUser, useOrganization } from '@clerk/clerk-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, User, RefreshCw } from 'lucide-react';
-import { useOpticians, isValidUUID, getOpticianDisplayName } from '@/hooks/useOpticians';
+import { useOpticians, getOpticianDisplayName } from '@/hooks/useOpticians';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
@@ -56,13 +57,17 @@ export function OpticianSelector({
     })));
   }
   
-  // Check if current optician ID is valid
-  if (currentOpticianId && !isValidUUID(currentOpticianId)) {
-    console.warn(`Current optician ID is not a valid UUID: ${currentOpticianId}`);
+  // Check if current optician ID is valid - now using Clerk user ID format
+  if (currentOpticianId) {
+    const isValidClerkId = currentOpticianId.startsWith('user_');
+    if (!isValidClerkId) {
+      console.warn(`Current optician ID is not a valid Clerk user ID: ${currentOpticianId}`);
+    }
   }
   
   // Find the name of the currently assigned optician if any
-  const currentOptician = opticians.find(opt => opt.id === currentOpticianId);
+  // We need to match by clerk_user_id since that's now stored in optician_id
+  const currentOptician = opticians.find(opt => opt.clerk_user_id === currentOpticianId);
   const currentOpticianLabel = currentOptician 
     ? getOpticianDisplayName(currentOptician)
     : 'Ingen optiker tilldelad';
@@ -108,8 +113,8 @@ export function OpticianSelector({
         return;
       }
       
-      // Validate UUID
-      if (!isValidUUID(value)) {
+      // Validate Clerk user ID format - starts with "user_"
+      if (!value.startsWith('user_')) {
         console.error('Invalid optician ID format:', value);
         toast({
           title: "Fel vid tilldelning",
@@ -203,7 +208,7 @@ export function OpticianSelector({
         <SelectContent>
           <SelectItem value="none">Ingen optiker tilldelad</SelectItem>
           {opticians.map((optician) => (
-            <SelectItem key={optician.id} value={optician.id}>
+            <SelectItem key={optician.id} value={optician.clerk_user_id}>
               {getOpticianDisplayName(optician)}
             </SelectItem>
           ))}

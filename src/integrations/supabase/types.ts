@@ -91,7 +91,7 @@ export type Database = {
             columns: ["optician_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedColumns: ["clerk_user_id"]
           },
           {
             foreignKeyName: "fk_anamnes_entries_store"

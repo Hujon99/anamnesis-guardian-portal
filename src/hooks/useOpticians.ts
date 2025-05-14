@@ -2,7 +2,7 @@
 /**
  * This hook provides functionality for fetching and managing opticians in the organization.
  * It returns a list of opticians that can be used for assignment to anamnesis entries.
- * Ensures clear distinction between Clerk user IDs and Supabase database IDs.
+ * Ensures clear distinction between Clerk user IDs and database record IDs.
  */
 
 import { useState } from 'react';
@@ -94,6 +94,7 @@ export function useOpticians() {
               // Handle memberships response which has .data property for membership list
               const membersList = members?.data || [];
               
+              // Now match by clerk_user_id rather than looking up by database id
               const member = membersList.find(m => 
                 m.publicUserData?.userId === databaseRecord.clerk_user_id
               );

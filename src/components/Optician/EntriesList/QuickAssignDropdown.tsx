@@ -2,11 +2,12 @@
 /**
  * This component provides a dropdown for quickly assigning opticians to anamnesis entries
  * directly from the list view.
+ * Updated to work with Clerk user IDs instead of database UUIDs.
  */
 
 import { useState } from "react";
 import { Check, ChevronDown, Loader2, User } from "lucide-react";
-import { useOpticians, isValidUUID, getOpticianDisplayName } from "@/hooks/useOpticians";
+import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,8 +46,8 @@ export function QuickAssignDropdown({
     setIsPending(true);
     
     try {
-      // Validate UUID format if an ID is provided
-      if (opticianId !== null && !isValidUUID(opticianId)) {
+      // Validate Clerk user ID format if an ID is provided
+      if (opticianId !== null && !opticianId.startsWith('user_')) {
         throw new Error(`Invalid optician ID format: ${opticianId}`);
       }
       
@@ -76,7 +77,8 @@ export function QuickAssignDropdown({
   };
 
   // Get currently selected optician name
-  const selectedOptician = opticians.find(o => o.id === currentOpticianId);
+  // We need to match by clerk_user_id since that's now stored in optician_id
+  const selectedOptician = opticians.find(o => o.clerk_user_id === currentOpticianId);
   const selectedOpticianName = getOpticianDisplayName(selectedOptician);
   
   return (
@@ -115,12 +117,12 @@ export function QuickAssignDropdown({
             {opticians.map((optician) => (
               <DropdownMenuItem
                 key={optician.id}
-                onClick={() => handleAssign(optician.id)}
+                onClick={() => handleAssign(optician.clerk_user_id)}
                 disabled={isPending}
               >
                 <div className="flex items-center justify-between w-full">
                   <span>{getOpticianDisplayName(optician)}</span>
-                  {optician.id === currentOpticianId && (
+                  {optician.clerk_user_id === currentOpticianId && (
                     <Check className="h-4 w-4 text-primary" />
                   )}
                 </div>

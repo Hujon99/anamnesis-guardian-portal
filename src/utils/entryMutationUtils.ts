@@ -84,6 +84,7 @@ export const updateEntryAiSummary = async (
 
 /**
  * Assigns an optician to an anamnesis entry
+ * Now accepts a clerk_user_id (string) instead of UUID
  */
 export const assignOpticianToEntry = async (
   supabase: SupabaseClient,

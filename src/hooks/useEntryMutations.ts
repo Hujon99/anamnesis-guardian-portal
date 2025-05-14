@@ -3,6 +3,7 @@
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
  * It aggregates the functionality from useEntryUpdateMutation and useSendLinkMutation.
+ * Updated to work with Clerk user IDs instead of database UUIDs.
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,8 @@ import { toast } from "@/components/ui/use-toast";
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// Clerk ID validation regex (starts with "user_" followed by alphanumeric characters)
+const CLERK_ID_REGEX = /^user_[a-zA-Z0-9]+$/;
 
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
@@ -31,12 +34,22 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     sendLink
   } = useSendLinkMutation(entryId, onSuccess);
 
-  // Validate UUID format
-  const validateUUID = (id: string | null, fieldName: string): boolean => {
+  // Validate ID format
+  const validateId = (id: string | null, fieldName: string, isOpticianId: boolean = false): boolean => {
     if (id === null) return true; // null is valid for clearing assignments
-    if (!UUID_REGEX.test(id)) {
-      console.error(`Invalid UUID format for ${fieldName}:`, id);
-      return false;
+    
+    if (isOpticianId) {
+      // For optician IDs, we now expect a Clerk user ID format
+      if (!CLERK_ID_REGEX.test(id)) {
+        console.error(`Invalid Clerk user ID format for ${fieldName}:`, id);
+        return false;
+      }
+    } else {
+      // For other IDs (entry ID, store ID), we expect a UUID format
+      if (!UUID_REGEX.test(id)) {
+        console.error(`Invalid UUID format for ${fieldName}:`, id);
+        return false;
+      }
     }
     return true;
   };
@@ -81,12 +94,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         console.log(`Starting optician assignment. Entry ID: ${entryId}, Optician ID: ${opticianId}`);
         assignOpticianMutation.isPending = true;
         
-        // Validate IDs
-        if (!validateUUID(entryId, 'entryId')) {
+        // Validate IDs - now using the new validation function
+        if (!validateId(entryId, 'entryId')) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
-        if (opticianId !== null && !validateUUID(opticianId, 'opticianId')) {
+        if (opticianId !== null && !validateId(opticianId, 'opticianId', true)) {
           throw new Error(`Invalid optician ID format: ${opticianId}`);
         }
         
@@ -152,11 +165,11 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         assignStoreMutation.isPending = true;
         
         // Validate IDs
-        if (!validateUUID(entryId, 'entryId')) {
+        if (!validateId(entryId, 'entryId')) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
-        if (storeId !== null && !validateUUID(storeId, 'storeId')) {
+        if (storeId !== null && !validateId(storeId, 'storeId')) {
           throw new Error(`Invalid store ID format: ${storeId}`);
         }
         
@@ -214,7 +227,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         deleteMutation.isPending = true;
         
         // Validate ID
-        if (!validateUUID(entryId, 'entryId')) {
+        if (!validateId(entryId, 'entryId')) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         

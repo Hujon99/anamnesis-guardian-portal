@@ -1,7 +1,7 @@
 
 /**
  * This component provides a dropdown for quickly assigning opticians to anamnesis entries
- * directly from the list view.
+ * directly from the list view. It handles the conversion between Clerk user IDs and Supabase UUIDs.
  */
 
 import { useState } from "react";
@@ -46,17 +46,20 @@ export function QuickAssignDropdown({
     return uuidRegex.test(id);
   };
   
-  // Handle optician assignment
+  // Handle optician assignment - with type safety
   const handleAssign = async (opticianId: string | null) => {
     setIsPending(true);
     
     try {
       // Validate UUID format if an ID is provided
-      if (opticianId !== null && !isValidUUID(opticianId)) {
-        throw new Error(`Invalid optician ID format: ${opticianId}`);
+      if (opticianId !== null) {
+        if (!isValidUUID(opticianId)) {
+          console.error(`Invalid optician ID format (not a UUID): ${opticianId}`);
+          throw new Error(`Invalid optician ID format: Expected UUID but received ${opticianId}`);
+        }
       }
       
-      console.log(`Assigning optician with ID: ${opticianId}`);
+      console.log(`Assigning optician with ID: ${opticianId} to entry ${entryId}`);
       await onAssign(opticianId);
       
       // Show success message
@@ -71,9 +74,17 @@ export function QuickAssignDropdown({
     } catch (error) {
       console.error("Error assigning optician:", error);
       
+      // Determine the specific error message
+      let errorMessage = "Det gick inte att tilldela optikern";
+      if (error instanceof Error) {
+        if (error.message.includes("UUID")) {
+          errorMessage = "ID-formatet är ogiltigt. Kontakta support.";
+        }
+      }
+      
       toast({
         title: "Fel vid tilldelning",
-        description: "Det gick inte att tilldela optikern",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -83,6 +94,15 @@ export function QuickAssignDropdown({
 
   // Get currently selected optician name
   const selectedOptician = opticians.find(o => o.id === currentOpticianId);
+  
+  // Log opticians for debugging
+  if (opticians.length > 0 && !isLoading) {
+    console.log("Available opticians in dropdown:", opticians.map(o => ({ 
+      id: o.id, 
+      clerk_user_id: o.clerk_user_id,
+      name: o.name || 'Unnamed'
+    })));
+  }
   
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -99,7 +119,7 @@ export function QuickAssignDropdown({
             <User className="h-3 w-3 mr-1" />
           )}
           <span className="max-w-[100px] truncate">
-            {selectedOptician ? selectedOptician.name : "Tilldela"}
+            {selectedOptician ? selectedOptician.name || selectedOptician.email : "Tilldela"}
           </span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>

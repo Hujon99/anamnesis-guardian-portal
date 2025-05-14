@@ -11,7 +11,7 @@ import { useOrganization } from '@clerk/clerk-react';
 import { useSupabaseClient } from './useSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
 
-interface Optician {
+export interface Optician {
   id: string;               // Supabase database ID (UUID format)
   clerk_user_id: string;    // Clerk user ID (string format "user_...")
   name?: string;            // Display name from Clerk
@@ -56,8 +56,16 @@ export function useOpticians() {
           return [];
         }
         
+        // Verify that we have valid UUIDs for the optician IDs
+        data.forEach(optician => {
+          const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(optician.id);
+          if (!isValidUuid) {
+            console.warn(`Optician with invalid UUID format found: ${optician.id}`);
+          }
+        });
+        
         // Get user data from Clerk for each optician
-        const enhancedOpticians = await Promise.all(
+        const enhancedOpticians: Optician[] = await Promise.all(
           data.map(async (optician) => {
             try {
               // Try to get user info from organization members
@@ -78,7 +86,13 @@ export function useOpticians() {
                 email: member?.publicUserData?.identifier // Using identifier instead of emailAddress
               };
               
-              console.log('Enhanced optician:', enhancedOptician);
+              console.log('Enhanced optician:', {
+                id: enhancedOptician.id,
+                clerk_user_id: enhancedOptician.clerk_user_id,
+                name: enhancedOptician.name,
+                email: enhancedOptician.email
+              });
+              
               return enhancedOptician;
             } catch (err) {
               console.error('Error fetching Clerk user data:', err);
@@ -98,7 +112,12 @@ export function useOpticians() {
   });
   
   // Provide detailed logging about what's being returned
-  console.log('useOpticians hook returning opticians:', opticians);
+  console.log('useOpticians hook returning opticians:', opticians.map(o => ({
+    id: o.id,
+    clerk_user_id: o.clerk_user_id,
+    name: o.name,
+    validUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(o.id)
+  })));
   
   return {
     opticians,

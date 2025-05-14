@@ -41,6 +41,49 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     return true;
   };
 
+  /**
+   * Helper function to convert potential Clerk user IDs to Supabase UUIDs
+   * Currently just validates, but could be expanded to fetch corresponding UUIDs
+   */
+  const ensureDatabaseUUID = async (id: string | null, fieldName: string): Promise<string | null> => {
+    // If null, acceptable for clearing assignments
+    if (id === null) return null;
+    
+    // If already a valid UUID, return as is
+    if (UUID_REGEX.test(id)) {
+      return id;
+    }
+    
+    console.log(`Checking if ID ${id} for ${fieldName} is a Clerk ID that needs conversion`);
+    
+    try {
+      // Try to fetch the corresponding database UUID from the users table
+      const { data, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_user_id', id)
+        .single();
+        
+      if (error) {
+        console.error(`Error fetching database ID for Clerk ID ${id}:`, error);
+        throw new Error(`Kunde inte hitta en giltig optiker med ID: ${id}`);
+      }
+      
+      if (!data?.id) {
+        console.error(`No database ID found for Clerk ID ${id}`);
+        throw new Error(`Ingen matchande optiker hittades för ID: ${id}`);
+      }
+      
+      const databaseId = data.id;
+      console.log(`Successfully converted Clerk ID ${id} to database UUID ${databaseId}`);
+      
+      return databaseId;
+    } catch (error) {
+      console.error(`Failed to convert ID ${id} to database UUID:`, error);
+      throw new Error(`ID-konverteringsfel: ${error instanceof Error ? error.message : 'Okänt fel'}`);
+    }
+  };
+
   // Helper function to handle JWT errors with retry capability
   const handleJwtErrorWithRetry = async (operation: () => Promise<any>, retryCount = 0): Promise<any> => {
     const MAX_RETRIES = 2;
@@ -81,20 +124,24 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         console.log(`Starting optician assignment. Entry ID: ${entryId}, Optician ID: ${opticianId}`);
         assignOpticianMutation.isPending = true;
         
-        // Validate IDs
+        // Validate entry ID
         if (!validateUUID(entryId, 'entryId')) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
-        if (opticianId !== null && !validateUUID(opticianId, 'opticianId')) {
-          throw new Error(`Invalid optician ID format: ${opticianId}`);
+        // Convert and validate optician ID if provided
+        const validatedOpticianId = await ensureDatabaseUUID(opticianId, 'opticianId');
+        
+        // Log the ID transformation if any
+        if (opticianId !== validatedOpticianId && opticianId !== null) {
+          console.log(`Optician ID transformed from ${opticianId} to ${validatedOpticianId}`);
         }
         
         // Use the helper function to handle JWT errors with retry
         const data = await handleJwtErrorWithRetry(async () => {
           const { data, error } = await supabase
             .from("anamnes_entries")
-            .update({ optician_id: opticianId })
+            .update({ optician_id: validatedOpticianId })
             .eq("id", entryId)
             .select()
             .single();

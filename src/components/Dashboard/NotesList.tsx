@@ -1,7 +1,7 @@
-
 /**
  * This component displays a list of test notes with their details.
  * It fetches notes data from Supabase and shows them in a card layout.
+ * Store information is displayed when available, showing store names instead of IDs.
  */
 
 import { useEffect } from "react";
@@ -17,12 +17,6 @@ import { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPatientDisplayName } from "@/lib/utils";
-
-// Define a more complete TestNote type that includes store_id
-interface TestNote extends Tables<"test_notes"> {
-  store_id?: string | null;
-}
 
 type StoreData = Tables<"stores">;
 

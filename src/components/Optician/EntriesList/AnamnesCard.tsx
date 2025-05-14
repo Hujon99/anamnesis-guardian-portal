@@ -8,7 +8,7 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface AnamnesCardProps {
-  status: "sent" | "pending" | "ready" | "reviewed" | "expiring";
+  status: "sent" | "pending" | "ready" | "reviewed" | "journaled" | "expiring";
   children: ReactNode;
   className?: string;
   onClick?: () => void;
@@ -29,7 +29,9 @@ export const AnamnesCard = ({
         return "bg-accent_coral";
       case "ready":
         return "bg-green-500";
-      case "reviewed":
+      case "journaled":
+        return "bg-accent_teal";
+      case "reviewed": // Keep for backward compatibility
         return "bg-accent_teal";
       case "expiring":
         return "bg-amber-500";

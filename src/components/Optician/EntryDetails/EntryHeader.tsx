@@ -60,8 +60,10 @@ export function EntryHeader({
         return <Badge variant="warning">Väntar på granskning</Badge>;
       case "ready":
         return <Badge variant="success">Klar för undersökning</Badge>;
-      case "reviewed":
-        return <Badge className="bg-accent_teal text-white">Granskad</Badge>;
+      case "journaled":
+        return <Badge className="bg-accent_teal text-white">Journalförd</Badge>;
+      case "reviewed": // Keep for backward compatibility
+        return <Badge className="bg-accent_teal text-white">Journalförd</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

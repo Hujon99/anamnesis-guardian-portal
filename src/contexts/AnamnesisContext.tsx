@@ -5,7 +5,7 @@
  * The context implements error handling and manages the initial data loading.
  */
 
-import { createContext, useContext, ReactNode, useState, useCallback } from "react";
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
@@ -32,6 +32,15 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { refreshClient } = useSupabaseClient();
 
+  // Log when the provider is initialized
+  useEffect(() => {
+    console.log("AnamnesisProvider initialized at", new Date().toISOString());
+    
+    return () => {
+      console.log("AnamnesisProvider unmounted at", new Date().toISOString());
+    };
+  }, []);
+
   // Clear error state
   const clearError = useCallback(() => {
     setError(null);
@@ -39,6 +48,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
 
   // Regular refresh data with error handling
   const refreshData = useCallback(() => {
+    console.log("AnamnesisContext: refreshData called at", new Date().toISOString());
     setIsLoading(true);
     
     try {
@@ -64,6 +74,7 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
 
   // Force refresh that bypasses all caches
   const forceRefresh = useCallback(() => {
+    console.log("AnamnesisContext: forceRefresh called at", new Date().toISOString());
     setIsLoading(true);
     
     try {
@@ -110,17 +121,26 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
     }
   }, [queryClient, refreshClient]);
 
+  const contextValue = {
+    selectedEntry, 
+    setSelectedEntry,
+    isLoading,
+    error,
+    clearError,
+    refreshData,
+    forceRefresh,
+    dataLastUpdated
+  };
+
+  console.log("AnamnesisContext: rendering provider with value:", JSON.stringify({
+    hasSelectedEntry: !!selectedEntry,
+    isLoading,
+    hasError: !!error,
+    dataLastUpdated: dataLastUpdated?.toISOString()
+  }));
+
   return (
-    <AnamnesisContext.Provider value={{ 
-      selectedEntry, 
-      setSelectedEntry,
-      isLoading,
-      error,
-      clearError,
-      refreshData,
-      forceRefresh,
-      dataLastUpdated
-    }}>
+    <AnamnesisContext.Provider value={contextValue}>
       {children}
     </AnamnesisContext.Provider>
   );
@@ -129,6 +149,8 @@ export function AnamnesisProvider({ children }: { children: ReactNode }) {
 export function useAnamnesis() {
   const context = useContext(AnamnesisContext);
   if (context === undefined) {
+    console.error("useAnamnesis must be used within an AnamnesisProvider - current component tree:", 
+      new Error().stack);
     throw new Error("useAnamnesis must be used within an AnamnesisProvider");
   }
   return context;

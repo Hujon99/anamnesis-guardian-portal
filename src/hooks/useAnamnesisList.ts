@@ -28,8 +28,29 @@ export interface AnamnesisFilters {
 export const useAnamnesisList = () => {
   const { organization } = useOrganization();
   const { supabase, isReady, refreshClient } = useSupabaseClient();
-  const { dataLastUpdated, forceRefresh } = useAnamnesis();
-  const queryClient = useQueryClient(); // Get the query client directly
+  const queryClient = useQueryClient();
+  
+  // Add safe access to AnamnesisContext - prevent errors if used outside context
+  let contextValues;
+  let contextError = null;
+  
+  try {
+    contextValues = useAnamnesis();
+  } catch (error) {
+    console.error("useAnamnesisList: Unable to access AnamnesisContext", error);
+    contextError = error;
+    // Continue with default values
+  }
+  
+  // Use context values if available, otherwise use defaults
+  const dataLastUpdated = contextValues?.dataLastUpdated || new Date();
+  const forceRefresh = contextValues?.forceRefresh || (() => {
+    console.warn("forceRefresh called outside AnamnesisContext");
+    refreshClient(true).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["anamnes-entries-all"] });
+      queryClient.refetchQueries({ queryKey: ["anamnes-entries-all"] });
+    });
+  });
   
   // State for filters
   const [filters, setFilters] = useState<AnamnesisFilters>({
@@ -313,11 +334,12 @@ export const useAnamnesisList = () => {
     updateFilter,
     resetFilters,
     isLoading,
-    error,
+    error: error || contextError, // Include context error if any
     isFetching,
     refetch,
     handleRetry,
     dataLastUpdated,
-    isReady
+    isReady,
+    contextAvailable: !!contextValues // Add flag to indicate if context is available
   };
 };

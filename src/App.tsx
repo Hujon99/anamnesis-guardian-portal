@@ -27,6 +27,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Index from "./pages/Index";
+import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 
 // Create a query client instance
 const queryClient = new QueryClient({
@@ -52,7 +53,15 @@ function App() {
           <Route path="/link" element={<LinkPage />} />
           
           {/* Protected routes that require authentication */}
-          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route 
+            element={
+              <ProtectedRoute>
+                <AnamnesisProvider>
+                  <Layout />
+                </AnamnesisProvider>
+              </ProtectedRoute>
+            }
+          >
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route 

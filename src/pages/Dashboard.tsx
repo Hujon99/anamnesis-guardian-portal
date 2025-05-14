@@ -9,7 +9,6 @@ import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Clipboard, Loader2, User } from "lucide-react";
-import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
@@ -126,9 +125,7 @@ const Dashboard = () => {
       <QueryErrorResetBoundary>
         {({ reset }) => (
           <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
-            <AnamnesisProvider>
-              <AnamnesisListView showAdvancedFilters={true} />
-            </AnamnesisProvider>
+            <AnamnesisListView showAdvancedFilters={true} />
           </ErrorBoundary>
         )}
       </QueryErrorResetBoundary>

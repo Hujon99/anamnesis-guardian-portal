@@ -18,7 +18,7 @@ import { useSyncOrganization } from "@/hooks/useSyncOrganization";
 import { OpticianHeader } from "@/components/Optician/OpticianHeader";
 import { LinkGenerator } from "@/components/Optician/LinkGenerator";
 import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
-import { AnamnesisProvider, useAnamnesis } from "@/contexts/AnamnesisContext";
+import { useAnamnesis } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { useQueryClient } from "@tanstack/react-query";
@@ -113,15 +113,13 @@ const OpticianContent = () => {
   );
 };
 
-// Main component with provider and error boundary
+// Main component with error boundary
 const OpticianView = () => {
   return (
     <QueryErrorResetBoundary>
       {({ reset }) => (
         <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
-          <AnamnesisProvider>
-            <OpticianContent />
-          </AnamnesisProvider>
+          <OpticianContent />
         </ErrorBoundary>
       )}
     </QueryErrorResetBoundary>

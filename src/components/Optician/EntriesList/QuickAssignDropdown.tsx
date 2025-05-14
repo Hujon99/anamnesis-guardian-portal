@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { Check, ChevronDown, Loader2, User } from "lucide-react";
-import { useOpticians } from "@/hooks/useOpticians";
+import { useOpticians, isValidUUID, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -39,12 +39,6 @@ export function QuickAssignDropdown({
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
-  
-  // Validate UUID format
-  const isValidUUID = (id: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(id);
-  };
   
   // Handle optician assignment
   const handleAssign = async (opticianId: string | null) => {
@@ -83,6 +77,7 @@ export function QuickAssignDropdown({
 
   // Get currently selected optician name
   const selectedOptician = opticians.find(o => o.id === currentOpticianId);
+  const selectedOpticianName = getOpticianDisplayName(selectedOptician);
   
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -99,7 +94,7 @@ export function QuickAssignDropdown({
             <User className="h-3 w-3 mr-1" />
           )}
           <span className="max-w-[100px] truncate">
-            {selectedOptician ? selectedOptician.name : "Tilldela"}
+            {selectedOptician ? selectedOpticianName : "Tilldela"}
           </span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
@@ -124,7 +119,7 @@ export function QuickAssignDropdown({
                 disabled={isPending}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span>{optician.name || optician.email || "Okänd optiker"}</span>
+                  <span>{getOpticianDisplayName(optician)}</span>
                   {optician.id === currentOpticianId && (
                     <Check className="h-4 w-4 text-primary" />
                   )}

@@ -7,7 +7,7 @@
 import { EmptyState } from "./EmptyState";
 import { AnamnesisListItem } from "../AnamnesisListItem";
 import { AnamnesesEntry } from "@/types/anamnesis";
-import { useOpticians } from "@/hooks/useOpticians";
+import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useAuth } from "@clerk/clerk-react";
 
 interface EntriesListProps {
@@ -40,7 +40,7 @@ export function EntriesList({
   // Create a map of optician IDs to names for quick lookup
   const opticianMap = new Map<string, string>();
   opticians.forEach(optician => {
-    opticianMap.set(optician.id, optician.name);
+    opticianMap.set(optician.id, getOpticianDisplayName(optician));
   });
   
   if (entries.length === 0) {

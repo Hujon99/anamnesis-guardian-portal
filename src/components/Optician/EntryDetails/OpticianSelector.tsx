@@ -1,3 +1,4 @@
+
 /**
  * This component provides a dropdown for assigning or unassigning opticians to anamnesis entries.
  * It displays a list of opticians in the organization and allows authorized users to make assignments.
@@ -72,7 +73,9 @@ export function OpticianSelector({
   
   // Find the name of the currently assigned optician if any
   const currentOptician = opticians.find(opt => opt.id === currentOpticianId);
-  const currentOpticianLabel = currentOptician ? getOpticianDisplayName(currentOptician) : 'Ingen optiker tilldelad';
+  const currentOpticianLabel = currentOptician 
+    ? getOpticianDisplayName(currentOptician) 
+    : 'Ingen optiker tilldelad';
   
   // Handle refresh button click - force token refresh and refetch data
   const handleRefresh = async () => {

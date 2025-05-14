@@ -208,7 +208,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                     <div className="flex items-center">
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        <span>{opticianName || "Optiker"}</span>
+                        <span>{opticianName || "Ingen optiker"}</span>
                       </Badge>
                     </div>
                   ) : (

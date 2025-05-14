@@ -1,4 +1,3 @@
-
 /**
  * This component provides functionality for generating and sending personalized
  * anamnesis links to patients. It handles the collection of patient information,
@@ -28,7 +27,6 @@ const formSchema = z.object({
     message: "Patientinformation måste vara minst 2 tecken"
   })
 });
-
 export function LinkGenerator() {
   const {
     organization
@@ -62,7 +60,6 @@ export function LinkGenerator() {
       patientIdentifier: ""
     }
   });
-
   useEffect(() => {
     // Reset error message when dialog opens/closes
     setErrorMessage(null);
@@ -145,13 +142,9 @@ export function LinkGenerator() {
       patientIdentifier: values.patientIdentifier
     });
   };
-
   return <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Skapa ny anamneslänk
-        </Button>
+        
       </DialogTrigger>
       
       <DialogContent>

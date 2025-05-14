@@ -1,4 +1,9 @@
 
+/**
+ * This hook provides functionality for managing anamnesis entry details,
+ * including editing, updating, and interacting with entry data.
+ */
+
 import { useState, useCallback, useEffect } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useEntryMutations } from "./useEntryMutations";
@@ -42,40 +47,43 @@ export function useAnamnesisDetail(
   const hasAnswers = entry.answers && Object.keys(answers).length > 0;
 
   // Handle operations with debounce
-  const handleSaveFormattedRawData = useCallback(() => {
+  const handleSaveFormattedRawData = useCallback(async () => {
     if (formattedRawData !== entry.formatted_raw_data) {
       console.log("Saving formatted raw data of length:", formattedRawData.length);
-      saveFormattedRawData(formattedRawData);
+      return saveFormattedRawData(formattedRawData);
     }
+    return Promise.resolve();
   }, [formattedRawData, entry.formatted_raw_data, saveFormattedRawData]);
 
-  const handleSavePatientIdentifier = () => {
+  const handleSavePatientIdentifier = async () => {
     if (patientIdentifier !== entry.patient_identifier) {
-      savePatientIdentifier(patientIdentifier);
+      await savePatientIdentifier(patientIdentifier);
     }
     setIsEditing(false);
+    return Promise.resolve();
   };
 
-  const handleSendLink = () => {
+  const handleSendLink = async () => {
     if (patientIdentifier) {
-      sendLink(patientIdentifier);
+      return sendLink(patientIdentifier);
     }
+    return Promise.resolve();
   };
 
-  const handleStatusUpdate = (newStatus: string) => {
-    updateStatus(newStatus, formattedRawData);
+  const handleStatusUpdate = async (newStatus: string) => {
+    return updateStatus(newStatus, formattedRawData);
   };
 
-  const handleSaveAiSummary = (summary: string) => {
-    saveAiSummary(summary);
+  const handleSaveAiSummary = async (summary: string) => {
+    return saveAiSummary(summary);
   };
 
   const handleAssignOptician = async (opticianId: string | null) => {
-    await assignOptician(opticianId);
+    return assignOptician(opticianId);
   };
 
   const handleAssignStore = async (storeId: string | null) => {
-    await assignStore(storeId);
+    return assignStore(storeId);
   };
 
   const copyLinkToClipboard = () => {

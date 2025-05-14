@@ -80,13 +80,15 @@ export function ModalTabContent({
               answers={answers}
               formattedRawData={formattedRawData}
               status={status}
-              onSaveFormattedRawData={saveFormattedRawData}
+              saveFormattedRawData={saveFormattedRawData}
               onSaveAiSummary={onSaveAiSummary}
               aiSummary={entry.ai_summary || ""}
             />
           ) : (
             <EntryAnswers
               answers={answers}
+              hasAnswers={hasAnswers}
+              status={status}
             />
           )}
         </TabsContent>
@@ -123,7 +125,7 @@ export function ModalTabContent({
             {isEditing && (
               <div className="flex justify-end">
                 <Button
-                  onClick={saveFormattedRawData}
+                  onClick={() => saveFormattedRawData()}
                   disabled={isPending}
                   className="w-24"
                 >
@@ -142,7 +144,6 @@ export function ModalTabContent({
               toggleEditing={toggleEditing}
               setPatientIdentifier={setPatientIdentifier}
               savePatientIdentifier={savePatientIdentifier}
-              isPending={isPending}
             />
           )}
         </TabsContent>

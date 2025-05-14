@@ -71,7 +71,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   isBookingWithoutStore,
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { deleteEntry, isDeleting } = useEntryMutations();
+  const { deleteEntry, isDeleting } = useEntryMutations(entry.id);
 
   const handleDelete = async () => {
     await deleteEntry(entry.id);
@@ -86,7 +86,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
       })
     : "";
 
-  const handleAssign = (opticianId: string | null) => {
+  const handleAssign = async (opticianId: string | null) => {
     if (onAssign) {
       onAssign(entry.id, opticianId);
     }
@@ -135,7 +135,6 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
               <EntryStatusBadge
                 status={entry.status || "sent"}
-                showLabel={true}
               />
               
               {/* Delete button dropdown */}
@@ -213,7 +212,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                       <div onClick={(e) => e.stopPropagation()}>
                         <QuickAssignDropdown
                           entryId={entry.id}
-                          onAssign={handleAssign}
+                          onAssign={(opticianId) => handleAssign(opticianId)}
                         >
                           <Button
                             variant="outline"

@@ -5,7 +5,7 @@
  */
 
 import { useToast, toast } from "@/hooks/use-toast";
-import type { ToastProps } from "@/hooks/use-toast";
+import type { ToastProps, ToastOptions, ToasterToast } from "@/hooks/use-toast";
 
 export { useToast, toast };
-export type { ToastProps };
+export type { ToastProps, ToastOptions, ToasterToast };

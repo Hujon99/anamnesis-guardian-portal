@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react';
 import { useUser, useOrganization } from '@clerk/clerk-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, User, RefreshCw } from 'lucide-react';
-import { useOpticians, Optician, getOpticianDisplayName, isValidUUID } from '@/hooks/useOpticians';
+import { useOpticians } from '@/hooks/useOpticians';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
@@ -47,13 +47,18 @@ export function OpticianSelector({
     }
   })() : false;
   
+  // Validate UUID format
+  const isValidUUID = (id: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+
   // Log optician IDs to help debug
   if (opticians.length > 0) {
     console.log('Available opticians:', opticians.map(o => ({
       id: o.id,
       clerk_user_id: o.clerk_user_id,
-      name: o.name,
-      email: o.email
+      name: o.name
     })));
   }
   
@@ -64,7 +69,7 @@ export function OpticianSelector({
   
   // Find the name of the currently assigned optician if any
   const currentOptician = opticians.find(opt => opt.id === currentOpticianId);
-  const currentOpticianLabel = getOpticianDisplayName(currentOptician);
+  const currentOpticianLabel = currentOptician?.name || currentOptician?.email || 'Ingen optiker tilldelad';
   
   // Handle refresh button click - force token refresh and refetch data
   const handleRefresh = async () => {
@@ -203,7 +208,7 @@ export function OpticianSelector({
           <SelectItem value="none">Ingen optiker tilldelad</SelectItem>
           {opticians.map((optician) => (
             <SelectItem key={optician.id} value={optician.id}>
-              {getOpticianDisplayName(optician)}
+              {optician.name || optician.email || 'Okänd optiker'}
             </SelectItem>
           ))}
         </SelectContent>

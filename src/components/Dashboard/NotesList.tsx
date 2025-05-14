@@ -19,7 +19,11 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPatientDisplayName } from "@/lib/utils";
 
-type TestNote = Tables<"test_notes">;
+// Define a more complete TestNote type that includes store_id
+interface TestNote extends Tables<"test_notes"> {
+  store_id?: string | null;
+}
+
 type StoreData = Tables<"stores">;
 
 interface NotesListProps {
@@ -152,6 +156,11 @@ export const NotesList = ({ retryCount, onRetry }: NotesListProps) => {
     );
   }
 
+  // Helper function to get display title for a note
+  const getNoteTitle = (note: TestNote): string => {
+    return note.title || "Onamngiven anteckning";
+  };
+
   return (
     <div className="space-y-4">
       {notes.map((note) => {
@@ -164,7 +173,7 @@ export const NotesList = ({ retryCount, onRetry }: NotesListProps) => {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle>
-                    {getPatientDisplayName(note) || note.title || "Onamngiven anteckning"}
+                    {getNoteTitle(note)}
                   </CardTitle>
                   <CardDescription>
                     Skapad: {new Date(note.created_at).toLocaleDateString('sv-SE')}

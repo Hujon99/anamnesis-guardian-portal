@@ -42,6 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { getPatientDisplayName } from "@/lib/utils";
+import { useStores } from "@/hooks/useStores";
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
@@ -73,9 +74,21 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { deleteEntry, isDeleting } = useEntryMutations(entry.id);
-
-  // Get the appropriate store name - prioritize entry.storeName over the prop
-  const displayStoreName = entry.storeName || storeName || entry.store_id;
+  const { stores } = useStores();
+  
+  // Get the appropriate store name - try all possible sources
+  let displayStoreName = entry.storeName || storeName || null;
+  
+  // If we still don't have a name but have a store_id, look it up from the stores data
+  if (!displayStoreName && entry.store_id && stores.length > 0) {
+    const storeFromHook = stores.find(store => store.id === entry.store_id);
+    if (storeFromHook) {
+      displayStoreName = storeFromHook.name;
+    }
+  }
+  
+  // Final fallback to just show the ID if needed
+  const finalDisplayStoreName = displayStoreName || entry.store_id;
 
   const handleDelete = async () => {
     await deleteEntry(entry.id);
@@ -196,7 +209,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                     <div className="flex items-center gap-1">
                       <Store className="h-3 w-3 text-muted-foreground" />
                       <Badge variant="outline" className="py-0 h-5 bg-primary/5 hover:bg-primary/10">
-                        {displayStoreName}
+                        {finalDisplayStoreName}
                       </Badge>
                     </div>
                   )}

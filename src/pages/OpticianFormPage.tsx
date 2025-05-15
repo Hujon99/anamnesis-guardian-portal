@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useAuth } from "@clerk/clerk-react";
+import { SubmissionMode } from "@/hooks/useFormSubmissionManager";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -236,11 +237,14 @@ const OpticianFormPage = () => {
     return null; // Don't render anything until auth state is confirmed
   }
   
+  // Ensure mode is properly typed as SubmissionMode
+  const formMode: SubmissionMode = (mode === "optician") ? "optician" : "patient";
+  
   console.log("[OpticianFormPage]: Rendering form. mode:", mode);
   return (
     <BaseFormPage 
       token={token}
-      mode={mode || undefined}
+      mode={formMode}
       hideAutoSave={true}
       hideCopyLink={true}
       onError={handleSubmissionError}

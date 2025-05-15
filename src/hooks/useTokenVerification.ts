@@ -28,9 +28,10 @@ interface UseTokenVerificationResult {
 }
 
 export const useTokenVerification = (token: string | null): UseTokenVerificationResult => {
+  // Always initialize all states to consistent values regardless of token
   const { supabase, isReady: isSupabaseReady } = useSupabaseClient();
-  const [loading, setLoading] = useState(true);
-  const [formLoading, setFormLoading] = useState(true);
+  const [loading, setLoading] = useState(!!token); // Only show loading if we have a token
+  const [formLoading, setFormLoading] = useState(!!token);
   const [isFullyLoaded, setIsFullyLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState("");
@@ -74,6 +75,13 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     // Clean reset of all state and refs
     console.log("[useTokenVerification/init]: Initializing with token:", token ? `${token.substring(0, 6)}...` : "null");
     
+    // If no token, set appropriate initial state
+    if (!token) {
+      setLoading(false);
+      setFormLoading(false);
+      return;
+    }
+    
     circuitBrokenRef.current = false;
     requestInProgressRef.current = false;
     isVerifyingRef.current = false;
@@ -86,6 +94,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     
     setRetryCount(0);
     setFormLoading(true);
+    setLoading(true);
     setIsFullyLoaded(false);
     setError(null);
     setErrorCode("");
@@ -102,6 +111,9 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
 
   // Add a forced timeout to set isFullyLoaded=true if conditions seem right but it's not getting set
   useEffect(() => {
+    // If we don't have a token, skip this effect
+    if (!token) return;
+    
     // If we have the essential data but isFullyLoaded is still false
     if (!isFullyLoaded && 
         !loading && 
@@ -130,10 +142,13 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       
       return () => clearTimeout(forceFullyLoadedTimer);
     }
-  }, [formTemplate, entryData, error, expired, submitted, loading, formLoading, isFullyLoaded]);
+  }, [token, formTemplate, entryData, error, expired, submitted, loading, formLoading, isFullyLoaded]);
 
   // Unified status tracking - ensure we've met all conditions to mark as fully loaded
   useEffect(() => {
+    // If no token, skip this effect
+    if (!token) return;
+    
     const now = Date.now();
     const timeSinceLastVerification = now - lastVerificationTimeRef.current;
     const verificationStable = timeSinceLastVerification > verificationCooldownMs;
@@ -168,11 +183,16 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         stableFormDataRef.current = false;
       }
     }
-  }, [loading, formTemplateLoading, formTemplateSuccess, formTemplate, entryData, error, expired, submitted]);
+  }, [token, loading, formTemplateLoading, formTemplateSuccess, formTemplate, entryData, error, expired, submitted]);
   
   // Function to handle retrying the verification process
   const handleRetry = () => {
     console.log("[useTokenVerification/handleRetry]: Manually initiated retry");
+    
+    if (!token) {
+      console.log("[useTokenVerification/handleRetry]: No token to verify, skipping retry");
+      return;
+    }
     
     // Don't retry if a request is already in progress
     if (requestInProgressRef.current || isVerifyingRef.current) {
@@ -213,6 +233,14 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   
   // Primary effect to verify the token and fetch entry data
   useEffect(() => {
+    // If we don't have a token, skip verification completely
+    if (!token) {
+      // Set appropriate state for no token
+      setLoading(false);
+      setFormLoading(false);
+      return;
+    }
+    
     // Skip if verification already completed successfully
     if (isFullyLoaded && entryData && formTemplate) {
       console.log("[useTokenVerification]: Already fully loaded, skipping verification");
@@ -478,6 +506,9 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
 
   // Second effect - monitor the form template loading status
   useEffect(() => {
+    // If no token, skip this effect
+    if (!token) return;
+    
     // Only process if we've already verified the token (loading is false)
     if (loading || !entryData) {
       return;
@@ -497,12 +528,30 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       isVerifyingRef.current = false;
       // formLoading will be set to false when all conditions are met in the unified state tracking effect
     }
-  }, [formTemplateError, formTemplateSuccess, formTemplate, loading, entryData]);
+  }, [token, formTemplateError, formTemplateSuccess, formTemplate, loading, entryData]);
   
+  // Return appropriate state for null token
+  if (!token) {
+    return {
+      loading: false,
+      formLoading: false,
+      error: null,
+      errorCode: "",
+      diagnosticInfo: "",
+      expired: false,
+      submitted: false,
+      formTemplate: null,
+      entryData: null,
+      handleRetry,
+      isFullyLoaded: false
+    };
+  }
+  
+  // Return normal state for valid token
   return {
-    loading: loading || tokenManager.isVerifying,
-    formLoading: formLoading || formTemplateLoading || loading || tokenManager.isVerifying || isVerifyingRef.current,
-    error: error || tokenManager.verificationError,
+    loading,
+    formLoading,
+    error,
     errorCode,
     diagnosticInfo,
     expired,

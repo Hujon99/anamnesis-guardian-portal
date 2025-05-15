@@ -4,8 +4,8 @@
  * It allows opticians to generate an immediate form for walk-in customers
  * without creating a patient record first.
  * Uses the organization-specific form template.
- * Enhanced with longer token validity period (72 hours) for better user experience
- * and improved token persistence for reliable form access.
+ * Enhanced with longer token validity period (72 hours) for better user experience,
+ * improved token persistence for reliable form access, and better error handling.
  */
 
 import { useState, useEffect } from "react";
@@ -98,6 +98,12 @@ export function DirectFormButton() {
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(); // 72 hours from now
       console.log("[DirectFormButton]: Token will expire at:", expiresAt);
 
+      // Store the token in localStorage immediately to ensure it's available
+      // even if there's a navigation issue after the API call
+      localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
+      localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
+      console.log("[DirectFormButton]: Token saved to localStorage before API call");
+
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
@@ -116,46 +122,55 @@ export function DirectFormButton() {
 
       if (error) {
         console.error("[DirectFormButton]: Error creating direct form entry:", error);
+        // Remove the stored token on error
+        localStorage.removeItem(DIRECT_FORM_TOKEN_KEY);
+        localStorage.removeItem(DIRECT_FORM_MODE_KEY);
         throw error;
       }
       
-      // Store the token in localStorage for later retrieval
-      // This ensures we don't lose the token during navigation
-      localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
-      localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
-      
-      console.log("[DirectFormButton]: Token saved to localStorage");
-      
-      // Log the URL that will be used for navigation
-      const baseUrl = window.location.origin;
-      console.log("[DirectFormButton]: Will navigate to:", `${baseUrl}/optician-form?token=${accessToken}&mode=optician`);
-      
-      return data;
-    },
-    onSuccess: (data) => {
-      console.log("[DirectFormButton]: Direct form entry created successfully:", data);
-      
-      // Get the token from localStorage or use the one from the response
-      const token = localStorage.getItem(DIRECT_FORM_TOKEN_KEY) || data.access_token;
-      
-      // Double-check the token is stored before navigating
-      if (!localStorage.getItem(DIRECT_FORM_TOKEN_KEY)) {
-        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, token);
+      // Double-check that token is still in localStorage
+      const storedToken = localStorage.getItem(DIRECT_FORM_TOKEN_KEY);
+      if (!storedToken) {
+        console.log("[DirectFormButton]: Token missing from localStorage after API call, restoring");
+        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
         localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
-        console.log("[DirectFormButton]: Token re-saved to localStorage before navigation");
       }
       
-      // Navigate to the optician form page with the token
-      navigate(`/optician-form?token=${token}&mode=optician`);
+      console.log("[DirectFormButton]: Direct form entry created successfully, token in localStorage");
       
-      toast({
-        title: "Formulär skapat",
-        description: "Direkt ifyllningsformulär förberett",
-      });
+      return {
+        data,
+        accessToken
+      };
+    },
+    onSuccess: (result) => {
+      const { accessToken } = result;
+      console.log("[DirectFormButton]: Direct form entry created successfully");
+      
+      // Small delay before navigation to ensure localStorage is set
+      setTimeout(() => {
+        // Double-check token is in localStorage
+        const storedToken = localStorage.getItem(DIRECT_FORM_TOKEN_KEY);
+        if (!storedToken) {
+          console.log("[DirectFormButton]: Token missing from localStorage before navigation, restoring");
+          localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
+          localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
+        }
+        
+        // Navigate to form page with token as URL parameter
+        console.log("[DirectFormButton]: Navigating to form page");
+        navigate(`/optician-form?token=${accessToken}&mode=optician`);
+        
+        toast({
+          title: "Formulär skapat",
+          description: "Direkt ifyllningsformulär förberett",
+        });
+      }, 100);
     },
     onError: (error: any) => {
       console.error("[DirectFormButton]: Error creating direct form:", error);
       setHasError(true);
+      setIsLoading(false);
       
       toast({
         title: "Fel vid skapande av formulär",
@@ -186,6 +201,12 @@ export function DirectFormButton() {
         } else {
           setIsLoading(false);
           setHasError(true);
+          
+          toast({
+            title: "Fel vid laddning av formulärmall",
+            description: "Kunde inte ladda formulärmallen, kontrollera din internetanslutning och försök igen",
+            variant: "destructive",
+          });
         }
       });
     } else {

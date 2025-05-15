@@ -19,12 +19,52 @@ import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useAuth } from "@clerk/clerk-react";
 import { SubmissionMode } from "@/hooks/useFormSubmissionManager";
+import { ErrorBoundary } from "react-error-boundary";
 
 // Constants for localStorage keys
 const DIRECT_FORM_TOKEN_KEY = 'opticianDirectFormToken';
 const DIRECT_FORM_MODE_KEY = 'opticianDirectFormMode';
 const AUTH_RETURN_URL_KEY = 'opticianFormReturnUrl';
 const AUTH_SAVED_TOKEN_KEY = 'opticianFormToken';
+
+// Error fallback component for error boundary
+const ErrorFallback = ({ error, resetErrorBoundary }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <Card className="w-full max-w-3xl mx-auto p-6">
+      <CardContent className="space-y-6 pt-6">
+        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+          <div className="bg-red-100 p-4 rounded-full">
+            <AlertCircle className="h-8 w-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-red-600">Ett fel har uppstått</h2>
+          <p className="text-gray-700 max-w-lg">
+            {error.message || "Ett oväntat fel uppstod vid laddning av sidan."}
+          </p>
+          
+          <div className="flex flex-col gap-3 w-full max-w-md pt-4">
+            <Button 
+              onClick={resetErrorBoundary}
+              variant="default"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Försök igen
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/dashboard")}
+              className="w-full"
+            >
+              Återgå till dashboard
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -48,12 +88,15 @@ const OpticianFormPage = () => {
   const tokenRef = useRef<string | null>(null);
   const modeRef = useRef<string | null>(null);
   const initAttemptedRef = useRef<boolean>(false);
+  const navigationInProgressRef = useRef<boolean>(false);
   
   // Log component mount for debugging
   useEffect(() => {
     console.log("[OpticianFormPage]: Component mounted");
     return () => {
       console.log("[OpticianFormPage]: Component unmounted");
+      // Reset navigation flag on unmount to prevent stale references
+      navigationInProgressRef.current = false;
     };
   }, []);
 
@@ -106,7 +149,17 @@ const OpticianFormPage = () => {
         modeRef.current = storedMode;
         
         // If found in localStorage but not in URL, update URL for better UX
-        navigate(`/optician-form?token=${storedToken}&mode=${storedMode}`, { replace: true });
+        // Note: We're using a ref to track navigation to avoid multiple navigation attempts
+        if (!navigationInProgressRef.current) {
+          navigationInProgressRef.current = true;
+          console.log("[OpticianFormPage]: Updating URL with token from localStorage");
+          
+          // Use setTimeout to delay navigation until after the current render cycle
+          setTimeout(() => {
+            navigate(`/optician-form?token=${storedToken}&mode=${storedMode}`, { replace: true });
+            navigationInProgressRef.current = false;
+          }, 0);
+        }
         
         setIsInitializing(false);
         return true;
@@ -129,8 +182,17 @@ const OpticianFormPage = () => {
         localStorage.setItem(DIRECT_FORM_TOKEN_KEY, authToken);
         localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
         
-        // Update URL for better UX
-        navigate(`/optician-form?token=${authToken}&mode=optician`, { replace: true });
+        // Update URL for better UX, using the same navigation safety pattern
+        if (!navigationInProgressRef.current) {
+          navigationInProgressRef.current = true;
+          console.log("[OpticianFormPage]: Updating URL with token from auth localStorage");
+          
+          // Use setTimeout to delay navigation until after the current render cycle
+          setTimeout(() => {
+            navigate(`/optician-form?token=${authToken}&mode=optician`, { replace: true });
+            navigationInProgressRef.current = false;
+          }, 0);
+        }
         
         setIsInitializing(false);
         return true;
@@ -182,8 +244,10 @@ const OpticianFormPage = () => {
         localStorage.setItem(AUTH_SAVED_TOKEN_KEY, token);
       }
       
-      // Redirect to sign in
-      navigate("/sign-in");
+      // Use setTimeout to delay navigation until after render cycle
+      setTimeout(() => {
+        navigate("/sign-in");
+      }, 0);
     }
   }, [isAuthLoaded, isSignedIn, mode, navigate, isRedirecting, token, isInitializing]);
 
@@ -243,7 +307,13 @@ const OpticianFormPage = () => {
           localStorage.setItem(DIRECT_FORM_MODE_KEY, returnMode || 'optician');
           
           // Navigate to the same route but with the parameters restored
-          navigate(`/optician-form?token=${returnToken}&mode=${returnMode || "optician"}`, { replace: true });
+          if (!navigationInProgressRef.current) {
+            navigationInProgressRef.current = true;
+            setTimeout(() => {
+              navigate(`/optician-form?token=${returnToken}&mode=${returnMode || "optician"}`, { replace: true });
+              navigationInProgressRef.current = false;
+            }, 0);
+          }
         } else {
           // If we somehow lost the token, navigate back to dashboard
           console.error("[OpticianFormPage]: Failed to restore token, redirecting to dashboard");
@@ -254,9 +324,9 @@ const OpticianFormPage = () => {
   }, [isAuthLoaded, isSignedIn, token, navigate, isInitializing]);
   
   // ===== TOKEN VERIFICATION =====
-  // Use the token verification hook to check token validity
-  // Use the ref value to ensure consistent token throughout component lifecycle
-  const tokenVerification = token ? useTokenVerification(token) : null;
+  // IMPORTANT: Always call useTokenVerification regardless of token state
+  // to avoid React's "Rendered more hooks than during the previous render" error
+  const tokenVerification = useTokenVerification(token);
   
   // Handler for submission errors
   const handleSubmissionError = (error: SubmissionError) => {
@@ -488,14 +558,23 @@ const OpticianFormPage = () => {
     );
   }
   
+  // Wrap in ErrorBoundary for better error handling
   return (
-    <BaseFormPage 
-      token={effectiveToken}
-      mode={formMode}
-      hideAutoSave={true}
-      hideCopyLink={true}
-      onError={handleSubmissionError}
-    />
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onReset={() => {
+        // Reset error boundary and try to reload the page
+        window.location.reload();
+      }}
+    >
+      <BaseFormPage 
+        token={effectiveToken}
+        mode={formMode}
+        hideAutoSave={true}
+        hideCopyLink={true}
+        onError={handleSubmissionError}
+      />
+    </ErrorBoundary>
   );
 };
 

@@ -4,6 +4,7 @@
  * It checks if a token is valid, not expired, and returns the associated entry and form template.
  * Enhanced with improved error reporting, logging, SQL safety, debouncing, and
  * better cache control to prevent excessive verification attempts.
+ * Also includes better handling of missing or invalid tokens.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";

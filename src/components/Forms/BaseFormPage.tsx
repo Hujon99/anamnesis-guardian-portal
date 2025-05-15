@@ -13,6 +13,7 @@ import { useFormSubmissionManager, SubmissionMode } from "@/hooks/useFormSubmiss
 import { useFormStateManager } from "@/hooks/useFormStateManager";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { SubmissionError } from "@/hooks/useFormSubmission";
+import { ErrorBoundary } from "react-error-boundary";
 
 // Import status cards
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
@@ -29,6 +30,46 @@ import AutoSaveIndicator from "@/components/PatientForm/AutoSaveIndicator";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+// Error fallback component for error boundary
+const FormErrorFallback = ({ error, resetErrorBoundary }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <Card className="w-full max-w-3xl mx-auto p-6">
+      <CardContent className="space-y-6 pt-6">
+        <div className="flex flex-col items-center justify-center space-y-4 text-center">
+          <div className="bg-red-100 p-4 rounded-full">
+            <AlertCircle className="h-8 w-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-red-600">Ett fel har uppstått</h2>
+          <p className="text-gray-700 max-w-lg">
+            {error.message || "Ett oväntat fel uppstod vid laddning av formuläret."}
+          </p>
+          
+          <div className="flex flex-col gap-3 w-full max-w-md pt-4">
+            <Button 
+              onClick={resetErrorBoundary}
+              variant="default"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Försök igen
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/dashboard")}
+              className="w-full"
+            >
+              Återgå till dashboard
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 interface BaseFormPageProps {
   token: string | null;
@@ -64,6 +105,18 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       console.log("[BaseFormPage]: Unmounting");
     };
   }, [token, mode]);
+  
+  // If no token, show missing token error immediately
+  if (!token) {
+    return (
+      <ErrorCard 
+        error="Ingen åtkomsttoken hittades"
+        errorCode="missing_token"
+        diagnosticInfo="Token parameter saknas i URL:en eller i localStorage"
+        onRetry={() => window.location.href = "/dashboard"}
+      />
+    );
+  }
   
   // Use token verification hook with retry counter
   const { 
@@ -359,40 +412,48 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       
       // Default form UI
       return (
-        <div className="space-y-4" key={formKey}>
-          {/* Show info card for magic link entries */}
-          {showBookingInfo && isMagicLink && (
-            <BookingInfoCard 
-              firstName={firstName}
-              bookingId={bookingId}
-              bookingDate={bookingDate}
-              storeId={storeId}
-            />
-          )}
-          
-          <Card>
-            <CardContent className="p-0">
-              <FormContainer
-                formTemplate={formTemplate.schema}
-                onSubmit={handleSubmitWithFormTemplate}
-                isSubmitting={isSubmitting}
-                isOpticianMode={mode === 'optician'}
-                initialValues={currentFormValues}
-                createdByName={createdByName}
-                onFormValuesChange={handleFormValuesChange}
+        <ErrorBoundary
+          FallbackComponent={FormErrorFallback}
+          onReset={() => {
+            // Reset error boundary and retry loading
+            handleEnhancedRetry();
+          }}
+        >
+          <div className="space-y-4" key={formKey}>
+            {/* Show info card for magic link entries */}
+            {showBookingInfo && isMagicLink && (
+              <BookingInfoCard 
+                firstName={firstName}
+                bookingId={bookingId}
+                bookingDate={bookingDate}
+                storeId={storeId}
               />
-            </CardContent>
+            )}
             
-            <CardFooter className="flex justify-between pt-0 pb-4 px-6">
-              {!hideAutoSave && (
-                <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
-              )}
-              {!hideCopyLink && (
-                <CopyLinkButton />
-              )}
-            </CardFooter>
-          </Card>
-        </div>
+            <Card>
+              <CardContent className="p-0">
+                <FormContainer
+                  formTemplate={formTemplate.schema}
+                  onSubmit={handleSubmitWithFormTemplate}
+                  isSubmitting={isSubmitting}
+                  isOpticianMode={mode === 'optician'}
+                  initialValues={currentFormValues}
+                  createdByName={createdByName}
+                  onFormValuesChange={handleFormValuesChange}
+                />
+              </CardContent>
+              
+              <CardFooter className="flex justify-between pt-0 pb-4 px-6">
+                {!hideAutoSave && (
+                  <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
+                )}
+                {!hideCopyLink && (
+                  <CopyLinkButton />
+                )}
+              </CardFooter>
+            </Card>
+          </div>
+        </ErrorBoundary>
       );
   }
 };

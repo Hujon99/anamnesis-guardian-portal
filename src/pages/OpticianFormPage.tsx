@@ -4,6 +4,7 @@
  * It extends the patient form functionality but shows additional comment fields 
  * and manages the form submission with the appropriate status for optician completion.
  * Enhanced with better error handling and recovery options for token-related issues.
+ * Includes a delayed mode check to prevent premature redirects from URL parameter timing issues.
  */
 
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -24,15 +25,49 @@ const OpticianFormPage = () => {
   const { toast } = useToast();
   const [tokenError, setTokenError] = useState<SubmissionError | null>(null);
   
-  // Verify that this is indeed an optician mode form
-  const isOpticianMode = mode === "optician";
+  // Add state variables for delayed mode check
+  const [hasCheckedMode, setHasCheckedMode] = useState(false);
+  const [paramMode, setParamMode] = useState<string | null>(null);
   
-  // If not in optician mode, redirect to dashboard
+  // Debug log when component mounts
   useEffect(() => {
-    if (!isOpticianMode) {
-      navigate("/dashboard");
+    console.log("[OpticianFormPage]: Initial mount with token:", token ? token.substring(0, 6) + "..." : "none");
+    console.log("[OpticianFormPage]: Initial mode parameter:", mode);
+  }, [token, mode]);
+  
+  // Delayed check of the mode parameter
+  useEffect(() => {
+    // Use setTimeout to delay the mode check
+    const timeoutId = setTimeout(() => {
+      console.log("[OpticianFormPage]: Running delayed mode check, current mode:", searchParams.get("mode"));
+      
+      // Update state with the current URL parameter values
+      const currentMode = searchParams.get("mode");
+      setParamMode(currentMode);
+      setHasCheckedMode(true);
+      
+      console.log("[OpticianFormPage]: Mode check completed, paramMode set to:", currentMode);
+    }, 200); // 200ms delay
+    
+    // Cleanup timeout on unmount
+    return () => clearTimeout(timeoutId);
+  }, [searchParams]);
+  
+  // Separate effect for redirection based on the delayed mode check
+  useEffect(() => {
+    // Only proceed with redirection if we've completed the delayed check
+    if (hasCheckedMode) {
+      console.log("[OpticianFormPage]: Checking if redirect needed. paramMode:", paramMode);
+      
+      // If not in optician mode, redirect to dashboard
+      if (paramMode !== "optician") {
+        console.log("[OpticianFormPage]: Redirecting to dashboard. Mode is not 'optician'.");
+        navigate("/dashboard");
+      } else {
+        console.log("[OpticianFormPage]: No redirection needed. Mode is 'optician'.");
+      }
     }
-  }, [isOpticianMode, navigate]);
+  }, [hasCheckedMode, paramMode, navigate]);
   
   // Handler for submission errors
   const handleSubmissionError = (error: SubmissionError) => {
@@ -85,7 +120,11 @@ const OpticianFormPage = () => {
     );
   }
   
-  return (
+  // Only render the form if we've verified we're in optician mode
+  // or if we haven't completed the check yet
+  const isOpticianMode = paramMode === "optician" || !hasCheckedMode;
+  
+  return isOpticianMode ? (
     <BaseFormPage 
       token={token}
       mode="optician"
@@ -93,7 +132,7 @@ const OpticianFormPage = () => {
       hideCopyLink={true}
       onError={handleSubmissionError}
     />
-  );
+  ) : null;
 };
 
 export default OpticianFormPage;

@@ -74,6 +74,9 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { deleteEntry, isDeleting } = useEntryMutations(entry.id);
 
+  // Get the appropriate store name - prioritize entry.storeName over the prop
+  const displayStoreName = entry.storeName || storeName || entry.store_id;
+
   const handleDelete = async () => {
     await deleteEntry(entry.id);
     if (onDelete) onDelete();
@@ -188,12 +191,12 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                     </span>
                   )}
                   
-                  {/* Display store name or ID if available */}
+                  {/* Display store name or ID if available, with improved styling */}
                   {entry.store_id && (
                     <div className="flex items-center gap-1">
                       <Store className="h-3 w-3 text-muted-foreground" />
-                      <Badge variant="outline" className="py-0 h-5 bg-primary/5">
-                        {storeName || entry.store_id}
+                      <Badge variant="outline" className="py-0 h-5 bg-primary/5 hover:bg-primary/10">
+                        {displayStoreName}
                       </Badge>
                     </div>
                   )}

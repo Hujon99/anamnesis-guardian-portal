@@ -3,8 +3,8 @@
  * This page renders a form specifically for opticians to fill out anamnesis forms for patients.
  * It extends the patient form functionality but shows additional comment fields 
  * and manages the form submission with the appropriate status for optician completion.
- * Enhanced with better error handling and recovery options for token-related issues.
- * Handles its own authentication checks to prevent token loss during redirection.
+ * Enhanced with better error handling, token persistence mechanisms,
+ * and recovery options for token-related issues.
  */
 
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -20,6 +20,12 @@ import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useAuth } from "@clerk/clerk-react";
 import { SubmissionMode } from "@/hooks/useFormSubmissionManager";
 
+// Constants for localStorage keys
+const DIRECT_FORM_TOKEN_KEY = 'opticianDirectFormToken';
+const DIRECT_FORM_MODE_KEY = 'opticianDirectFormMode';
+const AUTH_RETURN_URL_KEY = 'opticianFormReturnUrl';
+const AUTH_SAVED_TOKEN_KEY = 'opticianFormToken';
+
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
   const initialToken = searchParams.get("token");
@@ -30,51 +36,136 @@ const OpticianFormPage = () => {
   const [tokenError, setTokenError] = useState<SubmissionError | null>(null);
   
   // Store token and mode in state to prevent loss during re-renders
-  const [token, setToken] = useState<string | null>(initialToken);
-  const [mode, setMode] = useState<string | null>(initialMode);
+  const [token, setToken] = useState<string | null>(null);
+  const [mode, setMode] = useState<string | null>(null);
   
   // Add authentication state from Clerk
   const { isLoaded: isAuthLoaded, isSignedIn, userId } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // Create a ref to prevent token from being lost during renders
-  const tokenRef = useRef<string | null>(initialToken);
+  const tokenRef = useRef<string | null>(null);
+  const modeRef = useRef<string | null>(null);
+  const initAttemptedRef = useRef<boolean>(false);
   
-  // Ensure the token is preserved throughout the component lifecycle
+  // Log component mount for debugging
   useEffect(() => {
-    if (initialToken) {
-      console.log("[OpticianFormPage]: Initializing with token:", initialToken.substring(0, 6) + "...");
-      setToken(initialToken);
-      tokenRef.current = initialToken;
-    } else {
-      console.log("[OpticianFormPage]: No initial token provided");
-    }
-    
-    if (initialMode) {
-      console.log("[OpticianFormPage]: Initializing with mode:", initialMode);
-      setMode(initialMode);
-    }
-  }, [initialToken, initialMode]);
+    console.log("[OpticianFormPage]: Component mounted");
+    return () => {
+      console.log("[OpticianFormPage]: Component unmounted");
+    };
+  }, []);
 
+  // ===== TOKEN INITIALIZATION LOGIC =====
+  // This effect runs once on component mount to initialize the token
+  // It considers all possible token sources in order of priority
+  useEffect(() => {
+    // Skip if we've already attempted initialization
+    if (initAttemptedRef.current) return;
+    
+    initAttemptedRef.current = true;
+    console.log("[OpticianFormPage]: Initializing token...");
+    
+    const initializeToken = () => {
+      // 1. First check URL params (highest priority)
+      if (initialToken) {
+        console.log("[OpticianFormPage]: Using token from URL params:", initialToken.substring(0, 6) + "...");
+        setToken(initialToken);
+        tokenRef.current = initialToken;
+        
+        // Also save to localStorage as a backup
+        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, initialToken);
+        
+        if (initialMode) {
+          console.log("[OpticianFormPage]: Using mode from URL params:", initialMode);
+          setMode(initialMode);
+          modeRef.current = initialMode;
+          localStorage.setItem(DIRECT_FORM_MODE_KEY, initialMode);
+        } else {
+          // Default to optician mode if not specified
+          setMode('optician');
+          modeRef.current = 'optician';
+          localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
+        }
+        
+        setIsInitializing(false);
+        return true;
+      }
+      
+      // 2. Check localStorage for direct form token (saved by DirectFormButton)
+      const storedToken = localStorage.getItem(DIRECT_FORM_TOKEN_KEY);
+      if (storedToken) {
+        console.log("[OpticianFormPage]: Using token from localStorage:", storedToken.substring(0, 6) + "...");
+        setToken(storedToken);
+        tokenRef.current = storedToken;
+        
+        const storedMode = localStorage.getItem(DIRECT_FORM_MODE_KEY) || 'optician';
+        console.log("[OpticianFormPage]: Using mode from localStorage:", storedMode);
+        setMode(storedMode);
+        modeRef.current = storedMode;
+        
+        // If found in localStorage but not in URL, update URL for better UX
+        navigate(`/optician-form?token=${storedToken}&mode=${storedMode}`, { replace: true });
+        
+        setIsInitializing(false);
+        return true;
+      }
+      
+      // 3. Check auth-specific localStorage (from post-authentication return)
+      const authToken = localStorage.getItem(AUTH_SAVED_TOKEN_KEY);
+      if (authToken) {
+        console.log("[OpticianFormPage]: Using token from auth localStorage:", authToken.substring(0, 6) + "...");
+        setToken(authToken);
+        tokenRef.current = authToken;
+        setMode('optician');
+        modeRef.current = 'optician';
+        
+        // Clear auth storage to prevent reuse
+        localStorage.removeItem(AUTH_SAVED_TOKEN_KEY);
+        localStorage.removeItem(AUTH_RETURN_URL_KEY);
+        
+        // Also save to regular localStorage as backup
+        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, authToken);
+        localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
+        
+        // Update URL for better UX
+        navigate(`/optician-form?token=${authToken}&mode=optician`, { replace: true });
+        
+        setIsInitializing(false);
+        return true;
+      }
+      
+      // If we get here, we couldn't find a token
+      console.log("[OpticianFormPage]: No token found in any storage location");
+      setIsInitializing(false);
+      return false;
+    };
+    
+    // Attempt to initialize token
+    initializeToken();
+  }, [initialToken, initialMode, navigate]);
+  
   // Debug logging
   useEffect(() => {
-    console.log("[OpticianFormPage]: Component mounted with params:", { 
-      token: token ? `${token.substring(0, 6)}...` : "none", 
-      tokenRef: tokenRef.current ? `${tokenRef.current.substring(0, 6)}...` : "none",
-      initialToken: initialToken ? `${initialToken.substring(0, 6)}...` : "none",
-      mode, 
-      debug,
-      isAuthLoaded,
-      isSignedIn
-    });
-  }, [token, mode, debug, isAuthLoaded, isSignedIn, initialToken]);
+    if (!isInitializing) {
+      console.log("[OpticianFormPage]: Initialized with:", { 
+        token: token ? `${token.substring(0, 6)}...` : "none", 
+        tokenRef: tokenRef.current ? `${tokenRef.current.substring(0, 6)}...` : "none",
+        mode, 
+        debug,
+        isAuthLoaded,
+        isSignedIn
+      });
+    }
+  }, [token, mode, debug, isAuthLoaded, isSignedIn, isInitializing]);
 
-  // Directly use the token verification hook to check token validity
-  // Use the ref value to ensure consistent token throughout component lifecycle
-  const tokenVerification = tokenRef.current ? useTokenVerification(tokenRef.current) : null;
-  
-  // Handle redirecting to login if needed for optician authentication
+  // ===== AUTHENTICATION HANDLING =====
+  // Handle redirecting to login if needed for optician authentication  
   useEffect(() => {
+    // Only proceed if initialization is complete
+    if (isInitializing) return;
+    
     if (isAuthLoaded && !isSignedIn && mode === "optician" && !isRedirecting) {
       // If we're in optician mode but not signed in, we need to redirect to login
       // but save the current URL so we can come back later
@@ -84,24 +175,27 @@ const OpticianFormPage = () => {
       setIsRedirecting(true);
       
       // Store the current URL to return after login
-      localStorage.setItem("opticianFormReturnUrl", currentUrl);
+      localStorage.setItem(AUTH_RETURN_URL_KEY, currentUrl);
       
       // Store the token separately for extra safety
-      if (tokenRef.current) {
-        localStorage.setItem("opticianFormToken", tokenRef.current);
+      if (token) {
+        localStorage.setItem(AUTH_SAVED_TOKEN_KEY, token);
       }
       
       // Redirect to sign in
       navigate("/sign-in");
     }
-  }, [isAuthLoaded, isSignedIn, mode, navigate, isRedirecting]);
+  }, [isAuthLoaded, isSignedIn, mode, navigate, isRedirecting, token, isInitializing]);
 
   // Check if we're returning from authentication
   useEffect(() => {
-    // Only run if the user is now authenticated
+    // Only run if initialization is complete
+    if (isInitializing) return;
+    
+    // Only run if the user is now authenticated but we don't have a token in state
     if (isAuthLoaded && isSignedIn && !token) {
-      const savedUrl = localStorage.getItem("opticianFormReturnUrl");
-      const savedToken = localStorage.getItem("opticianFormToken");
+      const savedUrl = localStorage.getItem(AUTH_RETURN_URL_KEY);
+      const savedToken = localStorage.getItem(AUTH_SAVED_TOKEN_KEY);
       
       console.log("[OpticianFormPage]: Checking for saved session data:", {
         hasSavedUrl: !!savedUrl,
@@ -112,8 +206,8 @@ const OpticianFormPage = () => {
         console.log("[OpticianFormPage]: Returning from authentication");
         
         // Clear the stored data
-        localStorage.removeItem("opticianFormReturnUrl");
-        localStorage.removeItem("opticianFormToken");
+        localStorage.removeItem(AUTH_RETURN_URL_KEY);
+        localStorage.removeItem(AUTH_SAVED_TOKEN_KEY);
         
         let returnToken: string | null = null;
         let returnMode: string | null = "optician";
@@ -142,6 +236,11 @@ const OpticianFormPage = () => {
           setToken(returnToken);
           tokenRef.current = returnToken;
           setMode(returnMode);
+          modeRef.current = returnMode;
+          
+          // Also save to regular localStorage
+          localStorage.setItem(DIRECT_FORM_TOKEN_KEY, returnToken);
+          localStorage.setItem(DIRECT_FORM_MODE_KEY, returnMode || 'optician');
           
           // Navigate to the same route but with the parameters restored
           navigate(`/optician-form?token=${returnToken}&mode=${returnMode || "optician"}`, { replace: true });
@@ -152,7 +251,12 @@ const OpticianFormPage = () => {
         }
       }
     }
-  }, [isAuthLoaded, isSignedIn, token, navigate]);
+  }, [isAuthLoaded, isSignedIn, token, navigate, isInitializing]);
+  
+  // ===== TOKEN VERIFICATION =====
+  // Use the token verification hook to check token validity
+  // Use the ref value to ensure consistent token throughout component lifecycle
+  const tokenVerification = token ? useTokenVerification(token) : null;
   
   // Handler for submission errors
   const handleSubmissionError = (error: SubmissionError) => {
@@ -173,6 +277,7 @@ const OpticianFormPage = () => {
     }
   };
   
+  // ===== ERROR HANDLING =====
   // If there's a token error or token verification returns an error, show a recovery UI
   const hasError = tokenError || (tokenVerification && tokenVerification.error);
   if (hasError) {
@@ -209,6 +314,25 @@ const OpticianFormPage = () => {
     );
   }
   
+  // ===== LOADING STATES =====
+  // Show a loading state while waiting for initialization to complete
+  if (isInitializing) {
+    return (
+      <Card className="w-full max-w-3xl mx-auto p-6">
+        <CardContent className="space-y-6 pt-6 flex flex-col items-center justify-center">
+          <div className="animate-pulse flex flex-col items-center space-y-4">
+            <div className="h-12 w-12 bg-primary/20 rounded-full"></div>
+            <div className="h-4 w-48 bg-primary/20 rounded"></div>
+            <div className="h-3 w-64 bg-gray-200 rounded"></div>
+          </div>
+          <p className="text-gray-500 text-center mt-4">
+            Förbereder formulär...
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   // Show a loading state while waiting for authentication to load
   if ((mode === "optician" && !isAuthLoaded) || isRedirecting) {
     return (
@@ -227,7 +351,7 @@ const OpticianFormPage = () => {
     );
   }
   
-  // No token available - show an error UI
+  // No token available - show an error UI with recovery options
   if (!token && !tokenRef.current) {
     console.error("[OpticianFormPage]: No token available to render form");
     return (
@@ -331,7 +455,7 @@ const OpticianFormPage = () => {
   // Use the token from ref as final fallback
   const effectiveToken = token || tokenRef.current;
   
-  console.log("[OpticianFormPage]: Rendering form. mode:", mode, "token:", effectiveToken ? `${effectiveToken.substring(0, 6)}...` : "missing");
+  console.log("[OpticianFormPage]: Rendering form. mode:", formMode, "token:", effectiveToken ? `${effectiveToken.substring(0, 6)}...` : "missing");
   
   // Final null check before rendering
   if (!effectiveToken) {

@@ -1,3 +1,4 @@
+
 /**
  * This component serves as the base for both patient and optician form pages.
  * It handles common functionality like token verification, loading states,
@@ -38,7 +39,7 @@ interface BaseFormPageProps {
   hideAutoSave?: boolean;
   hideCopyLink?: boolean;
   showBookingInfo?: boolean;
-  onError?: (error: Error) => void; // Add the onError prop to the interface
+  onError?: (error: SubmissionError) => void;
 }
 
 export const BaseFormPage: React.FC<BaseFormPageProps> = ({
@@ -50,7 +51,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   hideAutoSave = false,
   hideCopyLink = false,
   showBookingInfo = false,
-  onError // Add the prop to the component parameters
+  onError
 }) => {
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
@@ -92,7 +93,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   } = useFormSubmissionManager({ 
     token, 
     mode,
-    onSubmissionError: onError // Pass the onError handler to the submission manager
+    onSubmissionError: onError
   });
   
   // Use form state manager

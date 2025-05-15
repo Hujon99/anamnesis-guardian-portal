@@ -4,7 +4,8 @@
  * It allows opticians to generate an immediate form for walk-in customers
  * without creating a patient record first.
  * Uses the organization-specific form template.
- * Enhanced with longer token validity period (72 hours) for better user experience.
+ * Enhanced with longer token validity period (72 hours) for better user experience
+ * and improved token persistence for reliable form access.
  */
 
 import { useState, useEffect } from "react";
@@ -16,6 +17,10 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { FileEdit, Loader2, AlertCircle } from "lucide-react";
 import { useFormTemplate } from "@/hooks/useFormTemplate";
+
+// Key for storing the form token in localStorage
+const DIRECT_FORM_TOKEN_KEY = 'opticianDirectFormToken';
+const DIRECT_FORM_MODE_KEY = 'opticianDirectFormMode';
 
 export function DirectFormButton() {
   const { organization } = useOrganization();
@@ -114,6 +119,13 @@ export function DirectFormButton() {
         throw error;
       }
       
+      // Store the token in localStorage for later retrieval
+      // This ensures we don't lose the token during navigation
+      localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
+      localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
+      
+      console.log("[DirectFormButton]: Token saved to localStorage");
+      
       // Log the URL that will be used for navigation
       const baseUrl = window.location.origin;
       console.log("[DirectFormButton]: Will navigate to:", `${baseUrl}/optician-form?token=${accessToken}&mode=optician`);
@@ -123,8 +135,18 @@ export function DirectFormButton() {
     onSuccess: (data) => {
       console.log("[DirectFormButton]: Direct form entry created successfully:", data);
       
+      // Get the token from localStorage or use the one from the response
+      const token = localStorage.getItem(DIRECT_FORM_TOKEN_KEY) || data.access_token;
+      
+      // Double-check the token is stored before navigating
+      if (!localStorage.getItem(DIRECT_FORM_TOKEN_KEY)) {
+        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, token);
+        localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
+        console.log("[DirectFormButton]: Token re-saved to localStorage before navigation");
+      }
+      
       // Navigate to the optician form page with the token
-      navigate(`/optician-form?token=${data.access_token}&mode=optician`);
+      navigate(`/optician-form?token=${token}&mode=optician`);
       
       toast({
         title: "Formulär skapat",

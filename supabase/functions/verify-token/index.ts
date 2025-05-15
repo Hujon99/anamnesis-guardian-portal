@@ -111,7 +111,9 @@ serve(async (req: Request) => {
           expired: true,
           entry: {
             id: entry.id,
-            expires_at: entry.expires_at
+            organization_id: entry.organization_id, // Include org_id for better debugging
+            expires_at: entry.expires_at,
+            form_id: entry.form_id // Include form_id for potential fallback options
           }
         }),
         { 
@@ -129,6 +131,7 @@ serve(async (req: Request) => {
           submitted: true,
           entry: {
             id: entry.id,
+            organization_id: entry.organization_id,
             status: entry.status,
             submitted_at: entry.updated_at
           }
@@ -166,7 +169,8 @@ serve(async (req: Request) => {
       console.error("Form template not found for organization:", entry.organization_id);
       return new Response(
         JSON.stringify({ 
-          error: 'Form template not found' 
+          error: 'Form template not found',
+          details: `No form template found for organization: ${entry.organization_id}`
         }),
         { 
           status: 404, 
@@ -182,6 +186,7 @@ serve(async (req: Request) => {
     const entryData = {
       id: entry.id,
       organization_id: entry.organization_id,
+      form_id: entry.form_id,
       status: entry.status,
       created_at: entry.created_at,
       updated_at: entry.updated_at,

@@ -28,7 +28,7 @@ interface UseTokenVerificationResult {
 }
 
 export const useTokenVerification = (token: string | null): UseTokenVerificationResult => {
-  // Always initialize all states to consistent values regardless of token
+  // Always initialize all states to consistent values
   const { supabase, isReady: isSupabaseReady } = useSupabaseClient();
   const [loading, setLoading] = useState(!!token); // Only show loading if we have a token
   const [formLoading, setFormLoading] = useState(!!token);
@@ -43,13 +43,22 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const [formId, setFormId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   
+  // CRITICAL: Add stable token reference to prevent losing during re-renders
+  const stableTokenRef = useRef<string | null>(token);
+
+  // CRITICAL: Track verification completion status to prevent repeated verification
+  const verificationCompletedRef = useRef<boolean>(false);
+  
   // Refs for state tracking and debouncing
   const isVerifyingRef = useRef(false);
   const lastVerificationTimeRef = useRef<number>(0);
-  const verificationCooldownMs = 1000; // Increased cooldown period to prevent verification storms
+  const verificationCooldownMs = 2000; // Increased cooldown period to prevent verification storms
   const stableFormDataRef = useRef<boolean>(false);
   const isFullyLoadedAttemptCount = useRef(0);
   const verificationInitiatedRef = useRef(false); // New flag to track if verification has been started
+  
+  // Track instance ID for debugging
+  const instanceIdRef = useRef<string>(`token-verify-${Math.random().toString(36).substring(2, 8)}`);
   
   // Add circuit breaker to prevent infinite retries
   const MAX_RETRIES = 3;
@@ -58,8 +67,20 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const lastErrorRef = useRef<string | null>(null);
   const mountTimeRef = useRef<number>(Date.now());
   
+  // Track the token that was last verified to prevent redundant verifications
+  const lastVerifiedTokenRef = useRef<string | null>(null);
+  
   // Use the token manager hook to validate the token, passing the supabase client
   const tokenManager = useTokenManager(supabase);
+
+  // Update stable token when token changes
+  useEffect(() => {
+    // Only update the stable token ref if the new token is different
+    if (token !== stableTokenRef.current) {
+      console.log(`[useTokenVerification/${instanceIdRef.current}]: Token changed from ${stableTokenRef.current?.substring(0, 6) || 'null'} to ${token?.substring(0, 6) || 'null'}`);
+      stableTokenRef.current = token;
+    }
+  }, [token]);
   
   // Get the form template for the organization
   const { 
@@ -72,47 +93,54 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   
   // Reset circuit breaker when token changes or component remounts
   useEffect(() => {
-    // Clean reset of all state and refs
-    console.log("[useTokenVerification/init]: Initializing with token:", token ? `${token.substring(0, 6)}...` : "null");
+    const effectiveToken = token || stableTokenRef.current;
     
-    // If no token, set appropriate initial state
-    if (!token) {
-      setLoading(false);
-      setFormLoading(false);
-      return;
+    // Only reset if token actually changes or we don't already have a verification result
+    if (lastVerifiedTokenRef.current !== effectiveToken || (!entryData && !error && !expired)) {
+      console.log(`[useTokenVerification/${instanceIdRef.current}/init]: Initializing with token: ${effectiveToken ? effectiveToken.substring(0, 6) + '...' : 'null'}`);
+      
+      // Clean reset ONLY if we've got a new token or no verification has been done
+      if (lastVerifiedTokenRef.current !== effectiveToken) {
+        circuitBrokenRef.current = false;
+        requestInProgressRef.current = false;
+        isVerifyingRef.current = false;
+        stableFormDataRef.current = false;
+        lastErrorRef.current = null;
+        lastVerificationTimeRef.current = 0;
+        isFullyLoadedAttemptCount.current = 0;
+        verificationInitiatedRef.current = false;
+        verificationCompletedRef.current = false;
+        lastVerifiedTokenRef.current = null;
+        mountTimeRef.current = Date.now();
+        
+        setRetryCount(0);
+        setFormLoading(!!effectiveToken);
+        setLoading(!!effectiveToken);
+        setIsFullyLoaded(false);
+        setError(null);
+        setErrorCode("");
+        setDiagnosticInfo("");
+        setExpired(false);
+        setSubmitted(false);
+        setEntryData(null);
+        
+        // Reset token manager state
+        tokenManager.resetVerification();
+      }
     }
-    
-    circuitBrokenRef.current = false;
-    requestInProgressRef.current = false;
-    isVerifyingRef.current = false;
-    stableFormDataRef.current = false;
-    lastErrorRef.current = null;
-    lastVerificationTimeRef.current = 0;
-    isFullyLoadedAttemptCount.current = 0;
-    verificationInitiatedRef.current = false;
-    mountTimeRef.current = Date.now();
-    
-    setRetryCount(0);
-    setFormLoading(true);
-    setLoading(true);
-    setIsFullyLoaded(false);
-    setError(null);
-    setErrorCode("");
-    setDiagnosticInfo("");
-    
-    // Reset token manager state
-    tokenManager.resetVerification();
     
     return () => {
       // Cleanup when unmounting or token changes
-      console.log("[useTokenVerification/cleanup]: Cleaning up verification state");
+      console.log(`[useTokenVerification/${instanceIdRef.current}/cleanup]: Cleaning up verification state`);
     };
   }, [token, tokenManager]);
 
   // Add a forced timeout to set isFullyLoaded=true if conditions seem right but it's not getting set
   useEffect(() => {
+    const effectiveToken = token || stableTokenRef.current;
+    
     // If we don't have a token, skip this effect
-    if (!token) return;
+    if (!effectiveToken) return;
     
     // If we have the essential data but isFullyLoaded is still false
     if (!isFullyLoaded && 
@@ -134,9 +162,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
             !error && 
             !expired && 
             !submitted) {
-          console.log("[useTokenVerification]: Forcing isFullyLoaded=true after conditions held for 1 second");
+          console.log(`[useTokenVerification/${instanceIdRef.current}]: Forcing isFullyLoaded=true after conditions held for 1 second`);
           setIsFullyLoaded(true);
           setFormLoading(false);
+          verificationCompletedRef.current = true;
         }
       }, 1000);
       
@@ -146,8 +175,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
 
   // Unified status tracking - ensure we've met all conditions to mark as fully loaded
   useEffect(() => {
+    const effectiveToken = token || stableTokenRef.current;
+    
     // If no token, skip this effect
-    if (!token) return;
+    if (!effectiveToken) return;
     
     const now = Date.now();
     const timeSinceLastVerification = now - lastVerificationTimeRef.current;
@@ -170,9 +201,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         stableFormDataRef.current = true;
         // Add a small delay to ensure all React updates have propagated
         const stabilityTimer = setTimeout(() => {
-          console.log("[useTokenVerification]: All conditions met and stable, marking as fully loaded");
+          console.log(`[useTokenVerification/${instanceIdRef.current}]: All conditions met and stable, marking as fully loaded`);
           setFormLoading(false);
           setIsFullyLoaded(true);
+          verificationCompletedRef.current = true;
         }, 300);
         
         return () => clearTimeout(stabilityTimer);
@@ -187,16 +219,17 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   
   // Function to handle retrying the verification process
   const handleRetry = () => {
-    console.log("[useTokenVerification/handleRetry]: Manually initiated retry");
+    console.log(`[useTokenVerification/${instanceIdRef.current}/handleRetry]: Manually initiated retry`);
     
-    if (!token) {
-      console.log("[useTokenVerification/handleRetry]: No token to verify, skipping retry");
+    const effectiveToken = token || stableTokenRef.current;
+    if (!effectiveToken) {
+      console.log(`[useTokenVerification/${instanceIdRef.current}/handleRetry]: No token to verify, skipping retry`);
       return;
     }
     
     // Don't retry if a request is already in progress
     if (requestInProgressRef.current || isVerifyingRef.current) {
-      console.log("[useTokenVerification/handleRetry]: Request already in progress, ignoring retry");
+      console.log(`[useTokenVerification/${instanceIdRef.current}/handleRetry]: Request already in progress, ignoring retry`);
       return;
     }
     
@@ -213,6 +246,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     stableFormDataRef.current = false;
     isFullyLoadedAttemptCount.current = 0;
     verificationInitiatedRef.current = false;
+    verificationCompletedRef.current = false;
     
     // Reset verification state
     tokenManager.resetVerification();
@@ -224,6 +258,9 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     requestInProgressRef.current = false;
     isVerifyingRef.current = false;
     
+    // Clear last verified token to force new verification
+    lastVerifiedTokenRef.current = null;
+    
     // Increment retry count to prevent infinite loops
     setRetryCount((prev) => prev + 1);
     
@@ -233,17 +270,25 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   
   // Primary effect to verify the token and fetch entry data
   useEffect(() => {
+    const effectiveToken = token || stableTokenRef.current;
+    
     // If we don't have a token, skip verification completely
-    if (!token) {
+    if (!effectiveToken) {
       // Set appropriate state for no token
       setLoading(false);
       setFormLoading(false);
       return;
     }
     
-    // Skip if verification already completed successfully
-    if (isFullyLoaded && entryData && formTemplate) {
-      console.log("[useTokenVerification]: Already fully loaded, skipping verification");
+    // CRITICAL: Skip if verification is already completed
+    if (verificationCompletedRef.current && entryData && formTemplate) {
+      console.log(`[useTokenVerification/${instanceIdRef.current}]: Verification already completed successfully, skipping`);
+      return;
+    }
+    
+    // Skip if same token was already verified
+    if (lastVerifiedTokenRef.current === effectiveToken && entryData) {
+      console.log(`[useTokenVerification/${instanceIdRef.current}]: Token ${effectiveToken.substring(0, 6)}... was already verified, skipping`);
       return;
     }
     
@@ -264,7 +309,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     
     // Add a guard against too many retries
     if (retryCount > MAX_RETRIES) {
-      console.error("[useTokenVerification]: Too many retry attempts, stopping");
+      console.error(`[useTokenVerification/${instanceIdRef.current}]: Too many retry attempts, stopping`);
       setError("För många försök att läsa in formuläret. Försök igen senare.");
       setErrorCode("too_many_retries");
       setDiagnosticInfo("Maximum retry count exceeded: " + MAX_RETRIES);
@@ -308,7 +353,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       lastVerificationTimeRef.current = Date.now();
       
       try {
-        if (!token) {
+        if (!effectiveToken) {
           setError("Ingen åtkomsttoken angiven");
           setErrorCode("missing_token");
           setLoading(false);
@@ -328,18 +373,18 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           return;
         }
         
-        console.log("[useTokenVerification]: Starting token verification:", token.substring(0, 6) + "...");
+        console.log(`[useTokenVerification/${instanceIdRef.current}]: Starting token verification: ${effectiveToken.substring(0, 6)}...`);
         
         // Check if we already have a cached result
-        const cachedResult = tokenManager.getTokenFromCache(token);
+        const cachedResult = tokenManager.getTokenFromCache(effectiveToken);
         if (cachedResult && 'verificationResult' in cachedResult && cachedResult.verificationResult) {
-          console.log("[useTokenVerification]: Using cached verification result");
+          console.log(`[useTokenVerification/${instanceIdRef.current}]: Using cached verification result`);
           
           const verificationResult = cachedResult.verificationResult;
           
           // Process the cached result
           if (!verificationResult.valid) {
-            console.log("[useTokenVerification]: Cached result shows invalid token");
+            console.log(`[useTokenVerification/${instanceIdRef.current}]: Cached result shows invalid token`);
             const isExpired = 'expired' in verificationResult && verificationResult.expired === true;
             
             if (isExpired) {
@@ -361,7 +406,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           const entry = 'entry' in verificationResult ? verificationResult.entry : null;
           
           if (!entry) {
-            console.error("[useTokenVerification]: Entry not found in cached verification result");
+            console.error(`[useTokenVerification/${instanceIdRef.current}]: Entry not found in cached verification result`);
             setError("Kunde inte hitta anamnesen");
             setErrorCode("entry_not_found");
             setLoading(false);
@@ -373,7 +418,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           
           // Check if submitted
           if (verificationResult.submitted) {
-            console.log("[useTokenVerification]: Cached result shows form already submitted");
+            console.log(`[useTokenVerification/${instanceIdRef.current}]: Cached result shows form already submitted`);
             setSubmitted(true);
             setLoading(false);
             requestInProgressRef.current = false;
@@ -388,6 +433,9 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           // Store the entry data
           setEntryData(entry);
           
+          // Record the verified token
+          lastVerifiedTokenRef.current = effectiveToken;
+          
           // Mark verification as complete
           setLoading(false);
           
@@ -399,11 +447,11 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         }
         
         // No cached result, verify the token directly
-        const verificationResult = await tokenManager.verifyToken(token);
+        const verificationResult = await tokenManager.verifyToken(effectiveToken);
         
         // Handle the different result types with proper type checking
         if (!verificationResult.valid) {
-          console.error("[useTokenVerification]: Token verification failed:", verificationResult.error);
+          console.error(`[useTokenVerification/${instanceIdRef.current}]: Token verification failed:`, verificationResult.error);
           
           // Save the error for future comparison
           lastErrorRef.current = verificationResult.error || "Unknown error";
@@ -417,7 +465,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           } else {
             setError(verificationResult.error || "Ogiltig åtkomsttoken");
             setErrorCode("invalid_token");
-            setDiagnosticInfo(`Token: ${token.substring(0, 6)}..., Error: ${verificationResult.error || "Unknown"}`);
+            setDiagnosticInfo(`Token: ${effectiveToken.substring(0, 6)}..., Error: ${verificationResult.error || "Unknown"}`);
           }
           
           setLoading(false);
@@ -431,7 +479,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         const entry = 'entry' in verificationResult ? verificationResult.entry : null;
         
         if (!entry) {
-          console.error("[useTokenVerification]: Entry not found after successful verification");
+          console.error(`[useTokenVerification/${instanceIdRef.current}]: Entry not found after successful verification`);
           setError("Kunde inte hitta anamnesen");
           setErrorCode("entry_not_found");
           setLoading(false);
@@ -441,13 +489,16 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           return;
         }
         
+        // Record which token was verified
+        lastVerifiedTokenRef.current = effectiveToken;
+        
         // Set organization ID from the entry
         setOrganizationId(entry.organization_id);
         setFormId(entry.form_id);
         
         // Check if the entry already has answers
         if (entry.answers) {
-          console.log("[useTokenVerification]: Entry already has answers, marking as submitted");
+          console.log(`[useTokenVerification/${instanceIdRef.current}]: Entry already has answers, marking as submitted`);
           setSubmitted(true);
           setLoading(false);
           requestInProgressRef.current = false;
@@ -471,7 +522,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         
         // We'll keep isVerifying true until the form template check completes
       } catch (err: any) {
-        console.error("[useTokenVerification]: Error in fetchData:", err);
+        console.error(`[useTokenVerification/${instanceIdRef.current}]: Error in fetchData:`, err);
         
         // If this is a network error, don't break the circuit on first try
         const isNetworkError = err.message?.includes("Failed to fetch") || 
@@ -506,8 +557,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
 
   // Second effect - monitor the form template loading status
   useEffect(() => {
+    const effectiveToken = token || stableTokenRef.current;
+    
     // If no token, skip this effect
-    if (!token) return;
+    if (!effectiveToken) return;
     
     // Only process if we've already verified the token (loading is false)
     if (loading || !entryData) {
@@ -515,7 +568,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     }
     
     if (formTemplateError) {
-      console.error("[useTokenVerification]: Form template error");
+      console.error(`[useTokenVerification/${instanceIdRef.current}]: Form template error`);
       setError("Kunde inte ladda formulärmallen");
       setErrorCode("template_error");
       setFormLoading(false);
@@ -524,14 +577,15 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     
     // When form template is successfully loaded
     if (formTemplateSuccess && formTemplate) {
-      console.log("[useTokenVerification]: Form template loaded successfully");
+      console.log(`[useTokenVerification/${instanceIdRef.current}]: Form template loaded successfully`);
       isVerifyingRef.current = false;
+      verificationCompletedRef.current = true;
       // formLoading will be set to false when all conditions are met in the unified state tracking effect
     }
   }, [token, formTemplateError, formTemplateSuccess, formTemplate, loading, entryData]);
   
   // Return appropriate state for null token
-  if (!token) {
+  if (!token && !stableTokenRef.current) {
     return {
       loading: false,
       formLoading: false,

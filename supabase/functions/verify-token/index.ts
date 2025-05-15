@@ -11,11 +11,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.40.0";
 import { validateRequestAndExtractToken } from "../utils/validationUtils.ts";
 
-// Define CORS headers
+// Define CORS headers with improved cache control
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Cache-Control': 'private, no-cache, no-store, must-revalidate',
   'Pragma': 'no-cache',
   'Expires': '0',
 };
@@ -27,15 +27,16 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Start timestamp for performance monitoring
+    // Generate a unique request ID for tracing
+    const requestId = crypto.randomUUID().substring(0, 8);
     const startTime = Date.now();
-    console.log("Starting verify-token edge function execution");
+    console.log(`[verify-token/${requestId}]: Starting execution`);
     
-    // Extract token from request - now using the validation utility
+    // Extract token from request using the validation utility
     const validationResult = await validateRequestAndExtractToken(req);
     
     if (!validationResult.isValid || !validationResult.token) {
-      console.error("Invalid token request:", validationResult.error);
+      console.error(`[verify-token/${requestId}]: Invalid token request:`, validationResult.error);
       return new Response(
         JSON.stringify({ 
           error: validationResult.error?.message || 'Invalid request', 
@@ -50,7 +51,7 @@ serve(async (req: Request) => {
     }
     
     const token = validationResult.token;
-    console.log("Token extracted and validated:", token.substring(0, 6) + "...");
+    console.log(`[verify-token/${requestId}]: Token extracted and validated: ${token.substring(0, 6)}...`);
     
     // Initialize Supabase client
     const supabase = createClient(
@@ -59,7 +60,7 @@ serve(async (req: Request) => {
     );
     
     if (!supabase) {
-      console.error("Failed to initialize Supabase client");
+      console.error(`[verify-token/${requestId}]: Failed to initialize Supabase client`);
       return new Response(
         JSON.stringify({ error: 'Failed to initialize database client' }),
         { 
@@ -77,7 +78,7 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (entryError) {
-      console.error("Database error fetching entry:", entryError);
+      console.error(`[verify-token/${requestId}]: Database error fetching entry:`, entryError);
       return new Response(
         JSON.stringify({ 
           error: 'Database error', 
@@ -91,10 +92,11 @@ serve(async (req: Request) => {
     }
 
     if (!entry) {
-      console.error("Token not found in database:", token.substring(0, 6) + "...");
+      console.error(`[verify-token/${requestId}]: Token not found in database: ${token.substring(0, 6)}...`);
       return new Response(
         JSON.stringify({ 
-          error: 'Token not found' 
+          error: 'Token not found',
+          requestId
         }),
         { 
           status: 404, 
@@ -105,11 +107,12 @@ serve(async (req: Request) => {
     
     // Check if the entry has expired
     if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
-      console.log("Token expired, expires_at:", entry.expires_at);
+      console.log(`[verify-token/${requestId}]: Token expired, expires_at: ${entry.expires_at}`);
       return new Response(
         JSON.stringify({ 
           error: 'Token expired',
           expired: true,
+          requestId,
           entry: {
             id: entry.id,
             organization_id: entry.organization_id, // Include org_id for better debugging
@@ -126,10 +129,11 @@ serve(async (req: Request) => {
 
     // Check if the form has already been submitted
     if (entry.status === 'submitted') {
-      console.log("Form already submitted, status:", entry.status);
+      console.log(`[verify-token/${requestId}]: Form already submitted, status: ${entry.status}`);
       return new Response(
         JSON.stringify({ 
           submitted: true,
+          requestId,
           entry: {
             id: entry.id,
             organization_id: entry.organization_id,
@@ -153,10 +157,11 @@ serve(async (req: Request) => {
       .limit(1);
 
     if (formError) {
-      console.error("Form template error:", formError);
+      console.error(`[verify-token/${requestId}]: Form template error:`, formError);
       return new Response(
         JSON.stringify({ 
           error: 'Failed to fetch form template',
+          requestId,
           details: formError.message || formError
         }),
         { 
@@ -167,10 +172,11 @@ serve(async (req: Request) => {
     }
 
     if (!formTemplates || formTemplates.length === 0) {
-      console.error("Form template not found for organization:", entry.organization_id);
+      console.error(`[verify-token/${requestId}]: Form template not found for organization: ${entry.organization_id}`);
       return new Response(
         JSON.stringify({ 
           error: 'Form template not found',
+          requestId,
           details: `No form template found for organization: ${entry.organization_id}`
         }),
         { 
@@ -204,24 +210,31 @@ serve(async (req: Request) => {
     
     // Log performance
     const duration = Date.now() - startTime;
-    console.log(`Token verification successful, took ${duration}ms`);
+    console.log(`[verify-token/${requestId}]: Token verification successful, took ${duration}ms`);
     
     // Return success with form template and entry data
     return new Response(
       JSON.stringify({ 
         verified: true,
+        requestId,
         formTemplate: formTemplate?.schema,
         entry: entryData
       }),
       { 
         status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: {
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          // Add cache-control header to encourage browsers to cache successful results
+          'Cache-Control': 'private, max-age=60' // Cache for 1 minute
+        } 
       }
     );
   } catch (err) {
     // Format error message based on type
     let errorMessage = 'Server error';
     let errorDetails = '';
+    const errorId = crypto.randomUUID().substring(0, 8);
     
     if (err instanceof Error) {
       errorMessage = err.message;
@@ -230,11 +243,12 @@ serve(async (req: Request) => {
       errorDetails = String(err);
     }
     
-    console.error("Unexpected error:", errorMessage, errorDetails);
+    console.error(`[verify-token/error-${errorId}]: Unexpected error:`, errorMessage, errorDetails);
     
     return new Response(
       JSON.stringify({ 
         error: errorMessage,
+        errorId,
         details: errorDetails
       }),
       { 

@@ -30,6 +30,7 @@ export function DirectFormButton() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [navigationId, setNavigationId] = useState<string | null>(null);
   
   // Get organization's form template with enhanced error handling
   const { 
@@ -67,6 +68,35 @@ export function DirectFormButton() {
   // Get the creator's name from user object
   const creatorName = user?.fullName || user?.id || "Okänd";
 
+  // Navigation effect to handle redirections with token
+  useEffect(() => {
+    // Only navigate if we have a navigation ID set
+    if (!navigationId) return;
+    
+    // Get the token that was stored when the navigation was triggered
+    const accessToken = localStorage.getItem(DIRECT_FORM_TOKEN_KEY);
+    if (!accessToken) {
+      console.error("[DirectFormButton]: Cannot navigate - no token in localStorage");
+      setNavigationId(null);
+      return;
+    }
+    
+    // Navigate to form page with token as URL parameter
+    console.log("[DirectFormButton]: Navigating to form page with token:", accessToken.substring(0, 6) + "...");
+    
+    // Delay navigation slightly to ensure localStorage is properly set
+    setTimeout(() => {
+      // Navigate with replace to prevent back button issues
+      navigate(`/optician-form?token=${accessToken}&mode=optician`, { replace: true });
+      setNavigationId(null);
+      
+      toast({
+        title: "Formulär skapat",
+        description: "Direkt ifyllningsformulär förberett",
+      });
+    }, 100);
+  }, [navigationId, navigate]);
+
   // Mutation for creating a direct form entry
   const createDirectFormEntry = useMutation({
     mutationFn: async () => {
@@ -99,7 +129,6 @@ export function DirectFormButton() {
       console.log("[DirectFormButton]: Token will expire at:", expiresAt);
 
       // Store the token in localStorage immediately to ensure it's available
-      // even if there's a navigation issue after the API call
       localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
       localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
       console.log("[DirectFormButton]: Token saved to localStorage before API call");
@@ -144,28 +173,10 @@ export function DirectFormButton() {
       };
     },
     onSuccess: (result) => {
-      const { accessToken } = result;
       console.log("[DirectFormButton]: Direct form entry created successfully");
       
-      // Small delay before navigation to ensure localStorage is set
-      setTimeout(() => {
-        // Double-check token is in localStorage
-        const storedToken = localStorage.getItem(DIRECT_FORM_TOKEN_KEY);
-        if (!storedToken) {
-          console.log("[DirectFormButton]: Token missing from localStorage before navigation, restoring");
-          localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
-          localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
-        }
-        
-        // Navigate to form page with token as URL parameter
-        console.log("[DirectFormButton]: Navigating to form page");
-        navigate(`/optician-form?token=${accessToken}&mode=optician`);
-        
-        toast({
-          title: "Formulär skapat",
-          description: "Direkt ifyllningsformulär förberett",
-        });
-      }, 100);
+      // Trigger navigation via the effect
+      setNavigationId(crypto.randomUUID());
     },
     onError: (error: any) => {
       console.error("[DirectFormButton]: Error creating direct form:", error);

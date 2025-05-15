@@ -7,7 +7,7 @@
  * management, and clearer feedback during token verification issues.
  */
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useFormSubmissionManager, SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { useFormStateManager } from "@/hooks/useFormStateManager";
@@ -97,17 +97,31 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
+  const instanceId = useRef(`form-page-${Math.random().toString(36).substring(2, 8)}`);
+  
+  // Store token in a stable ref
+  const stableTokenRef = useRef<string | null>(token);
+  
+  // Update stable token ref when token prop changes
+  useEffect(() => {
+    if (token !== stableTokenRef.current) {
+      stableTokenRef.current = token;
+    }
+  }, [token]);
   
   // Track component mount for debugging purposes
   useEffect(() => {
-    console.log(`[BaseFormPage]: Mounted with token: ${token ? token.substring(0, 6) + '...' : 'none'} and mode: ${mode}`);
+    console.log(`[BaseFormPage/${instanceId.current}]: Mounted with token: ${token ? token.substring(0, 6) + '...' : 'none'} and mode: ${mode}`);
     return () => {
-      console.log("[BaseFormPage]: Unmounting");
+      console.log(`[BaseFormPage/${instanceId.current}]: Unmounting`);
     };
   }, [token, mode]);
   
+  // Use the effective token (either from props or ref)
+  const effectiveToken = token || stableTokenRef.current;
+  
   // If no token, show missing token error immediately
-  if (!token) {
+  if (!effectiveToken) {
     return (
       <ErrorCard 
         error="Ingen åtkomsttoken hittades"
@@ -131,7 +145,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     entryData,
     handleRetry: handleVerificationRetry,
     isFullyLoaded
-  } = useTokenVerification(token);
+  } = useTokenVerification(effectiveToken);
   
   // Use form submission manager with onError handler
   const {
@@ -144,7 +158,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     handleRetrySubmission,
     resetError
   } = useFormSubmissionManager({ 
-    token, 
+    token: effectiveToken, 
     mode,
     onSubmissionError: onError
   });
@@ -174,9 +188,9 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     error: saveError,
     saveFormData
   } = useAutoSave({
-    token,
+    token: effectiveToken,
     formData: currentFormValues,
-    enabled: mode === 'patient' && formPageState === "FORM_READY" && !isSubmitted && !!token,
+    enabled: mode === 'patient' && formPageState === "FORM_READY" && !isSubmitted && !!effectiveToken,
     formTemplate
   });
   
@@ -187,7 +201,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   
   // Enhanced retry handler with reset of all verification state
   const handleEnhancedRetry = useCallback(() => {
-    console.log("[BaseFormPage]: Enhanced retry initiated");
+    console.log(`[BaseFormPage/${instanceId.current}]: Enhanced retry initiated`);
     
     // Increment retry attempt counter to force clean remounting
     setRetryAttempt(prev => prev + 1);
@@ -200,19 +214,19 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   
   // Handle form submission with form template
   const handleSubmitWithFormTemplate = useCallback(async (values: any, formattedAnswers?: any) => {
-    if (!token) {
-      console.error(`[BaseFormPage]: Cannot submit form: No token provided`);
+    if (!effectiveToken) {
+      console.error(`[BaseFormPage/${instanceId.current}]: Cannot submit form: No token provided`);
       return;
     }
     
-    console.log(`[BaseFormPage]: Submitting form with token: ${token.substring(0, 6) + "..."}`);
+    console.log(`[BaseFormPage/${instanceId.current}]: Submitting form with token: ${effectiveToken.substring(0, 6) + "..."}`);
     setFormPageState("SUBMITTING");
     await handleFormSubmit(values, formTemplate, formattedAnswers);
-  }, [token, handleFormSubmit, formTemplate, setFormPageState]);
+  }, [effectiveToken, handleFormSubmit, formTemplate, setFormPageState]);
   
   // Handle retry for submission errors
   const handleSubmissionRetry = useCallback(() => {
-    console.log(`[BaseFormPage]: Retrying submission...`);
+    console.log(`[BaseFormPage/${instanceId.current}]: Retrying submission...`);
     
     // If in error state, reset error and update state
     if (formPageState === "SUBMISSION_ERROR") {
@@ -225,10 +239,10 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
         const success = await handleRetrySubmission();
         
         if (!success) {
-          console.log(`[BaseFormPage]: Retry submission failed`);
+          console.log(`[BaseFormPage/${instanceId.current}]: Retry submission failed`);
           setFormPageState("SUBMISSION_ERROR");
         } else {
-          console.log(`[BaseFormPage]: Retry submission succeeded`);
+          console.log(`[BaseFormPage/${instanceId.current}]: Retry submission succeeded`);
         }
       }, 100);
     }
@@ -244,7 +258,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   
   // Log state transitions for debugging
   useEffect(() => {
-    console.log(`[BaseFormPage]: State transition to: ${formPageState}`);
+    console.log(`[BaseFormPage/${instanceId.current}]: State transition to: ${formPageState}`);
   }, [formPageState]);
   
   // Render different components based on form state
@@ -384,7 +398,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       }
       
       // If no token, show error
-      if (!token) {
+      if (!effectiveToken) {
         return (
           <ErrorCard 
             error="Ingen åtkomsttoken hittades i URL:en" 
@@ -408,7 +422,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       }
       
       // Add a key based on retry attempt to force full remounting
-      const formKey = `form-${token}-${retryAttempt}`;
+      const formKey = `form-${effectiveToken}-${retryAttempt}`;
       
       // Default form UI
       return (

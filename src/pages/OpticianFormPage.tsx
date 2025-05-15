@@ -4,8 +4,7 @@
  * It extends the patient form functionality but shows additional comment fields 
  * and manages the form submission with the appropriate status for optician completion.
  * Enhanced with better error handling and recovery options for token-related issues.
- * Implements a coordinated token verification and mode checking system to prevent
- * race conditions that cause redirection loops.
+ * Handles its own authentication checks to prevent token loss during redirection.
  */
 
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -18,101 +17,86 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
+import { useAuth } from "@clerk/clerk-react";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const mode = searchParams.get("mode");
+  const debug = searchParams.get("debug");
   const navigate = useNavigate();
   const { toast } = useToast();
   const [tokenError, setTokenError] = useState<SubmissionError | null>(null);
   
-  // Add state variables for delayed mode check
-  const [hasCheckedMode, setHasCheckedMode] = useState(false);
-  const [paramMode, setParamMode] = useState<string | null>(null);
-  const [redirectAttempted, setRedirectAttempted] = useState(false);
+  // Add authentication state from Clerk
+  const { isLoaded: isAuthLoaded, isSignedIn, userId } = useAuth();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Refs to track verification process
-  const tokenVerificationStartedRef = useRef(false);
-  const mountTimeRef = useRef(Date.now());
-  
-  // Directly use the token verification hook to coordinate with mode checking
-  // This will give us real-time information about token verification status
+  // Debug logging
+  useEffect(() => {
+    console.log("[OpticianFormPage]: Component mounted with params:", { 
+      token: token ? `${token.substring(0, 6)}...` : "none", 
+      mode, 
+      debug,
+      isAuthLoaded,
+      isSignedIn
+    });
+  }, [token, mode, debug, isAuthLoaded, isSignedIn]);
+
+  // Directly use the token verification hook to check token validity
   const tokenVerification = token ? useTokenVerification(token) : null;
   
-  // Debug log when component mounts
+  // Handle redirecting to login if needed for optician authentication
   useEffect(() => {
-    console.log("[OpticianFormPage]: Initial mount with token:", token ? token.substring(0, 6) + "..." : "none");
-    console.log("[OpticianFormPage]: Initial mode parameter:", mode);
-    console.log("[OpticianFormPage]: Mount time:", new Date(mountTimeRef.current).toISOString());
-  }, [token, mode]);
-  
-  // Mark when token verification has started
-  useEffect(() => {
-    if (token && tokenVerification) {
-      tokenVerificationStartedRef.current = true;
-      console.log("[OpticianFormPage]: Token verification process has started");
+    if (isAuthLoaded && !isSignedIn && mode === "optician" && !isRedirecting) {
+      // If we're in optician mode but not signed in, we need to redirect to login
+      // but save the current URL so we can come back later
+      const currentUrl = window.location.href;
+      console.log("[OpticianFormPage]: User not authenticated, redirecting to login");
+      
+      setIsRedirecting(true);
+      
+      // Store the current URL to return after login
+      localStorage.setItem("opticianFormReturnUrl", currentUrl);
+      
+      // Redirect to sign in
+      navigate("/sign-in");
     }
-  }, [token, tokenVerification]);
-  
-  // Monitor token verification status
+  }, [isAuthLoaded, isSignedIn, mode, navigate, isRedirecting]);
+
+  // Check if we're returning from authentication
   useEffect(() => {
-    if (tokenVerification) {
-      console.log("[OpticianFormPage]: Token verification status:", {
-        loading: tokenVerification.loading,
-        formLoading: tokenVerification.formLoading,
-        error: tokenVerification.error,
-        errorCode: tokenVerification.errorCode,
-        expired: tokenVerification.expired,
-        submitted: tokenVerification.submitted,
-        isFullyLoaded: tokenVerification.isFullyLoaded,
-        hasData: !!tokenVerification.entryData && !!tokenVerification.formTemplate
-      });
-    }
-  }, [tokenVerification]);
-  
-  // Delayed check of the mode parameter - increased to 1000ms for better coordination
-  useEffect(() => {
-    // Use setTimeout to delay the mode check
-    const timeoutId = setTimeout(() => {
-      console.log("[OpticianFormPage]: Running delayed mode check, current mode:", searchParams.get("mode"));
-      console.log("[OpticianFormPage]: Time since mount:", Date.now() - mountTimeRef.current, "ms");
+    // Only run if the user is now authenticated
+    if (isAuthLoaded && isSignedIn && !token) {
+      const savedUrl = localStorage.getItem("opticianFormReturnUrl");
       
-      // Update state with the current URL parameter values
-      const currentMode = searchParams.get("mode");
-      setParamMode(currentMode);
-      setHasCheckedMode(true);
-      
-      console.log("[OpticianFormPage]: Mode check completed, paramMode set to:", currentMode);
-    }, 1000); // Increased to 1000ms delay to ensure token verification has time to start
-    
-    // Cleanup timeout on unmount
-    return () => clearTimeout(timeoutId);
-  }, [searchParams]);
-  
-  // Separate effect for redirection based on the delayed mode check
-  // This now also takes into account token verification status
-  useEffect(() => {
-    // Only proceed with redirection if we've completed the delayed check 
-    // AND we haven't already attempted a redirect
-    if (hasCheckedMode && !redirectAttempted) {
-      console.log("[OpticianFormPage]: Checking if redirect needed. paramMode:", paramMode);
-      console.log("[OpticianFormPage]: Token verification started:", tokenVerificationStartedRef.current);
-      console.log("[OpticianFormPage]: Time since mount:", Date.now() - mountTimeRef.current, "ms");
-      
-      // If explicitly NOT in optician mode, redirect to dashboard
-      // Only redirect if paramMode is a non-null value that isn't "optician"
-      if (paramMode !== null && paramMode !== "optician") {
-        console.log("[OpticianFormPage]: Redirecting to dashboard. Mode is explicitly not 'optician'.");
-        setRedirectAttempted(true);
-        navigate("/dashboard");
-      } else if (paramMode === "optician") {
-        console.log("[OpticianFormPage]: No redirection needed. Mode is explicitly 'optician'.");
-      } else {
-        console.log("[OpticianFormPage]: Mode is null/undefined, not redirecting yet.");
+      if (savedUrl) {
+        console.log("[OpticianFormPage]: Returning from authentication, redirecting to:", savedUrl);
+        
+        // Clear the stored URL
+        localStorage.removeItem("opticianFormReturnUrl");
+        
+        // Extract the URL parameters to prevent a full page load
+        try {
+          const urlObj = new URL(savedUrl);
+          const returnToken = urlObj.searchParams.get("token");
+          const returnMode = urlObj.searchParams.get("mode");
+          
+          if (returnToken) {
+            // Navigate to the same route but with the parameters restored
+            navigate(`/optician-form?token=${returnToken}&mode=${returnMode || "optician"}`);
+          } else {
+            // If we somehow lost the token, navigate back to dashboard
+            console.error("[OpticianFormPage]: Return URL missing token parameter");
+            navigate("/dashboard");
+          }
+        } catch (err) {
+          console.error("[OpticianFormPage]: Error parsing saved URL:", err);
+          navigate("/dashboard");
+        }
       }
     }
-  }, [hasCheckedMode, paramMode, navigate, redirectAttempted]);
+  }, [isAuthLoaded, isSignedIn, token, navigate]);
   
   // Handler for submission errors
   const handleSubmissionError = (error: SubmissionError) => {
@@ -169,17 +153,29 @@ const OpticianFormPage = () => {
     );
   }
   
-  // Only render the form if:
-  // 1. We've verified we're in optician mode, OR
-  // 2. We haven't completed the check yet, OR
-  // 3. Mode is null/undefined but we believe we're in the right place
-  const isOpticianMode = paramMode === "optician" || !hasCheckedMode || paramMode === null;
+  // Show a loading state while waiting for authentication to load
+  if ((mode === "optician" && !isAuthLoaded) || isRedirecting) {
+    return (
+      <Card className="w-full max-w-3xl mx-auto p-6">
+        <CardContent className="space-y-6 pt-6 flex flex-col items-center justify-center">
+          <div className="animate-pulse flex flex-col items-center space-y-4">
+            <div className="h-12 w-12 bg-primary/20 rounded-full"></div>
+            <div className="h-4 w-48 bg-primary/20 rounded"></div>
+            <div className="h-3 w-64 bg-gray-200 rounded"></div>
+          </div>
+          <p className="text-gray-500 text-center mt-4">
+            Kontrollerar behörighet...
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
   
-  // Handle the case where token verification is ongoing but mode check has completed
+  // Handle loading state for token verification
   const isLoading = tokenVerification?.loading || tokenVerification?.formLoading;
   
   // Show a loading state while token verification is in progress
-  if (isOpticianMode && isLoading && hasCheckedMode) {
+  if (isLoading) {
     console.log("[OpticianFormPage]: Showing loading state while token verification completes");
     return (
       <Card className="w-full max-w-3xl mx-auto p-6">
@@ -197,16 +193,59 @@ const OpticianFormPage = () => {
     );
   }
   
-  console.log("[OpticianFormPage]: Rendering form. isOpticianMode:", isOpticianMode);
-  return isOpticianMode ? (
+  // Additional check for optician mode
+  if (mode === "optician" && isAuthLoaded && !isSignedIn) {
+    console.log("[OpticianFormPage]: In optician mode but not signed in");
+    return (
+      <Card className="w-full max-w-3xl mx-auto p-6">
+        <CardContent className="space-y-6 pt-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="bg-amber-100 p-4 rounded-full">
+              <AlertCircle className="h-8 w-8 text-amber-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-amber-600">Inloggning krävs</h2>
+            <p className="text-gray-700 max-w-lg">
+              Du måste vara inloggad för att fylla i ett formulär som optiker. Klicka på knappen nedan för att logga in.
+            </p>
+            
+            <div className="flex flex-col gap-3 w-full max-w-md pt-4">
+              <Button 
+                onClick={() => navigate("/sign-in")}
+                className="w-full"
+              >
+                Logga in
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/dashboard")}
+                className="w-full"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Återgå till dashboard
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // For optician mode, the user must be authenticated
+  if (mode === "optician" && (!isAuthLoaded || !isSignedIn)) {
+    return null; // Don't render anything until auth state is confirmed
+  }
+  
+  console.log("[OpticianFormPage]: Rendering form. mode:", mode);
+  return (
     <BaseFormPage 
       token={token}
-      mode="optician"
+      mode={mode || undefined}
       hideAutoSave={true}
       hideCopyLink={true}
       onError={handleSubmissionError}
     />
-  ) : null;
+  );
 };
 
 export default OpticianFormPage;

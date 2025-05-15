@@ -8,6 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.40.0";
+import { validateRequestAndExtractToken } from "../utils/validationUtils.ts";
 
 // Define CORS headers
 const corsHeaders = {
@@ -17,10 +18,6 @@ const corsHeaders = {
   'Pragma': 'no-cache',
   'Expires': '0',
 };
-
-interface TokenVerificationRequest {
-  token: string;
-}
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -33,15 +30,16 @@ serve(async (req: Request) => {
     const startTime = Date.now();
     console.log("Starting verify-token edge function execution");
     
-    // Extract token from request
-    const requestData = await validateRequestAndExtractToken(req);
+    // Extract token from request - now using the validation utility
+    const validationResult = await validateRequestAndExtractToken(req);
     
-    if (!requestData.token) {
-      console.error("Invalid token request:", requestData.error);
+    if (!validationResult.isValid || !validationResult.token) {
+      console.error("Invalid token request:", validationResult.error);
       return new Response(
         JSON.stringify({ 
-          error: requestData.error?.message || 'Invalid request', 
-          code: requestData.error?.code || 'invalid_request' 
+          error: validationResult.error?.message || 'Invalid request', 
+          code: validationResult.error?.code || 'invalid_request',
+          details: validationResult.error?.details || 'Token validation failed'
         }),
         { 
           status: 400, 
@@ -49,6 +47,9 @@ serve(async (req: Request) => {
         }
       );
     }
+    
+    const token = validationResult.token;
+    console.log("Token extracted and validated:", token.substring(0, 6) + "...");
     
     // Initialize Supabase client
     const supabase = createClient(
@@ -71,7 +72,7 @@ serve(async (req: Request) => {
     const { data: entry, error: entryError } = await supabase
       .from('anamnes_entries')
       .select('*')
-      .eq('access_token', requestData.token)
+      .eq('access_token', token)
       .maybeSingle();
 
     if (entryError) {
@@ -89,7 +90,7 @@ serve(async (req: Request) => {
     }
 
     if (!entry) {
-      console.error("Token not found in database:", requestData.token.substring(0, 6) + "...");
+      console.error("Token not found in database:", token.substring(0, 6) + "...");
       return new Response(
         JSON.stringify({ 
           error: 'Token not found' 
@@ -237,71 +238,3 @@ serve(async (req: Request) => {
     );
   }
 });
-
-// Helper function to extract the token from request
-async function validateRequestAndExtractToken(req: Request): Promise<{
-  token?: string;
-  error?: { message: string; code: string };
-}> {
-  try {
-    // Parse request body as JSON
-    // Clone the request to avoid consuming the body which can only be read once
-    const requestClone = req.clone();
-    let requestData: any;
-    
-    try {
-      requestData = await requestClone.json();
-      console.log('Request body parsed successfully');
-    } catch (err) {
-      console.error('Could not parse request body as JSON:', err instanceof Error ? err.message : 'Unknown error');
-      return { 
-        error: { 
-          message: 'Invalid JSON in request body', 
-          code: 'invalid_request' 
-        } 
-      };
-    }
-    
-    const token = requestData.token;
-    
-    // Validate token exists
-    if (!token) {
-      return { 
-        error: { 
-          message: 'Token is required', 
-          code: 'missing_token' 
-        } 
-      };
-    }
-    
-    // Validate token is a string
-    if (typeof token !== 'string') {
-      return { 
-        error: { 
-          message: 'Token must be a string', 
-          code: 'invalid_token_format' 
-        } 
-      };
-    }
-    
-    // Validate token minimum length
-    if (token.length < 6) {
-      return { 
-        error: { 
-          message: 'Token is too short', 
-          code: 'invalid_token_format' 
-        } 
-      };
-    }
-    
-    return { token };
-  } catch (error) {
-    console.error('Error parsing request:', error);
-    return { 
-      error: { 
-        message: 'Failed to process request', 
-        code: 'request_processing_error' 
-      } 
-    };
-  }
-}

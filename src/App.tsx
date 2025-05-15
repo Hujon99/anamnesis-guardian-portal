@@ -48,8 +48,9 @@ function App() {
           <Route path="/sign-in/*" element={<SignInPage />} />
           <Route path="/sign-up/*" element={<SignUpPage />} />
           
-          {/* Form page - accessed via token, no auth required */}
+          {/* Form pages - accessed via token, no auth required */}
           <Route path="/patient-form" element={<PatientFormPage />} />
+          <Route path="/optician-form" element={<OpticianFormPage />} /> {/* Moved outside ProtectedRoute */}
           <Route path="/link" element={<LinkPage />} />
           
           {/* Protected routes that require authentication */}
@@ -81,7 +82,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route path="/optician-form" element={<OpticianFormPage />} />
+            {/* Removed optician-form route from here */}
           </Route>
           
           <Route path="*" element={<NotFound />} />

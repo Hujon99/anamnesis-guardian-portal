@@ -30,9 +30,8 @@ export function DirectFormButton() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [navigationId, setNavigationId] = useState<string | null>(null);
   
-  // Get organization's form template with enhanced error handling
+  // Get organization's form template
   const { 
     data: formTemplate, 
     isLoading: templateLoading, 
@@ -54,7 +53,7 @@ export function DirectFormButton() {
       console.error("[DirectFormButton]: Error loading form template:", templateError);
       setHasError(true);
       
-      // Only show toast for non-network errors to prevent spamming
+      // Only show toast for non-network errors
       if (!templateError.message?.includes("Failed to fetch")) {
         toast({
           title: "Fel vid laddning av formulärmall",
@@ -67,35 +66,6 @@ export function DirectFormButton() {
   
   // Get the creator's name from user object
   const creatorName = user?.fullName || user?.id || "Okänd";
-
-  // Navigation effect to handle redirections with token
-  useEffect(() => {
-    // Only navigate if we have a navigation ID set
-    if (!navigationId) return;
-    
-    // Get the token that was stored when the navigation was triggered
-    const accessToken = localStorage.getItem(DIRECT_FORM_TOKEN_KEY);
-    if (!accessToken) {
-      console.error("[DirectFormButton]: Cannot navigate - no token in localStorage");
-      setNavigationId(null);
-      return;
-    }
-    
-    // Navigate to form page with token as URL parameter
-    console.log("[DirectFormButton]: Navigating to form page with token:", accessToken.substring(0, 6) + "...");
-    
-    // Delay navigation slightly to ensure localStorage is properly set
-    setTimeout(() => {
-      // Navigate with replace to prevent back button issues
-      navigate(`/optician-form?token=${accessToken}&mode=optician`, { replace: true });
-      setNavigationId(null);
-      
-      toast({
-        title: "Formulär skapat",
-        description: "Direkt ifyllningsformulär förberett",
-      });
-    }, 100);
-  }, [navigationId, navigate]);
 
   // Mutation for creating a direct form entry
   const createDirectFormEntry = useMutation({
@@ -124,7 +94,7 @@ export function DirectFormButton() {
       const accessToken = crypto.randomUUID();
       console.log("[DirectFormButton]: Generated access token:", accessToken.substring(0, 6) + "...");
 
-      // CHANGED: Increased token validity from 24 hours to 72 hours
+      // Token valid for 72 hours
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(); // 72 hours from now
       console.log("[DirectFormButton]: Token will expire at:", expiresAt);
 
@@ -139,11 +109,11 @@ export function DirectFormButton() {
           organization_id: organization.id,
           access_token: accessToken,
           status: "sent",
-          expires_at: expiresAt, // Using the 72-hour expiry
+          expires_at: expiresAt,
           form_id: formTemplate.id,
           patient_identifier: patientIdentifier,
           created_by: userId || null,
-          created_by_name: creatorName, // Add the creator's name
+          created_by_name: creatorName,
           sent_at: new Date().toISOString()
         })
         .select()
@@ -173,10 +143,28 @@ export function DirectFormButton() {
       };
     },
     onSuccess: (result) => {
-      console.log("[DirectFormButton]: Direct form entry created successfully");
+      console.log("[DirectFormButton]: Form entry created, navigating to form page");
       
-      // Trigger navigation via the effect
-      setNavigationId(crypto.randomUUID());
+      // Ensure token is in localStorage
+      const accessToken = result.accessToken;
+      const isStoredInLocalStorage = localStorage.getItem(DIRECT_FORM_TOKEN_KEY) === accessToken;
+      
+      if (!isStoredInLocalStorage) {
+        console.log("[DirectFormButton]: Token not found in localStorage, restoring before navigation");
+        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
+        localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
+      }
+      
+      // Use a short timeout to ensure localStorage is updated
+      setTimeout(() => {
+        // Use replace navigation to prevent adding to history stack
+        navigate(`/optician-form?token=${accessToken}&mode=optician`, { replace: true });
+        
+        toast({
+          title: "Formulär skapat",
+          description: "Direkt ifyllningsformulär förberett",
+        });
+      }, 150); // Slightly longer delay for reliable navigation
     },
     onError: (error: any) => {
       console.error("[DirectFormButton]: Error creating direct form:", error);

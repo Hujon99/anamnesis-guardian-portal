@@ -11,11 +11,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.40.0";
 import { validateRequestAndExtractToken } from "../utils/validationUtils.ts";
 
-// Define CORS headers with improved cache control
+// Define CORS headers with improved cache control for stability
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+  'Cache-Control': 'private, max-age=60, must-revalidate', // Allow caching for 60 seconds
   'Pragma': 'no-cache',
   'Expires': '0',
 };
@@ -30,9 +30,9 @@ serve(async (req: Request) => {
     // Generate a unique request ID for tracing
     const requestId = crypto.randomUUID().substring(0, 8);
     const startTime = Date.now();
-    console.log(`[verify-token/${requestId}]: Starting execution`);
+    console.log(`[verify-token/${requestId}]: Starting token verification`);
     
-    // Extract token from request using the validation utility
+    // Extract token from request using validation utility
     const validationResult = await validateRequestAndExtractToken(req);
     
     if (!validationResult.isValid || !validationResult.token) {
@@ -41,7 +41,8 @@ serve(async (req: Request) => {
         JSON.stringify({ 
           error: validationResult.error?.message || 'Invalid request', 
           code: validationResult.error?.code || 'invalid_request',
-          details: validationResult.error?.details || 'Token validation failed'
+          details: validationResult.error?.details || 'Token validation failed',
+          requestId
         }),
         { 
           status: 400, 
@@ -51,18 +52,19 @@ serve(async (req: Request) => {
     }
     
     const token = validationResult.token;
-    console.log(`[verify-token/${requestId}]: Token extracted and validated: ${token.substring(0, 6)}...`);
+    console.log(`[verify-token/${requestId}]: Extracted token: ${token.substring(0, 6)}...`);
     
     // Initialize Supabase client
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") as string,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!supabase) {
-      console.error(`[verify-token/${requestId}]: Failed to initialize Supabase client`);
+    if (!supabaseUrl || !supabaseKey) {
+      console.error(`[verify-token/${requestId}]: Missing Supabase credentials`);
       return new Response(
-        JSON.stringify({ error: 'Failed to initialize database client' }),
+        JSON.stringify({ 
+          error: 'Internal server configuration error',
+          requestId
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -70,7 +72,23 @@ serve(async (req: Request) => {
       );
     }
     
-    // Find the entry by token using parameterized query for security
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    if (!supabase) {
+      console.error(`[verify-token/${requestId}]: Failed to initialize Supabase client`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to initialize database client',
+          requestId
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Find the entry by token using parameterized query
     const { data: entry, error: entryError } = await supabase
       .from('anamnes_entries')
       .select('*')
@@ -82,7 +100,8 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ 
           error: 'Database error', 
-          details: entryError.message || entryError 
+          details: entryError.message || entryError,
+          requestId
         }),
         { 
           status: 500, 
@@ -115,9 +134,9 @@ serve(async (req: Request) => {
           requestId,
           entry: {
             id: entry.id,
-            organization_id: entry.organization_id, // Include org_id for better debugging
+            organization_id: entry.organization_id,
             expires_at: entry.expires_at,
-            form_id: entry.form_id // Include form_id for potential fallback options
+            form_id: entry.form_id
           }
         }),
         { 
@@ -210,7 +229,7 @@ serve(async (req: Request) => {
     
     // Log performance
     const duration = Date.now() - startTime;
-    console.log(`[verify-token/${requestId}]: Token verification successful, took ${duration}ms`);
+    console.log(`[verify-token/${requestId}]: Token verification successful in ${duration}ms`);
     
     // Return success with form template and entry data
     return new Response(
@@ -225,13 +244,14 @@ serve(async (req: Request) => {
         headers: {
           ...corsHeaders, 
           'Content-Type': 'application/json',
-          // Add cache-control header to encourage browsers to cache successful results
-          'Cache-Control': 'private, max-age=60' // Cache for 1 minute
+          // Strong cache control for successful verification responses
+          'Cache-Control': 'private, max-age=300', // Cache for 5 minutes
+          'ETag': `"${requestId}"` // Add ETag for cache validation
         } 
       }
     );
   } catch (err) {
-    // Format error message based on type
+    // Format error message
     let errorMessage = 'Server error';
     let errorDetails = '';
     const errorId = crypto.randomUUID().substring(0, 8);
@@ -253,7 +273,11 @@ serve(async (req: Request) => {
       }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store' // Prevent caching of error responses
+        } 
       }
     );
   }

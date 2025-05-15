@@ -22,30 +22,56 @@ import { SubmissionMode } from "@/hooks/useFormSubmissionManager";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
-  const mode = searchParams.get("mode");
+  const initialToken = searchParams.get("token");
+  const initialMode = searchParams.get("mode");
   const debug = searchParams.get("debug");
   const navigate = useNavigate();
   const { toast } = useToast();
   const [tokenError, setTokenError] = useState<SubmissionError | null>(null);
   
+  // Store token and mode in state to prevent loss during re-renders
+  const [token, setToken] = useState<string | null>(initialToken);
+  const [mode, setMode] = useState<string | null>(initialMode);
+  
   // Add authentication state from Clerk
   const { isLoaded: isAuthLoaded, isSignedIn, userId } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Create a ref to prevent token from being lost during renders
+  const tokenRef = useRef<string | null>(initialToken);
+  
+  // Ensure the token is preserved throughout the component lifecycle
+  useEffect(() => {
+    if (initialToken) {
+      console.log("[OpticianFormPage]: Initializing with token:", initialToken.substring(0, 6) + "...");
+      setToken(initialToken);
+      tokenRef.current = initialToken;
+    } else {
+      console.log("[OpticianFormPage]: No initial token provided");
+    }
+    
+    if (initialMode) {
+      console.log("[OpticianFormPage]: Initializing with mode:", initialMode);
+      setMode(initialMode);
+    }
+  }, [initialToken, initialMode]);
 
   // Debug logging
   useEffect(() => {
     console.log("[OpticianFormPage]: Component mounted with params:", { 
       token: token ? `${token.substring(0, 6)}...` : "none", 
+      tokenRef: tokenRef.current ? `${tokenRef.current.substring(0, 6)}...` : "none",
+      initialToken: initialToken ? `${initialToken.substring(0, 6)}...` : "none",
       mode, 
       debug,
       isAuthLoaded,
       isSignedIn
     });
-  }, [token, mode, debug, isAuthLoaded, isSignedIn]);
+  }, [token, mode, debug, isAuthLoaded, isSignedIn, initialToken]);
 
   // Directly use the token verification hook to check token validity
-  const tokenVerification = token ? useTokenVerification(token) : null;
+  // Use the ref value to ensure consistent token throughout component lifecycle
+  const tokenVerification = tokenRef.current ? useTokenVerification(tokenRef.current) : null;
   
   // Handle redirecting to login if needed for optician authentication
   useEffect(() => {
@@ -60,6 +86,11 @@ const OpticianFormPage = () => {
       // Store the current URL to return after login
       localStorage.setItem("opticianFormReturnUrl", currentUrl);
       
+      // Store the token separately for extra safety
+      if (tokenRef.current) {
+        localStorage.setItem("opticianFormToken", tokenRef.current);
+      }
+      
       // Redirect to sign in
       navigate("/sign-in");
     }
@@ -70,29 +101,53 @@ const OpticianFormPage = () => {
     // Only run if the user is now authenticated
     if (isAuthLoaded && isSignedIn && !token) {
       const savedUrl = localStorage.getItem("opticianFormReturnUrl");
+      const savedToken = localStorage.getItem("opticianFormToken");
       
-      if (savedUrl) {
-        console.log("[OpticianFormPage]: Returning from authentication, redirecting to:", savedUrl);
+      console.log("[OpticianFormPage]: Checking for saved session data:", {
+        hasSavedUrl: !!savedUrl,
+        hasSavedToken: !!savedToken
+      });
+      
+      if (savedUrl || savedToken) {
+        console.log("[OpticianFormPage]: Returning from authentication");
         
-        // Clear the stored URL
+        // Clear the stored data
         localStorage.removeItem("opticianFormReturnUrl");
+        localStorage.removeItem("opticianFormToken");
         
-        // Extract the URL parameters to prevent a full page load
-        try {
-          const urlObj = new URL(savedUrl);
-          const returnToken = urlObj.searchParams.get("token");
-          const returnMode = urlObj.searchParams.get("mode");
-          
-          if (returnToken) {
-            // Navigate to the same route but with the parameters restored
-            navigate(`/optician-form?token=${returnToken}&mode=${returnMode || "optician"}`);
-          } else {
-            // If we somehow lost the token, navigate back to dashboard
-            console.error("[OpticianFormPage]: Return URL missing token parameter");
-            navigate("/dashboard");
+        let returnToken: string | null = null;
+        let returnMode: string | null = "optician";
+        
+        // First try to extract parameters from the saved URL
+        if (savedUrl) {
+          try {
+            const urlObj = new URL(savedUrl);
+            returnToken = urlObj.searchParams.get("token");
+            const urlMode = urlObj.searchParams.get("mode");
+            if (urlMode) returnMode = urlMode;
+          } catch (err) {
+            console.error("[OpticianFormPage]: Error parsing saved URL:", err);
           }
-        } catch (err) {
-          console.error("[OpticianFormPage]: Error parsing saved URL:", err);
+        }
+        
+        // If we couldn't get the token from URL, use the separately saved token
+        if (!returnToken && savedToken) {
+          console.log("[OpticianFormPage]: Using saved token from localStorage");
+          returnToken = savedToken;
+        }
+        
+        if (returnToken) {
+          console.log("[OpticianFormPage]: Restoring session with token:", returnToken.substring(0, 6) + "...");
+          // Update both state and ref to ensure consistency
+          setToken(returnToken);
+          tokenRef.current = returnToken;
+          setMode(returnMode);
+          
+          // Navigate to the same route but with the parameters restored
+          navigate(`/optician-form?token=${returnToken}&mode=${returnMode || "optician"}`, { replace: true });
+        } else {
+          // If we somehow lost the token, navigate back to dashboard
+          console.error("[OpticianFormPage]: Failed to restore token, redirecting to dashboard");
           navigate("/dashboard");
         }
       }
@@ -172,6 +227,39 @@ const OpticianFormPage = () => {
     );
   }
   
+  // No token available - show an error UI
+  if (!token && !tokenRef.current) {
+    console.error("[OpticianFormPage]: No token available to render form");
+    return (
+      <Card className="w-full max-w-3xl mx-auto p-6">
+        <CardContent className="space-y-6 pt-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="bg-amber-100 p-4 rounded-full">
+              <AlertCircle className="h-8 w-8 text-amber-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-amber-600">Ingen åtkomsttoken</h2>
+            <p className="text-gray-700 max-w-lg">
+              Ingen åtkomsttoken kunde hittas. För att fortsätta behöver du skapa ett nytt formulär.
+            </p>
+            
+            <div className="flex flex-col gap-3 w-full max-w-md pt-4">
+              <DirectFormButton />
+              
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/dashboard")}
+                className="w-full"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Återgå till dashboard
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   // Handle loading state for token verification
   const isLoading = tokenVerification?.loading || tokenVerification?.formLoading;
   
@@ -240,10 +328,45 @@ const OpticianFormPage = () => {
   // Ensure mode is properly typed as SubmissionMode
   const formMode: SubmissionMode = (mode === "optician") ? "optician" : "patient";
   
-  console.log("[OpticianFormPage]: Rendering form. mode:", mode);
+  // Use the token from ref as final fallback
+  const effectiveToken = token || tokenRef.current;
+  
+  console.log("[OpticianFormPage]: Rendering form. mode:", mode, "token:", effectiveToken ? `${effectiveToken.substring(0, 6)}...` : "missing");
+  
+  // Final null check before rendering
+  if (!effectiveToken) {
+    console.error("[OpticianFormPage]: Attempting to render form but token is still null");
+    return (
+      <Card className="w-full max-w-3xl mx-auto p-6">
+        <CardContent className="space-y-6 pt-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="bg-amber-100 p-4 rounded-full">
+              <AlertCircle className="h-8 w-8 text-amber-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-amber-600">Token saknas</h2>
+            <p className="text-gray-700 max-w-lg">
+              Något gick fel vid laddning av formuläret. Vänligen försök igen.
+            </p>
+            
+            <div className="flex flex-col gap-3 w-full max-w-md pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/dashboard")}
+                className="w-full"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Återgå till dashboard
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   return (
     <BaseFormPage 
-      token={token}
+      token={effectiveToken}
       mode={formMode}
       hideAutoSave={true}
       hideCopyLink={true}

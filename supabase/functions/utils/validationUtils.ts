@@ -12,7 +12,7 @@
  */
 export function validateToken(token: unknown): { 
   isValid: boolean; 
-  error?: { message: string; code: string } 
+  error?: { message: string; code: string; details?: string } 
 } {
   // Check if token exists
   if (!token) {
@@ -21,7 +21,8 @@ export function validateToken(token: unknown): {
       isValid: false, 
       error: { 
         message: 'Token är obligatorisk', 
-        code: 'invalid_request' 
+        code: 'missing_token',
+        details: 'No token provided in request'
       } 
     };
   }
@@ -33,7 +34,21 @@ export function validateToken(token: unknown): {
       isValid: false, 
       error: { 
         message: 'Token måste vara en textsträng', 
-        code: 'invalid_request' 
+        code: 'invalid_token_format',
+        details: `Token is ${typeof token} instead of string` 
+      } 
+    };
+  }
+  
+  // Check if token is empty
+  if (token.trim() === '') {
+    console.error('Token validation failed: Token is empty');
+    return { 
+      isValid: false, 
+      error: { 
+        message: 'Token kan inte vara tom', 
+        code: 'empty_token',
+        details: 'Token string is empty or only whitespace'
       } 
     };
   }
@@ -45,7 +60,8 @@ export function validateToken(token: unknown): {
       isValid: false, 
       error: { 
         message: 'Token har ogiltigt format', 
-        code: 'invalid_request' 
+        code: 'invalid_token_length',
+        details: `Token length ${token.length} is less than minimum 6 characters`
       } 
     };
   }
@@ -111,7 +127,11 @@ export async function validateRequestAndExtractToken(request: Request): Promise<
       requestData = {};
     }
       
-    console.log('Request data received:', Object.keys(requestData).join(', '));
+    if (Object.keys(requestData).length > 0) {
+      console.log('Request data received keys:', Object.keys(requestData).join(', '));
+    } else {
+      console.log('Request body is empty or invalid JSON');
+    }
     
     const token = requestData.token;
     
@@ -133,6 +153,10 @@ export async function validateRequestAndExtractToken(request: Request): Promise<
         };
       } else {
         console.error('Token from request body failed validation:', tokenValidation.error);
+        return {
+          isValid: false,
+          error: tokenValidation.error
+        };
       }
     }
     

@@ -22,6 +22,7 @@ import { useOrganization } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { OpticianStatsCards } from "./OpticianStatsCards";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
+import { toast } from "@/components/ui/use-toast";
 
 export function MyAnamnesisView() {
   const {
@@ -81,20 +82,62 @@ export function MyAnamnesisView() {
     refetch?.();
   };
 
-  // Handle entry assignment - Updated to return a Promise
+  // Handle entry assignment - Updated to use the useEntryMutations hook
   const handleEntryAssigned = async (entryId: string, opticianId: string | null): Promise<void> => {
-    console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
-    const mutations = useEntryMutations(entryId);
-    await mutations.assignOptician(opticianId);
-    await refetch?.();
+    if (!entryId) {
+      console.error("Missing entry ID for optician assignment");
+      toast({
+        title: "Fel vid tilldelning",
+        description: "Kunde inte tilldela optiker: Saknar anamnes-ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      console.log(`MyAnamnesisView: Assigning optician ${opticianId || 'null'} to entry ${entryId}`);
+      
+      // Create an instance of mutations for this specific entry
+      const mutations = useEntryMutations(entryId);
+      await mutations.assignOptician(opticianId);
+      
+      // Refresh data after successful assignment
+      await refetch?.();
+      
+    } catch (error) {
+      console.error("Error assigning optician:", error);
+      // Error is already handled by the mutations hook
+    }
   };
 
-  // Handle store assignment
+  // Handle store assignment - Updated to use the useEntryMutations hook
   const handleStoreAssigned = async (entryId: string, storeId: string | null): Promise<void> => {
-    console.log(`Entry ${entryId} assigned to store ${storeId || 'none'}`);
-    const mutations = useEntryMutations(entryId);
-    await mutations.assignStore(storeId);
-    await refetch?.();
+    if (!entryId) {
+      console.error("Missing entry ID for store assignment");
+      toast({
+        title: "Fel vid tilldelning",
+        description: "Kunde inte tilldela butik: Saknar anamnes-ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      console.log(`MyAnamnesisView: Using useEntryMutations to assign store ${storeId || 'null'} to entry ${entryId}`);
+      
+      // Create an instance of mutations for this specific entry
+      const mutations = useEntryMutations(entryId);
+      
+      // Use the robust assignStore method from the hook
+      await mutations.assignStore(storeId);
+      
+      // Refresh data after successful assignment
+      await refetch?.();
+      
+    } catch (error) {
+      console.error("Error in handleStoreAssigned:", error);
+      // Error is already handled by the mutations hook
+    }
   };
 
   const getEntryExpirationInfo = (entry: AnamnesesEntry) => {

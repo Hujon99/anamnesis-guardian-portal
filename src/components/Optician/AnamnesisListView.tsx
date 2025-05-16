@@ -1,3 +1,4 @@
+
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -18,10 +19,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useStores } from "@/hooks/useStores";
-import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
+import { useEntryMutations } from "@/hooks/useEntryMutations"; 
+import { toast } from "@/components/ui/use-toast";
 
 interface AnamnesisListViewProps {
   showAdvancedFilters?: boolean;
@@ -84,42 +86,69 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
 
   // Handle optician assignment - Using useCallback to create stable function reference
   const handleEntryAssigned = useCallback(async (entryId: string, opticianId: string | null): Promise<void> => {
-    console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
+    if (!entryId) {
+      console.error("Missing entry ID for optician assignment");
+      toast({
+        title: "Fel vid tilldelning",
+        description: "Kunde inte tilldela optiker: Saknar anamnes-ID",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .update({ optician_id: opticianId })
-        .eq("id", entryId);
-        
-      if (error) throw error;
+      console.log(`AnamnesisListView: Assigning optician ${opticianId || 'null'} to entry ${entryId}`);
+      
+      // Create an instance of mutations for this specific entry
+      const mutations = useEntryMutations(entryId);
+      await mutations.assignOptician(opticianId);
+      
+      // Refresh data after successful assignment
       await refetch();
+      
     } catch (error) {
       console.error("Error assigning optician:", error);
-      throw error;
+      // Error toast is already handled by the mutations hook
     }
-  }, [supabase, refetch]);
+  }, [refetch]);
 
-  // Handle store assignment
+  // Handle store assignment - Now using useEntryMutations hook
   const handleStoreAssigned = useCallback(async (entryId: string, storeId: string | null): Promise<void> => {
-    console.log(`Entry ${entryId} assigned to store ${storeId || 'none'}`);
+    if (!entryId) {
+      console.error("Missing entry ID for store assignment");
+      toast({
+        title: "Fel vid tilldelning",
+        description: "Kunde inte tilldela butik: Saknar anamnes-ID",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .update({ store_id: storeId })
-        .eq("id", entryId);
-        
-      if (error) throw error;
+      console.log(`AnamnesisListView: Using useEntryMutations to assign store ${storeId || 'null'} to entry ${entryId}`);
+      
+      // Create an instance of mutations for this specific entry
+      const mutations = useEntryMutations(entryId);
+      
+      // Use the robust assignStore method from the hook
+      await mutations.assignStore(storeId);
       
       // Important: Always refetch both entries and stores after store assignment
       await Promise.all([refetch(), refetchStores()]);
       
+      // Display success toast (the hook also shows a toast, but we'll reinforce it)
+      toast({
+        title: "Butik tilldelad",
+        description: storeId 
+          ? "Anamnes har kopplats till butik" 
+          : "Butikskoppling har tagits bort",
+      });
+      
     } catch (error) {
-      console.error("Error assigning store:", error);
-      throw error;
+      console.error("Error in handleStoreAssigned:", error);
+      // Error toast is already handled by the mutations hook
     }
-  }, [supabase, refetch, refetchStores]);
+  }, [refetch, refetchStores]);
 
   // Helper function to get expiration info
   function getEntryExpirationInfo(entry: AnamnesesEntry) {

@@ -15,6 +15,7 @@ import { useStores } from "@/hooks/useStores";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
+import { useEntryMutations } from "@/hooks/useEntryMutations";
 
 interface EntriesListProps {
   entries: (AnamnesesEntry & {
@@ -108,67 +109,49 @@ export function EntriesList({
     }
   };
   
-  // Handle store assignment with retry logic and improved error handling
+  // Handle store assignment using the more robust useEntryMutations hook
   const handleStoreAssign = async (entryId: string, storeId: string | null): Promise<void> => {
-    if (!onStoreAssigned) {
+    if (!entryId) {
+      console.error("Missing entry ID for store assignment");
       toast({
-        title: "Kan inte tilldela butik",
-        description: "En funktion för att tilldela butik saknas.",
+        title: "Fel vid tilldelning",
+        description: "Kunde inte tilldela butik: Saknar anamnes-ID",
         variant: "destructive",
       });
       return;
     }
     
     try {
-      console.log(`EntriesList: Assigning store ${storeId || 'null'} to entry ${entryId}`);
-      await onStoreAssigned(entryId, storeId);
+      console.log(`EntriesList: Using useEntryMutations to assign store ${storeId || 'null'} to entry ${entryId}`);
       
-      // Refresh store data after assignment
+      // Create a new instance of the mutations hook with this specific entry ID
+      const mutations = useEntryMutations(entryId);
+      
+      // Use the robust assignStore method that handles retries and JWT errors
+      await mutations.assignStore(storeId);
+      
+      // Always refresh store data after assignment
       await refetchStores();
       
       // Update UI state
       setShowStoreDataWarning(false);
       
-      // Show success message
-      toast({
-        title: "Butik tilldelad",
-        description: storeId 
-          ? "Anamnes har kopplats till butik" 
-          : "Butikskoppling har tagits bort",
-      });
-    } catch (error) {
-      console.error("Error assigning store:", error);
-      
-      // Check if it's a JWT error
-      const isAuthError = error instanceof Error && (
-        error.message.includes("JWT") || 
-        error.message.includes("401") ||
-        error.message.includes("PGRST301")
-      );
-      
-      if (isAuthError) {
-        toast({
-          title: "Sessionsproblem",
-          description: "Din session har gått ut. Klicka på 'Uppdatera' för att förnya",
-          variant: "destructive",
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefreshStores}
-              className="bg-white"
-            >
-              Uppdatera
-            </Button>
-          ),
-        });
-      } else {
-        toast({
-          title: "Fel vid tilldelning av butik",
-          description: "Det gick inte att koppla anamnes till butik",
-          variant: "destructive",
-        });
+      // If onStoreAssigned callback is provided, call it (for parent component updates)
+      if (onStoreAssigned) {
+        await onStoreAssigned(entryId, storeId);
       }
+      
+      console.log("Store assignment completed successfully");
+    } catch (error) {
+      console.error("Error in handleStoreAssign:", error);
+      
+      // Error is already handled by the useEntryMutations hook
+      // But we'll provide an additional fallback toast message just in case
+      toast({
+        title: "Tilldelning misslyckades",
+        description: "Ett fel uppstod vid tilldelning av butik. Försök igen.",
+        variant: "destructive",
+      });
     }
   };
   

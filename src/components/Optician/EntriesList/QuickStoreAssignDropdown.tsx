@@ -35,13 +35,16 @@ export function QuickStoreAssignDropdown({
 }: QuickStoreAssignDropdownProps) {
   const [isAssigning, setIsAssigning] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const { stores, isLoading: isLoadingStores, refetch: refetchStores, forceRefreshStores, getStoreName } = useStores();
+  const { stores = [], isLoading: isLoadingStores, refetch: refetchStores, forceRefreshStores, getStoreName } = useStores();
   const [assignmentError, setAssignmentError] = useState<Error | null>(null);
   const [showRefreshButton, setShowRefreshButton] = useState(false);
   
+  // Ensure we have a valid array of stores to work with
+  const safeStores = Array.isArray(stores) ? stores : [];
+  
   // Check if there are no stores and show refresh button after a delay
   useEffect(() => {
-    if (!isLoadingStores && stores.length === 0) {
+    if (!isLoadingStores && safeStores.length === 0) {
       const timer = setTimeout(() => {
         setShowRefreshButton(true);
       }, 1000);
@@ -50,7 +53,7 @@ export function QuickStoreAssignDropdown({
     } else {
       setShowRefreshButton(false);
     }
-  }, [stores, isLoadingStores]);
+  }, [safeStores, isLoadingStores]);
 
   const handleAssign = async (storeId: string | null, e: React.MouseEvent) => {
     try {
@@ -102,6 +105,10 @@ export function QuickStoreAssignDropdown({
     
     try {
       await forceRefreshStores();
+      toast({
+        title: "Butiksdata uppdaterad",
+        description: "Butikslistan har uppdaterats.",
+      });
     } catch (error) {
       console.error("Error refreshing stores:", error);
       
@@ -114,12 +121,9 @@ export function QuickStoreAssignDropdown({
   };
 
   // Sort stores alphabetically by name
-  const sortedStores = [...stores].sort((a, b) => 
+  const sortedStores = [...safeStores].sort((a, b) => 
     a.name.localeCompare(b.name, 'sv')
   );
-  
-  console.log("QuickStoreAssignDropdown: Available stores", stores);
-  console.log("QuickStoreAssignDropdown: currentStoreId", currentStoreId);
   
   // Find current store name using multiple methods for redundancy
   let currentStoreName = "Ingen butik tilldelad";
@@ -136,14 +140,12 @@ export function QuickStoreAssignDropdown({
     }
     // Try fallback to stores array
     else {
-      const foundStore = stores.find(store => store.id === currentStoreId);
+      const foundStore = safeStores.find(store => store.id === currentStoreId);
       if (foundStore) {
         currentStoreName = foundStore.name;
       }
     }
   }
-  
-  console.log(`QuickStoreAssignDropdown: Resolved current store name: "${currentStoreName}" for ID: ${currentStoreId}`);
 
   // Add a click handler to the trigger to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {

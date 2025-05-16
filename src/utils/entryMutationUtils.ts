@@ -1,3 +1,4 @@
+
 /**
  * This file provides utility functions for anamnesis entry mutations.
  * It includes functions for updating entry statuses, formatted raw data, notes, patient information,
@@ -95,7 +96,21 @@ export const assignOpticianToEntry = async (
   entryId: string,
   opticianId: string | null
 ) => {
-  return updateEntry(supabase, entryId, { optician_id: opticianId });
+  // Validate entry ID
+  if (!entryId) {
+    throw new Error("Missing entry ID for optician assignment");
+  }
+  
+  console.log(`entryMutationUtils: Assigning optician ${opticianId || 'null'} to entry ${entryId}`);
+  
+  try {
+    const result = await updateEntry(supabase, entryId, { optician_id: opticianId });
+    console.log(`entryMutationUtils: Optician assignment successful, got result:`, result);
+    return result;
+  } catch (error) {
+    console.error(`entryMutationUtils: Optician assignment failed:`, error);
+    throw error;
+  }
 };
 
 /**
@@ -113,11 +128,24 @@ export const assignStoreToEntry = async (
   
   console.log(`entryMutationUtils: Assigning store ${storeId || 'null'} to entry ${entryId}`);
   
-  // Log the request headers for debugging
   try {
-    const result = await updateEntry(supabase, entryId, { store_id: storeId });
-    console.log(`entryMutationUtils: Store assignment successful, got result:`, result);
-    return result;
+    // Make sure storeId is properly handled when it's null
+    const updates: Partial<AnamnesesEntry> = { store_id: storeId };
+    
+    const { data, error } = await supabase
+      .from("anamnes_entries")
+      .update(updates)
+      .eq("id", entryId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error assigning store:", error);
+      throw handleSupabaseError(error);
+    }
+    
+    console.log(`entryMutationUtils: Store assignment successful, got result:`, data);
+    return data;
   } catch (error) {
     console.error(`entryMutationUtils: Store assignment failed:`, error);
     throw error;

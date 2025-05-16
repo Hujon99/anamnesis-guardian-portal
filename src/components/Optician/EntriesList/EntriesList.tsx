@@ -65,7 +65,7 @@ export function EntriesList({
     const map = getStoreMap();
     console.log(`EntriesList: Using store map with ${map.size} entries:`, [...map.entries()]);
     return map;
-  }, [getStoreMap, stores]);
+  }, [getStoreMap]);
   
   // Force fetch stores when component mounts
   useEffect(() => {
@@ -74,7 +74,7 @@ export function EntriesList({
     
     // Show store data warning if we have entries with store IDs but no stores data
     const entriesWithStores = entries.filter(entry => entry.store_id).length;
-    const hasStoreData = stores.length > 0;
+    const hasStoreData = Array.isArray(stores) && stores.length > 0;
     
     if (entriesWithStores > 0 && !hasStoreData) {
       console.log("EntriesList: Found entries with store IDs but no store data");
@@ -93,7 +93,7 @@ export function EntriesList({
       
       toast({
         title: "Butiksdata uppdaterad",
-        description: `${stores.length} butiker hämtades framgångsrikt`,
+        description: `${stores?.length || 0} butiker hämtades framgångsrikt`,
       });
     } catch (error) {
       console.error("Error refreshing stores:", error);
@@ -152,7 +152,10 @@ export function EntriesList({
     }
   };
   
-  if (entries.length === 0) {
+  // Make sure we have a valid entries array to work with
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  
+  if (safeEntries.length === 0) {
     return <EmptyState status={status} />;
   }
 
@@ -182,12 +185,9 @@ export function EntriesList({
       )}
     
       <div className="space-y-4 mt-4">
-        {entries.map((entry) => {
+        {safeEntries.map((entry) => {
           // Lookup store name directly from our map
           const storeNameFromMap = entry.store_id ? getStoreName(entry.store_id) : null;
-          
-          // Log the store name resolution process for debugging
-          console.log(`EntriesList: Entry ${entry.id} - Store ID: ${entry.store_id || 'none'}, Store Name: ${storeNameFromMap || 'not found'}`);
           
           // Set final store name, with fallbacks
           const storeName = storeNameFromMap || entry.storeName || null;

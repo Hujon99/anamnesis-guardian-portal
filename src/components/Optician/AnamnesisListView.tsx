@@ -1,3 +1,4 @@
+
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -21,7 +22,7 @@ import { useStores } from "@/hooks/useStores";
 import { useOrganization } from "@clerk/clerk-react";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
-import { useEntryMutations } from "@/hooks/useEntryMutations"; 
+import { assignOpticianToEntry, assignStoreToEntry } from "@/utils/entryMutationUtils"; 
 import { toast } from "@/components/ui/use-toast";
 
 interface AnamnesisListViewProps {
@@ -48,6 +49,8 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const [storeFilter, setStoreFilter] = useState<string | null>(null);
   const [opticianFilter, setOpticianFilter] = useState<string | null>(null);
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [isAssigningStore, setIsAssigningStore] = useState(false);
+  const [isAssigningOptician, setIsAssigningOptician] = useState(false);
   
   const isMobile = useIsMobile();
   const { supabase } = useSupabaseClient();
@@ -83,7 +86,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     refetchStores();
   }, [refetch, refetchStores]);
 
-  // Handle optician assignment - Using useCallback to create stable function reference
+  // Handle optician assignment - Move the hook outside the callback
   const handleEntryAssigned = useCallback(async (entryId: string, opticianId: string | null): Promise<void> => {
     if (!entryId) {
       console.error("Missing entry ID for optician assignment");
@@ -96,22 +99,37 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     }
     
     try {
+      setIsAssigningOptician(true);
       console.log(`AnamnesisListView: Assigning optician ${opticianId || 'null'} to entry ${entryId}`);
       
-      // Create an instance of mutations for this specific entry
-      const mutations = useEntryMutations(entryId);
-      await mutations.assignOptician(opticianId);
+      // Use the utility function directly
+      await assignOpticianToEntry(supabase, entryId, opticianId);
       
       // Refresh data after successful assignment
       await refetch();
       
+      toast({
+        title: "Optiker tilldelad",
+        description: opticianId 
+          ? "Anamnes har tilldelats till optiker" 
+          : "Optikertilldelning har tagits bort",
+      });
+      
     } catch (error) {
       console.error("Error assigning optician:", error);
-      // Error toast is already handled by the mutations hook
+      toast({
+        title: "Fel vid tilldelning av optiker",
+        description: error instanceof Error 
+          ? error.message
+          : "Det gick inte att tilldela optiker till anamnesen",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAssigningOptician(false);
     }
-  }, [refetch]);
+  }, [refetch, supabase]);
 
-  // Handle store assignment - Now with better error handling
+  // Handle store assignment - with better error handling
   const handleStoreAssigned = useCallback(async (entryId: string, storeId: string | null): Promise<void> => {
     if (!entryId) {
       console.error("Missing entry ID for store assignment");
@@ -124,13 +142,11 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     }
     
     try {
-      console.log(`AnamnesisListView: Creating new mutations instance for entry ${entryId} to assign store ${storeId || 'null'}`);
+      setIsAssigningStore(true);
+      console.log(`AnamnesisListView: Assigning store ${storeId || 'null'} to entry ${entryId}`);
       
-      // Correctly create the mutations instance for this specific call
-      const entryMutations = useEntryMutations(entryId);
-      
-      // Use the robust assignStore method from the hook
-      await entryMutations.assignStore(storeId);
+      // Use the utility function directly
+      await assignStoreToEntry(supabase, entryId, storeId);
       
       // Important: Always refetch both entries and stores after store assignment
       await Promise.all([refetch(), refetchStores()]);
@@ -150,8 +166,10 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
         description: "Det gick inte att tilldela butiken. Försök igen senare.",
         variant: "destructive",
       });
+    } finally {
+      setIsAssigningStore(false);
     }
-  }, [refetch, refetchStores]);
+  }, [refetch, refetchStores, supabase]);
 
   // Helper function to get expiration info
   function getEntryExpirationInfo(entry: AnamnesesEntry) {
@@ -200,9 +218,6 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const enhancedEntries = advancedFilteredEntries.map(entry => {
     // Get store name using our reliable getStoreName function
     const storeName = entry.store_id ? getStoreName(entry.store_id) : null;
-    
-    // Log store name resolution for debugging
-    console.log(`AnamnesisListView: Entry ${entry.id} has store_id ${entry.store_id}, mapped to name: ${storeName}`);
     
     // Check if this is a booking without a store assigned
     const isBookingWithoutStore = (entry.is_magic_link || entry.booking_id || entry.booking_date) && !entry.store_id;

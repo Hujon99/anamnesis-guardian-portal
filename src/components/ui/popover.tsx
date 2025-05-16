@@ -21,7 +21,8 @@ const PopoverContent = React.forwardRef<
   // Enhanced safety: Ensure children is never undefined or null
   const safeProps = { ...props };
   
-  if (safeProps.children == null) {
+  // Handle null and undefined children
+  if (safeProps.children === null || safeProps.children === undefined) {
     safeProps.children = <></>;
   }
   

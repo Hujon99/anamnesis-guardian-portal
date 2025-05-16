@@ -94,28 +94,80 @@ const CommandGroup = React.forwardRef<
   // Create safe props to avoid "undefined is not iterable" errors
   const safeProps = { ...props };
   
-  // Enhanced safety: Ensure children is always a valid React node or array
-  if (safeProps.children == null) {
-    safeProps.children = [];
-  } else if (Array.isArray(safeProps.children)) {
-    // Filter out undefined/null items from arrays
-    safeProps.children = safeProps.children.filter(Boolean);
-    
-    // Extra defensive check for empty arrays
-    if (safeProps.children.length === 0) {
-      safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
-    }
-  } else if (typeof safeProps.children === 'object' && safeProps.children === null) {
-    // Handle explicit null case
+  // Handle null and undefined children cases
+  if (safeProps.children === null || safeProps.children === undefined) {
     safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
+    return (
+      <CommandPrimitive.Group
+        ref={ref}
+        className={cn(
+          "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+          className
+        )}
+        {...safeProps}
+      />
+    );
   }
   
-  // Completely avoid using .length by using more type-safe checks
-  const hasContent = React.isValidElement(safeProps.children) || 
-                    (Array.isArray(safeProps.children) && safeProps.children.length > 0) || 
-                    (typeof safeProps.children === 'string' && safeProps.children.length > 0) ||
-                    (typeof safeProps.children === 'number');
+  // Handle array children case - without using .length on non-array
+  if (Array.isArray(safeProps.children)) {
+    // Filter out falsy values
+    const filteredChildren = safeProps.children.filter(Boolean);
+    
+    // If array is empty after filtering
+    if (filteredChildren.length === 0) {
+      safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
+    } else {
+      safeProps.children = filteredChildren;
+    }
+    
+    return (
+      <CommandPrimitive.Group
+        ref={ref}
+        className={cn(
+          "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+          className
+        )}
+        {...safeProps}
+      />
+    );
+  }
   
+  // Handle string children case - check empty string without using .length on non-string
+  if (typeof safeProps.children === 'string') {
+    if (safeProps.children === '') {
+      safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
+    }
+    
+    return (
+      <CommandPrimitive.Group
+        ref={ref}
+        className={cn(
+          "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+          className
+        )}
+        {...safeProps}
+      />
+    );
+  }
+  
+  // For all other types (ReactNode, number, boolean, etc.)
+  // For numbers or valid React elements, directly render them
+  if (typeof safeProps.children === 'number' || React.isValidElement(safeProps.children)) {
+    return (
+      <CommandPrimitive.Group
+        ref={ref}
+        className={cn(
+          "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
+          className
+        )}
+        {...safeProps}
+      />
+    );
+  }
+  
+  // For any other type (including iterables without rendering - edge case)
+  // We provide a fallback UI
   return (
     <CommandPrimitive.Group
       ref={ref}
@@ -123,13 +175,10 @@ const CommandGroup = React.forwardRef<
         "overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground",
         className
       )}
-      {...safeProps}
     >
-      {!hasContent && (
-        <div className="text-center text-muted-foreground py-2">
-          Inga alternativ tillgängliga
-        </div>
-      )}
+      <div className="text-center text-muted-foreground py-2">
+        Inga alternativ tillgängliga
+      </div>
     </CommandPrimitive.Group>
   );
 })

@@ -24,7 +24,7 @@ interface QuickAssignDropdownProps {
   currentOpticianId?: string | null;
   onAssign: (opticianId: string | null) => Promise<void>;
   disabled?: boolean;
-  children?: React.ReactNode; // Added children prop
+  children?: React.ReactNode;
 }
 
 export function QuickAssignDropdown({
@@ -83,9 +83,14 @@ export function QuickAssignDropdown({
   const selectedOptician = opticians.find(o => o.clerk_user_id === currentOpticianId);
   const selectedOpticianName = getOpticianDisplayName(selectedOptician);
   
+  // Add a click handler to prevent event bubbling
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild disabled={disabled || isPending}>
+      <DropdownMenuTrigger asChild disabled={disabled || isPending} onClick={handleTriggerClick}>
         {children || (
           <Button
             variant="outline"
@@ -106,7 +111,7 @@ export function QuickAssignDropdown({
         )}
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 bg-background">
         {isLoading ? (
           <div className="flex items-center justify-center py-2">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -121,7 +126,10 @@ export function QuickAssignDropdown({
             {opticians.map((optician) => (
               <DropdownMenuItem
                 key={optician.id}
-                onClick={() => handleAssign(optician.clerk_user_id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAssign(optician.clerk_user_id);
+                }}
                 disabled={isPending}
               >
                 <div className="flex items-center justify-between w-full">
@@ -137,7 +145,10 @@ export function QuickAssignDropdown({
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  onClick={() => handleAssign(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAssign(null);
+                  }}
                   disabled={isPending}
                   className="text-destructive focus:text-destructive"
                 >

@@ -222,10 +222,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
             <div className="flex items-center gap-2">
               {showAssignmentIndicator && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   {/* Store assignment UI */}
                   {showQuickAssign ? (
-                    <div onClick={(e) => e.stopPropagation()}>
+                    <div>
                       {entry.store_id ? (
                         <QuickStoreAssignDropdown
                           entryId={entry.id}
@@ -265,7 +265,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
                   {/* Optician assignment UI */}
                   {entry.optician_id ? (
-                    <div onClick={(e) => e.stopPropagation()}>
+                    <div>
                       {showQuickAssign ? (
                         <QuickAssignDropdown
                           entryId={entry.id}
@@ -287,7 +287,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                     </div>
                   ) : (
                     showQuickAssign && (
-                      <div onClick={(e) => e.stopPropagation()}>
+                      <div>
                         <QuickAssignDropdown
                           entryId={entry.id}
                           currentOpticianId={entry.optician_id}

@@ -50,12 +50,17 @@ export function QuickStoreAssignDropdown({
     a.name.localeCompare(b.name, 'sv')
   );
 
+  // Add a click handler to the trigger to prevent event bubbling
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild disabled={isAssigning}>
+      <DropdownMenuTrigger asChild disabled={isAssigning} onClick={handleTriggerClick}>
         {children}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 bg-background">
         {isAssigning && (
           <div className="flex items-center justify-center p-2">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -84,7 +89,10 @@ export function QuickStoreAssignDropdown({
                     {sortedStores.map((store) => (
                       <DropdownMenuItem
                         key={store.id}
-                        onClick={() => handleAssign(store.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAssign(store.id);
+                        }}
                         className={
                           currentStoreId === store.id
                             ? "bg-muted font-medium"
@@ -107,7 +115,10 @@ export function QuickStoreAssignDropdown({
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => handleAssign(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAssign(null);
+                      }}
                       className="text-destructive focus:text-destructive"
                     >
                       Ta bort butiksval

@@ -80,11 +80,20 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { supabase } = useSupabaseClient();
   
-  // Get the appropriate store name
-  let displayStoreName = entry.storeName || storeName || null;
+  // Get the appropriate store name - priority order: entry.storeName, storeName prop, entry.store_id
+  // Entry.storeName comes from the enhanced entries in AnamnesisListView
+  // storeName prop is a fallback passed from the parent
+  const displayStoreName = entry.storeName || storeName || null;
+  
+  console.log(`AnamnesisListItem: Entry ${entry.id} store info:`, {
+    entryStoreId: entry.store_id,
+    entryStoreName: entry.storeName,
+    propsStoreName: storeName,
+    finalDisplayName: displayStoreName
+  });
   
   // Final fallback to just show the ID if needed
-  const finalDisplayStoreName = displayStoreName || entry.store_id;
+  const finalDisplayStoreName = displayStoreName || (entry.store_id ? `ID: ${entry.store_id.substring(0, 8)}` : null);
 
   const handleDelete = async () => {
     try {
@@ -132,6 +141,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
   const handleStoreAssign = async (storeId: string | null) => {
     if (onStoreAssign) {
+      console.log(`AnamnesisListItem: Assigning store ${storeId} to entry ${entry.id}`);
       await onStoreAssign(entry.id, storeId);
     }
   };
@@ -254,7 +264,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                         >
                           <Badge variant="outline" className="flex items-center gap-1 py-0 h-6 bg-primary/5 hover:bg-primary/10 cursor-pointer">
                             <Store className="h-3 w-3 text-muted-foreground" />
-                            <span>{finalDisplayStoreName}</span>
+                            <span className="max-w-[120px] truncate">{finalDisplayStoreName || "Välj butik"}</span>
                             <ChevronDown className="h-3 w-3 ml-1 text-muted-foreground" />
                           </Badge>
                         </QuickStoreAssignDropdown>
@@ -276,10 +286,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                         </QuickStoreAssignDropdown>
                       )}
                     </div>
-                  ) : entry.store_id && (
+                  ) : entry.store_id && finalDisplayStoreName && (
                     <Badge variant="outline" className="flex items-center gap-1 py-0 h-6 bg-primary/5">
                       <Store className="h-3 w-3 text-muted-foreground" />
-                      <span>{finalDisplayStoreName}</span>
+                      <span className="max-w-[120px] truncate">{finalDisplayStoreName}</span>
                     </Badge>
                   )}
 
@@ -290,7 +300,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                         <QuickAssignDropdown
                           entryId={entry.id}
                           currentOpticianId={entry.optician_id}
-                          onAssign={(opticianId) => handleAssign(opticianId)}
+                          onAssign={handleAssign}
                         >
                           <Badge variant="secondary" className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80">
                             <User className="h-3 w-3" />
@@ -311,7 +321,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                         <QuickAssignDropdown
                           entryId={entry.id}
                           currentOpticianId={entry.optician_id}
-                          onAssign={(opticianId) => handleAssign(opticianId)}
+                          onAssign={handleAssign}
                         >
                           <Button
                             variant="outline"

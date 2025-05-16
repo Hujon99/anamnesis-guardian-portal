@@ -56,17 +56,23 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const { syncUsersWithToast } = useSyncClerkUsers();
   
   // Fetch stores for enhancing display
-  const { data: stores = [] } = useQuery({
+  const { data: stores = [], refetch: refetchStores } = useQuery({
     queryKey: ["stores", organization?.id],
     queryFn: async () => {
       if (!organization?.id) return [];
       
+      console.log("Fetching stores for organization:", organization.id);
       const { data, error } = await supabase
         .from('stores')
         .select('*')
         .eq('organization_id', organization.id);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching stores:", error);
+        throw error;
+      }
+      
+      console.log("Fetched stores:", data);
       return data as Store[];
     },
     enabled: !!organization?.id
@@ -80,6 +86,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     stores.forEach(store => {
       storeMap.set(store.id, store.name);
     });
+    console.log("Built store map:", [...storeMap.entries()]);
     
     // Sync Clerk users with Supabase on component mount
     syncUsersWithToast();
@@ -89,6 +96,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const handleManualRefresh = () => {
     console.log("Manual refresh triggered in AnamnesisListView");
     refetch();
+    refetchStores();
   };
 
   // Handle optician assignment - Using useCallback to create stable function reference
@@ -168,8 +176,9 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   
   // Enhance entries with store information
   const enhancedEntries = advancedFilteredEntries.map(entry => {
-    // Get store name if available
+    // Get store name if available - use store map for lookup
     const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
+    console.log(`Entry ${entry.id} has store_id ${entry.store_id}, mapped to name: ${storeName}`);
     
     // Check if this is a booking without a store assigned
     const isBookingWithoutStore = (entry.is_magic_link || entry.booking_id || entry.booking_date) && !entry.store_id;

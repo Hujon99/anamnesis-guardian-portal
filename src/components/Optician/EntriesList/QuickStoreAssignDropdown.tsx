@@ -13,9 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useStores } from "@/hooks/useStores";
-import { Store } from "lucide-react";
+import { Store, Loader2, Check } from "lucide-react";
 import { useOrganization } from "@clerk/clerk-react";
-import { Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface QuickStoreAssignDropdownProps {
   entryId: string;
@@ -40,9 +40,16 @@ export function QuickStoreAssignDropdown({
       e.stopPropagation();
       e.preventDefault();
       setIsAssigning(true);
+      console.log(`Assigning store with ID: ${storeId} to entry: ${entryId}`);
       await onAssign(entryId, storeId);
     } catch (error) {
       console.error("Error assigning store:", error);
+      
+      toast({
+        title: "Fel vid tilldelning av butik",
+        description: "Det gick inte att tilldela butiken",
+        variant: "destructive",
+      });
     } finally {
       setIsAssigning(false);
       setIsOpen(false);
@@ -53,6 +60,10 @@ export function QuickStoreAssignDropdown({
   const sortedStores = [...stores].sort((a, b) => 
     a.name.localeCompare(b.name, 'sv')
   );
+  
+  // Find current store name
+  const currentStore = stores.find(store => store.id === currentStoreId);
+  const currentStoreName = currentStore?.name || "Ingen butik tilldelad";
 
   // Add a click handler to the trigger to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {
@@ -106,13 +117,15 @@ export function QuickStoreAssignDropdown({
                             : "cursor-pointer"
                         }
                       >
-                        <Store className="mr-2 h-4 w-4" />
-                        {store.name}
-                        {currentStoreId === store.id && (
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            (Nuvarande)
-                          </span>
-                        )}
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center">
+                            <Store className="mr-2 h-4 w-4" />
+                            <span>{store.name}</span>
+                          </div>
+                          {currentStoreId === store.id && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
                       </DropdownMenuItem>
                     ))}
                   </>

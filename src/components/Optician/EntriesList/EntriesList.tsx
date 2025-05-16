@@ -62,6 +62,7 @@ export function EntriesList({
     }
     
     try {
+      console.log(`EntriesList: Assigning store ${storeId} to entry ${entryId}`);
       await onStoreAssigned(entryId, storeId);
       
       // Show success message

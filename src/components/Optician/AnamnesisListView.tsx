@@ -53,30 +53,34 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const { organization } = useOrganization();
   const { syncUsersWithToast } = useSyncClerkUsers();
   
-  // Use the useStores hook directly to get stores data
-  const { stores, refetch: refetchStores } = useStores();
+  // Use the useStores hook with improved store handling
+  const { 
+    stores, 
+    refetch: refetchStores, 
+    isLoading: isLoadingStores,
+    getStoreName,
+    getStoreMap 
+  } = useStores();
   
-  // Create a map of store IDs to store names for quick lookup
-  const storeMap = new Map<string, string>();
-  
+  // Prefetch and warm up the stores cache immediately when component mounts
   useEffect(() => {
-    // Build store map when stores data changes
-    stores.forEach(store => {
-      storeMap.set(store.id, store.name);
-    });
-    console.log(`AnamnesisListView: Found ${stores.length} stores, built map with ${storeMap.size} entries:`);
-    console.log("AnamnesisListView: Store Map:", [...storeMap.entries()]);
+    const prefetchStores = async () => {
+      console.log("AnamnesisListView: Initial prefetch of stores");
+      await refetchStores();
+    };
     
-    // Sync Clerk users with Supabase on component mount
+    prefetchStores();
+    
+    // Also sync Clerk users with Supabase on component mount
     syncUsersWithToast();
-  }, [stores, syncUsersWithToast]);
+  }, [refetchStores, syncUsersWithToast]);
 
   // Manual refresh handler that refetches both entries and stores
-  const handleManualRefresh = () => {
+  const handleManualRefresh = useCallback(() => {
     console.log("Manual refresh triggered in AnamnesisListView");
     refetch();
     refetchStores();
-  };
+  }, [refetch, refetchStores]);
 
   // Handle optician assignment - Using useCallback to create stable function reference
   const handleEntryAssigned = useCallback(async (entryId: string, opticianId: string | null): Promise<void> => {
@@ -107,14 +111,17 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
         .eq("id", entryId);
         
       if (error) throw error;
-      await refetch();
-      await refetchStores(); // Refresh stores after assignment
+      
+      // Important: Always refetch both entries and stores after store assignment
+      await Promise.all([refetch(), refetchStores()]);
+      
     } catch (error) {
       console.error("Error assigning store:", error);
       throw error;
     }
   }, [supabase, refetch, refetchStores]);
 
+  // Helper function to get expiration info
   function getEntryExpirationInfo(entry: AnamnesesEntry) {
     if (!entry.auto_deletion_timestamp) return { isExpired: false, daysUntilExpiration: null };
     
@@ -154,10 +161,15 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     return true;
   });
   
+  // Get the store map for lookup
+  const storeMap = getStoreMap();
+  
   // Enhance entries with store information
   const enhancedEntries = advancedFilteredEntries.map(entry => {
-    // Get store name from storeMap
-    const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
+    // Get store name using our reliable getStoreName function
+    const storeName = entry.store_id ? getStoreName(entry.store_id) : null;
+    
+    // Log store name resolution for debugging
     console.log(`AnamnesisListView: Entry ${entry.id} has store_id ${entry.store_id}, mapped to name: ${storeName}`);
     
     // Check if this is a booking without a store assigned
@@ -171,13 +183,10 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     };
   });
 
-  // Force fetch stores when component mounts or when we navigate back to this view
+  // Force refresh when we first view the component
   useEffect(() => {
-    console.log("AnamnesisListView: Initial load - fetching stores");
-    refetchStores().then(result => {
-      console.log("AnamnesisListView: Stores fetch result:", result.data?.length || 0, "stores");
-    });
-  }, [refetchStores]);
+    handleManualRefresh();
+  }, [handleManualRefresh]);
 
   if ((isLoading && !entries.length)) {
     return <LoadingState />;
@@ -196,7 +205,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
               searchQuery={filters.searchQuery}
               onSearchChange={(value) => updateFilter("searchQuery", value)}
               onRefresh={handleManualRefresh}
-              isRefreshing={isFetching}
+              isRefreshing={isFetching || isLoadingStores}
             />
           </div>
           
@@ -236,7 +245,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
           filteredCount={enhancedEntries.length}
           totalCount={entries.length}
           statusFilter={filters.statusFilter}
-          isFetching={isFetching}
+          isFetching={isFetching || isLoadingStores}
           lastUpdated={dataLastUpdated}
         />
         
@@ -257,7 +266,9 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
             if (!open) setSelectedEntry(null);
           }}
           onEntryUpdated={() => {
+            // Ensure we refresh both stores and entries when entry is updated
             refetch();
+            refetchStores();
             setSelectedEntry(null);
           }}
         />

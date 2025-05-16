@@ -11,7 +11,7 @@ import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useAuth } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
 import { useStores } from "@/hooks/useStores";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 interface EntriesListProps {
   entries: (AnamnesesEntry & {
@@ -38,33 +38,33 @@ export function EntriesList({
   status = "pending" // Default status to handle the empty state
 }: EntriesListProps) {
   const { opticians } = useOpticians();
-  const { stores, refetch: refetchStores } = useStores();
+  const { stores, refetch: refetchStores, getStoreName, getStoreMap } = useStores();
   const { has } = useAuth();
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
   
   // Create a map of optician IDs to names for quick lookup
-  const opticianMap = new Map<string, string>();
-  opticians.forEach(optician => {
-    if (optician.clerk_user_id) {
-      opticianMap.set(optician.clerk_user_id, getOpticianDisplayName(optician));
-    }
-  });
+  const opticianMap = useMemo(() => {
+    const map = new Map<string, string>();
+    opticians.forEach(optician => {
+      if (optician.clerk_user_id) {
+        map.set(optician.clerk_user_id, getOpticianDisplayName(optician));
+      }
+    });
+    return map;
+  }, [opticians]);
   
-  // Create a map of store IDs to store names with detailed logging
-  const storeMap = new Map<string, string>();
-  stores.forEach(store => {
-    storeMap.set(store.id, store.name);
-    console.log(`EntriesList: Mapping store ${store.id} to name "${store.name}"`);
-  });
+  // Get the store map
+  const storeMap = useMemo(() => {
+    const map = getStoreMap();
+    console.log(`EntriesList: Using store map with ${map.size} entries:`, [...map.entries()]);
+    return map;
+  }, [getStoreMap, stores]);
   
-  console.log("EntriesList: Available stores:", stores);
-  console.log("EntriesList: Generated storeMap:", [...storeMap.entries()]);
-  
-  // Fetch stores once when component mounts
+  // Force fetch stores when component mounts
   useEffect(() => {
-    console.log("EntriesList: Fetching stores");
+    console.log("EntriesList: Initial load - fetching stores");
     refetchStores();
   }, [refetchStores]);
   
@@ -82,6 +82,9 @@ export function EntriesList({
     try {
       console.log(`EntriesList: Assigning store ${storeId} to entry ${entryId}`);
       await onStoreAssigned(entryId, storeId);
+      
+      // Refresh store data after assignment
+      await refetchStores();
       
       // Show success message
       toast({
@@ -108,18 +111,21 @@ export function EntriesList({
   return (
     <div className="space-y-4 mt-4">
       {entries.map((entry) => {
-        // Get store name from our map if it exists, otherwise use entry.storeName as fallback
-        const storeNameFromMap = entry.store_id ? storeMap.get(entry.store_id) : null;
-        const storeName = storeNameFromMap || entry.storeName;
+        // Lookup store name directly from our map
+        const storeNameFromMap = entry.store_id ? getStoreName(entry.store_id) : null;
         
-        console.log(`EntriesList: Entry ${entry.id} - Store ID: ${entry.store_id}, Store Name from Map: ${storeNameFromMap}, Final Store Name: ${storeName}`);
+        // Log the store name resolution process for debugging
+        console.log(`EntriesList: Entry ${entry.id} - Store ID: ${entry.store_id || 'none'}, Store Name: ${storeNameFromMap || 'not found'}`);
+        
+        // Set final store name, with fallbacks
+        const storeName = storeNameFromMap || entry.storeName || null;
         
         return (
           <AnamnesisListItem
             key={entry.id}
             entry={{
               ...entry,
-              storeName: storeName // Pass the store name explicitly
+              storeName: storeName
             }}
             onClick={() => onSelectEntry(entry)}
             onDelete={onEntryDeleted}
@@ -129,7 +135,7 @@ export function EntriesList({
             showQuickAssign={showQuickAssign && (isAdmin || true)}
             opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}
             storeName={storeName}
-            storeMap={storeMap} // Pass the entire store map for lookup in the item
+            storeMap={storeMap}
             isBookingWithoutStore={entry.isBookingWithoutStore}
           />
         );

@@ -34,7 +34,7 @@ export function QuickStoreAssignDropdown({
 }: QuickStoreAssignDropdownProps) {
   const [isAssigning, setIsAssigning] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const { stores, isLoading: isLoadingStores, refetch: refetchStores } = useStores();
+  const { stores, isLoading: isLoadingStores, refetch: refetchStores, getStoreName } = useStores();
   const { organization } = useOrganization();
   
   // Force refetch stores when component mounts or organization changes
@@ -50,6 +50,7 @@ export function QuickStoreAssignDropdown({
       setIsAssigning(true);
       console.log(`QuickStoreAssignDropdown: Assigning store with ID: ${storeId} to entry: ${entryId}`);
       await onAssign(entryId, storeId);
+      await refetchStores();
       console.log(`QuickStoreAssignDropdown: Successfully assigned store ${storeId} to entry ${entryId}`);
     } catch (error) {
       console.error("Error assigning store:", error);
@@ -73,16 +74,24 @@ export function QuickStoreAssignDropdown({
   console.log("QuickStoreAssignDropdown: Available stores", stores);
   console.log("QuickStoreAssignDropdown: currentStoreId", currentStoreId);
   
-  // Find current store name - first try the storeMap, then fall back to stores array
+  // Find current store name using getStoreName directly from useStores
   let currentStoreName = "Ingen butik tilldelad";
   
   if (currentStoreId) {
-    if (storeMap && storeMap.has(currentStoreId)) {
+    // First try direct lookup via useStores hook
+    const storeName = getStoreName(currentStoreId);
+    if (storeName) {
+      currentStoreName = storeName;
+    } 
+    // Try fallback to storeMap from props
+    else if (storeMap && storeMap.has(currentStoreId)) {
       currentStoreName = storeMap.get(currentStoreId) || currentStoreName;
-    } else {
-      const currentStore = stores.find(store => store.id === currentStoreId);
-      if (currentStore) {
-        currentStoreName = currentStore.name;
+    }
+    // Try fallback to stores array
+    else {
+      const foundStore = stores.find(store => store.id === currentStoreId);
+      if (foundStore) {
+        currentStoreName = foundStore.name;
       }
     }
   }

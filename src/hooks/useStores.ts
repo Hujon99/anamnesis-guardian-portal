@@ -1,9 +1,10 @@
+
 /**
  * This hook provides functionality for managing stores.
  * It includes querying store data, creating new stores, and updating existing stores.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganization } from '@clerk/clerk-react';
 import { useSupabaseClient } from './useSupabaseClient';
@@ -15,6 +16,7 @@ export function useStores() {
   const { supabase, isReady, refreshClient } = useSupabaseClient();
   const queryClient = useQueryClient();
   const [error, setError] = useState<Error | null>(null);
+  const [storeMapCache, setStoreMapCache] = useState<Map<string, string>>(new Map());
   
   // Function to handle refreshing on token errors
   const fetchStoresWithRetry = useCallback(async (retryCount = 0) => {
@@ -48,6 +50,14 @@ export function useStores() {
       }
       
       console.log(`useStores: Successfully fetched ${data.length} stores:`, data);
+      
+      // Update the storeMap cache when new data is fetched
+      const newStoreMap = new Map<string, string>();
+      (data as Store[]).forEach(store => {
+        newStoreMap.set(store.id, store.name);
+      });
+      setStoreMapCache(newStoreMap);
+      
       return data as Store[];
     } catch (err) {
       console.error('Error fetching stores:', err);
@@ -61,7 +71,9 @@ export function useStores() {
     data: stores = [],
     isLoading,
     refetch,
-    isFetching
+    isFetching,
+    isError,
+    isSuccess
   } = useQuery({
     queryKey: ['stores', organization?.id],
     queryFn: () => fetchStoresWithRetry(),
@@ -70,6 +82,32 @@ export function useStores() {
     gcTime: 1000 * 60 * 10, // Keep cached data for 10 minutes
     retry: 2, // Retry failed queries twice
   });
+
+  // Generate a store map each time the stores change
+  useEffect(() => {
+    if (stores && stores.length > 0) {
+      const newStoreMap = new Map<string, string>();
+      stores.forEach(store => {
+        newStoreMap.set(store.id, store.name);
+      });
+      console.log(`useStores: Generated map with ${newStoreMap.size} store entries`);
+      setStoreMapCache(newStoreMap);
+    }
+  }, [stores]);
+  
+  // Create a getter function for store names to ensure consistent lookup
+  const getStoreName = useCallback((storeId: string | null | undefined): string | null => {
+    if (!storeId) return null;
+    
+    const name = storeMapCache.get(storeId);
+    console.log(`useStores: Looking up name for store ${storeId}: ${name || 'not found'}`);
+    return name || null;
+  }, [storeMapCache]);
+  
+  // Add a function to get the full store map
+  const getStoreMap = useCallback((): Map<string, string> => {
+    return storeMapCache;
+  }, [storeMapCache]);
   
   // Mutation to create a new store
   const createStoreMutation = useMutation({
@@ -186,9 +224,13 @@ export function useStores() {
     isLoading,
     isFetching,
     error,
+    isSuccess,
     refetch,
-    createStore: createStoreMutation.mutateAsync,
-    updateStore: updateStoreMutation.mutateAsync,
-    findOrCreateStore
+    createStore: createStoreMutation?.mutateAsync,
+    updateStore: updateStoreMutation?.mutateAsync,
+    findOrCreateStore,
+    getStoreName,
+    getStoreMap,
+    storeMap: storeMapCache
   };
 }

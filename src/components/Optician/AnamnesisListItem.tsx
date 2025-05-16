@@ -44,6 +44,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { getPatientDisplayName } from "@/lib/utils";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
+import { useStores } from "@/hooks/useStores";
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
@@ -73,43 +74,51 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   showAssignmentIndicator = false,
   showQuickAssign = false,
   opticianName,
-  storeName,
+  storeName: propStoreName,
   storeMap,
   isBookingWithoutStore,
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { supabase } = useSupabaseClient();
+  const { getStoreName } = useStores();
   
   // Get the appropriate store name using multiple fallback strategies with improved logging
-  let displayStoreName = null;
+  // Use a local reference to avoid confusion with prop
+  let displayStoreName: string | null = null;
   
   if (entry.store_id) {
-    // Log all relevant store information for debugging
-    console.log(`AnamnesisListItem: Entry ${entry.id} store resolution - Entry store_id: ${entry.store_id}`);
-    console.log(`AnamnesisListItem: Entry ${entry.id} store resolution - Entry storeName prop: ${entry.storeName}`);
-    console.log(`AnamnesisListItem: Entry ${entry.id} store resolution - Direct storeName prop: ${storeName}`);
-    console.log(`AnamnesisListItem: Entry ${entry.id} store resolution - StoreMap available: ${!!storeMap}`);
+    // Strategy 1: Try direct hook lookup (most accurate)
+    const storeNameFromHook = getStoreName(entry.store_id);
     
-    if (storeMap && storeMap.has(entry.store_id)) {
-      // Strategy 1: Try storeMap (most efficient) 
-      displayStoreName = storeMap.get(entry.store_id) || null;
-      console.log(`AnamnesisListItem: Using storeMap for ${entry.id}: ${displayStoreName}`);
-    } 
-    // Strategy 2: Use entry.storeName (from the EntriesList enhanced data)
-    else if (entry.storeName) {
-      displayStoreName = entry.storeName;
-      console.log(`AnamnesisListItem: Using entry.storeName for ${entry.id}: ${displayStoreName}`);
-    } 
-    // Strategy 3: Use storeName prop (explicit pass from parent)
-    else if (storeName) {
-      displayStoreName = storeName;
-      console.log(`AnamnesisListItem: Using storeName prop for ${entry.id}: ${displayStoreName}`);
-    }
-    // Strategy 4: If all else fails, show partial store ID
-    else {
-      displayStoreName = `ID: ${entry.store_id.substring(0, 8)}`;
-      console.log(`AnamnesisListItem: Using fallback ID for ${entry.id}: ${displayStoreName}`);
+    // Strategy 2: Use storeMap (from props)
+    const storeNameFromMap = storeMap && storeMap.has(entry.store_id) 
+      ? storeMap.get(entry.store_id) || null 
+      : null;
+    
+    // Strategy 3: Use entry.storeName (from the EntriesList enhanced data)
+    const storeNameFromEntry = entry.storeName;
+    
+    // Strategy 4: Use storeName prop (explicit pass from parent)
+    const storeNameFromProp = propStoreName;
+    
+    // Log all available sources for debugging
+    console.log(`AnamnesisListItem: Store name resolution for ${entry.id}:
+      - Store ID: ${entry.store_id}
+      - From Hook: ${storeNameFromHook}
+      - From Map: ${storeNameFromMap}
+      - From Entry: ${storeNameFromEntry}
+      - From Prop: ${storeNameFromProp}`);
+    
+    // Use the first available name in order of reliability
+    displayStoreName = storeNameFromHook || 
+                      storeNameFromMap || 
+                      storeNameFromEntry || 
+                      storeNameFromProp;
+    
+    // Strategy 5: If all else fails, show partial store ID
+    if (!displayStoreName) {
+      displayStoreName = `Butik ID: ${entry.store_id.substring(0, 8)}...`;
     }
   }
   
@@ -287,7 +296,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                         <QuickStoreAssignDropdown
                           entryId={entry.id}
                           currentStoreId={entry.store_id}
-                          onAssign={onStoreAssign!}
+                          onAssign={handleStoreAssign}
                           storeMap={storeMap}
                         >
                           <Badge variant="outline" className="flex items-center gap-1 py-0 h-6 bg-primary/5 hover:bg-primary/10 cursor-pointer">
@@ -300,7 +309,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                         <QuickStoreAssignDropdown
                           entryId={entry.id}
                           currentStoreId={null}
-                          onAssign={onStoreAssign!}
+                          onAssign={handleStoreAssign}
                           storeMap={storeMap}
                         >
                           <Button

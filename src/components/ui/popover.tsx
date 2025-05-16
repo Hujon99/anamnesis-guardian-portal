@@ -18,11 +18,10 @@ const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(({ className, align = "center", sideOffset = 4, ...props }, ref) => {
-  // Add safety for children prop
+  // Ensure children is never undefined or null to prevent "undefined is not iterable" errors
   const safeProps = { ...props };
   
-  // Ensure children is not undefined or null
-  if (!safeProps.children) {
+  if (safeProps.children == null) {
     safeProps.children = <></>;
   }
 

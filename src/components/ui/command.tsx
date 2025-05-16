@@ -91,15 +91,15 @@ const CommandGroup = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Group>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
 >(({ className, ...props }, ref) => {
-  // Add safety for children prop to prevent undefined is not iterable errors
+  // Create safe props to avoid "undefined is not iterable" errors
   const safeProps = { ...props };
   
-  // Check if children prop is an array and contains undefined/null items
-  if (Array.isArray(safeProps.children)) {
-    safeProps.children = safeProps.children.filter(Boolean);
-  } else if (!safeProps.children) {
-    // If children is falsy (null, undefined), provide empty array as fallback
+  // Ensure children is always a valid React node or array
+  if (safeProps.children == null) {
     safeProps.children = [];
+  } else if (Array.isArray(safeProps.children)) {
+    // Filter out undefined/null items from arrays
+    safeProps.children = safeProps.children.filter(Boolean);
   }
   
   return (
@@ -111,7 +111,7 @@ const CommandGroup = React.forwardRef<
       )}
       {...safeProps}
     />
-  )
+  );
 })
 
 CommandGroup.displayName = CommandPrimitive.Group.displayName

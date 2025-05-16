@@ -108,8 +108,12 @@ export function useStores() {
       lastRefreshRef.current = Date.now();
       console.log(`useStores: Successfully fetched ${safeData.length} stores:`, safeData);
       
-      // Cast the data to Store[] to ensure type compatibility
-      const typedStoreData = safeData as unknown as Store[];
+      // FIX: Explicitly cast the data to Store[] with proper type handling for metadata
+      const typedStoreData: Store[] = safeData.map(store => ({
+        ...store,
+        // Ensure metadata is properly handled
+        metadata: store.metadata
+      })) as Store[];
       
       // Update local backup
       setLocalStoresBackup(typedStoreData);
@@ -152,8 +156,14 @@ export function useStores() {
           const { stores } = JSON.parse(cachedData);
           if (Array.isArray(stores) && stores.length > 0) {
             console.log(`useStores: Falling back to ${stores.length} cached stores due to fetch error`);
-            setLocalStoresBackup(stores as Store[]);
-            return stores as Store[];
+            // FIX: Explicitly cast the cached data to Store[] with proper type handling
+            const typedStores = stores.map((store: any) => ({
+              ...store,
+              metadata: store.metadata
+            })) as Store[];
+            
+            setLocalStoresBackup(typedStores);
+            return typedStores;
           }
         } catch (cacheErr) {
           console.error('Error reading from store cache:', cacheErr);
@@ -209,8 +219,8 @@ export function useStores() {
         console.error('Failed to update store cache:', err);
       }
       
-      // Update local backup
-      setLocalStoresBackup(storesArray);
+      // Update local backup - cast safely to Store[]
+      setLocalStoresBackup(storesArray as Store[]);
     }
   }, [stores]);
   

@@ -110,7 +110,7 @@ export interface DynamicFollowupQuestion extends FormQuestion {
   originalId: string;
 }
 
-// Updated Store type to make metadata compatible with Supabase's Json type
+// Updated Store type to properly handle Supabase's JSON type
 export type Store = {
   id: string;
   name: string;
@@ -119,7 +119,8 @@ export type Store = {
   address: string | null;
   phone: string | null;
   email: string | null;
-  metadata: Record<string, any> | null | string | number | boolean | any[]; // Modified to accept Json type values
+  // Updated definition to handle all possible JSON values from Supabase
+  metadata: Record<string, any> | null | string | number | boolean | any[];
   created_at: string;
   updated_at: string;
 };

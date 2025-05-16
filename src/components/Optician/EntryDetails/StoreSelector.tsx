@@ -36,6 +36,9 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
   const [isAssigning, setIsAssigning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  
+  // Use the stores hook with better error handling
   const { 
     stores, 
     isLoading: isLoadingStores, 
@@ -48,8 +51,26 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
     getStoreName(storeId) || "Laddar butik..." : 
     "Välj butik";
   
-  // Ensure stores is always an array, with improved defensive coding
+  // IMPORTANT: Check if stores data is valid before rendering dependent components
   const safeStores = Array.isArray(stores) ? stores : [];
+  
+  // Pre-load stores data when component mounts to ensure it's ready before first open
+  useEffect(() => {
+    console.log("StoreSelector: Component mounted, pre-fetching stores");
+    const preloadStores = async () => {
+      try {
+        if (!ready) {
+          await refetchStores();
+          setReady(true);
+          console.log("StoreSelector: Stores pre-fetched successfully");
+        }
+      } catch (error) {
+        console.error("StoreSelector: Error pre-fetching stores:", error);
+      }
+    };
+    
+    preloadStores();
+  }, [refetchStores, ready]);
   
   // Handle store selection with improved error handling
   const handleStoreSelect = async (storeId: string | null) => {
@@ -106,26 +127,21 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
       setIsRefreshing(false);
     }
   };
-  
-  // Fetch stores on component mount if they aren't already loaded
-  useEffect(() => {
-    if ((safeStores.length === 0 || !safeStores) && !isLoadingStores) {
-      refetchStores().catch(err => {
-        console.error("Failed to fetch stores on mount:", err);
-        setRenderError("Failed to load stores. Please try refreshing.");
-      });
-    }
-  }, [refetchStores, safeStores, isLoadingStores]);
 
-  // Safety check before opening the popover
+  // Safety check before opening the popover and prefetch data if needed
   const handleOpenChange = (newOpen: boolean) => {
-    // If we're opening the popover, make sure we have stores data
-    if (newOpen && safeStores.length === 0 && !isLoadingStores) {
-      // Try to fetch stores if we don't have any yet
-      refetchStores().catch(err => {
-        console.error("Failed to fetch stores on open:", err);
-        setRenderError("Failed to load stores. Please try refreshing.");
-      });
+    if (newOpen) {
+      // Prefetch stores data if not already loaded
+      if (!isLoadingStores && safeStores.length === 0) {
+        refetchStores()
+          .then(() => {
+            console.log("StoreSelector: Stores fetched on open");
+          })
+          .catch(error => {
+            console.error("StoreSelector: Failed to fetch stores on open:", error);
+            setRenderError("Failed to load stores. Please try refreshing.");
+          });
+      }
     }
     setOpen(newOpen);
   };
@@ -201,7 +217,8 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
             ) : (
               <>
                 <CommandEmpty>Inga butiker hittades.</CommandEmpty>
-                {safeStores && safeStores.length > 0 && (
+                {/* Only render CommandGroup if we have stores data */}
+                {safeStores.length > 0 && (
                   <CommandGroup>
                     {safeStores.map((store) => (
                       <CommandItem

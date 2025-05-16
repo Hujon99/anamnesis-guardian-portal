@@ -28,17 +28,18 @@ const PopoverContent = React.forwardRef<
   // Extra safety check for child rendering errors
   const renderSafeChildren = () => {
     try {
-      // Fix: We need to check if children is a function and if it is, make sure it's callable
+      // Check if children is a function and handle safely
       if (typeof safeProps.children === 'function') {
-        // Only call the function if it's actually callable
-        if (safeProps.children instanceof Function) {
-          try {
-            const renderedChildren = safeProps.children();
+        try {
+          // Call the function only if it's actually a function
+          const childrenFn = safeProps.children as Function;
+          if (typeof childrenFn === 'function') {
+            const renderedChildren = childrenFn();
             return renderedChildren || <></>;
-          } catch (error) {
-            console.error('Error calling children function:', error);
-            return <></>;
           }
+        } catch (error) {
+          console.error('Error calling children function:', error);
+          return <></>;
         }
         // If it's typed as a function but isn't callable, return a fallback
         return <></>;

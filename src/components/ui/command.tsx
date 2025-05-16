@@ -98,8 +98,7 @@ const CommandGroup = React.forwardRef<
   if (safeProps.children == null) {
     safeProps.children = [];
   } else if (Array.isArray(safeProps.children)) {
-    // Filter out undefined/null items from arrays and ensure the array itself is valid
-    // This prevents the "undefined is not iterable" error during rendering
+    // Filter out undefined/null items from arrays
     safeProps.children = safeProps.children.filter(Boolean);
     
     // Extra defensive check for empty arrays
@@ -111,10 +110,11 @@ const CommandGroup = React.forwardRef<
     safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
   }
   
-  // Instead of checking .length on an iterable, which isn't supported,
-  // ensure we have content to render by checking if children exists
+  // Check if we have content to render by checking children exists
+  // Don't use length property on Iterable<ReactNode>
   const hasContent = safeProps.children != null && 
-                    (!Array.isArray(safeProps.children) || safeProps.children.length > 0);
+                    (!(Array.isArray(safeProps.children)) || safeProps.children.length > 0) &&
+                    safeProps.children !== false;
   
   return (
     <CommandPrimitive.Group

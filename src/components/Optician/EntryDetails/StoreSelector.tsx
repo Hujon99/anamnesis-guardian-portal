@@ -1,3 +1,4 @@
+
 /**
  * This component provides store selection functionality for anamnesis entries.
  * It displays a dropdown of available stores and handles store assignment with
@@ -26,7 +27,7 @@ import { useEntryMutations } from "@/hooks/useEntryMutations";
 interface StoreSelectorProps {
   entryId: string;
   storeId: string | null;
-  onStoreAssigned?: () => void;
+  onStoreAssigned: (storeId: string | null) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -35,7 +36,6 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
   const [isAssigning, setIsAssigning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { stores, isLoading: isLoadingStores, refetch: refetchStores } = useStores();
-  const mutations = useEntryMutations(entryId);
   
   // Find the current store's name if a store ID is set
   const currentStoreName = storeId ? 
@@ -52,11 +52,15 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
     
     try {
       setIsAssigning(true);
-      await mutations.assignStore(storeId);
-      if (onStoreAssigned) onStoreAssigned();
+      
+      console.log(`StoreSelector: Handling store selection for entry ${entryId}, store ${storeId || 'null'}`);
+      
+      // Use the callback provided by parent component
+      await onStoreAssigned(storeId);
+      
     } catch (error) {
       console.error("Error in store assignment:", error);
-      // Error is already handled by the mutations hook
+      // Error is already handled by the parent component
     } finally {
       setIsAssigning(false);
       setOpen(false);

@@ -41,10 +41,6 @@ export function QuickStoreAssignDropdown({
   const [assignmentError, setAssignmentError] = useState<Error | null>(null);
   const [showRefreshButton, setShowRefreshButton] = useState(false);
   
-  // Retry counter for error handling
-  const retryCount = useRef(0);
-  const maxRetries = 2;
-  
   // Check if there are no stores and show refresh button after a delay
   useEffect(() => {
     if (!isLoadingStores && stores.length === 0) {
@@ -67,14 +63,14 @@ export function QuickStoreAssignDropdown({
       
       console.log(`QuickStoreAssignDropdown: Assigning store with ID: ${storeId || 'none'} to entry: ${entryId}`);
       
-      // Track current retry attempt
-      retryCount.current = 0;
-      
-      // Call the assign function with retry logic
-      await attemptAssign(storeId);
+      // Call the assign function
+      await onAssign(entryId, storeId);
       
       // Success case
       console.log(`QuickStoreAssignDropdown: Successfully assigned store ${storeId} to entry ${entryId}`);
+      
+      // After successful assignment, refresh store data
+      await refetchStores();
       
       toast({
         title: storeId ? "Butik tilldelad" : "Butiksval borttaget",
@@ -96,45 +92,22 @@ export function QuickStoreAssignDropdown({
       setIsOpen(false);
     }
   };
-  
-  // Helper function to attempt assignment with retries
-  const attemptAssign = async (storeId: string | null): Promise<void> => {
+
+  // Handle refresh button click
+  const handleRefresh = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
     try {
-      await onAssign(entryId, storeId);
+      await forceRefreshStores();
+    } catch (error) {
+      console.error("Error refreshing stores:", error);
       
-      // After successful assignment, refresh store data
-      await refetchStores();
-      
-    } catch (error: any) {
-      console.error(`Assignment attempt ${retryCount.current + 1} failed:`, error);
-      
-      // Check if it's an auth error that might benefit from a retry
-      const isAuthError = error?.code === "PGRST301" || 
-                          error?.message?.includes("JWT") || 
-                          error?.message?.includes("401");
-                          
-      if (isAuthError && retryCount.current < maxRetries) {
-        retryCount.current += 1;
-        console.log(`JWT error detected, retrying (attempt ${retryCount.current})`);
-        
-        // Show toast for retry
-        toast({
-          title: "Försöker igen",
-          description: `Tilldelningsförsök ${retryCount.current} av ${maxRetries}`,
-        });
-        
-        // Wait a bit before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Force refresh stores data and clear cache
-        await forceRefreshStores();
-        
-        // Try again
-        return attemptAssign(storeId);
-      }
-      
-      // If we've reached max retries or it's not an auth error, fail
-      throw error;
+      toast({
+        title: "Fel vid uppdatering",
+        description: "Kunde inte uppdatera butikslistan. Försök igen senare.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -169,24 +142,6 @@ export function QuickStoreAssignDropdown({
   }
   
   console.log(`QuickStoreAssignDropdown: Resolved current store name: "${currentStoreName}" for ID: ${currentStoreId}`);
-
-  // Handle refresh button click
-  const handleRefresh = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    try {
-      await forceRefreshStores();
-    } catch (error) {
-      console.error("Error refreshing stores:", error);
-      
-      toast({
-        title: "Fel vid uppdatering",
-        description: "Kunde inte uppdatera butikslistan. Försök igen senare.",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Add a click handler to the trigger to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {

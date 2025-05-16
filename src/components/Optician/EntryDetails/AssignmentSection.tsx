@@ -43,7 +43,7 @@ export function AssignmentSection({
         <StoreSelector 
           entryId={entry.id}
           storeId={entry.store_id || null}
-          onStoreAssigned={() => {}}
+          onStoreAssigned={onAssignStore}
           disabled={isPending}
         />
       </div>

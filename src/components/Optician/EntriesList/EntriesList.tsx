@@ -15,7 +15,6 @@ import { useStores } from "@/hooks/useStores";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
-import { useEntryMutations } from "@/hooks/useEntryMutations";
 
 interface EntriesListProps {
   entries: (AnamnesesEntry & {
@@ -109,7 +108,7 @@ export function EntriesList({
     }
   };
   
-  // Handle store assignment using the more robust useEntryMutations hook
+  // Create a wrapper function for store assignment that uses the onStoreAssigned callback
   const handleStoreAssign = async (entryId: string, storeId: string | null): Promise<void> => {
     if (!entryId) {
       console.error("Missing entry ID for store assignment");
@@ -122,31 +121,29 @@ export function EntriesList({
     }
     
     try {
-      console.log(`EntriesList: Using useEntryMutations to assign store ${storeId || 'null'} to entry ${entryId}`);
+      console.log(`EntriesList: Assigning store ${storeId || 'null'} to entry ${entryId}`);
       
-      // Create a new instance of the mutations hook with this specific entry ID
-      const mutations = useEntryMutations(entryId);
-      
-      // Use the robust assignStore method that handles retries and JWT errors
-      await mutations.assignStore(storeId);
-      
-      // Always refresh store data after assignment
-      await refetchStores();
-      
-      // Update UI state
-      setShowStoreDataWarning(false);
-      
-      // If onStoreAssigned callback is provided, call it (for parent component updates)
+      // Use the callback provided by the parent component
       if (onStoreAssigned) {
         await onStoreAssigned(entryId, storeId);
+        
+        // Always refresh store data after assignment to ensure UI is up-to-date
+        await refetchStores();
+        
+        // Update UI state
+        setShowStoreDataWarning(false);
+      } else {
+        console.error("No onStoreAssigned callback provided");
+        toast({
+          title: "Konfigurationsfel",
+          description: "Kunde inte tilldela butik: Saknar callback-funktion",
+          variant: "destructive",
+        });
       }
-      
-      console.log("Store assignment completed successfully");
     } catch (error) {
       console.error("Error in handleStoreAssign:", error);
       
-      // Error is already handled by the useEntryMutations hook
-      // But we'll provide an additional fallback toast message just in case
+      // Show a user-friendly error message
       toast({
         title: "Tilldelning misslyckades",
         description: "Ett fel uppstod vid tilldelning av butik. Försök igen.",

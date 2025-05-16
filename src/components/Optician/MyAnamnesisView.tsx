@@ -1,3 +1,4 @@
+
 /**
  * This component provides a personal view of anamnesis entries assigned to the current optician.
  * It displays personal statistics and a filtered list of entries.
@@ -20,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { OpticianStatsCards } from "./OpticianStatsCards";
+import { useEntryMutations } from "@/hooks/useEntryMutations";
 
 export function MyAnamnesisView() {
   const {
@@ -82,6 +84,16 @@ export function MyAnamnesisView() {
   // Handle entry assignment - Updated to return a Promise
   const handleEntryAssigned = async (entryId: string, opticianId: string | null): Promise<void> => {
     console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
+    const mutations = useEntryMutations(entryId);
+    await mutations.assignOptician(opticianId);
+    await refetch?.();
+  };
+
+  // Handle store assignment
+  const handleStoreAssigned = async (entryId: string, storeId: string | null): Promise<void> => {
+    console.log(`Entry ${entryId} assigned to store ${storeId || 'none'}`);
+    const mutations = useEntryMutations(entryId);
+    await mutations.assignStore(storeId);
     await refetch?.();
   };
 
@@ -104,10 +116,14 @@ export function MyAnamnesisView() {
   const enhancedEntries = myFilteredEntries.map(entry => {
     // Get store name if available
     const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
+    // Check if this is a booking without a store assigned
+    const isBookingWithoutStore = (entry.is_magic_link || entry.booking_id || entry.booking_date) && !entry.store_id;
+    
     return {
       ...entry,
       ...getEntryExpirationInfo(entry),
-      storeName
+      storeName,
+      isBookingWithoutStore
     };
   });
 
@@ -179,6 +195,7 @@ export function MyAnamnesisView() {
           onSelectEntry={setSelectedEntry}
           onEntryDeleted={refetch}
           onEntryAssigned={handleEntryAssigned}
+          onStoreAssigned={handleStoreAssigned}
         />
       </div>
       

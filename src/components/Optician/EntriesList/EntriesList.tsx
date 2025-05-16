@@ -1,7 +1,7 @@
 
 /**
  * This component renders a list of anamnesis entries with proper handling for empty state and item selection.
- * It now includes support for quick-assign functionality directly in the list view.
+ * It now includes support for quick-assign functionality for both opticians and stores directly in the list view.
  */
 
 import { EmptyState } from "./EmptyState";
@@ -9,6 +9,9 @@ import { AnamnesisListItem } from "../AnamnesisListItem";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useAuth } from "@clerk/clerk-react";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/components/ui/use-toast";
 
 interface EntriesListProps {
   entries: (AnamnesesEntry & {
@@ -20,6 +23,7 @@ interface EntriesListProps {
   onSelectEntry: (entry: AnamnesesEntry) => void;
   onEntryDeleted?: () => void;
   onEntryAssigned?: (entryId: string, opticianId: string | null) => Promise<void>;
+  onStoreAssigned?: (entryId: string, storeId: string | null) => Promise<void>;
   showQuickAssign?: boolean;
   status?: string;
 }
@@ -29,11 +33,14 @@ export function EntriesList({
   onSelectEntry,
   onEntryDeleted,
   onEntryAssigned,
+  onStoreAssigned,
   showQuickAssign = true,
   status = "pending" // Default status to handle the empty state
 }: EntriesListProps) {
   const { opticians } = useOpticians();
   const { has } = useAuth();
+  const { supabase } = useSupabaseClient();
+  const queryClient = useQueryClient();
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
@@ -46,6 +53,54 @@ export function EntriesList({
       opticianMap.set(optician.clerk_user_id, getOpticianDisplayName(optician));
     }
   });
+  
+  // Handle store assignment
+  const handleStoreAssign = async (entryId: string, storeId: string | null) => {
+    if (onStoreAssigned) {
+      // Use provided callback if available
+      return onStoreAssigned(entryId, storeId);
+    }
+    
+    try {
+      // Direct Supabase call as a fallback
+      const { data, error } = await supabase
+        .from("anamnes_entries")
+        .update({ store_id: storeId })
+        .eq("id", entryId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Show success message
+      toast({
+        title: "Butik tilldelad",
+        description: storeId 
+          ? "Anamnes har kopplats till butik" 
+          : "Butikskoppling har tagits bort",
+      });
+      
+      // Refresh data
+      queryClient.invalidateQueries({
+        queryKey: ["anamnes-entries"]
+      });
+      
+      // Call onEntryDeleted as it typically refreshes the list
+      if (onEntryDeleted) onEntryDeleted();
+      
+      return data;
+    } catch (error) {
+      console.error("Error assigning store:", error);
+      
+      toast({
+        title: "Fel vid tilldelning av butik",
+        description: "Det gick inte att koppla anamnes till butik",
+        variant: "destructive",
+      });
+      
+      throw error;
+    }
+  };
   
   if (entries.length === 0) {
     return <EmptyState status={status} />;
@@ -60,6 +115,7 @@ export function EntriesList({
           onClick={() => onSelectEntry(entry)}
           onDelete={onEntryDeleted}
           onAssign={onEntryAssigned}
+          onStoreAssign={handleStoreAssign}
           showAssignmentIndicator={true}
           showQuickAssign={showQuickAssign && (isAdmin || true)}
           opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}

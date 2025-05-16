@@ -1,3 +1,4 @@
+
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -22,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
+import { useEntryMutations } from "@/hooks/useEntryMutations";
 
 interface AnamnesisListViewProps {
   showAdvancedFilters?: boolean;
@@ -92,6 +94,16 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   // Handle optician assignment - Updated to return a Promise
   const handleEntryAssigned = async (entryId: string, opticianId: string | null): Promise<void> => {
     console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
+    const mutations = useEntryMutations(entryId);
+    await mutations.assignOptician(opticianId);
+    await refetch();
+  };
+
+  // Handle store assignment - Returns a Promise
+  const handleStoreAssigned = async (entryId: string, storeId: string | null): Promise<void> => {
+    console.log(`Entry ${entryId} assigned to store ${storeId || 'none'}`);
+    const mutations = useEntryMutations(entryId);
+    await mutations.assignStore(storeId);
     await refetch();
   };
 
@@ -216,6 +228,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
           onSelectEntry={setSelectedEntry}
           onEntryDeleted={refetch}
           onEntryAssigned={handleEntryAssigned}
+          onStoreAssigned={handleStoreAssigned}
         />
       </div>
       

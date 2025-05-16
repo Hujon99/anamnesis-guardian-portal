@@ -157,11 +157,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     }
   };
 
-  // Mutation for assigning a store to an entry
+  // Mutation for assigning a store to an entry - Enhanced with improved UX and error handling
   const assignStoreMutation = {
     isPending: false,
     mutateAsync: async (storeId: string | null) => {
       try {
+        console.log(`Starting store assignment. Entry ID: ${entryId}, Store ID: ${storeId}`);
         assignStoreMutation.isPending = true;
         
         // Validate IDs
@@ -182,9 +183,15 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
             .select()
             .single();
             
-          if (error) throw error;
+          if (error) {
+            console.error("Supabase error in assignStoreMutation:", error);
+            throw error;
+          }
+          
           return data;
         });
+        
+        console.log("Store assignment successful, response data:", data);
         
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({
@@ -208,7 +215,9 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         toast({
           title: "Fel vid tilldelning av butik",
-          description: "Det gick inte att koppla anamnes till butik",
+          description: error instanceof Error 
+            ? error.message 
+            : "Det gick inte att koppla anamnes till butik",
           variant: "destructive",
         });
         
@@ -281,6 +290,8 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     assignStore: assignStoreMutation.mutateAsync,
     deleteEntry: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    isAssigningStore: assignStoreMutation.isPending,
+    isAssigningOptician: assignOpticianMutation.isPending,
     refreshData: () => {
       // Provide a more selective refresh that only refreshes the current view
       queryClient.invalidateQueries({

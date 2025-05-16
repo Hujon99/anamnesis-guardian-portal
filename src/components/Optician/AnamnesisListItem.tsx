@@ -2,7 +2,8 @@
 /**
  * This component displays a single anamnesis entry in the list view.
  * It shows important information about the entry like status, creation date,
- * and patient information if available.
+ * and patient information if available. Now includes quick assignment functionality 
+ * for both opticians and stores directly from the list view.
  */
 
 import React, { useState } from "react";
@@ -38,6 +39,7 @@ import {
 import { EntryStatusBadge } from "./EntriesList/EntryStatusBadge";
 import { EntryStatusIcon } from "./EntriesList/EntryStatusIcon";
 import { QuickAssignDropdown } from "./EntriesList/QuickAssignDropdown";
+import { QuickStoreAssignDropdown } from "./EntriesList/QuickStoreAssignDropdown";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
@@ -54,6 +56,7 @@ interface AnamnesisListItemProps {
   onClick?: () => void;
   onDelete?: () => void;
   onAssign?: (entryId: string, opticianId: string | null) => Promise<void>;
+  onStoreAssign?: (entryId: string, storeId: string | null) => Promise<void>;
   showAssignmentIndicator?: boolean;
   showQuickAssign?: boolean;
   opticianName?: string | null;
@@ -66,6 +69,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   onClick,
   onDelete,
   onAssign,
+  onStoreAssign,
   showAssignmentIndicator = false,
   showQuickAssign = false,
   opticianName,
@@ -73,7 +77,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   isBookingWithoutStore,
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { deleteEntry, isDeleting } = useEntryMutations(entry.id);
+  const { deleteEntry, isDeleting, assignStore } = useEntryMutations(entry.id);
   const { stores } = useStores();
   
   // Get the appropriate store name - try all possible sources
@@ -106,6 +110,15 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   const handleAssign = async (opticianId: string | null) => {
     if (onAssign) {
       await onAssign(entry.id, opticianId);
+    }
+  };
+
+  const handleStoreAssign = async (storeId: string | null) => {
+    if (onStoreAssign) {
+      await onStoreAssign(entry.id, storeId);
+    } else {
+      // Fallback to using the built-in assignStore function if no external handler
+      await assignStore(storeId);
     }
   };
 
@@ -203,29 +216,74 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                       Bokning: {entry.booking_id}
                     </span>
                   )}
-                  
-                  {/* Display store name or ID if available, with improved styling */}
-                  {entry.store_id && (
-                    <div className="flex items-center gap-1">
-                      <Store className="h-3 w-3 text-muted-foreground" />
-                      <Badge variant="outline" className="py-0 h-5 bg-primary/5 hover:bg-primary/10">
-                        {finalDisplayStoreName}
-                      </Badge>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
             <div className="flex items-center gap-2">
               {showAssignmentIndicator && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  {/* Store assignment UI */}
+                  {showQuickAssign ? (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      {entry.store_id ? (
+                        <QuickStoreAssignDropdown
+                          entryId={entry.id}
+                          currentStoreId={entry.store_id}
+                          onAssign={handleStoreAssign}
+                        >
+                          <Badge variant="outline" className="flex items-center gap-1 py-0 h-6 bg-primary/5 hover:bg-primary/10 cursor-pointer">
+                            <Store className="h-3 w-3 text-muted-foreground" />
+                            <span>{finalDisplayStoreName}</span>
+                            <ChevronDown className="h-3 w-3 ml-1 text-muted-foreground" />
+                          </Badge>
+                        </QuickStoreAssignDropdown>
+                      ) : (
+                        <QuickStoreAssignDropdown
+                          entryId={entry.id}
+                          currentStoreId={null}
+                          onAssign={handleStoreAssign}
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                          >
+                            <Store className="h-3 w-3 mr-1" />
+                            <span>Butik</span>
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+                        </QuickStoreAssignDropdown>
+                      )}
+                    </div>
+                  ) : entry.store_id && (
+                    <Badge variant="outline" className="flex items-center gap-1 py-0 h-6 bg-primary/5">
+                      <Store className="h-3 w-3 text-muted-foreground" />
+                      <span>{finalDisplayStoreName}</span>
+                    </Badge>
+                  )}
+
+                  {/* Optician assignment UI */}
                   {entry.optician_id ? (
-                    <div className="flex items-center">
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        <span>{opticianName || "Ingen optiker"}</span>
-                      </Badge>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      {showQuickAssign ? (
+                        <QuickAssignDropdown
+                          entryId={entry.id}
+                          currentOpticianId={entry.optician_id}
+                          onAssign={handleAssign}
+                        >
+                          <Badge variant="secondary" className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80">
+                            <User className="h-3 w-3" />
+                            <span>{opticianName || "Optiker"}</span>
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Badge>
+                        </QuickAssignDropdown>
+                      ) : (
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          <span>{opticianName || "Optiker"}</span>
+                        </Badge>
+                      )}
                     </div>
                   ) : (
                     showQuickAssign && (
@@ -238,10 +296,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8"
+                            className="h-6 px-2 text-xs"
                           >
                             <User className="h-3 w-3 mr-1" />
-                            <span>Tilldela</span>
+                            <span>Optiker</span>
                             <ChevronDown className="h-3 w-3 ml-1" />
                           </Button>
                         </QuickAssignDropdown>

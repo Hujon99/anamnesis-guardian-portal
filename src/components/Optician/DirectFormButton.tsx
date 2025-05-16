@@ -6,6 +6,7 @@
  * Uses the organization-specific form template.
  * Enhanced with longer token validity period (72 hours) for better user experience,
  * improved token persistence for reliable form access, and better error handling.
+ * Auto-assigns the creating optician to the entry for better workflow.
  */
 
 import { useState, useEffect } from "react";
@@ -103,6 +104,11 @@ export function DirectFormButton() {
       localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
       console.log("[DirectFormButton]: Token saved to localStorage before API call");
 
+      // Auto-assign the current optician who's creating the form
+      // We use the Clerk user ID as the optician_id
+      const opticianId = userId || null;
+      console.log("[DirectFormButton]: Auto-assigning optician ID:", opticianId);
+
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
@@ -114,7 +120,8 @@ export function DirectFormButton() {
           patient_identifier: patientIdentifier,
           created_by: userId || null,
           created_by_name: creatorName,
-          sent_at: new Date().toISOString()
+          sent_at: new Date().toISOString(),
+          optician_id: opticianId // Auto-assign the current optician
         })
         .select()
         .single();
@@ -136,6 +143,7 @@ export function DirectFormButton() {
       }
       
       console.log("[DirectFormButton]: Direct form entry created successfully, token in localStorage");
+      console.log("[DirectFormButton]: Form is auto-assigned to optician:", opticianId);
       
       return {
         data,
@@ -162,7 +170,7 @@ export function DirectFormButton() {
         
         toast({
           title: "Formulär skapat",
-          description: "Direkt ifyllningsformulär förberett",
+          description: "Direkt ifyllningsformulär förberett och tilldelat till dig",
         });
       }, 150); // Slightly longer delay for reliable navigation
     },

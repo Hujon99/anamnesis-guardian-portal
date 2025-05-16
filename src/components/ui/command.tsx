@@ -111,6 +111,11 @@ const CommandGroup = React.forwardRef<
     safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
   }
   
+  // Instead of checking .length on an iterable, which isn't supported,
+  // ensure we have content to render by checking if children exists
+  const hasContent = safeProps.children != null && 
+                    (!Array.isArray(safeProps.children) || safeProps.children.length > 0);
+  
   return (
     <CommandPrimitive.Group
       ref={ref}
@@ -119,7 +124,13 @@ const CommandGroup = React.forwardRef<
         className
       )}
       {...safeProps}
-    />
+    >
+      {!hasContent && (
+        <div className="text-center text-muted-foreground py-2">
+          Inga alternativ tillgängliga
+        </div>
+      )}
+    </CommandPrimitive.Group>
   );
 })
 

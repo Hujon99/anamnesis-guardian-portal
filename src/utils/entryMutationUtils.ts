@@ -1,4 +1,3 @@
-
 /**
  * This file provides utility functions for anamnesis entry mutations.
  * It includes functions for updating entry statuses, formatted raw data, notes, patient information,
@@ -115,6 +114,7 @@ export const assignOpticianToEntry = async (
 
 /**
  * Associates an entry with a store
+ * Enhanced with improved validation and error handling
  */
 export const assignStoreToEntry = async (
   supabase: SupabaseClient,
@@ -129,6 +129,30 @@ export const assignStoreToEntry = async (
   console.log(`entryMutationUtils: Assigning store ${storeId || 'null'} to entry ${entryId}`);
   
   try {
+    // Validate the store ID if it's provided
+    if (storeId !== null) {
+      // UUID validation - basic check for correct format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(storeId)) {
+        throw new Error(`Invalid store ID format: ${storeId}`);
+      }
+      
+      // Optional: Verify that the store actually exists before assignment
+      const { data: storeExists, error: storeCheckError } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("id", storeId)
+        .maybeSingle();
+        
+      if (storeCheckError) {
+        console.warn("Store validation check failed:", storeCheckError);
+        // Continue with assignment despite validation failure
+      } else if (!storeExists) {
+        console.warn(`Store with ID ${storeId} does not exist`);
+        // Continue anyway, since this is just a validation check
+      }
+    }
+    
     // Make sure storeId is properly handled when it's null
     const updates: Partial<AnamnesesEntry> = { store_id: storeId };
     
@@ -169,4 +193,13 @@ export const createEntryWithPatientIdentifier = async (
     status: "sent",
     sent_at: new Date().toISOString()
   });
+};
+
+/**
+ * Utility function to validate a UUID
+ * Can be used for any UUID validation need
+ */
+export const isValidUuid = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
 };

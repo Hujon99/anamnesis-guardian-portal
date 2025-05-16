@@ -55,6 +55,15 @@ export function QuickStoreAssignDropdown({
     }
   }, [safeStores, isLoadingStores]);
 
+  // Pre-fetch stores when component mounts
+  useEffect(() => {
+    if (safeStores.length === 0 && !isLoadingStores) {
+      refetchStores().catch(err => {
+        console.error("Failed to prefetch stores:", err);
+      });
+    }
+  }, [refetchStores, safeStores.length, isLoadingStores]);
+
   const handleAssign = async (storeId: string | null, e: React.MouseEvent) => {
     try {
       e.stopPropagation();
@@ -98,7 +107,7 @@ export function QuickStoreAssignDropdown({
     }
   };
 
-  // Handle refresh button click
+  // Handle refresh button click with enhanced error handling
   const handleRefresh = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -118,6 +127,16 @@ export function QuickStoreAssignDropdown({
         variant: "destructive",
       });
     }
+  };
+
+  // Pre-fetch data when dropdown opens
+  const handleOpenChange = (open: boolean) => {
+    if (open && safeStores.length === 0 && !isLoadingStores) {
+      refetchStores().catch(err => {
+        console.error("Failed to fetch stores on open:", err);
+      });
+    }
+    setIsOpen(open);
   };
 
   // Sort stores alphabetically by name
@@ -154,7 +173,7 @@ export function QuickStoreAssignDropdown({
   };
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild disabled={isAssigning} onClick={handleTriggerClick}>
         <div onClick={(e) => {
           e.stopPropagation();

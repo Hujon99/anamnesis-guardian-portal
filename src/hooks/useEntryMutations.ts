@@ -1,4 +1,3 @@
-
 /**
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
@@ -89,7 +88,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   // Mutation for assigning an optician to an entry
   const assignOpticianMutation = {
     isPending: false,
-    mutateAsync: async (opticianId: string | null) => {
+    mutateAsync: async (opticianId: string | null): Promise<void> => {
       try {
         console.log(`Starting optician assignment. Entry ID: ${entryId}, Optician ID: ${opticianId}`);
         assignOpticianMutation.isPending = true;
@@ -104,7 +103,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         }
         
         // Use the helper function to handle JWT errors with retry
-        const data = await handleJwtErrorWithRetry(async () => {
+        await handleJwtErrorWithRetry(async () => {
           const { data, error } = await supabase
             .from("anamnes_entries")
             .update({ optician_id: opticianId })
@@ -119,8 +118,6 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           
           return data;
         });
-        
-        console.log("Assignment successful, response data:", data);
         
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({
@@ -137,8 +134,6 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         // Execute any success callback
         if (onSuccess) onSuccess();
-        
-        return data;
       } catch (error) {
         console.error("Error assigning optician:", error);
         
@@ -157,10 +152,10 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     }
   };
 
-  // Mutation for assigning a store to an entry - Enhanced with improved UX and error handling
+  // Mutation for assigning a store to an entry - Modified to return Promise<void>
   const assignStoreMutation = {
     isPending: false,
-    mutateAsync: async (storeId: string | null) => {
+    mutateAsync: async (storeId: string | null): Promise<void> => {
       try {
         console.log(`Starting store assignment. Entry ID: ${entryId}, Store ID: ${storeId}`);
         assignStoreMutation.isPending = true;
@@ -175,7 +170,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         }
         
         // Use the helper function to handle JWT errors with retry
-        const data = await handleJwtErrorWithRetry(async () => {
+        await handleJwtErrorWithRetry(async () => {
           const { data, error } = await supabase
             .from("anamnes_entries")
             .update({ store_id: storeId })
@@ -190,8 +185,6 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           
           return data;
         });
-        
-        console.log("Store assignment successful, response data:", data);
         
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({
@@ -208,8 +201,6 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         // Execute any success callback
         if (onSuccess) onSuccess();
-        
-        return data;
       } catch (error) {
         console.error("Error assigning store:", error);
         
@@ -231,7 +222,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   // Add deleteEntry mutation
   const deleteMutation = {
     isPending: false,
-    mutateAsync: async (entryId: string) => {
+    mutateAsync: async (entryId: string): Promise<void> => {
       try {
         deleteMutation.isPending = true;
         
@@ -257,8 +248,6 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         // Execute any success callback
         if (onSuccess) onSuccess();
-        
-        return true;
       } catch (error) {
         console.error("Error deleting entry:", error);
         

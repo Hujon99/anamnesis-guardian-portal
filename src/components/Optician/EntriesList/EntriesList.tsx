@@ -54,21 +54,20 @@ export function EntriesList({
     }
   });
   
-  // Handle store assignment
-  const handleStoreAssign = async (entryId: string, storeId: string | null) => {
+  // Handle store assignment - modified to ensure it returns Promise<void>
+  const handleStoreAssign = async (entryId: string, storeId: string | null): Promise<void> => {
     if (onStoreAssigned) {
       // Use provided callback if available
-      return onStoreAssigned(entryId, storeId);
+      await onStoreAssigned(entryId, storeId);
+      return;
     }
     
     try {
       // Direct Supabase call as a fallback
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("anamnes_entries")
         .update({ store_id: storeId })
-        .eq("id", entryId)
-        .select()
-        .single();
+        .eq("id", entryId);
         
       if (error) throw error;
       
@@ -87,8 +86,6 @@ export function EntriesList({
       
       // Call onEntryDeleted as it typically refreshes the list
       if (onEntryDeleted) onEntryDeleted();
-      
-      return data;
     } catch (error) {
       console.error("Error assigning store:", error);
       

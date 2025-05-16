@@ -127,6 +127,12 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   // Use the patient display name helper
   const patientDisplayName = getPatientDisplayName(entry);
 
+  // Helper to stop event propagation
+  const stopPropagation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
   return (
     <>
       <Card
@@ -176,16 +182,16 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                   <Button
                     variant="ghost"
                     className="h-8 w-8 p-0"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={stopPropagation}
                   >
                     <span className="sr-only">Öppna meny</span>
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-white border shadow-md z-50">
                   <DropdownMenuItem
                     onClick={(e) => {
-                      e.stopPropagation();
+                      stopPropagation(e);
                       setIsDeleteDialogOpen(true);
                     }}
                     className="text-destructive focus:text-destructive"
@@ -222,7 +228,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
             <div className="flex items-center gap-2">
               {showAssignmentIndicator && (
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2" onClick={stopPropagation}>
                   {/* Store assignment UI */}
                   {showQuickAssign ? (
                     <div>

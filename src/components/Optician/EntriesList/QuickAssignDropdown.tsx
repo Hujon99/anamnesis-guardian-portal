@@ -86,32 +86,38 @@ export function QuickAssignDropdown({
   // Add a click handler to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault(); // Add this to ensure the click doesn't propagate
   };
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild disabled={disabled || isPending} onClick={handleTriggerClick}>
-        {children || (
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1 h-7 px-2"
-            disabled={disabled || isPending}
-          >
-            {isPending ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <User className="h-3 w-3 mr-1" />
-            )}
-            <span className="max-w-[100px] truncate">
-              {selectedOptician ? selectedOpticianName : "Tilldela"}
-            </span>
-            <ChevronDown className="h-3 w-3 opacity-50" />
-          </Button>
-        )}
+        <div onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}>
+          {children || (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 h-7 px-2"
+              disabled={disabled || isPending}
+            >
+              {isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <User className="h-3 w-3 mr-1" />
+              )}
+              <span className="max-w-[100px] truncate">
+                {selectedOptician ? selectedOpticianName : "Tilldela"}
+              </span>
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </Button>
+          )}
+        </div>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-56 bg-background">
+      <DropdownMenuContent align="end" className="w-56 bg-white border shadow-md z-50">
         {isLoading ? (
           <div className="flex items-center justify-center py-2">
             <Loader2 className="h-4 w-4 animate-spin" />

@@ -53,14 +53,20 @@ export function QuickStoreAssignDropdown({
   // Add a click handler to the trigger to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault(); // Add this to ensure the click doesn't propagate
   };
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild disabled={isAssigning} onClick={handleTriggerClick}>
-        {children}
+        <div onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}>
+          {children}
+        </div>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-background">
+      <DropdownMenuContent align="end" className="w-56 bg-white border shadow-md z-50">
         {isAssigning && (
           <div className="flex items-center justify-center p-2">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />

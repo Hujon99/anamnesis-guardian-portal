@@ -1,4 +1,3 @@
-
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -112,7 +111,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     }
   }, [refetch]);
 
-  // Handle store assignment - Now using useEntryMutations hook
+  // Handle store assignment - Now with better error handling
   const handleStoreAssigned = useCallback(async (entryId: string, storeId: string | null): Promise<void> => {
     if (!entryId) {
       console.error("Missing entry ID for store assignment");
@@ -125,18 +124,18 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     }
     
     try {
-      console.log(`AnamnesisListView: Using useEntryMutations to assign store ${storeId || 'null'} to entry ${entryId}`);
+      console.log(`AnamnesisListView: Creating new mutations instance for entry ${entryId} to assign store ${storeId || 'null'}`);
       
-      // Create an instance of mutations for this specific entry
-      const mutations = useEntryMutations(entryId);
+      // Correctly create the mutations instance for this specific call
+      const entryMutations = useEntryMutations(entryId);
       
       // Use the robust assignStore method from the hook
-      await mutations.assignStore(storeId);
+      await entryMutations.assignStore(storeId);
       
       // Important: Always refetch both entries and stores after store assignment
       await Promise.all([refetch(), refetchStores()]);
       
-      // Display success toast (the hook also shows a toast, but we'll reinforce it)
+      // Display success toast
       toast({
         title: "Butik tilldelad",
         description: storeId 
@@ -146,7 +145,11 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
       
     } catch (error) {
       console.error("Error in handleStoreAssigned:", error);
-      // Error toast is already handled by the mutations hook
+      toast({
+        title: "Fel vid tilldelning av butik",
+        description: "Det gick inte att tilldela butiken. Försök igen senare.",
+        variant: "destructive",
+      });
     }
   }, [refetch, refetchStores]);
 

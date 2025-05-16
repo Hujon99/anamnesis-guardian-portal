@@ -5,7 +5,7 @@
  * and fallback mechanisms when store data is not available.
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useStores } from "@/hooks/useStores";
 import { Store, RefreshCw, Loader2, Check, AlertCircle } from "lucide-react";
-import { useOrganization } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 
@@ -37,7 +36,6 @@ export function QuickStoreAssignDropdown({
   const [isAssigning, setIsAssigning] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const { stores, isLoading: isLoadingStores, refetch: refetchStores, forceRefreshStores, getStoreName } = useStores();
-  const { organization } = useOrganization();
   const [assignmentError, setAssignmentError] = useState<Error | null>(null);
   const [showRefreshButton, setShowRefreshButton] = useState(false);
   
@@ -63,7 +61,11 @@ export function QuickStoreAssignDropdown({
       
       console.log(`QuickStoreAssignDropdown: Assigning store with ID: ${storeId || 'none'} to entry: ${entryId}`);
       
-      // Call the assign function
+      if (!entryId) {
+        throw new Error("Missing entry ID for store assignment");
+      }
+      
+      // Call the assign function provided as prop
       await onAssign(entryId, storeId);
       
       // Success case

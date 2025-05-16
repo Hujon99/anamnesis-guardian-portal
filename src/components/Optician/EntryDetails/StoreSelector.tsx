@@ -22,7 +22,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useStores } from "@/hooks/useStores";
-import { useEntryMutations } from "@/hooks/useEntryMutations";
 
 interface StoreSelectorProps {
   entryId: string;
@@ -55,12 +54,12 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
       
       console.log(`StoreSelector: Handling store selection for entry ${entryId}, store ${storeId || 'null'}`);
       
-      // Use the callback provided by parent component
+      // Use the callback provided by parent component directly
       await onStoreAssigned(storeId);
       
     } catch (error) {
       console.error("Error in store assignment:", error);
-      // Error is already handled by the parent component
+      // Error is already handled by the parent component through the callback
     } finally {
       setIsAssigning(false);
       setOpen(false);
@@ -109,7 +108,7 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-full p-0 bg-white" align="start">
         <Command>
           <CommandInput placeholder="Sök butik..." />
           <div className="flex items-center justify-between p-2 border-b">

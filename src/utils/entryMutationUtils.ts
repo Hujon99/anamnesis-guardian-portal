@@ -1,4 +1,3 @@
-
 /**
  * This file provides utility functions for anamnesis entry mutations.
  * It includes functions for updating entry statuses, formatted raw data, notes, patient information,
@@ -18,6 +17,11 @@ export const updateEntry = async (
   updates: Partial<AnamnesesEntry>
 ) => {
   console.log(`Updating entry ${entryId} with:`, updates);
+  
+  // Validate the entry ID
+  if (!entryId) {
+    throw new Error("Missing entry ID for update operation");
+  }
   
   const { data, error } = await supabase
     .from("anamnes_entries")
@@ -102,7 +106,22 @@ export const assignStoreToEntry = async (
   entryId: string,
   storeId: string | null
 ) => {
-  return updateEntry(supabase, entryId, { store_id: storeId });
+  // Extra validation to ensure we have a proper entry ID
+  if (!entryId) {
+    throw new Error("Missing entry ID for store assignment");
+  }
+  
+  console.log(`entryMutationUtils: Assigning store ${storeId || 'null'} to entry ${entryId}`);
+  
+  // Log the request headers for debugging
+  try {
+    const result = await updateEntry(supabase, entryId, { store_id: storeId });
+    console.log(`entryMutationUtils: Store assignment successful, got result:`, result);
+    return result;
+  } catch (error) {
+    console.error(`entryMutationUtils: Store assignment failed:`, error);
+    throw error;
+  }
 };
 
 /**

@@ -61,6 +61,7 @@ interface AnamnesisListItemProps {
   showQuickAssign?: boolean;
   opticianName?: string | null;
   storeName?: string | null;
+  storeMap?: Map<string, string>; // Added storeMap prop
   isBookingWithoutStore?: boolean;
 }
 
@@ -74,26 +75,42 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   showQuickAssign = false,
   opticianName,
   storeName,
+  storeMap,
   isBookingWithoutStore,
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { supabase } = useSupabaseClient();
   
-  // Get the appropriate store name - priority order: entry.storeName, storeName prop, entry.store_id
-  // Entry.storeName comes from the enhanced entries in AnamnesisListView
-  // storeName prop is a fallback passed from the parent
-  const displayStoreName = entry.storeName || storeName || null;
+  // Get the appropriate store name using multiple fallback strategies
+  let displayStoreName = null;
+  
+  if (entry.store_id) {
+    // Strategy 1: Try storeMap (most efficient)
+    if (storeMap && storeMap.has(entry.store_id)) {
+      displayStoreName = storeMap.get(entry.store_id) || null;
+    } 
+    // Strategy 2: Use entry.storeName (from the EntriesList enhanced data)
+    else if (entry.storeName) {
+      displayStoreName = entry.storeName;
+    } 
+    // Strategy 3: Use storeName prop (explicit pass from parent)
+    else if (storeName) {
+      displayStoreName = storeName;
+    }
+    // Strategy 4: If all else fails, show partial store ID
+    else {
+      displayStoreName = `ID: ${entry.store_id.substring(0, 8)}`;
+    }
+  }
   
   console.log(`AnamnesisListItem: Entry ${entry.id} store info:`, {
     entryStoreId: entry.store_id,
     entryStoreName: entry.storeName,
     propsStoreName: storeName,
+    fromStoreMap: entry.store_id && storeMap ? storeMap.get(entry.store_id) : null,
     finalDisplayName: displayStoreName
   });
-  
-  // Final fallback to just show the ID if needed
-  const finalDisplayStoreName = displayStoreName || (entry.store_id ? `ID: ${entry.store_id.substring(0, 8)}` : null);
 
   const handleDelete = async () => {
     try {
@@ -261,10 +278,11 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                           entryId={entry.id}
                           currentStoreId={entry.store_id}
                           onAssign={handleStoreAssign}
+                          storeMap={storeMap}
                         >
                           <Badge variant="outline" className="flex items-center gap-1 py-0 h-6 bg-primary/5 hover:bg-primary/10 cursor-pointer">
                             <Store className="h-3 w-3 text-muted-foreground" />
-                            <span className="max-w-[120px] truncate">{finalDisplayStoreName || "Välj butik"}</span>
+                            <span className="max-w-[120px] truncate">{displayStoreName || "Välj butik"}</span>
                             <ChevronDown className="h-3 w-3 ml-1 text-muted-foreground" />
                           </Badge>
                         </QuickStoreAssignDropdown>
@@ -273,6 +291,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                           entryId={entry.id}
                           currentStoreId={null}
                           onAssign={handleStoreAssign}
+                          storeMap={storeMap}
                         >
                           <Button
                             variant="outline"
@@ -286,10 +305,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                         </QuickStoreAssignDropdown>
                       )}
                     </div>
-                  ) : entry.store_id && finalDisplayStoreName && (
+                  ) : entry.store_id && displayStoreName && (
                     <Badge variant="outline" className="flex items-center gap-1 py-0 h-6 bg-primary/5">
                       <Store className="h-3 w-3 text-muted-foreground" />
-                      <span className="max-w-[120px] truncate">{finalDisplayStoreName}</span>
+                      <span className="max-w-[120px] truncate">{displayStoreName}</span>
                     </Badge>
                   )}
 

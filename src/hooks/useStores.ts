@@ -1,9 +1,10 @@
+
 /**
  * This hook provides functionality for managing stores.
  * It includes querying store data, creating new stores, and updating existing stores.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganization } from '@clerk/clerk-react';
 import { useSupabaseClient } from './useSupabaseClient';
@@ -12,36 +13,63 @@ import { toast } from '@/components/ui/use-toast';
 
 export function useStores() {
   const { organization } = useOrganization();
-  const { supabase, isReady } = useSupabaseClient();
+  const { supabase, isReady, refreshClient } = useSupabaseClient();
   const queryClient = useQueryClient();
   const [error, setError] = useState<Error | null>(null);
+  
+  // Function to handle refreshing on token errors
+  const fetchStoresWithRetry = useCallback(async (retryCount = 0) => {
+    if (!organization?.id || !isReady) return [];
+    
+    const maxRetries = 2;
+    
+    try {
+      console.log(`useStores: Fetching stores for organization ${organization.id}, attempt ${retryCount + 1}`);
+      
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('organization_id', organization.id)
+        .order('name');
+        
+      if (error) {
+        // Check if it's an auth error that might benefit from a token refresh
+        const isAuthError = error.code === "PGRST301" || 
+                          error.message?.includes("JWT") || 
+                          error.message?.includes("401");
+                          
+        if (isAuthError && retryCount < maxRetries) {
+          // Wait a bit and retry after refreshing the client
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await refreshClient(true);
+          return fetchStoresWithRetry(retryCount + 1);
+        }
+        
+        throw error;
+      }
+      
+      console.log(`useStores: Successfully fetched ${data.length} stores`);
+      return data as Store[];
+    } catch (err) {
+      console.error('Error fetching stores:', err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      return [];
+    }
+  }, [organization?.id, isReady, supabase, refreshClient]);
   
   // Query to fetch all stores for the organization
   const {
     data: stores = [],
     isLoading,
-    refetch
+    refetch,
+    isFetching
   } = useQuery({
     queryKey: ['stores', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id || !isReady) return [];
-      
-      try {
-        const { data, error } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('organization_id', organization.id)
-          .order('name');
-          
-        if (error) throw error;
-        return data as Store[];
-      } catch (err) {
-        console.error('Error fetching stores:', err);
-        setError(err instanceof Error ? err : new Error(String(err)));
-        return [];
-      }
-    },
+    queryFn: () => fetchStoresWithRetry(),
     enabled: !!organization?.id && isReady,
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep cached data for 10 minutes
+    retry: 2, // Retry failed queries twice
   });
   
   // Mutation to create a new store
@@ -157,6 +185,7 @@ export function useStores() {
   return {
     stores,
     isLoading,
+    isFetching,
     error,
     refetch,
     createStore: createStoreMutation.mutateAsync,

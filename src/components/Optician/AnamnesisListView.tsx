@@ -18,12 +18,11 @@ import { useAnamnesisList } from "@/hooks/useAnamnesisList";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { Store } from "@/types/anamnesis";
+import { useStores } from "@/hooks/useStores";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
-import { useEntryMutations } from "@/hooks/useEntryMutations";
 
 interface AnamnesisListViewProps {
   showAdvancedFilters?: boolean;
@@ -55,28 +54,8 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const { organization } = useOrganization();
   const { syncUsersWithToast } = useSyncClerkUsers();
   
-  // Fetch stores for enhancing display
-  const { data: stores = [], refetch: refetchStores } = useQuery({
-    queryKey: ["stores", organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return [];
-      
-      console.log("Fetching stores for organization:", organization.id);
-      const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('organization_id', organization.id);
-        
-      if (error) {
-        console.error("Error fetching stores:", error);
-        throw error;
-      }
-      
-      console.log("Fetched stores:", data);
-      return data as Store[];
-    },
-    enabled: !!organization?.id
-  });
+  // Use the useStores hook directly to get stores data
+  const { stores, refetch: refetchStores } = useStores();
   
   // Create a map of store IDs to store names for quick lookup
   const storeMap = new Map<string, string>();
@@ -86,13 +65,13 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     stores.forEach(store => {
       storeMap.set(store.id, store.name);
     });
-    console.log("Built store map:", [...storeMap.entries()]);
+    console.log("AnamnesisListView: Built store map:", [...storeMap.entries()]);
     
     // Sync Clerk users with Supabase on component mount
     syncUsersWithToast();
   }, [stores, syncUsersWithToast]);
 
-  // Manual refresh handler with debug console log
+  // Manual refresh handler that refetches both entries and stores
   const handleManualRefresh = () => {
     console.log("Manual refresh triggered in AnamnesisListView");
     refetch();
@@ -117,7 +96,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     }
   }, [supabase, refetch]);
 
-  // Handle store assignment - Using useCallback and direct Supabase call instead of useEntryMutations
+  // Handle store assignment
   const handleStoreAssigned = useCallback(async (entryId: string, storeId: string | null): Promise<void> => {
     console.log(`Entry ${entryId} assigned to store ${storeId || 'none'}`);
     
@@ -129,11 +108,12 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
         
       if (error) throw error;
       await refetch();
+      await refetchStores(); // Refresh stores after assignment
     } catch (error) {
       console.error("Error assigning store:", error);
       throw error;
     }
-  }, [supabase, refetch]);
+  }, [supabase, refetch, refetchStores]);
 
   const getEntryExpirationInfo = (entry: AnamnesesEntry) => {
     if (!entry.auto_deletion_timestamp) return { isExpired: false, daysUntilExpiration: null };
@@ -176,7 +156,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   
   // Enhance entries with store information
   const enhancedEntries = advancedFilteredEntries.map(entry => {
-    // Get store name if available - use store map for lookup
+    // Get store name from storeMap
     const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
     console.log(`Entry ${entry.id} has store_id ${entry.store_id}, mapped to name: ${storeName}`);
     
@@ -190,6 +170,12 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
       isBookingWithoutStore
     };
   });
+
+  // Make sure stores are loaded when component mounts
+  useEffect(() => {
+    console.log("AnamnesisListView: Fetching stores on mount");
+    refetchStores();
+  }, [refetchStores]);
 
   if ((isLoading && !entries.length)) {
     return <LoadingState />;

@@ -10,6 +10,8 @@ import { AnamnesesEntry } from "@/types/anamnesis";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useAuth } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
+import { useStores } from "@/hooks/useStores";
+import { useEffect } from "react";
 
 interface EntriesListProps {
   entries: (AnamnesesEntry & {
@@ -36,19 +38,31 @@ export function EntriesList({
   status = "pending" // Default status to handle the empty state
 }: EntriesListProps) {
   const { opticians } = useOpticians();
+  const { stores, refetch: refetchStores } = useStores();
   const { has } = useAuth();
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
   
   // Create a map of optician IDs to names for quick lookup
-  // Important: Map using clerk_user_id instead of database id since entry.optician_id contains Clerk User IDs
   const opticianMap = new Map<string, string>();
   opticians.forEach(optician => {
     if (optician.clerk_user_id) {
       opticianMap.set(optician.clerk_user_id, getOpticianDisplayName(optician));
     }
   });
+  
+  // Create a map of store IDs to store names
+  const storeMap = new Map<string, string>();
+  stores.forEach(store => {
+    storeMap.set(store.id, store.name);
+  });
+  
+  // Fetch stores once when component mounts
+  useEffect(() => {
+    console.log("EntriesList: Fetching stores");
+    refetchStores();
+  }, [refetchStores]);
   
   // Handle store assignment - now simply passes through the provided callback
   const handleStoreAssign = async (entryId: string, storeId: string | null): Promise<void> => {
@@ -89,21 +103,31 @@ export function EntriesList({
 
   return (
     <div className="space-y-4 mt-4">
-      {entries.map((entry) => (
-        <AnamnesisListItem
-          key={entry.id}
-          entry={entry}
-          onClick={() => onSelectEntry(entry)}
-          onDelete={onEntryDeleted}
-          onAssign={onEntryAssigned}
-          onStoreAssign={handleStoreAssign}
-          showAssignmentIndicator={true}
-          showQuickAssign={showQuickAssign && (isAdmin || true)}
-          opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}
-          storeName={entry.storeName}
-          isBookingWithoutStore={entry.isBookingWithoutStore}
-        />
-      ))}
+      {entries.map((entry) => {
+        // Get store name from our map if it exists, otherwise use entry.storeName as fallback
+        const storeNameFromMap = entry.store_id ? storeMap.get(entry.store_id) : null;
+        const storeName = storeNameFromMap || entry.storeName;
+        
+        return (
+          <AnamnesisListItem
+            key={entry.id}
+            entry={{
+              ...entry,
+              storeName: storeName // Pass the store name explicitly
+            }}
+            onClick={() => onSelectEntry(entry)}
+            onDelete={onEntryDeleted}
+            onAssign={onEntryAssigned}
+            onStoreAssign={handleStoreAssign}
+            showAssignmentIndicator={true}
+            showQuickAssign={showQuickAssign && (isAdmin || true)}
+            opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}
+            storeName={storeName}
+            storeMap={storeMap} // Pass the entire store map for lookup in the item
+            isBookingWithoutStore={entry.isBookingWithoutStore}
+          />
+        );
+      })}
     </div>
   );
 }

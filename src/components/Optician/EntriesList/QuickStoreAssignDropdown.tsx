@@ -4,7 +4,7 @@
  * It displays available stores and handles the assignment process with loading states.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ interface QuickStoreAssignDropdownProps {
   currentStoreId: string | null | undefined;
   onAssign: (entryId: string, storeId: string | null) => Promise<void>;
   children: React.ReactNode;
+  storeMap?: Map<string, string>; // Optional map of store IDs to names
 }
 
 export function QuickStoreAssignDropdown({
@@ -29,11 +30,18 @@ export function QuickStoreAssignDropdown({
   currentStoreId,
   onAssign,
   children,
+  storeMap,
 }: QuickStoreAssignDropdownProps) {
   const [isAssigning, setIsAssigning] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const { stores, isLoading: isLoadingStores } = useStores();
+  const { stores, isLoading: isLoadingStores, refetch: refetchStores } = useStores();
   const { organization } = useOrganization();
+  
+  // Force refetch stores when component mounts or organization changes
+  useEffect(() => {
+    console.log("QuickStoreAssignDropdown: Fetching stores");
+    refetchStores();
+  }, [organization?.id, refetchStores]);
 
   const handleAssign = async (storeId: string | null, e: React.MouseEvent) => {
     try {
@@ -61,9 +69,21 @@ export function QuickStoreAssignDropdown({
     a.name.localeCompare(b.name, 'sv')
   );
   
-  // Find current store name
-  const currentStore = stores.find(store => store.id === currentStoreId);
-  const currentStoreName = currentStore?.name || "Ingen butik tilldelad";
+  console.log("QuickStoreAssignDropdown: Available stores", stores);
+  
+  // Find current store name - first try the storeMap, then fall back to stores array
+  let currentStoreName = "Ingen butik tilldelad";
+  
+  if (currentStoreId) {
+    if (storeMap && storeMap.has(currentStoreId)) {
+      currentStoreName = storeMap.get(currentStoreId) || currentStoreName;
+    } else {
+      const currentStore = stores.find(store => store.id === currentStoreId);
+      if (currentStore) {
+        currentStoreName = currentStore.name;
+      }
+    }
+  }
 
   // Add a click handler to the trigger to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {

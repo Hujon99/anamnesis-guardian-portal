@@ -1,8 +1,9 @@
+
 /**
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
- * It aggregates the functionality from useEntryUpdateMutation and useSendLinkMutation.
- * Updated to work with Clerk user IDs instead of database UUIDs.
+ * It includes robust error handling, retry mechanisms, and background refreshing
+ * to ensure reliable operation even with token expiry issues.
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import { useEntryUpdateMutation } from "./useEntryUpdateMutation";
 import { useSendLinkMutation } from "./useSendLinkMutation";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
+import { useState } from "react";
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -19,7 +21,8 @@ const CLERK_ID_REGEX = /^user_[a-zA-Z0-9]+$/;
 export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
   const { supabase, handleJwtError, refreshClient } = useSupabaseClient();
-  
+  const [lastOperationTimestamp, setLastOperationTimestamp] = useState<number>(0);
+
   // Import mutations from other hooks
   const {
     updateEntryMutation,
@@ -54,11 +57,23 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     return true;
   };
 
-  // Helper function to handle JWT errors with retry capability
+  // Helper function to handle JWT errors with retry capability and throttling
   const handleJwtErrorWithRetry = async (operation: () => Promise<any>, retryCount = 0): Promise<any> => {
     const MAX_RETRIES = 2;
+    const MIN_RETRY_INTERVAL = 1000; // Minimum 1 second between retries
     
     try {
+      // Check if we need to throttle operations
+      const now = Date.now();
+      const timeSinceLastOperation = now - lastOperationTimestamp;
+      
+      if (timeSinceLastOperation < MIN_RETRY_INTERVAL) {
+        console.log(`Throttling operation, waiting ${MIN_RETRY_INTERVAL - timeSinceLastOperation}ms`);
+        await new Promise(resolve => setTimeout(resolve, MIN_RETRY_INTERVAL - timeSinceLastOperation));
+      }
+      
+      // Update timestamp and execute operation
+      setLastOperationTimestamp(Date.now());
       return await operation();
     } catch (error: any) {
       console.error("Error in operation:", error);
@@ -71,8 +86,9 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       if (isJwtError && retryCount < MAX_RETRIES) {
         console.log(`JWT error detected, refreshing token and retrying (attempt ${retryCount + 1})`);
         
-        // Wait a moment before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait longer for each retry attempt
+        const retryDelay = 1000 * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
         
         // Force refresh the token
         await refreshClient(true);
@@ -153,7 +169,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     }
   };
 
-  // Mutation for assigning a store to an entry - Modified to properly handle store names
+  // Enhanced mutation for assigning a store to an entry with improved error handling and logging
   const assignStoreMutation = {
     isPending: false,
     mutateAsync: async (storeId: string | null): Promise<void> => {
@@ -161,15 +177,9 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         console.log(`Starting store assignment. Entry ID: ${entryId}, Store ID: ${storeId}`);
         assignStoreMutation.isPending = true;
         
-        // Get current store data for logging (helps with debugging)
+        // Log details about the store ID for debugging
         if (storeId) {
-          const { data: storeData } = await supabase
-            .from("stores")
-            .select("name")
-            .eq("id", storeId)
-            .single();
-          
-          console.log(`Found store name for ID ${storeId}:`, storeData?.name || "Unknown");
+          console.log(`Store ID format check: ${UUID_REGEX.test(storeId) ? 'Valid' : 'Invalid'} UUID`);
         }
         
         // Validate IDs
@@ -181,18 +191,44 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           throw new Error(`Invalid store ID format: ${storeId}`);
         }
         
-        // Use the JWT error handler function to handle token refresh if needed
-        const { error } = await supabase
-          .from("anamnes_entries")
-          .update({ store_id: storeId })
-          .eq("id", entryId);
+        // Get current store data for logging (helps with debugging)
+        if (storeId) {
+          try {
+            const { data: storeData } = await supabase
+              .from("stores")
+              .select("name")
+              .eq("id", storeId)
+              .single();
             
-        if (error) {
-          console.error("Supabase error in assignStoreMutation:", error);
-          throw error;
+            console.log(`Found store name for ID ${storeId}:`, storeData?.name || "Unknown");
+          } catch (lookupError) {
+            console.warn(`Could not lookup store name for ID ${storeId}:`, lookupError);
+            // Continue with assignment even if lookup fails
+          }
         }
         
-        // Invalidate queries to refetch data
+        // Use the JWT error handler function with retry logic
+        await handleJwtErrorWithRetry(async () => {
+          console.log(`Executing store assignment: ${entryId} → ${storeId || 'null'}`);
+          
+          const { data, error } = await supabase
+            .from("anamnes_entries")
+            .update({ store_id: storeId })
+            .eq("id", entryId)
+            .select();
+            
+          if (error) {
+            console.error("Supabase error in assignStoreMutation:", error);
+            throw error;
+          }
+          
+          console.log("Store assignment successful, received data:", data);
+          return data;
+        });
+        
+        console.log("Store assignment completed, invalidating queries");
+        
+        // Invalidate queries to refetch data - more specific invalidation
         queryClient.invalidateQueries({
           queryKey: ["anamnes-entries"]
         });
@@ -214,11 +250,20 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       } catch (error) {
         console.error("Error assigning store:", error);
         
+        // Check if it's specifically a JWT error for more helpful message
+        const isJwtError = error instanceof Error && (
+          error.message.includes("JWT") || 
+          error.message.includes("401") ||
+          /PGRST\d+/.test(error.message)
+        );
+        
         toast({
           title: "Fel vid tilldelning av butik",
-          description: error instanceof Error 
-            ? error.message 
-            : "Det gick inte att koppla anamnes till butik",
+          description: isJwtError
+            ? "Din session har gått ut. Försök igen för att förnya sessionen."
+            : error instanceof Error 
+              ? error.message 
+              : "Det gick inte att koppla anamnes till butik",
           variant: "destructive",
         });
         
@@ -292,9 +337,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     isAssigningStore: assignStoreMutation.isPending,
     isAssigningOptician: assignOpticianMutation.isPending,
     refreshData: () => {
-      // Provide a more selective refresh that only refreshes the current view
+      // Provide a more selective refresh that only refreshes relevant data
       queryClient.invalidateQueries({
         queryKey: ["anamnes-entries"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["stores"]
       });
     }
   };

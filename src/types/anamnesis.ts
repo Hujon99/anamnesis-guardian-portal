@@ -1,3 +1,4 @@
+
 /**
  * This file contains types for the anamnesis forms and entries in the system.
  * These types define the structure of form templates and the patient data entries.
@@ -109,7 +110,7 @@ export interface DynamicFollowupQuestion extends FormQuestion {
   originalId: string;
 }
 
-// New type for stores
+// Updated Store type to make metadata compatible with Supabase's Json type
 export type Store = {
   id: string;
   name: string;
@@ -118,7 +119,7 @@ export type Store = {
   address: string | null;
   phone: string | null;
   email: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, any> | null | string | number | boolean | any[]; // Modified to accept Json type values
   created_at: string;
   updated_at: string;
 };

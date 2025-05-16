@@ -44,7 +44,7 @@ export function useStores() {
           console.log(`useStores: Loading ${stores.length} stores from local cache`);
           
           // Keep a local copy as a fallback
-          setLocalStoresBackup(stores);
+          setLocalStoresBackup(stores as Store[]);
           
           // Update store map from cache
           const newStoreMap = new Map<string, string>();
@@ -108,28 +108,33 @@ export function useStores() {
       lastRefreshRef.current = Date.now();
       console.log(`useStores: Successfully fetched ${safeData.length} stores:`, safeData);
       
+      // Cast the data to Store[] to ensure type compatibility
+      const typedStoreData = safeData as unknown as Store[];
+      
       // Update local backup
-      setLocalStoresBackup(safeData);
+      setLocalStoresBackup(typedStoreData);
       
       // Save to localStorage for persistent cache
       try {
         localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
-          stores: safeData,
+          stores: typedStoreData,
           timestamp: Date.now()
         }));
-        console.log(`useStores: Saved ${safeData.length} stores to local cache`);
+        console.log(`useStores: Saved ${typedStoreData.length} stores to local cache`);
       } catch (cacheError) {
         console.error('Failed to cache stores in localStorage:', cacheError);
       }
       
       // Update the storeMap cache when new data is fetched
       const newStoreMap = new Map<string, string>();
-      safeData.forEach(store => {
-        newStoreMap.set(store.id, store.name);
+      typedStoreData.forEach(store => {
+        if (store && store.id && store.name) {
+          newStoreMap.set(store.id, store.name);
+        }
       });
       setStoreMapCache(newStoreMap);
       
-      return safeData as Store[];
+      return typedStoreData;
     } catch (err) {
       console.error('Error fetching stores:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -147,7 +152,7 @@ export function useStores() {
           const { stores } = JSON.parse(cachedData);
           if (Array.isArray(stores) && stores.length > 0) {
             console.log(`useStores: Falling back to ${stores.length} cached stores due to fetch error`);
-            setLocalStoresBackup(stores);
+            setLocalStoresBackup(stores as Store[]);
             return stores as Store[];
           }
         } catch (cacheErr) {
@@ -326,7 +331,7 @@ export function useStores() {
         .single();
         
       if (error) throw error;
-      return data as Store;
+      return data as unknown as Store;
     },
     onSuccess: (newStore) => {
       // Update the query cache with the new store
@@ -378,7 +383,7 @@ export function useStores() {
         .single();
         
       if (error) throw error;
-      return data as Store;
+      return data as unknown as Store;
     },
     onSuccess: (updatedStore) => {
       // Update the query cache with the updated store
@@ -451,17 +456,20 @@ export function useStores() {
       if (existingStores && existingStores.length > 0) {
         console.log(`useStores: Found existing store in database: ${existingStores[0].name}`);
         
+        // Cast to ensure type compatibility
+        const existingStore = existingStores[0] as unknown as Store;
+        
         // Update our cache with this confirmed store
         queryClient.setQueryData(
           ['stores', organization.id],
           (oldData: Store[] = []) => {
             // Skip if store already exists in cache
-            if (oldData.some(s => s.id === existingStores[0].id)) {
+            if (oldData.some(s => s.id === existingStore.id)) {
               return oldData;
             }
             
             // Add the store to our cache
-            const updatedStores = [...oldData, existingStores[0]].sort((a, b) => 
+            const updatedStores = [...oldData, existingStore].sort((a, b) => 
               a.name.localeCompare(b.name, 'sv')
             );
             
@@ -479,7 +487,7 @@ export function useStores() {
           }
         );
         
-        return existingStores[0] as Store;
+        return existingStore;
       }
       
       // Otherwise create a new store
@@ -495,11 +503,14 @@ export function useStores() {
         
       if (createError) throw createError;
       
+      // Cast the new store to ensure type compatibility
+      const typedNewStore = newStore as unknown as Store;
+      
       // Update the query cache with the new store
       queryClient.setQueryData(
         ['stores', organization.id],
         (oldData: Store[] = []) => {
-          const updatedStores = [...oldData, newStore as Store].sort((a, b) => 
+          const updatedStores = [...oldData, typedNewStore].sort((a, b) => 
             a.name.localeCompare(b.name, 'sv')
           );
           
@@ -518,7 +529,7 @@ export function useStores() {
       );
       
       console.log(`useStores: Successfully created new store: ${name}`);
-      return newStore as Store;
+      return typedNewStore;
     } catch (err) {
       console.error('Error finding or creating store:', err);
       throw err;
@@ -533,7 +544,7 @@ export function useStores() {
     error,
     isSuccess,
     refetch,
-    forceRefreshStores, // New function to force refresh
+    forceRefreshStores, 
     createStore: createStoreMutation?.mutateAsync,
     updateStore: updateStoreMutation?.mutateAsync,
     findOrCreateStore,

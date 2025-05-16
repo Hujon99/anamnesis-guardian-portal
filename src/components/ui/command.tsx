@@ -1,4 +1,10 @@
 
+/**
+ * Command component for providing command palettes and dropdowns.
+ * This component provides an accessible command palette with keyboard navigation,
+ * search functionality, and customizable rendering.
+ */
+
 import * as React from "react"
 import { type DialogProps } from "@radix-ui/react-dialog"
 import { Command as CommandPrimitive } from "cmdk"
@@ -91,6 +97,9 @@ const CommandGroup = React.forwardRef<
   // Check if children prop is an array and contains undefined/null items
   if (Array.isArray(safeProps.children)) {
     safeProps.children = safeProps.children.filter(Boolean);
+  } else if (!safeProps.children) {
+    // If children is falsy (null, undefined), provide empty array as fallback
+    safeProps.children = [];
   }
   
   return (

@@ -9,8 +9,6 @@ import { AnamnesisListItem } from "../AnamnesisListItem";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useAuth } from "@clerk/clerk-react";
-import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 
 interface EntriesListProps {
@@ -39,8 +37,6 @@ export function EntriesList({
 }: EntriesListProps) {
   const { opticians } = useOpticians();
   const { has } = useAuth();
-  const { supabase } = useSupabaseClient();
-  const queryClient = useQueryClient();
   
   // Check if user is admin
   const isAdmin = has && has({ role: "org:admin" });
@@ -54,22 +50,19 @@ export function EntriesList({
     }
   });
   
-  // Handle store assignment
+  // Handle store assignment - now simply passes through the provided callback
   const handleStoreAssign = async (entryId: string, storeId: string | null): Promise<void> => {
-    if (onStoreAssigned) {
-      // Use provided callback if available
-      await onStoreAssigned(entryId, storeId);
+    if (!onStoreAssigned) {
+      toast({
+        title: "Kan inte tilldela butik",
+        description: "En funktion för att tilldela butik saknas.",
+        variant: "destructive",
+      });
       return;
     }
     
     try {
-      // Direct Supabase call as a fallback
-      const { error } = await supabase
-        .from("anamnes_entries")
-        .update({ store_id: storeId })
-        .eq("id", entryId);
-        
-      if (error) throw error;
+      await onStoreAssigned(entryId, storeId);
       
       // Show success message
       toast({
@@ -78,14 +71,6 @@ export function EntriesList({
           ? "Anamnes har kopplats till butik" 
           : "Butikskoppling har tagits bort",
       });
-      
-      // Refresh data
-      queryClient.invalidateQueries({
-        queryKey: ["anamnes-entries"]
-      });
-      
-      // Call onEntryDeleted as it typically refreshes the list
-      if (onEntryDeleted) onEntryDeleted();
     } catch (error) {
       console.error("Error assigning store:", error);
       
@@ -94,8 +79,6 @@ export function EntriesList({
         description: "Det gick inte att koppla anamnes till butik",
         variant: "destructive",
       });
-      
-      throw error;
     }
   };
   

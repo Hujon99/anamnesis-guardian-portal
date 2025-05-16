@@ -44,7 +44,9 @@ export function QuickAssignDropdown({
   const isAdmin = has && has({ role: "org:admin" });
   
   // Handle optician assignment
-  const handleAssign = async (opticianId: string | null) => {
+  const handleAssign = async (opticianId: string | null, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     setIsPending(true);
     
     try {
@@ -86,7 +88,7 @@ export function QuickAssignDropdown({
   // Add a click handler to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault(); // Add this to ensure the click doesn't propagate
+    e.preventDefault();
   };
 
   return (
@@ -95,7 +97,7 @@ export function QuickAssignDropdown({
         <div onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
-        }}>
+        }} className="cursor-pointer">
           {children || (
             <Button
               variant="outline"
@@ -132,11 +134,9 @@ export function QuickAssignDropdown({
             {opticians.map((optician) => (
               <DropdownMenuItem
                 key={optician.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAssign(optician.clerk_user_id);
-                }}
+                onClick={(e) => handleAssign(optician.clerk_user_id, e)}
                 disabled={isPending}
+                className="cursor-pointer"
               >
                 <div className="flex items-center justify-between w-full">
                   <span>{getOpticianDisplayName(optician)}</span>
@@ -151,12 +151,9 @@ export function QuickAssignDropdown({
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAssign(null);
-                  }}
+                  onClick={(e) => handleAssign(null, e)}
                   disabled={isPending}
-                  className="text-destructive focus:text-destructive"
+                  className="text-destructive focus:text-destructive cursor-pointer"
                 >
                   Ta bort tilldelning
                 </DropdownMenuItem>

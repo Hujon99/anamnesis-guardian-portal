@@ -5,7 +5,7 @@
  * Supabase's realtime functionality for live updates to entries.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisDetailModal } from "./AnamnesisDetailModal";
 import { AnamnesisFilters } from "./AnamnesisFilters";
@@ -91,21 +91,41 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     refetch();
   };
 
-  // Handle optician assignment - Updated to return a Promise
-  const handleEntryAssigned = async (entryId: string, opticianId: string | null): Promise<void> => {
+  // Handle optician assignment - Using useCallback to create stable function reference
+  const handleEntryAssigned = useCallback(async (entryId: string, opticianId: string | null): Promise<void> => {
     console.log(`Entry ${entryId} assigned to optician ${opticianId || 'none'}`);
-    const mutations = useEntryMutations(entryId);
-    await mutations.assignOptician(opticianId);
-    await refetch();
-  };
+    
+    try {
+      const { data, error } = await supabase
+        .from("anamnes_entries")
+        .update({ optician_id: opticianId })
+        .eq("id", entryId);
+        
+      if (error) throw error;
+      await refetch();
+    } catch (error) {
+      console.error("Error assigning optician:", error);
+      throw error;
+    }
+  }, [supabase, refetch]);
 
-  // Handle store assignment - Returns a Promise
-  const handleStoreAssigned = async (entryId: string, storeId: string | null): Promise<void> => {
+  // Handle store assignment - Using useCallback and direct Supabase call instead of useEntryMutations
+  const handleStoreAssigned = useCallback(async (entryId: string, storeId: string | null): Promise<void> => {
     console.log(`Entry ${entryId} assigned to store ${storeId || 'none'}`);
-    const mutations = useEntryMutations(entryId);
-    await mutations.assignStore(storeId);
-    await refetch();
-  };
+    
+    try {
+      const { data, error } = await supabase
+        .from("anamnes_entries")
+        .update({ store_id: storeId })
+        .eq("id", entryId);
+        
+      if (error) throw error;
+      await refetch();
+    } catch (error) {
+      console.error("Error assigning store:", error);
+      throw error;
+    }
+  }, [supabase, refetch]);
 
   const getEntryExpirationInfo = (entry: AnamnesesEntry) => {
     if (!entry.auto_deletion_timestamp) return { isExpired: false, daysUntilExpiration: null };

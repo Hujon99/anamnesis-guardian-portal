@@ -35,10 +35,14 @@ export function QuickStoreAssignDropdown({
   const { stores, isLoading: isLoadingStores } = useStores();
   const { organization } = useOrganization();
 
-  const handleAssign = async (storeId: string | null) => {
+  const handleAssign = async (storeId: string | null, e: React.MouseEvent) => {
     try {
+      e.stopPropagation();
+      e.preventDefault();
       setIsAssigning(true);
       await onAssign(entryId, storeId);
+    } catch (error) {
+      console.error("Error assigning store:", error);
     } finally {
       setIsAssigning(false);
       setIsOpen(false);
@@ -53,7 +57,7 @@ export function QuickStoreAssignDropdown({
   // Add a click handler to the trigger to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault(); // Add this to ensure the click doesn't propagate
+    e.preventDefault();
   };
 
   return (
@@ -62,7 +66,7 @@ export function QuickStoreAssignDropdown({
         <div onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
-        }}>
+        }} className="cursor-pointer">
           {children}
         </div>
       </DropdownMenuTrigger>
@@ -95,14 +99,11 @@ export function QuickStoreAssignDropdown({
                     {sortedStores.map((store) => (
                       <DropdownMenuItem
                         key={store.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAssign(store.id);
-                        }}
+                        onClick={(e) => handleAssign(store.id, e)}
                         className={
                           currentStoreId === store.id
-                            ? "bg-muted font-medium"
-                            : ""
+                            ? "bg-muted font-medium cursor-pointer"
+                            : "cursor-pointer"
                         }
                       >
                         <Store className="mr-2 h-4 w-4" />
@@ -121,11 +122,8 @@ export function QuickStoreAssignDropdown({
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAssign(null);
-                      }}
-                      className="text-destructive focus:text-destructive"
+                      onClick={(e) => handleAssign(null, e)}
+                      className="text-destructive focus:text-destructive cursor-pointer"
                     >
                       Ta bort butiksval
                     </DropdownMenuItem>

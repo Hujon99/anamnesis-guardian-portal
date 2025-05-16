@@ -42,9 +42,9 @@ import { QuickAssignDropdown } from "./EntriesList/QuickAssignDropdown";
 import { QuickStoreAssignDropdown } from "./EntriesList/QuickStoreAssignDropdown";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { getPatientDisplayName } from "@/lib/utils";
-import { useStores } from "@/hooks/useStores";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { toast } from "@/components/ui/use-toast";
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
@@ -77,27 +77,44 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   isBookingWithoutStore,
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { deleteEntry, isDeleting, assignStore } = useEntryMutations(entry.id);
-  const { stores } = useStores();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { supabase } = useSupabaseClient();
   
-  // Get the appropriate store name - try all possible sources
+  // Get the appropriate store name
   let displayStoreName = entry.storeName || storeName || null;
-  
-  // If we still don't have a name but have a store_id, look it up from the stores data
-  if (!displayStoreName && entry.store_id && stores.length > 0) {
-    const storeFromHook = stores.find(store => store.id === entry.store_id);
-    if (storeFromHook) {
-      displayStoreName = storeFromHook.name;
-    }
-  }
   
   // Final fallback to just show the ID if needed
   const finalDisplayStoreName = displayStoreName || entry.store_id;
 
   const handleDelete = async () => {
-    await deleteEntry(entry.id);
-    if (onDelete) onDelete();
-    setIsDeleteDialogOpen(false);
+    try {
+      setIsDeleting(true);
+      
+      const { error } = await supabase
+        .from("anamnes_entries")
+        .delete()
+        .eq("id", entry.id);
+        
+      if (error) throw error;
+      
+      if (onDelete) onDelete();
+      setIsDeleteDialogOpen(false);
+      
+      toast({
+        title: "Anamnes borttagen",
+        description: "Anamnesen har raderats permanent"
+      });
+    } catch (error) {
+      console.error("Error deleting entry:", error);
+      
+      toast({
+        title: "Fel vid borttagning",
+        description: "Det gick inte att ta bort anamnesen",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const formattedDate = entry.created_at
@@ -116,9 +133,6 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   const handleStoreAssign = async (storeId: string | null) => {
     if (onStoreAssign) {
       await onStoreAssign(entry.id, storeId);
-    } else {
-      // Fallback to using the built-in assignStore function if no external handler
-      await assignStore(storeId);
     }
   };
 
@@ -194,7 +208,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                       stopPropagation(e);
                       setIsDeleteDialogOpen(true);
                     }}
-                    className="text-destructive focus:text-destructive"
+                    className="text-destructive focus:text-destructive cursor-pointer"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Ta bort
@@ -228,10 +242,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
             <div className="flex items-center gap-2">
               {showAssignmentIndicator && (
-                <div className="flex items-center gap-2" onClick={stopPropagation}>
+                <div className="flex items-center gap-2">
                   {/* Store assignment UI */}
                   {showQuickAssign ? (
-                    <div>
+                    <div onClick={stopPropagation}>
                       {entry.store_id ? (
                         <QuickStoreAssignDropdown
                           entryId={entry.id}
@@ -271,12 +285,12 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
                   {/* Optician assignment UI */}
                   {entry.optician_id ? (
-                    <div>
+                    <div onClick={stopPropagation}>
                       {showQuickAssign ? (
                         <QuickAssignDropdown
                           entryId={entry.id}
                           currentOpticianId={entry.optician_id}
-                          onAssign={handleAssign}
+                          onAssign={(opticianId) => handleAssign(opticianId)}
                         >
                           <Badge variant="secondary" className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80">
                             <User className="h-3 w-3" />
@@ -293,11 +307,11 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                     </div>
                   ) : (
                     showQuickAssign && (
-                      <div>
+                      <div onClick={stopPropagation}>
                         <QuickAssignDropdown
                           entryId={entry.id}
                           currentOpticianId={entry.optician_id}
-                          onAssign={handleAssign}
+                          onAssign={(opticianId) => handleAssign(opticianId)}
                         >
                           <Button
                             variant="outline"

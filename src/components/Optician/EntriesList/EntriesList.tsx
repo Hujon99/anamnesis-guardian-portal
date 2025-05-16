@@ -54,7 +54,7 @@ export function EntriesList({
     }
   });
   
-  // Handle store assignment - modified to ensure it returns Promise<void>
+  // Handle store assignment
   const handleStoreAssign = async (entryId: string, storeId: string | null): Promise<void> => {
     if (onStoreAssigned) {
       // Use provided callback if available

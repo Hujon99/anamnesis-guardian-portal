@@ -1,4 +1,3 @@
-
 /**
  * This hook provides functionality for managing stores.
  * It includes querying store data, creating new stores, and updating existing stores.
@@ -48,7 +47,7 @@ export function useStores() {
         throw error;
       }
       
-      console.log(`useStores: Successfully fetched ${data.length} stores`);
+      console.log(`useStores: Successfully fetched ${data.length} stores:`, data);
       return data as Store[];
     } catch (err) {
       console.error('Error fetching stores:', err);

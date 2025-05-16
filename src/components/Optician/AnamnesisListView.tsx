@@ -1,4 +1,3 @@
-
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
@@ -65,7 +64,8 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     stores.forEach(store => {
       storeMap.set(store.id, store.name);
     });
-    console.log("AnamnesisListView: Built store map:", [...storeMap.entries()]);
+    console.log(`AnamnesisListView: Found ${stores.length} stores, built map with ${storeMap.size} entries:`);
+    console.log("AnamnesisListView: Store Map:", [...storeMap.entries()]);
     
     // Sync Clerk users with Supabase on component mount
     syncUsersWithToast();
@@ -115,7 +115,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     }
   }, [supabase, refetch, refetchStores]);
 
-  const getEntryExpirationInfo = (entry: AnamnesesEntry) => {
+  function getEntryExpirationInfo(entry: AnamnesesEntry) {
     if (!entry.auto_deletion_timestamp) return { isExpired: false, daysUntilExpiration: null };
     
     const now = new Date();
@@ -128,7 +128,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     const daysUntilExpiration = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     return { isExpired, daysUntilExpiration };
-  };
+  }
   
   // Apply additional filters (store, optician, assignment)
   const advancedFilteredEntries = filteredEntries.filter(entry => {
@@ -158,7 +158,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   const enhancedEntries = advancedFilteredEntries.map(entry => {
     // Get store name from storeMap
     const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
-    console.log(`Entry ${entry.id} has store_id ${entry.store_id}, mapped to name: ${storeName}`);
+    console.log(`AnamnesisListView: Entry ${entry.id} has store_id ${entry.store_id}, mapped to name: ${storeName}`);
     
     // Check if this is a booking without a store assigned
     const isBookingWithoutStore = (entry.is_magic_link || entry.booking_id || entry.booking_date) && !entry.store_id;
@@ -171,10 +171,12 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     };
   });
 
-  // Make sure stores are loaded when component mounts
+  // Force fetch stores when component mounts or when we navigate back to this view
   useEffect(() => {
-    console.log("AnamnesisListView: Fetching stores on mount");
-    refetchStores();
+    console.log("AnamnesisListView: Initial load - fetching stores");
+    refetchStores().then(result => {
+      console.log("AnamnesisListView: Stores fetch result:", result.data?.length || 0, "stores");
+    });
   }, [refetchStores]);
 
   if ((isLoading && !entries.length)) {

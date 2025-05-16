@@ -48,8 +48,9 @@ export function QuickStoreAssignDropdown({
       e.stopPropagation();
       e.preventDefault();
       setIsAssigning(true);
-      console.log(`Assigning store with ID: ${storeId} to entry: ${entryId}`);
+      console.log(`QuickStoreAssignDropdown: Assigning store with ID: ${storeId} to entry: ${entryId}`);
       await onAssign(entryId, storeId);
+      console.log(`QuickStoreAssignDropdown: Successfully assigned store ${storeId} to entry ${entryId}`);
     } catch (error) {
       console.error("Error assigning store:", error);
       
@@ -70,6 +71,7 @@ export function QuickStoreAssignDropdown({
   );
   
   console.log("QuickStoreAssignDropdown: Available stores", stores);
+  console.log("QuickStoreAssignDropdown: currentStoreId", currentStoreId);
   
   // Find current store name - first try the storeMap, then fall back to stores array
   let currentStoreName = "Ingen butik tilldelad";
@@ -84,6 +86,8 @@ export function QuickStoreAssignDropdown({
       }
     }
   }
+  
+  console.log(`QuickStoreAssignDropdown: Resolved current store name: "${currentStoreName}" for ID: ${currentStoreId}`);
 
   // Add a click handler to the trigger to prevent event bubbling
   const handleTriggerClick = (e: React.MouseEvent) => {

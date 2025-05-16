@@ -52,11 +52,15 @@ export function EntriesList({
     }
   });
   
-  // Create a map of store IDs to store names
+  // Create a map of store IDs to store names with detailed logging
   const storeMap = new Map<string, string>();
   stores.forEach(store => {
     storeMap.set(store.id, store.name);
+    console.log(`EntriesList: Mapping store ${store.id} to name "${store.name}"`);
   });
+  
+  console.log("EntriesList: Available stores:", stores);
+  console.log("EntriesList: Generated storeMap:", [...storeMap.entries()]);
   
   // Fetch stores once when component mounts
   useEffect(() => {
@@ -107,6 +111,8 @@ export function EntriesList({
         // Get store name from our map if it exists, otherwise use entry.storeName as fallback
         const storeNameFromMap = entry.store_id ? storeMap.get(entry.store_id) : null;
         const storeName = storeNameFromMap || entry.storeName;
+        
+        console.log(`EntriesList: Entry ${entry.id} - Store ID: ${entry.store_id}, Store Name from Map: ${storeNameFromMap}, Final Store Name: ${storeName}`);
         
         return (
           <AnamnesisListItem

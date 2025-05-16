@@ -1,4 +1,3 @@
-
 /**
  * This component displays a single anamnesis entry in the list view.
  * It shows important information about the entry like status, creation date,
@@ -82,35 +81,39 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { supabase } = useSupabaseClient();
   
-  // Get the appropriate store name using multiple fallback strategies
+  // Get the appropriate store name using multiple fallback strategies with improved logging
   let displayStoreName = null;
   
   if (entry.store_id) {
-    // Strategy 1: Try storeMap (most efficient)
+    // Log all relevant store information for debugging
+    console.log(`AnamnesisListItem: Entry ${entry.id} store resolution - Entry store_id: ${entry.store_id}`);
+    console.log(`AnamnesisListItem: Entry ${entry.id} store resolution - Entry storeName prop: ${entry.storeName}`);
+    console.log(`AnamnesisListItem: Entry ${entry.id} store resolution - Direct storeName prop: ${storeName}`);
+    console.log(`AnamnesisListItem: Entry ${entry.id} store resolution - StoreMap available: ${!!storeMap}`);
+    
     if (storeMap && storeMap.has(entry.store_id)) {
+      // Strategy 1: Try storeMap (most efficient) 
       displayStoreName = storeMap.get(entry.store_id) || null;
+      console.log(`AnamnesisListItem: Using storeMap for ${entry.id}: ${displayStoreName}`);
     } 
     // Strategy 2: Use entry.storeName (from the EntriesList enhanced data)
     else if (entry.storeName) {
       displayStoreName = entry.storeName;
+      console.log(`AnamnesisListItem: Using entry.storeName for ${entry.id}: ${displayStoreName}`);
     } 
     // Strategy 3: Use storeName prop (explicit pass from parent)
     else if (storeName) {
       displayStoreName = storeName;
+      console.log(`AnamnesisListItem: Using storeName prop for ${entry.id}: ${displayStoreName}`);
     }
     // Strategy 4: If all else fails, show partial store ID
     else {
       displayStoreName = `ID: ${entry.store_id.substring(0, 8)}`;
+      console.log(`AnamnesisListItem: Using fallback ID for ${entry.id}: ${displayStoreName}`);
     }
   }
   
-  console.log(`AnamnesisListItem: Entry ${entry.id} store info:`, {
-    entryStoreId: entry.store_id,
-    entryStoreName: entry.storeName,
-    propsStoreName: storeName,
-    fromStoreMap: entry.store_id && storeMap ? storeMap.get(entry.store_id) : null,
-    finalDisplayName: displayStoreName
-  });
+  console.log(`AnamnesisListItem: Final display store name for entry ${entry.id}: "${displayStoreName}"`);
 
   const handleDelete = async () => {
     try {
@@ -223,7 +226,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                   <Button
                     variant="ghost"
                     className="h-8 w-8 p-0"
-                    onClick={stopPropagation}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
                   >
                     <span className="sr-only">Öppna meny</span>
                     <MoreVertical className="h-4 w-4" />
@@ -232,7 +238,8 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                 <DropdownMenuContent align="end" className="bg-white border shadow-md z-50">
                   <DropdownMenuItem
                     onClick={(e) => {
-                      stopPropagation(e);
+                      e.stopPropagation();
+                      e.preventDefault();
                       setIsDeleteDialogOpen(true);
                     }}
                     className="text-destructive focus:text-destructive cursor-pointer"
@@ -256,7 +263,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
               )}
               
               {/* Display booking info and store info */}
-              {hasBookingInfo && (
+              {(entry.is_magic_link || entry.booking_id || entry.booking_date || entry.store_id) && (
                 <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
                   {entry.booking_id && (
                     <span className="text-xs bg-muted px-2 py-0.5 rounded-sm">
@@ -272,12 +279,15 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                 <div className="flex items-center gap-2">
                   {/* Store assignment UI */}
                   {showQuickAssign ? (
-                    <div onClick={stopPropagation}>
+                    <div onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}>
                       {entry.store_id ? (
                         <QuickStoreAssignDropdown
                           entryId={entry.id}
                           currentStoreId={entry.store_id}
-                          onAssign={handleStoreAssign}
+                          onAssign={onStoreAssign!}
                           storeMap={storeMap}
                         >
                           <Badge variant="outline" className="flex items-center gap-1 py-0 h-6 bg-primary/5 hover:bg-primary/10 cursor-pointer">
@@ -290,7 +300,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                         <QuickStoreAssignDropdown
                           entryId={entry.id}
                           currentStoreId={null}
-                          onAssign={handleStoreAssign}
+                          onAssign={onStoreAssign!}
                           storeMap={storeMap}
                         >
                           <Button

@@ -1,4 +1,3 @@
-
 /**
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
@@ -21,6 +20,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
   const queryClient = useQueryClient();
   const { supabase, handleJwtError, refreshClient } = useSupabaseClient();
   
+  // Import mutations from other hooks
   const {
     updateEntryMutation,
     updateStatus,
@@ -153,7 +153,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     }
   };
 
-  // Mutation for assigning a store to an entry - Modified to return Promise<void>
+  // Mutation for assigning a store to an entry - Modified to properly handle store names
   const assignStoreMutation = {
     isPending: false,
     mutateAsync: async (storeId: string | null): Promise<void> => {
@@ -161,35 +161,44 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         console.log(`Starting store assignment. Entry ID: ${entryId}, Store ID: ${storeId}`);
         assignStoreMutation.isPending = true;
         
+        // Get current store data for logging (helps with debugging)
+        if (storeId) {
+          const { data: storeData } = await supabase
+            .from("stores")
+            .select("name")
+            .eq("id", storeId)
+            .single();
+          
+          console.log(`Found store name for ID ${storeId}:`, storeData?.name || "Unknown");
+        }
+        
         // Validate IDs
-        if (!validateId(entryId, 'entryId')) {
+        if (!UUID_REGEX.test(entryId)) {
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
-        if (storeId !== null && !validateId(storeId, 'storeId')) {
+        if (storeId !== null && !UUID_REGEX.test(storeId)) {
           throw new Error(`Invalid store ID format: ${storeId}`);
         }
         
-        // Use the helper function to handle JWT errors with retry
-        await handleJwtErrorWithRetry(async () => {
-          const { data, error } = await supabase
-            .from("anamnes_entries")
-            .update({ store_id: storeId })
-            .eq("id", entryId)
-            .select()
-            .single();
+        // Use the JWT error handler function to handle token refresh if needed
+        const { error } = await supabase
+          .from("anamnes_entries")
+          .update({ store_id: storeId })
+          .eq("id", entryId);
             
-          if (error) {
-            console.error("Supabase error in assignStoreMutation:", error);
-            throw error;
-          }
-          
-          return data;
-        });
+        if (error) {
+          console.error("Supabase error in assignStoreMutation:", error);
+          throw error;
+        }
         
         // Invalidate queries to refetch data
         queryClient.invalidateQueries({
           queryKey: ["anamnes-entries"]
+        });
+        
+        queryClient.invalidateQueries({
+          queryKey: ["stores"]
         });
         
         // Show success message

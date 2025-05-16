@@ -1,4 +1,3 @@
-
 /**
  * This component provides store selection functionality for anamnesis entries.
  * It displays a dropdown of available stores and handles store assignment with

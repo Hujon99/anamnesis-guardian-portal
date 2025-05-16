@@ -41,8 +41,9 @@ export function AssignmentSection({
         <Separator className="my-4" />
         
         <StoreSelector 
-          currentStoreId={entry.store_id || null}
-          onAssignStore={onAssignStore}
+          entryId={entry.id}
+          storeId={entry.store_id || null}
+          onStoreAssigned={() => {}}
           disabled={isPending}
         />
       </div>

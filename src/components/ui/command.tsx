@@ -94,12 +94,21 @@ const CommandGroup = React.forwardRef<
   // Create safe props to avoid "undefined is not iterable" errors
   const safeProps = { ...props };
   
-  // Ensure children is always a valid React node or array
+  // Enhanced safety: Ensure children is always a valid React node or array
   if (safeProps.children == null) {
     safeProps.children = [];
   } else if (Array.isArray(safeProps.children)) {
-    // Filter out undefined/null items from arrays
+    // Filter out undefined/null items from arrays and ensure the array itself is valid
+    // This prevents the "undefined is not iterable" error during rendering
     safeProps.children = safeProps.children.filter(Boolean);
+    
+    // Extra defensive check for empty arrays
+    if (safeProps.children.length === 0) {
+      safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
+    }
+  } else if (typeof safeProps.children === 'object' && safeProps.children === null) {
+    // Handle explicit null case
+    safeProps.children = <span className="text-center text-muted-foreground py-2">Inga alternativ tillgängliga</span>;
   }
   
   return (
@@ -131,16 +140,34 @@ CommandSeparator.displayName = CommandPrimitive.Separator.displayName
 const CommandItem = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected='true']:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  // Safety check for props
+  if (!props || props.disabled === undefined && props["data-disabled"] === "true") {
+    // If the item should be disabled but the disabled prop isn't set properly
+    const safeProps = {...props, disabled: true};
+    return (
+      <CommandPrimitive.Item
+        ref={ref}
+        className={cn(
+          "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected='true']:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50",
+          className
+        )}
+        {...safeProps}
+      />
+    );
+  }
+  
+  return (
+    <CommandPrimitive.Item
+      ref={ref}
+      className={cn(
+        "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected='true']:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  );
+})
 
 CommandItem.displayName = CommandPrimitive.Item.displayName
 

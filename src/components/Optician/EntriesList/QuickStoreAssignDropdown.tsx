@@ -5,7 +5,7 @@
  * and fallback mechanisms when store data is not available.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,9 +38,38 @@ export function QuickStoreAssignDropdown({
   const { stores = [], isLoading: isLoadingStores, refetch: refetchStores, forceRefreshStores, getStoreName } = useStores();
   const [assignmentError, setAssignmentError] = useState<Error | null>(null);
   const [showRefreshButton, setShowRefreshButton] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   
   // Ensure we have a valid array of stores to work with
   const safeStores = Array.isArray(stores) ? stores : [];
+  
+  // Pre-fetch stores and prepare data when component mounts
+  useEffect(() => {
+    console.log("QuickStoreAssignDropdown: Component mounted, preparing data");
+    
+    const preloadStores = async () => {
+      if (safeStores.length === 0 && !isLoadingStores && !dataLoaded) {
+        try {
+          console.log("QuickStoreAssignDropdown: Pre-loading store data");
+          await refetchStores();
+          setDataLoaded(true);
+          console.log(`QuickStoreAssignDropdown: Pre-load complete, received ${safeStores.length} stores`);
+        } catch (err) {
+          console.error("QuickStoreAssignDropdown: Failed to prefetch stores:", err);
+          // Show refresh button after a delay if we fail to load
+          setTimeout(() => {
+            setShowRefreshButton(true);
+          }, 500);
+        }
+      } else if (safeStores.length > 0 && !dataLoaded) {
+        // Mark as loaded if we already have data
+        setDataLoaded(true);
+        console.log(`QuickStoreAssignDropdown: Data already available, ${safeStores.length} stores`);
+      }
+    };
+    
+    preloadStores();
+  }, [refetchStores, safeStores.length, isLoadingStores, dataLoaded]);
   
   // Check if there are no stores and show refresh button after a delay
   useEffect(() => {
@@ -55,16 +84,7 @@ export function QuickStoreAssignDropdown({
     }
   }, [safeStores, isLoadingStores]);
 
-  // Pre-fetch stores when component mounts
-  useEffect(() => {
-    if (safeStores.length === 0 && !isLoadingStores) {
-      refetchStores().catch(err => {
-        console.error("Failed to prefetch stores:", err);
-      });
-    }
-  }, [refetchStores, safeStores.length, isLoadingStores]);
-
-  const handleAssign = async (storeId: string | null, e: React.MouseEvent) => {
+  const handleAssign = useCallback(async (storeId: string | null, e: React.MouseEvent) => {
     try {
       e.stopPropagation();
       e.preventDefault();
@@ -105,15 +125,23 @@ export function QuickStoreAssignDropdown({
       setIsAssigning(false);
       setIsOpen(false);
     }
-  };
+  }, [entryId, onAssign, refetchStores]);
 
   // Handle refresh button click with enhanced error handling
-  const handleRefresh = async (e: React.MouseEvent) => {
+  const handleRefresh = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     
     try {
+      console.log("QuickStoreAssignDropdown: Refreshing store data");
       await forceRefreshStores();
+      
+      // Check if we got data after refresh
+      const refreshedStores = Array.isArray(stores) ? stores : [];
+      console.log(`QuickStoreAssignDropdown: Refresh complete, received ${refreshedStores.length} stores`);
+      
+      setDataLoaded(true);
+      
       toast({
         title: "Butiksdata uppdaterad",
         description: "Butikslistan har uppdaterats.",
@@ -127,17 +155,22 @@ export function QuickStoreAssignDropdown({
         variant: "destructive",
       });
     }
-  };
+  }, [stores, forceRefreshStores]);
 
   // Pre-fetch data when dropdown opens
-  const handleOpenChange = (open: boolean) => {
-    if (open && safeStores.length === 0 && !isLoadingStores) {
-      refetchStores().catch(err => {
-        console.error("Failed to fetch stores on open:", err);
-      });
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      console.log("QuickStoreAssignDropdown: Dropdown opening");
+      
+      if (safeStores.length === 0 && !isLoadingStores) {
+        console.log("QuickStoreAssignDropdown: No stores available, fetching on open");
+        refetchStores().catch(err => {
+          console.error("Failed to fetch stores on open:", err);
+        });
+      }
     }
     setIsOpen(open);
-  };
+  }, [safeStores.length, isLoadingStores, refetchStores]);
 
   // Sort stores alphabetically by name
   const sortedStores = [...safeStores].sort((a, b) => 
@@ -171,6 +204,11 @@ export function QuickStoreAssignDropdown({
     e.stopPropagation();
     e.preventDefault();
   };
+
+  // Debug logging
+  useEffect(() => {
+    console.log(`QuickStoreAssignDropdown: Current state - isLoading: ${isLoadingStores}, dataLoaded: ${dataLoaded}, stores: ${safeStores.length}`);
+  }, [isLoadingStores, dataLoaded, safeStores.length]);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
@@ -222,7 +260,7 @@ export function QuickStoreAssignDropdown({
                       </Button>
                     )}
                   </div>
-                ) : (
+                ) : dataLoaded ? (
                   <div className="max-h-[300px] overflow-y-auto py-1">
                     {sortedStores.map((store) => (
                       <DropdownMenuItem
@@ -257,6 +295,12 @@ export function QuickStoreAssignDropdown({
                         </DropdownMenuItem>
                       </>
                     )}
+                  </div>
+                ) : (
+                  // Explicit loading state when we know data should be available but isn't loaded yet
+                  <div className="p-4 flex flex-col items-center justify-center space-y-3">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <p className="text-sm">Förbereder butiksdata...</p>
                   </div>
                 )}
               </>

@@ -5,7 +5,7 @@
  * robust error handling and loading states.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Check, ChevronsUpDown, Loader2, RefreshCw, Store as StoreIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,8 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
   const [isAssigning, setIsAssigning] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
   // Use the stores hook with better error handling
   const { 
@@ -59,21 +60,39 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
     console.log("StoreSelector: Component mounted, pre-fetching stores");
     const preloadStores = async () => {
       try {
-        if (!ready) {
+        if (!initialLoadComplete) {
+          console.log("StoreSelector: Starting initial data load");
+          setInitialLoadComplete(true); // Mark that we've attempted initial load
+          
           await refetchStores();
-          setReady(true);
-          console.log("StoreSelector: Stores pre-fetched successfully");
+          
+          // Small delay to ensure UI updates properly
+          setTimeout(() => {
+            setDataLoaded(true);
+            console.log("StoreSelector: Stores pre-fetched successfully, stores count:", 
+              Array.isArray(stores) ? stores.length : 0);
+          }, 100);
         }
       } catch (error) {
         console.error("StoreSelector: Error pre-fetching stores:", error);
+        // Don't set data loaded - we'll show error state instead
+        setRenderError(error instanceof Error ? error.message : "Failed to load stores data");
       }
     };
     
     preloadStores();
-  }, [refetchStores, ready]);
+  }, [refetchStores, initialLoadComplete, stores]);
+  
+  // Force re-validate data when stores change
+  useEffect(() => {
+    if (Array.isArray(stores) && stores.length > 0 && !dataLoaded) {
+      console.log("StoreSelector: Store data available, marking as loaded", stores.length);
+      setDataLoaded(true);
+    }
+  }, [stores, dataLoaded]);
   
   // Handle store selection with improved error handling
-  const handleStoreSelect = async (storeId: string | null) => {
+  const handleStoreSelect = useCallback(async (storeId: string | null) => {
     if (disabled) return;
     
     if (storeId === "clear") {
@@ -89,6 +108,13 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
       // Use the callback provided by parent component
       await onStoreAssigned(storeId);
       
+      toast({
+        title: storeId ? "Butik tilldelad" : "Butiksval borttaget",
+        description: storeId 
+          ? "Anamnesen har kopplats till butiken" 
+          : "Butikskoppling har tagits bort",
+      });
+      
     } catch (error) {
       console.error("Error in store assignment:", error);
       setRenderError(error instanceof Error ? error.message : "Unknown error occurred");
@@ -102,18 +128,29 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
       setIsAssigning(false);
       setOpen(false);
     }
-  };
+  }, [disabled, entryId, onStoreAssigned]);
   
   // Handle refresh stores button click with error handling
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setRenderError(null);
+    
     try {
+      console.log("StoreSelector: Refreshing store data");
       await refetchStores();
-      toast({
-        title: "Uppdaterad",
-        description: `${safeStores.length} butiker laddades.`,
-      });
+      
+      // Verify data after refresh
+      setTimeout(() => {
+        const refreshedStores = Array.isArray(stores) ? stores : [];
+        console.log(`StoreSelector: Refresh complete, received ${refreshedStores.length} stores`);
+        
+        setDataLoaded(true);
+        
+        toast({
+          title: "Uppdaterad",
+          description: `${refreshedStores.length} butiker laddades.`,
+        });
+      }, 100);
     } catch (error) {
       console.error("Error refreshing stores:", error);
       setRenderError(error instanceof Error ? error.message : "Unknown error occurred");
@@ -126,16 +163,22 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [refetchStores, stores]);
 
   // Safety check before opening the popover and prefetch data if needed
-  const handleOpenChange = (newOpen: boolean) => {
+  const handleOpenChange = useCallback((newOpen: boolean) => {
     if (newOpen) {
-      // Prefetch stores data if not already loaded
-      if (!isLoadingStores && safeStores.length === 0) {
+      console.log("StoreSelector: Dropdown opening, checking data state");
+      
+      // If we haven't loaded data yet or had an error, try to load it now
+      if (!dataLoaded || renderError) {
+        console.log("StoreSelector: Data not ready, refreshing before open");
+        
         refetchStores()
           .then(() => {
             console.log("StoreSelector: Stores fetched on open");
+            setDataLoaded(true);
+            setRenderError(null);
           })
           .catch(error => {
             console.error("StoreSelector: Failed to fetch stores on open:", error);
@@ -144,7 +187,12 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
       }
     }
     setOpen(newOpen);
-  };
+  }, [dataLoaded, refetchStores, renderError]);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log(`StoreSelector: Current state - isLoading: ${isLoadingStores}, dataLoaded: ${dataLoaded}, stores: ${safeStores.length}`);
+  }, [isLoadingStores, dataLoaded, safeStores.length]);
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -188,70 +236,87 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
             </Button>
           </div>
         ) : (
-          <Command>
-            <CommandInput placeholder="Sök butik..." />
-            <div className="flex items-center justify-between p-2 border-b">
-              <div className="text-xs text-muted-foreground">
-                {safeStores ? `${safeStores.length} butiker tillgängliga` : "Laddar butiker..."}
-              </div>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
-                {isRefreshing ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
+          <>
+            {/* Render the command UI only when we're confident data is loaded */}
+            {dataLoaded ? (
+              <Command>
+                <CommandInput placeholder="Sök butik..." />
+                <div className="flex items-center justify-between p-2 border-b">
+                  <div className="text-xs text-muted-foreground">
+                    {safeStores ? `${safeStores.length} butiker tillgängliga` : "Laddar butiker..."}
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                  >
+                    {isRefreshing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    <span className="sr-only">Uppdatera</span>
+                  </Button>
+                </div>
+                
+                {isLoadingStores ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span>Laddar butiker...</span>
+                  </div>
                 ) : (
-                  <RefreshCw className="h-3 w-3" />
+                  <>
+                    <CommandEmpty>Inga butiker hittades.</CommandEmpty>
+                    {/* Only render CommandGroup if we have stores data */}
+                    {safeStores.length > 0 ? (
+                      <CommandGroup>
+                        {safeStores.map((store) => (
+                          <CommandItem
+                            key={store.id}
+                            value={store.id}
+                            onSelect={() => handleStoreSelect(store.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                storeId === store.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {store.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    ) : (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        Inga butiker tillgängliga.
+                      </div>
+                    )}
+                  </>
                 )}
-                <span className="sr-only">Uppdatera</span>
-              </Button>
-            </div>
-            
-            {isLoadingStores ? (
-              <div className="flex items-center justify-center p-4">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span>Laddar butiker...</span>
-              </div>
+                
+                <div className="p-1 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-center text-muted-foreground hover:text-foreground"
+                    onClick={() => handleStoreSelect("clear")}
+                    disabled={storeId === null}
+                  >
+                    Rensa tilldelning
+                  </Button>
+                </div>
+              </Command>
             ) : (
-              <>
-                <CommandEmpty>Inga butiker hittades.</CommandEmpty>
-                {/* Only render CommandGroup if we have stores data */}
-                {safeStores.length > 0 && (
-                  <CommandGroup>
-                    {safeStores.map((store) => (
-                      <CommandItem
-                        key={store.id}
-                        value={store.id}
-                        onSelect={() => handleStoreSelect(store.id)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            storeId === store.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {store.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-              </>
+              // Loading state shown until data is confirmed available
+              <div className="p-6 flex flex-col items-center justify-center space-y-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-center">
+                  Förbereder butiksdata...
+                </p>
+              </div>
             )}
-            
-            <div className="p-1 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-center text-muted-foreground hover:text-foreground"
-                onClick={() => handleStoreSelect("clear")}
-                disabled={storeId === null}
-              >
-                Rensa tilldelning
-              </Button>
-            </div>
-          </Command>
+          </>
         )}
       </PopoverContent>
     </Popover>

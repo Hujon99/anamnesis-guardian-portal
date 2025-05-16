@@ -18,13 +18,28 @@ const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(({ className, align = "center", sideOffset = 4, ...props }, ref) => {
-  // Ensure children is never undefined or null to prevent "undefined is not iterable" errors
+  // Enhanced safety: Ensure children is never undefined or null
   const safeProps = { ...props };
   
   if (safeProps.children == null) {
     safeProps.children = <></>;
   }
-
+  
+  // Extra safety check for child rendering errors
+  const renderSafeChildren = () => {
+    try {
+      // If children is a function, call it safely
+      if (typeof safeProps.children === 'function') {
+        const renderedChildren = safeProps.children();
+        return renderedChildren || <></>;
+      }
+      return safeProps.children;
+    } catch (error) {
+      console.error('Error rendering Popover children:', error);
+      return <div className="p-2 text-destructive">Rendering error</div>;
+    }
+  };
+  
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -36,7 +51,9 @@ const PopoverContent = React.forwardRef<
           className
         )}
         {...safeProps}
-      />
+      >
+        {renderSafeChildren()}
+      </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );
 });

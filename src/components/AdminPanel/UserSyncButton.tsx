@@ -15,7 +15,7 @@ import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 
-export function UserSyncButton() {
+export function UserSyncButton({ className = "" }: { className?: string }) {
   const [isManualSyncing, setIsManualSyncing] = useState(false);
   const { organization } = useOrganization();
   const { syncUsersWithToast } = useSyncClerkUsers();
@@ -89,7 +89,7 @@ export function UserSyncButton() {
   const buttonState = getButtonState();
   
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex flex-col gap-2 ${className}`}>
       <Button
         variant={buttonState.variant}
         disabled={buttonState.disabled}

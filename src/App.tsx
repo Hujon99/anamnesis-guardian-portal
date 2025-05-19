@@ -28,6 +28,7 @@ import Layout from "@/components/Layout";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Index from "./pages/Index";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
+import { UserSyncManager } from "./components/UserSyncManager";
 
 // Create a query client instance
 const queryClient = new QueryClient({
@@ -58,6 +59,8 @@ function App() {
             element={
               <ProtectedRoute>
                 <AnamnesisProvider>
+                  {/* UserSyncManager runs here to ensure it's active for all authenticated routes */}
+                  <UserSyncManager />
                   <Layout />
                 </AnamnesisProvider>
               </ProtectedRoute>
@@ -82,7 +85,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            {/* Removed optician-form route from here */}
           </Route>
           
           <Route path="*" element={<NotFound />} />

@@ -1,15 +1,22 @@
 
+/**
+ * This is the main administration panel for organization administrators.
+ * It provides interfaces for managing users, synchronizing data with external services,
+ * and configuring organization settings. Only users with admin role can access this page.
+ */
+
 import { useState } from "react";
 import { useUser, useOrganization } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { User, Users, AlertTriangle } from "lucide-react";
+import { User, Users, AlertTriangle, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { Tables } from "@/integrations/supabase/types";
+import { UserSyncButton } from "@/components/AdminPanel/UserSyncButton";
 
 type OrgUser = Tables<"users"> & {
   email?: string;
@@ -74,6 +81,8 @@ const AdminPanel = () => {
             Organisation: {organization?.name}
           </p>
         </div>
+        
+        <UserSyncButton />
       </div>
 
       {supabaseError && (
@@ -93,7 +102,7 @@ const AdminPanel = () => {
             Användare
           </TabsTrigger>
           <TabsTrigger value="organization" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+            <Settings className="h-4 w-4" />
             Organisationsinställningar
           </TabsTrigger>
         </TabsList>
@@ -141,7 +150,7 @@ const AdminPanel = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          user.role === "org:admin" 
+                          user.role === "admin" 
                             ? "bg-blue-100 text-blue-800" 
                             : "bg-gray-100 text-gray-800"
                         }`}>

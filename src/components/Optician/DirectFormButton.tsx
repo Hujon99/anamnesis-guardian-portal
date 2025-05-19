@@ -13,11 +13,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { FileEdit, Loader2, AlertCircle } from "lucide-react";
+import { FileEdit, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useFormTemplate } from "@/hooks/useFormTemplate";
+import { useUserSyncStore } from "@/hooks/useUserSyncStore";
+import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 
 // Key for storing the form token in localStorage
 const DIRECT_FORM_TOKEN_KEY = 'opticianDirectFormToken';
@@ -31,6 +33,11 @@ export function DirectFormButton() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isSyncingUsers, setIsSyncingUsers] = useState(false);
+  const queryClient = useQueryClient();
+  
+  const { syncUsersWithToast } = useSyncClerkUsers();
+  const { getSyncStatus } = useUserSyncStore();
   
   // Get organization's form template
   const { 
@@ -40,6 +47,11 @@ export function DirectFormButton() {
     isError: isTemplateError,
     refetch: refetchTemplate 
   } = useFormTemplate();
+  
+  // Check user sync status for current organization
+  const orgId = organization?.id || '';
+  const syncStatus = getSyncStatus(orgId);
+  const isUserSynced = syncStatus === 'synced';
   
   // Reset error state when organization changes
   useEffect(() => {
@@ -128,6 +140,13 @@ export function DirectFormButton() {
 
       if (error) {
         console.error("[DirectFormButton]: Error creating direct form entry:", error);
+        
+        // Check if error is related to missing user in the database
+        if (error.message?.includes("violates foreign key constraint") || 
+            error.message?.includes("foreign key violation")) {
+          throw new Error("Användaren saknas i databasen. Synkronisera användare först.");
+        }
+        
         // Remove the stored token on error
         localStorage.removeItem(DIRECT_FORM_TOKEN_KEY);
         localStorage.removeItem(DIRECT_FORM_MODE_KEY);
@@ -179,16 +198,48 @@ export function DirectFormButton() {
       setHasError(true);
       setIsLoading(false);
       
-      toast({
-        title: "Fel vid skapande av formulär",
-        description: error.message || "Ett oväntat fel uppstod",
-        variant: "destructive",
-      });
+      // Special handling for user sync errors
+      if (error.message?.includes("Användaren saknas i databasen")) {
+        toast({
+          title: "Användare saknas",
+          description: "Du behöver synkronisera användare innan du kan skapa formulär. Klicka på 'Synkronisera användare' för att fortsätta.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Fel vid skapande av formulär",
+          description: error.message || "Ett oväntat fel uppstod",
+          variant: "destructive",
+        });
+      }
     },
     onSettled: () => {
       setIsLoading(false);
     }
   });
+
+  const handleSyncUsers = async () => {
+    if (isSyncingUsers) return;
+    
+    setIsSyncingUsers(true);
+    try {
+      const result = await syncUsersWithToast();
+      
+      if (result.success) {
+        // Invalidate queries that might depend on user data
+        queryClient.invalidateQueries({ queryKey: ["orgUsers"] });
+        
+        toast({
+          title: "Användare synkroniserade",
+          description: "Du kan nu skapa formulär. Försök igen.",
+        });
+      }
+    } catch (error) {
+      console.error("[DirectFormButton]: Error syncing users:", error);
+    } finally {
+      setIsSyncingUsers(false);
+    }
+  };
 
   const handleCreateDirectForm = () => {
     // Don't allow multiple attempts while loading
@@ -234,6 +285,28 @@ export function DirectFormButton() {
   const buttonTitle = !formTemplate && !templateLoading 
     ? "Ingen formulärmall finns tillgänglig för denna organisation"
     : "Skapa formulär för direkt ifyllning i butik";
+
+  // If users need to be synced first
+  if (hasError && syncStatus !== 'synced' && syncStatus !== 'syncing') {
+    return (
+      <div className="flex gap-2">
+        <Button 
+          onClick={handleSyncUsers}
+          variant="destructive"
+          disabled={isSyncingUsers}
+          title="Synkronisera användare"
+          className="whitespace-nowrap"
+        >
+          {isSyncingUsers ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
+          Synkronisera användare
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>

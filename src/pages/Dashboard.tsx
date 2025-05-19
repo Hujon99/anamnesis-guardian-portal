@@ -8,16 +8,14 @@
 import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Clipboard, Loader2, User } from "lucide-react";
+import { AlertCircle, Clipboard, Loader2 } from "lucide-react";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEffect, useState } from "react";
-import { LinkGenerator } from "@/components/Optician/LinkGenerator";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { UserSyncButton } from "@/components/AdminPanel/UserSyncButton";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -119,20 +117,7 @@ const Dashboard = () => {
             </Button>
           )}
           <DirectFormButton />
-          <LinkGenerator />
-          <UserSyncButton />
         </div>
-      </div>
-
-      {/* Add a prominent sync warning if needed */}
-      <div className="mb-4">
-        <Alert variant="default" className="bg-accent-1/10 text-accent-1 border-accent-1/30">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Synkroniseringspåminnelse</AlertTitle>
-          <AlertDescription className="text-sm">
-            Om du upplever problem med att skapa eller tilldela anamneser, klicka på "Synkronisera användare" för att uppdatera användardata.
-          </AlertDescription>
-        </Alert>
       </div>
 
       <QueryErrorResetBoundary>

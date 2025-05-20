@@ -16,10 +16,6 @@ import { useEffect, useState } from "react";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { OrdersTable } from "@/components/Dashboard/OrdersTable";
-import { QuickActionsBar } from "@/components/Dashboard/QuickActionsBar";
-import { ScannerModal } from "@/components/Dashboard/ScannerModal";
-import { useOrders } from "@/hooks/useOrders";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -51,10 +47,6 @@ const Dashboard = () => {
   const { user } = useUser();
   const { isReady, refreshClient, supabase } = useSupabaseClient();
   const [isUserOptician, setIsUserOptician] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  
-  // Get orders from our custom hook
-  const { orders, isLoading: ordersLoading, loadOrders } = useOrders();
   
   // Check user roles
   const isAdmin = has({ role: "org:admin" });
@@ -108,27 +100,12 @@ const Dashboard = () => {
     return <LoadingState />;
   }
 
-  const handleScanComplete = () => {
-    // Reload orders after a successful scan
-    loadOrders();
-  };
-
   return (
     <div className="space-y-6">
-      {/* Quick Actions Bar */}
-      <QuickActionsBar onScanClick={() => setIsScannerOpen(true)} />
-
-      {/* Scanner Modal */}
-      <ScannerModal 
-        isOpen={isScannerOpen} 
-        onClose={() => setIsScannerOpen(false)}
-        onDeliveryMarked={handleScanComplete} 
-      />
-      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Översikt</h1>
-          <p className="text-muted-foreground mt-2">Hantering av ordrar och anamneser</p>
+          <p className="text-muted-foreground mt-2">Hantering av samtliga anamneser i organisationen</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           {canAccessOpticianFeatures && (
@@ -143,23 +120,13 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Senaste ordrar</h2>
-        <OrdersTable orders={orders} isLoading={ordersLoading} />
-      </div>
-
-      {/* Anamnesis List */}
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-4">Alla anamneser</h2>
-        <QueryErrorResetBoundary>
-          {({ reset }) => (
-            <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
-              <AnamnesisListView showAdvancedFilters={true} />
-            </ErrorBoundary>
-          )}
-        </QueryErrorResetBoundary>
-      </div>
+      <QueryErrorResetBoundary>
+        {({ reset }) => (
+          <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
+            <AnamnesisListView showAdvancedFilters={true} />
+          </ErrorBoundary>
+        )}
+      </QueryErrorResetBoundary>
     </div>
   );
 };

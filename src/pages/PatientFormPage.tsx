@@ -18,12 +18,12 @@ import Layout from "@/components/Layout";
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { isLoaded, userId } = useAuth();
+  const { userId } = useAuth();
   const token = searchParams.get("token");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // Check if this is an optician accessing the form (authenticated user)
-  const isOpticianMode = isLoaded && !!userId;
+  // Check if this is an optician accessing the form (any authenticated user)
+  const isOpticianMode = !!userId;
   
   // Log token for debugging
   useEffect(() => {

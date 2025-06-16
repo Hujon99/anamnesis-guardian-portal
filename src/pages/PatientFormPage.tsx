@@ -1,4 +1,3 @@
-
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
@@ -6,30 +5,40 @@
  * Enhanced to support magic links, auto-saving functionality, smooth transitions
  * between loading and form display, and improved error handling with debugging
  * information for better troubleshooting.
+ * Now also supports optician mode with sidebar navigation for easy exit.
  */
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { BaseFormPage } from "@/components/Forms/BaseFormPage";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@clerk/clerk-react";
+import Layout from "@/components/Layout";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isLoaded, userId } = useAuth();
   const token = searchParams.get("token");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Check if this is an optician accessing the form (authenticated user)
+  const isOpticianMode = isLoaded && !!userId;
   
   // Log token for debugging
   useEffect(() => {
     if (token) {
       console.log("PatientFormPage: Rendering with token", token.substring(0, 6) + "...");
+      if (isOpticianMode) {
+        console.log("PatientFormPage: Optician mode detected - showing sidebar");
+      }
     } else {
       console.log("PatientFormPage: No token in URL");
       toast.error("Ingen åtkomsttoken hittades", {
         description: "Kontrollera att URL:en är korrekt"
       });
     }
-  }, [token]);
+  }, [token, isOpticianMode]);
   
   // Add ability to handle token expiration by refreshing the page
   const handleTokenError = (error: Error) => {
@@ -46,7 +55,7 @@ const PatientFormPage = () => {
     }
   };
   
-  return (
+  const formContent = (
     <BaseFormPage 
       token={token}
       mode="patient"
@@ -55,6 +64,18 @@ const PatientFormPage = () => {
       onError={handleTokenError}
     />
   );
+  
+  // If optician is accessing the form, wrap it in Layout for sidebar access
+  if (isOpticianMode) {
+    return (
+      <Layout>
+        {formContent}
+      </Layout>
+    );
+  }
+  
+  // For patients (magic link access), keep the clean layout
+  return formContent;
 };
 
 export default PatientFormPage;

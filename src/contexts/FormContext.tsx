@@ -1,10 +1,9 @@
-
 /**
  * This context provides form state and functions for all form components.
  * It manages the multi-step form flow, validation, and submission process.
  * Enhanced to support form values change events for auto-save functionality.
  * Enhanced with better error handling and detailed logging for debugging.
- * Now supports dynamic validation based on field visibility.
+ * Now supports dynamic validation based on field visibility and direct step navigation.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
@@ -40,8 +39,11 @@ interface FormContextValue {
   isLastStep: boolean;
   isSubmitting: boolean;
   isOpticianMode: boolean;
+  completedSteps: number[];
   nextStep: () => void;
   previousStep: () => void;
+  goToStep: (step: number) => Promise<boolean>;
+  canNavigateToStep: (step: number) => boolean;
   handleSubmit: () => (data: any) => Promise<void>;
   processSectionsWithDebounce?: (sections: any[], values: Record<string, any>) => void;
   visibleFieldIds?: string[];
@@ -65,6 +67,9 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
 
   // Use state for form values that will be watched
   const [watchedFormValues, setWatchedFormValues] = useState<Record<string, any>>(initialValues || {});
+  
+  // Add state to track completed steps
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   
   // Setup conditional fields logic
   const { visibleSections, dynamicQuestions } = useConditionalFields(formTemplate, watchedFormValues, isOpticianMode);
@@ -121,6 +126,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     currentStep,
     nextStep: goToNextStep,
     previousStep: goToPreviousStep,
+    goToStep: directGoToStep,
     isFirstStep,
     isLastStep,
   } = multiStepForm;
@@ -202,6 +208,51 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     }
   };
 
+  // Check if we can navigate to a specific step
+  const canNavigateToStep = (targetStep: number): boolean => {
+    // Always allow navigation to previous steps
+    if (targetStep < currentStep) return true;
+    
+    // Allow navigation to current step
+    if (targetStep === currentStep) return true;
+    
+    // For future steps, check if all previous steps are completed
+    for (let i = currentStep; i < targetStep; i++) {
+      if (!completedSteps.includes(i)) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  // Enhanced go to step with validation
+  const goToStep = async (targetStep: number): Promise<boolean> => {
+    if (!canNavigateToStep(targetStep)) {
+      return false;
+    }
+    
+    // If going forward, validate current step first
+    if (targetStep > currentStep) {
+      const fields = getFieldsForCurrentStep();
+      const visibleFields = fields.filter(fieldId => visibleFieldIds.includes(fieldId));
+      
+      try {
+        const isValid = await form.trigger(visibleFields);
+        if (!isValid) {
+          return false;
+        }
+        // Mark current step as completed
+        setCompletedSteps(prev => [...new Set([...prev, currentStep])]);
+      } catch (error) {
+        console.error("[FormContext/goToStep]: Error during validation:", error);
+        return false;
+      }
+    }
+    
+    return directGoToStep(targetStep);
+  };
+
   // Next and Previous step handlers
   const nextStep = async () => {
     const fields = getFieldsForCurrentStep();
@@ -214,6 +265,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       
       const isValid = await form.trigger(visibleFields);
       if (isValid) {
+        // Mark current step as completed
+        setCompletedSteps(prev => [...new Set([...prev, currentStep])]);
         // console.log("[FormContext/nextStep]: Fields valid, proceeding to next step");
         goToNextStep();
       } else {
@@ -268,8 +321,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         isLastStep,
         isSubmitting,
         isOpticianMode,
+        completedSteps,
         nextStep,
         previousStep,
+        goToStep,
+        canNavigateToStep,
         handleSubmit: () => handleFormSubmit(),
         processSectionsWithDebounce,
         visibleFieldIds

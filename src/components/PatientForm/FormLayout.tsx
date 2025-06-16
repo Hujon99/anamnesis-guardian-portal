@@ -3,7 +3,8 @@
  * This component handles the structural layout of the form, including the header,
  * content area, and footer with navigation controls. It uses the form context
  * to access form state and functions.
- * Enhanced to handle conditional validation when submitting the form.
+ * Enhanced to handle conditional validation when submitting the form and
+ * support direct navigation between form sections.
  */
 
 import React, { useEffect, useState } from "react";
@@ -30,6 +31,9 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     isLastStep,
     nextStep,
     previousStep,
+    goToStep,
+    canNavigateToStep,
+    completedSteps,
     isSubmitting,
     handleSubmit,
     form,
@@ -204,6 +208,10 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
         totalSteps={totalSections}
         progress={progress}
         createdByName={createdByName}
+        visibleSections={visibleSections}
+        onSectionClick={goToStep}
+        completedSteps={completedSteps}
+        canNavigateToStep={canNavigateToStep}
       />
       
       <CardContent>

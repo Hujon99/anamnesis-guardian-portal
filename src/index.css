@@ -1,14 +1,12 @@
-
 /**
  * This file contains global CSS styles and Tailwind CSS utility imports.
  * It defines CSS custom properties (variables) used for theming throughout the app.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap");
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 @layer base {
   :root {
@@ -95,4 +93,27 @@
 /* Add custom icon styling for Lucide icons */
 .lucide {
   stroke-width: 1.5px;
+}
+
+/* Add utility for hiding scrollbars */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Animation for button pulse effect */
+  @keyframes pulse-once {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.96); }
+    100% { transform: scale(1); }
+  }
+  
+  .animate-pulse-once {
+    animation: pulse-once 0.4s ease-out;
+  }
 }

@@ -37,8 +37,8 @@ const SectionNavigation: React.FC<SectionNavigationProps> = ({
           const canNavigate = canNavigateToStep(index);
           const isPast = index < currentStep;
           
-          // Get the first section title for this step
-          const sectionTitle = stepSections[0]?.title || `Steg ${index + 1}`;
+          // Get the first section title for this step using the correct property name
+          const sectionTitle = stepSections[0]?.section_title || `Steg ${index + 1}`;
           
           return (
             <Button
@@ -63,7 +63,7 @@ const SectionNavigation: React.FC<SectionNavigationProps> = ({
                 ) : (
                   <Circle className="h-3 w-3" strokeWidth={1.5} />
                 )}
-                <span className="text-xs font-medium truncate max-w-[120px]">
+                <span className="text-xs font-medium truncate max-w-[140px]">
                   {sectionTitle}
                 </span>
               </div>
@@ -81,10 +81,10 @@ const SectionNavigation: React.FC<SectionNavigationProps> = ({
             const canNavigate = canNavigateToStep(index);
             const isPast = index < currentStep;
             
-            // Get abbreviated title for mobile
-            const sectionTitle = stepSections[0]?.title || `Steg ${index + 1}`;
-            const abbreviatedTitle = sectionTitle.length > 15 
-              ? sectionTitle.substring(0, 12) + "..." 
+            // Get section title and create mobile-friendly version
+            const sectionTitle = stepSections[0]?.section_title || `Steg ${index + 1}`;
+            const abbreviatedTitle = sectionTitle.length > 18 
+              ? sectionTitle.substring(0, 15) + "..." 
               : sectionTitle;
             
             return (
@@ -95,7 +95,7 @@ const SectionNavigation: React.FC<SectionNavigationProps> = ({
                 onClick={() => canNavigate && onSectionClick(index)}
                 disabled={!canNavigate && !isPast}
                 className={cn(
-                  "transition-all duration-200 flex-shrink-0 min-w-[100px]",
+                  "transition-all duration-200 flex-shrink-0 min-w-[120px]",
                   isActive && "bg-primary text-primary-foreground shadow-md",
                   isCompleted && !isActive && "bg-accent-1/10 border-accent-1/30 text-accent-1",
                   !canNavigate && !isPast && "opacity-50 cursor-not-allowed",

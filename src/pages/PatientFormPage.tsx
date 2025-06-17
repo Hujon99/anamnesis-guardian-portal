@@ -1,3 +1,4 @@
+
 /**
  * This page renders the patient form based on a dynamic form template.
  * It handles token verification, form rendering, validation, and submission
@@ -5,19 +6,19 @@
  * Enhanced to support magic links, auto-saving functionality, smooth transitions
  * between loading and form display, and improved error handling with debugging
  * information for better troubleshooting.
- * Now also supports optician mode with sidebar navigation for easy exit.
+ * Now uses FormLayout to properly display sidebar for authenticated opticians
+ * while maintaining clean layout for patients accessing via magic links.
  */
 
 import React, { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { BaseFormPage } from "@/components/Forms/BaseFormPage";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@clerk/clerk-react";
-import Layout from "@/components/Layout";
+import FormLayout from "@/components/FormLayout";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { userId } = useAuth();
   const token = searchParams.get("token");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -55,27 +56,18 @@ const PatientFormPage = () => {
     }
   };
   
-  const formContent = (
-    <BaseFormPage 
-      token={token}
-      mode="patient"
-      showBookingInfo={true}
-      key={`patient-form-${refreshTrigger}`} // Recreate component when refreshTrigger changes
-      onError={handleTokenError}
-    />
+  // Use FormLayout which handles sidebar display based on authentication status
+  return (
+    <FormLayout>
+      <BaseFormPage 
+        token={token}
+        mode="patient"
+        showBookingInfo={true}
+        key={`patient-form-${refreshTrigger}`}
+        onError={handleTokenError}
+      />
+    </FormLayout>
   );
-  
-  // If optician is accessing the form, wrap it in Layout for sidebar access
-  if (isOpticianMode) {
-    return (
-      <Layout>
-        {formContent}
-      </Layout>
-    );
-  }
-  
-  // For patients (magic link access), keep the clean layout
-  return formContent;
 };
 
 export default PatientFormPage;

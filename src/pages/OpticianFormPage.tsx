@@ -1,10 +1,10 @@
-
 /**
  * This page renders a form specifically for opticians to fill out anamnesis forms for patients.
  * It extends the patient form functionality but shows additional comment fields 
  * and manages the form submission with the appropriate status for optician completion.
  * Enhanced with better error handling, token persistence mechanisms,
  * and recovery options for token-related issues.
+ * Now uses FormLayout to display sidebar for authenticated opticians.
  */
 
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -20,6 +20,7 @@ import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { useAuth } from "@clerk/clerk-react";
 import { SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { ErrorBoundary } from "react-error-boundary";
+import FormLayout from "@/components/FormLayout";
 
 // Constants for localStorage keys
 const DIRECT_FORM_TOKEN_KEY = 'opticianDirectFormToken';
@@ -503,23 +504,25 @@ const OpticianFormPage = () => {
   
   console.log(`[OpticianFormPage/${instanceIdRef.current}]: Rendering form. mode: ${formMode}, token: ${effectiveToken?.substring(0, 6) || "missing"}...`);
   
-  // Wrap in ErrorBoundary for better error handling
+  // Wrap in ErrorBoundary for better error handling and use FormLayout for sidebar
   return (
-    <ErrorBoundary
-      FallbackComponent={ErrorFallback}
-      onReset={() => {
-        // Reset error boundary and reload the page
-        window.location.reload();
-      }}
-    >
-      <BaseFormPage 
-        token={effectiveToken}
-        mode={formMode}
-        hideAutoSave={true}
-        hideCopyLink={true}
-        onError={handleSubmissionError}
-      />
-    </ErrorBoundary>
+    <FormLayout>
+      <ErrorBoundary
+        FallbackComponent={ErrorFallback}
+        onReset={() => {
+          // Reset error boundary and reload the page
+          window.location.reload();
+        }}
+      >
+        <BaseFormPage 
+          token={effectiveToken}
+          mode={formMode}
+          hideAutoSave={true}
+          hideCopyLink={true}
+          onError={handleSubmissionError}
+        />
+      </ErrorBoundary>
+    </FormLayout>
   );
 };
 

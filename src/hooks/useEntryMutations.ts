@@ -1,3 +1,4 @@
+
 /**
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
@@ -174,32 +175,32 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     isPending: false,
     mutateAsync: async (storeId: string | null): Promise<void> => {
       try {
-        console.log(`Starting store assignment. Entry ID: ${entryId}, Store ID: ${storeId}`);
+        console.log(`Startar butikstilldelning. Anamnes-ID: ${entryId}, Butiks-ID: ${storeId}`);
         assignStoreMutation.isPending = true;
         
         // Log details about the store ID for debugging
         if (storeId) {
-          console.log(`Store ID format check: ${UUID_REGEX.test(storeId) ? 'Valid' : 'Invalid'} UUID`);
+          console.log(`Butiks-ID formatcheck: ${UUID_REGEX.test(storeId) ? 'Giltigt' : 'Ogiltigt'} UUID`);
         }
         
         // Validate IDs
         if (!UUID_REGEX.test(entryId)) {
-          throw new Error(`Invalid entry ID format: ${entryId}`);
+          throw new Error(`Ogiltigt anamnes-ID format: ${entryId}`);
         }
         
         if (storeId !== null && !UUID_REGEX.test(storeId)) {
-          throw new Error(`Invalid store ID format: ${storeId}`);
+          throw new Error(`Ogiltigt butiks-ID format: ${storeId}`);
         }
         
         // Use the JWT error handler function with retry logic
         await handleJwtErrorWithRetry(async () => {
-          console.log(`Executing store assignment: ${entryId} → ${storeId || 'null'}`);
+          console.log(`Utför butikstilldelning: ${entryId} → ${storeId || 'null'}`);
           
           // Use the enhanced assignStoreToEntry utility function with organization validation
           return await assignStoreToEntry(supabase, entryId, storeId);
         });
         
-        console.log("Store assignment completed, invalidating queries");
+        console.log("Butikstilldelning slutförd, ogiltigförklarar queries");
         
         // Invalidate queries to refetch data - more specific invalidation
         queryClient.invalidateQueries({
@@ -214,20 +215,21 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         toast({
           title: "Butik tilldelad",
           description: storeId 
-            ? "Anamnes har kopplats till butik" 
+            ? "Anamnesen har kopplats till butiken" 
             : "Butikskoppling har tagits bort",
         });
         
         // Execute any success callback
         if (onSuccess) onSuccess();
       } catch (error) {
-        console.error("Error assigning store:", error);
+        console.error("Fel vid tilldelning av butik:", error);
         
-        // Check for organization mismatch errors
+        // Check for organization mismatch errors with Swedish messages
         const isOrganizationError = error instanceof Error && (
-          error.message.includes("organization mismatch") ||
-          error.message.includes("different organization") ||
-          error.message.includes("Organization mismatch detected")
+          error.message.includes("organisationskonflikt") ||
+          error.message.includes("organisation") ||
+          error.message.includes("annan organisation") ||
+          error.message.includes("samma organisation")
         );
         
         // Check if it's specifically a JWT error for more helpful message
@@ -237,12 +239,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           /PGRST\d+/.test(error.message)
         );
         
-        let errorMessage = "Det gick inte att koppla anamnes till butik";
+        let errorMessage = "Butikstilldelning misslyckades";
         let errorDescription = error instanceof Error ? error.message : "Ett oväntat fel uppstod";
         
         if (isOrganizationError) {
-          errorMessage = "Butik kan inte tilldelas";
-          errorDescription = "Butiken och anamnesen måste tillhöra samma organisation";
+          errorMessage = "Organisationskonflikt";
+          errorDescription = "Butiken och anamnesen tillhör olika organisationer. Kontakta support för hjälp med att lösa detta problem.";
         } else if (isJwtError) {
           errorMessage = "Session har gått ut";
           errorDescription = "Din session har gått ut. Försök igen för att förnya sessionen.";

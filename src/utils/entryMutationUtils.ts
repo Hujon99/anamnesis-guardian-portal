@@ -123,10 +123,10 @@ export const assignStoreToEntry = async (
 ) => {
   // Extra validation to ensure we have a proper entry ID
   if (!entryId) {
-    throw new Error("Missing entry ID for store assignment");
+    throw new Error("Saknar anamnes-ID för butikstilldelning");
   }
   
-  console.log(`entryMutationUtils: Assigning store ${storeId || 'null'} to entry ${entryId}`);
+  console.log(`entryMutationUtils: Tilldelar butik ${storeId || 'null'} till anamnes ${entryId}`);
   
   try {
     // First, get the entry to check its organization
@@ -137,23 +137,23 @@ export const assignStoreToEntry = async (
       .single();
       
     if (entryError) {
-      console.error("Error fetching entry for organization validation:", entryError);
+      console.error("Fel vid hämtning av anamnes för organisationsvalidering:", entryError);
       throw handleSupabaseError(entryError);
     }
     
     if (!entryData) {
-      throw new Error("Entry not found");
+      throw new Error("Anamnesen hittades inte");
     }
     
     const entryOrganizationId = entryData.organization_id;
-    console.log(`entryMutationUtils: Entry belongs to organization ${entryOrganizationId}`);
+    console.log(`entryMutationUtils: Anamnesen tillhör organisation ${entryOrganizationId}`);
     
     // If assigning a store (not clearing), validate that it belongs to the same organization
     if (storeId !== null) {
       // UUID validation - basic check for correct format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(storeId)) {
-        throw new Error(`Invalid store ID format: ${storeId}`);
+        throw new Error(`Ogiltigt butiks-ID format: ${storeId}`);
       }
       
       // Verify that the store exists and belongs to the same organization
@@ -164,24 +164,24 @@ export const assignStoreToEntry = async (
         .single();
         
       if (storeCheckError) {
-        console.error("Store validation check failed:", storeCheckError);
+        console.error("Butikvalideringscheck misslyckades:", storeCheckError);
         if (storeCheckError.code === 'PGRST116') {
-          throw new Error(`Store with ID ${storeId} does not exist`);
+          throw new Error(`Butik med ID ${storeId} existerar inte`);
         }
         throw handleSupabaseError(storeCheckError);
       }
       
       if (!storeData) {
-        throw new Error(`Store with ID ${storeId} does not exist`);
+        throw new Error(`Butik med ID ${storeId} existerar inte`);
       }
       
       // Critical validation: Check if store belongs to the same organization as the entry
       if (storeData.organization_id !== entryOrganizationId) {
-        console.error(`Organization mismatch: Entry org ${entryOrganizationId} vs Store org ${storeData.organization_id}`);
-        throw new Error(`Cannot assign store from different organization. Entry belongs to organization ${entryOrganizationId}, but store belongs to organization ${storeData.organization_id}`);
+        console.error(`Organisationskonflikt: Anamnes org ${entryOrganizationId} vs Butik org ${storeData.organization_id}`);
+        throw new Error(`Kan inte tilldela butik från annan organisation. Anamnesen tillhör organisation ${entryOrganizationId}, men butiken tillhör organisation ${storeData.organization_id}. Kontakta support för att lösa detta problem.`);
       }
       
-      console.log(`entryMutationUtils: Store ${storeData.name} validated for organization ${storeData.organization_id}`);
+      console.log(`entryMutationUtils: Butik ${storeData.name} validerad för organisation ${storeData.organization_id}`);
     }
     
     // Make sure storeId is properly handled when it's null
@@ -195,20 +195,20 @@ export const assignStoreToEntry = async (
       .single();
 
     if (error) {
-      console.error("Error assigning store:", error);
+      console.error("Fel vid tilldelning av butik:", error);
       
       // Handle specific foreign key constraint violation
       if (error.code === '23503' && error.message?.includes('fk_anamnes_entries_store')) {
-        throw new Error("Cannot assign store: Organization mismatch detected. Store and entry must belong to the same organization.");
+        throw new Error("Kan inte tilldela butik: Organisationskonflikt upptäckt. Butik och anamnes måste tillhöra samma organisation. Kontakta support för hjälp.");
       }
       
       throw handleSupabaseError(error);
     }
     
-    console.log(`entryMutationUtils: Store assignment successful, got result:`, data);
+    console.log(`entryMutationUtils: Butikstilldelning lyckades, fick resultat:`, data);
     return data;
   } catch (error) {
-    console.error(`entryMutationUtils: Store assignment failed:`, error);
+    console.error(`entryMutationUtils: Butikstilldelning misslyckades:`, error);
     throw error;
   }
 };

@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { Check, ChevronsUpDown, Loader2, RefreshCw, Store as StoreIcon } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, RefreshCw, Store as StoreIcon, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,7 +103,7 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
       setIsAssigning(true);
       setRenderError(null);
       
-      console.log(`StoreSelector: Handling store selection for entry ${entryId}, store ${storeId || 'null'}`);
+      console.log(`StoreSelector: Hanterar butiksval för anamnes ${entryId}, butik ${storeId || 'null'}`);
       
       // Use the callback provided by parent component
       await onStoreAssigned(storeId);
@@ -116,12 +116,27 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
       });
       
     } catch (error) {
-      console.error("Error in store assignment:", error);
-      setRenderError(error instanceof Error ? error.message : "Unknown error occurred");
+      console.error("Fel vid butikstilldelning:", error);
+      setRenderError(error instanceof Error ? error.message : "Okänt fel uppstod");
+      
+      // Check for organization mismatch errors
+      const isOrganizationError = error instanceof Error && (
+        error.message.includes("organisationskonflikt") ||
+        error.message.includes("organisation") ||
+        error.message.includes("annan organisation")
+      );
+      
+      let errorTitle = "Fel vid tilldelning";
+      let errorDescription = "Kunde inte tilldela butik. Försök igen.";
+      
+      if (isOrganizationError) {
+        errorTitle = "Organisationskonflikt";
+        errorDescription = "Butiken och anamnesen tillhör olika organisationer. Kontakta support för hjälp.";
+      }
       
       toast({
-        title: "Fel vid tilldelning",
-        description: "Kunde inte tilldela butik. Försök igen.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive",
       });
     } finally {
@@ -267,7 +282,15 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
                   </div>
                 ) : (
                   <>
-                    <CommandEmpty>Inga butiker hittades.</CommandEmpty>
+                    <CommandEmpty>
+                      <div className="flex flex-col items-center gap-2 py-4">
+                        <AlertCircle className="h-5 w-5 text-amber-500" />
+                        <span>Inga butiker hittades för din organisation</span>
+                        <span className="text-xs text-muted-foreground text-center">
+                          Kontakta support om du behöver butiker skapade
+                        </span>
+                      </div>
+                    </CommandEmpty>
                     {/* Only render CommandGroup if we have stores data */}
                     {safeStores.length > 0 ? (
                       <CommandGroup>
@@ -289,7 +312,11 @@ export function StoreSelector({ entryId, storeId, onStoreAssigned, disabled = fa
                       </CommandGroup>
                     ) : (
                       <div className="p-4 text-center text-sm text-muted-foreground">
-                        Inga butiker tillgängliga.
+                        <div className="flex flex-col items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-amber-500" />
+                          <span>Inga butiker tillgängliga för din organisation</span>
+                          <span className="text-xs">Kontakta support för att skapa butiker</span>
+                        </div>
                       </div>
                     )}
                   </>

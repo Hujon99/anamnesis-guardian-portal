@@ -91,17 +91,17 @@ export function QuickStoreAssignDropdown({
       setIsAssigning(true);
       setAssignmentError(null);
       
-      console.log(`QuickStoreAssignDropdown: Assigning store with ID: ${storeId || 'none'} to entry: ${entryId}`);
+      console.log(`QuickStoreAssignDropdown: Tilldelar butik med ID: ${storeId || 'ingen'} till anamnes: ${entryId}`);
       
       if (!entryId) {
-        throw new Error("Missing entry ID for store assignment");
+        throw new Error("Saknar anamnes-ID för butikstilldelning");
       }
       
       // Call the assign function provided as prop
       await onAssign(entryId, storeId);
       
       // Success case
-      console.log(`QuickStoreAssignDropdown: Successfully assigned store ${storeId} to entry ${entryId}`);
+      console.log(`QuickStoreAssignDropdown: Lyckades tilldela butik ${storeId} till anamnes ${entryId}`);
       
       // After successful assignment, refresh store data
       await refetchStores();
@@ -113,12 +113,27 @@ export function QuickStoreAssignDropdown({
           : "Butikskoppling har tagits bort",
       });
     } catch (error) {
-      console.error("Error assigning store:", error);
-      setAssignmentError(error instanceof Error ? error : new Error("Unknown error"));
+      console.error("Fel vid tilldelning av butik:", error);
+      setAssignmentError(error instanceof Error ? error : new Error("Okänt fel"));
+      
+      // Check for organization mismatch errors
+      const isOrganizationError = error instanceof Error && (
+        error.message.includes("organisationskonflikt") ||
+        error.message.includes("organisation") ||
+        error.message.includes("annan organisation")
+      );
+      
+      let errorTitle = "Fel vid tilldelning av butik";
+      let errorDescription = "Det gick inte att tilldela butiken. Försök igen.";
+      
+      if (isOrganizationError) {
+        errorTitle = "Organisationskonflikt";
+        errorDescription = "Butiken och anamnesen tillhör olika organisationer. Kontakta support för hjälp.";
+      }
       
       toast({
-        title: "Fel vid tilldelning av butik",
-        description: "Det gick inte att tilldela butiken. Försök igen.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive",
       });
     } finally {
@@ -245,7 +260,8 @@ export function QuickStoreAssignDropdown({
                   <div className="p-3 space-y-4">
                     <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
                       <AlertCircle className="h-5 w-5 text-amber-500" />
-                      <span>Inga butiker tillgängliga</span>
+                      <span>Inga butiker tillgängliga för din organisation</span>
+                      <span className="text-xs text-center">Kontakta support om du behöver butiker skapade</span>
                     </div>
                     
                     {showRefreshButton && (
@@ -297,7 +313,6 @@ export function QuickStoreAssignDropdown({
                     )}
                   </div>
                 ) : (
-                  // Explicit loading state when we know data should be available but isn't loaded yet
                   <div className="p-4 flex flex-col items-center justify-center space-y-3">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     <p className="text-sm">Förbereder butiksdata...</p>

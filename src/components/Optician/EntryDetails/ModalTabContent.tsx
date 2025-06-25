@@ -74,12 +74,16 @@ export function ModalTabContent({
               />
               
               <OptimizedAnswersView
+                answers={answers}
+                hasAnswers={hasAnswers}
+                status={status}
+                entryId={entry.id}
+                aiSummary={entry.ai_summary}
+                onSaveSummary={onSaveAiSummary}
                 formattedRawData={formattedRawData}
                 setFormattedRawData={setFormattedRawData}
                 saveFormattedRawData={saveFormattedRawData}
                 isPending={isPending}
-                entry={entry}
-                onSaveAiSummary={onSaveAiSummary}
               />
             </div>
           </ScrollArea>
@@ -91,6 +95,7 @@ export function ModalTabContent({
               <EntryAnswers 
                 answers={answers} 
                 hasAnswers={hasAnswers} 
+                status={status}
               />
             </div>
           </ScrollArea>
@@ -103,6 +108,7 @@ export function ModalTabContent({
                 entry={entry}
                 onAssignOptician={onAssignOptician}
                 onAssignStore={onAssignStore}
+                isPending={isPending}
               />
             </div>
           </ScrollArea>

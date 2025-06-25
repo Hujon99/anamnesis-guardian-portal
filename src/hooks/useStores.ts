@@ -36,12 +36,14 @@ export function useStores() {
       loadingFromCacheRef.current = true;
       const cachedData = localStorage.getItem(STORE_CACHE_KEY);
       
-      if (cachedData) {
-        const { stores, timestamp } = JSON.parse(cachedData);
+      if (cachedData && organization?.id) {
+        const { stores, timestamp, organizationId } = JSON.parse(cachedData);
         
-        // Check if cache is still valid (within 24 hours)
-        if (Date.now() - timestamp < STORE_CACHE_EXPIRY && Array.isArray(stores)) {
-          console.log(`useStores: Loading ${stores.length} stores from local cache`);
+        // Check if cache is still valid and for the same organization
+        if (Date.now() - timestamp < STORE_CACHE_EXPIRY && 
+            Array.isArray(stores) && 
+            organizationId === organization.id) {
+          console.log(`useStores: Loading ${stores.length} stores from local cache for org ${organization.id}`);
           
           // Keep a local copy as a fallback
           setLocalStoresBackup(stores as Store[]);
@@ -106,7 +108,7 @@ export function useStores() {
       
       // Update last successful fetch time
       lastRefreshRef.current = Date.now();
-      console.log(`useStores: Successfully fetched ${safeData.length} stores:`, safeData);
+      console.log(`useStores: Successfully fetched ${safeData.length} stores for org ${organization.id}:`, safeData);
       
       // FIX: Explicitly cast the data to Store[] with proper type handling for metadata
       const typedStoreData: Store[] = safeData.map(store => ({
@@ -118,13 +120,14 @@ export function useStores() {
       // Update local backup
       setLocalStoresBackup(typedStoreData);
       
-      // Save to localStorage for persistent cache
+      // Save to localStorage for persistent cache with organization context
       try {
         localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
           stores: typedStoreData,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          organizationId: organization.id
         }));
-        console.log(`useStores: Saved ${typedStoreData.length} stores to local cache`);
+        console.log(`useStores: Saved ${typedStoreData.length} stores to local cache for org ${organization.id}`);
       } catch (cacheError) {
         console.error('Failed to cache stores in localStorage:', cacheError);
       }
@@ -143,19 +146,19 @@ export function useStores() {
       console.error('Error fetching stores:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
       
-      // If fetching fails, return local backup
+      // If fetching fails, return local backup only if it's for the same organization
       if (localStoresBackup.length > 0) {
         console.log(`useStores: Falling back to ${localStoresBackup.length} locally backed up stores due to fetch error`);
         return localStoresBackup;
       }
       
-      // If no local backup, try to use cached data
+      // If no local backup, try to use cached data for the same organization
       const cachedData = localStorage.getItem(STORE_CACHE_KEY);
       if (cachedData) {
         try {
-          const { stores } = JSON.parse(cachedData);
-          if (Array.isArray(stores) && stores.length > 0) {
-            console.log(`useStores: Falling back to ${stores.length} cached stores due to fetch error`);
+          const { stores, organizationId } = JSON.parse(cachedData);
+          if (Array.isArray(stores) && stores.length > 0 && organizationId === organization.id) {
+            console.log(`useStores: Falling back to ${stores.length} cached stores for org ${organization.id} due to fetch error`);
             // FIX: Explicitly cast the cached data to Store[] with proper type handling
             const typedStores = stores.map((store: any) => ({
               ...store,
@@ -213,7 +216,8 @@ export function useStores() {
       try {
         localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
           stores: storesArray,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          organizationId: organization.id
         }));
       } catch (err) {
         console.error('Failed to update store cache:', err);
@@ -357,7 +361,8 @@ export function useStores() {
           try {
             localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
               stores: updatedStores,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              organizationId: organization.id
             }));
           } catch (err) {
             console.error('Failed to update store cache after creation:', err);
@@ -408,7 +413,8 @@ export function useStores() {
           try {
             localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
               stores: updatedStores,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              organizationId: organization.id
             }));
           } catch (err) {
             console.error('Failed to update store cache after update:', err);
@@ -433,26 +439,26 @@ export function useStores() {
     },
   });
   
-  // Function to find or create a store by name with improved caching
+  // Function to find or create a store by name with improved caching and organization validation
   const findOrCreateStore = async (name: string) => {
     if (!organization?.id || !isReady) {
       throw new Error('No organization selected or Supabase client not ready');
     }
     
     try {
-      console.log(`useStores: Finding or creating store with name "${name}"`);
+      console.log(`useStores: Finding or creating store with name "${name}" for org ${organization.id}`);
       
-      // First check local cache/memory
+      // First check local cache/memory for the current organization
       const existingStoreInMemory = stores.find(
-        store => store.name.toLowerCase() === name.toLowerCase()
+        store => store.name.toLowerCase() === name.toLowerCase() && store.organization_id === organization.id
       );
       
       if (existingStoreInMemory) {
-        console.log(`useStores: Found existing store in memory: ${existingStoreInMemory.name}`);
+        console.log(`useStores: Found existing store in memory: ${existingStoreInMemory.name} for org ${organization.id}`);
         return existingStoreInMemory;
       }
       
-      // Try to find an existing store
+      // Try to find an existing store in the current organization
       const { data: existingStores, error: findError } = await supabase
         .from('stores')
         .select('*')
@@ -464,7 +470,7 @@ export function useStores() {
       
       // If store exists, return it
       if (existingStores && existingStores.length > 0) {
-        console.log(`useStores: Found existing store in database: ${existingStores[0].name}`);
+        console.log(`useStores: Found existing store in database: ${existingStores[0].name} for org ${organization.id}`);
         
         // Cast to ensure type compatibility
         const existingStore = existingStores[0] as unknown as Store;
@@ -483,11 +489,12 @@ export function useStores() {
               a.name.localeCompare(b.name, 'sv')
             );
             
-            // Update localStorage
+            // Update localStorage with organization context
             try {
               localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
                 stores: updatedStores,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                organizationId: organization.id
               }));
             } catch (err) {
               console.error('Failed to update store cache:', err);
@@ -500,8 +507,8 @@ export function useStores() {
         return existingStore;
       }
       
-      // Otherwise create a new store
-      console.log(`useStores: Creating new store: ${name}`);
+      // Otherwise create a new store in the current organization
+      console.log(`useStores: Creating new store: ${name} for org ${organization.id}`);
       const { data: newStore, error: createError } = await supabase
         .from('stores')
         .insert({
@@ -524,11 +531,12 @@ export function useStores() {
             a.name.localeCompare(b.name, 'sv')
           );
           
-          // Update localStorage
+          // Update localStorage with organization context
           try {
             localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
               stores: updatedStores,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              organizationId: organization.id
             }));
           } catch (err) {
             console.error('Failed to update store cache:', err);
@@ -538,7 +546,7 @@ export function useStores() {
         }
       );
       
-      console.log(`useStores: Successfully created new store: ${name}`);
+      console.log(`useStores: Successfully created new store: ${name} for org ${organization.id}`);
       return typedNewStore;
     } catch (err) {
       console.error('Error finding or creating store:', err);

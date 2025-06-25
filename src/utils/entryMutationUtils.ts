@@ -113,7 +113,7 @@ export const assignOpticianToEntry = async (
 };
 
 /**
- * Associates an entry with a store
+ * Associates an entry with a store with enhanced organization validation
  * Enhanced with improved validation and error handling
  */
 export const assignStoreToEntry = async (
@@ -129,7 +129,26 @@ export const assignStoreToEntry = async (
   console.log(`entryMutationUtils: Assigning store ${storeId || 'null'} to entry ${entryId}`);
   
   try {
-    // Validate the store ID if it's provided
+    // First, get the entry to check its organization
+    const { data: entryData, error: entryError } = await supabase
+      .from("anamnes_entries")
+      .select("organization_id")
+      .eq("id", entryId)
+      .single();
+      
+    if (entryError) {
+      console.error("Error fetching entry for organization validation:", entryError);
+      throw handleSupabaseError(entryError);
+    }
+    
+    if (!entryData) {
+      throw new Error("Entry not found");
+    }
+    
+    const entryOrganizationId = entryData.organization_id;
+    console.log(`entryMutationUtils: Entry belongs to organization ${entryOrganizationId}`);
+    
+    // If assigning a store (not clearing), validate that it belongs to the same organization
     if (storeId !== null) {
       // UUID validation - basic check for correct format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -137,20 +156,32 @@ export const assignStoreToEntry = async (
         throw new Error(`Invalid store ID format: ${storeId}`);
       }
       
-      // Optional: Verify that the store actually exists before assignment
-      const { data: storeExists, error: storeCheckError } = await supabase
+      // Verify that the store exists and belongs to the same organization
+      const { data: storeData, error: storeCheckError } = await supabase
         .from("stores")
-        .select("id")
+        .select("id, name, organization_id")
         .eq("id", storeId)
-        .maybeSingle();
+        .single();
         
       if (storeCheckError) {
-        console.warn("Store validation check failed:", storeCheckError);
-        // Continue with assignment despite validation failure
-      } else if (!storeExists) {
-        console.warn(`Store with ID ${storeId} does not exist`);
-        // Continue anyway, since this is just a validation check
+        console.error("Store validation check failed:", storeCheckError);
+        if (storeCheckError.code === 'PGRST116') {
+          throw new Error(`Store with ID ${storeId} does not exist`);
+        }
+        throw handleSupabaseError(storeCheckError);
       }
+      
+      if (!storeData) {
+        throw new Error(`Store with ID ${storeId} does not exist`);
+      }
+      
+      // Critical validation: Check if store belongs to the same organization as the entry
+      if (storeData.organization_id !== entryOrganizationId) {
+        console.error(`Organization mismatch: Entry org ${entryOrganizationId} vs Store org ${storeData.organization_id}`);
+        throw new Error(`Cannot assign store from different organization. Entry belongs to organization ${entryOrganizationId}, but store belongs to organization ${storeData.organization_id}`);
+      }
+      
+      console.log(`entryMutationUtils: Store ${storeData.name} validated for organization ${storeData.organization_id}`);
     }
     
     // Make sure storeId is properly handled when it's null
@@ -165,6 +196,12 @@ export const assignStoreToEntry = async (
 
     if (error) {
       console.error("Error assigning store:", error);
+      
+      // Handle specific foreign key constraint violation
+      if (error.code === '23503' && error.message?.includes('fk_anamnes_entries_store')) {
+        throw new Error("Cannot assign store: Organization mismatch detected. Store and entry must belong to the same organization.");
+      }
+      
       throw handleSupabaseError(error);
     }
     

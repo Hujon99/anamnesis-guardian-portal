@@ -1,4 +1,3 @@
-
 /**
  * This hook combines mutation functions for anamnesis entries,
  * providing a unified interface for all entry-related mutations.
@@ -12,6 +11,7 @@ import { useSendLinkMutation } from "./useSendLinkMutation";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
 import { useState } from "react";
+import { assignStoreToEntry } from "@/utils/entryMutationUtils";
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -169,7 +169,7 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     }
   };
 
-  // Enhanced mutation for assigning a store to an entry with improved error handling and logging
+  // Enhanced mutation for assigning a store to an entry with improved error handling and organization validation
   const assignStoreMutation = {
     isPending: false,
     mutateAsync: async (storeId: string | null): Promise<void> => {
@@ -191,39 +191,12 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           throw new Error(`Invalid store ID format: ${storeId}`);
         }
         
-        // Get current store data for logging (helps with debugging)
-        if (storeId) {
-          try {
-            const { data: storeData } = await supabase
-              .from("stores")
-              .select("name")
-              .eq("id", storeId)
-              .single();
-            
-            console.log(`Found store name for ID ${storeId}:`, storeData?.name || "Unknown");
-          } catch (lookupError) {
-            console.warn(`Could not lookup store name for ID ${storeId}:`, lookupError);
-            // Continue with assignment even if lookup fails
-          }
-        }
-        
         // Use the JWT error handler function with retry logic
         await handleJwtErrorWithRetry(async () => {
           console.log(`Executing store assignment: ${entryId} → ${storeId || 'null'}`);
           
-          const { data, error } = await supabase
-            .from("anamnes_entries")
-            .update({ store_id: storeId })
-            .eq("id", entryId)
-            .select();
-            
-          if (error) {
-            console.error("Supabase error in assignStoreMutation:", error);
-            throw error;
-          }
-          
-          console.log("Store assignment successful, received data:", data);
-          return data;
+          // Use the enhanced assignStoreToEntry utility function with organization validation
+          return await assignStoreToEntry(supabase, entryId, storeId);
         });
         
         console.log("Store assignment completed, invalidating queries");
@@ -250,6 +223,13 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
       } catch (error) {
         console.error("Error assigning store:", error);
         
+        // Check for organization mismatch errors
+        const isOrganizationError = error instanceof Error && (
+          error.message.includes("organization mismatch") ||
+          error.message.includes("different organization") ||
+          error.message.includes("Organization mismatch detected")
+        );
+        
         // Check if it's specifically a JWT error for more helpful message
         const isJwtError = error instanceof Error && (
           error.message.includes("JWT") || 
@@ -257,13 +237,20 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           /PGRST\d+/.test(error.message)
         );
         
+        let errorMessage = "Det gick inte att koppla anamnes till butik";
+        let errorDescription = error instanceof Error ? error.message : "Ett oväntat fel uppstod";
+        
+        if (isOrganizationError) {
+          errorMessage = "Butik kan inte tilldelas";
+          errorDescription = "Butiken och anamnesen måste tillhöra samma organisation";
+        } else if (isJwtError) {
+          errorMessage = "Session har gått ut";
+          errorDescription = "Din session har gått ut. Försök igen för att förnya sessionen.";
+        }
+        
         toast({
-          title: "Fel vid tilldelning av butik",
-          description: isJwtError
-            ? "Din session har gått ut. Försök igen för att förnya sessionen."
-            : error instanceof Error 
-              ? error.message 
-              : "Det gick inte att koppla anamnes till butik",
+          title: errorMessage,
+          description: errorDescription,
           variant: "destructive",
         });
         

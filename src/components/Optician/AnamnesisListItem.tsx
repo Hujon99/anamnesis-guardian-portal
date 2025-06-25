@@ -1,8 +1,9 @@
+
 /**
  * This component displays a single anamnesis entry in the list view.
  * It shows important information about the entry like status, creation date,
  * and patient information if available. Now includes quick assignment functionality 
- * for both opticians and stores directly from the list view.
+ * for both opticians and stores directly from the list view, and prominent reference number display.
  */
 
 import React, { useState } from "react";
@@ -39,12 +40,14 @@ import { EntryStatusBadge } from "./EntriesList/EntryStatusBadge";
 import { EntryStatusIcon } from "./EntriesList/EntryStatusIcon";
 import { QuickAssignDropdown } from "./EntriesList/QuickAssignDropdown";
 import { QuickStoreAssignDropdown } from "./EntriesList/QuickStoreAssignDropdown";
+import { ReferenceNumberDisplay } from "./EntriesList/ReferenceNumberDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getPatientDisplayName } from "@/lib/utils";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { toast } from "@/components/ui/use-toast";
 import { useStores } from "@/hooks/useStores";
+import { useEntryMutations } from "@/hooks/useEntryMutations";
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
@@ -57,11 +60,12 @@ interface AnamnesisListItemProps {
   onDelete?: () => void;
   onAssign?: (entryId: string, opticianId: string | null) => Promise<void>;
   onStoreAssign?: (entryId: string, storeId: string | null) => Promise<void>;
+  onEntryUpdated?: () => void;
   showAssignmentIndicator?: boolean;
   showQuickAssign?: boolean;
   opticianName?: string | null;
   storeName?: string | null;
-  storeMap?: Map<string, string>; // Added storeMap prop
+  storeMap?: Map<string, string>;
   isBookingWithoutStore?: boolean;
 }
 
@@ -71,6 +75,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   onDelete,
   onAssign,
   onStoreAssign,
+  onEntryUpdated,
   showAssignmentIndicator = false,
   showQuickAssign = false,
   opticianName,
@@ -82,6 +87,9 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { supabase } = useSupabaseClient();
   const { getStoreName } = useStores();
+  
+  // Get mutations for updating the entry
+  const { savePatientIdentifier } = useEntryMutations(entry.id, onEntryUpdated);
   
   // Get the appropriate store name using multiple fallback strategies with improved logging
   // Use a local reference to avoid confusion with prop
@@ -102,14 +110,6 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
     // Strategy 4: Use storeName prop (explicit pass from parent)
     const storeNameFromProp = propStoreName;
     
-    // Log all available sources for debugging
-    console.log(`AnamnesisListItem: Store name resolution for ${entry.id}:
-      - Store ID: ${entry.store_id}
-      - From Hook: ${storeNameFromHook}
-      - From Map: ${storeNameFromMap}
-      - From Entry: ${storeNameFromEntry}
-      - From Prop: ${storeNameFromProp}`);
-    
     // Use the first available name in order of reliability
     displayStoreName = storeNameFromHook || 
                       storeNameFromMap || 
@@ -121,8 +121,6 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
       displayStoreName = `Butik ID: ${entry.store_id.substring(0, 8)}...`;
     }
   }
-  
-  console.log(`AnamnesisListItem: Final display store name for entry ${entry.id}: "${displayStoreName}"`);
 
   const handleDelete = async () => {
     try {
@@ -175,6 +173,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
     }
   };
 
+  const handleReferenceNumberSave = async (entryId: string, newIdentifier: string) => {
+    await savePatientIdentifier(newIdentifier);
+  };
+
   const hasBookingInfo = entry.is_magic_link || entry.booking_id || entry.booking_date || entry.store_id;
   
   // Use the patient display name helper
@@ -196,10 +198,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
       >
         <CardHeader className="py-3 px-4">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               <EntryStatusIcon status={entry.status || "sent"} />
-              <div>
-                <CardTitle className="text-base">
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base truncate">
                   {patientDisplayName}
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -259,6 +261,16 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          </div>
+
+          {/* Reference Number Display - Prominent placement */}
+          <div className="mt-2" onClick={stopPropagation}>
+            <ReferenceNumberDisplay
+              patientIdentifier={entry.patient_identifier || ""}
+              entryId={entry.id}
+              onSave={handleReferenceNumberSave}
+              compact={true}
+            />
           </div>
         </CardHeader>
 

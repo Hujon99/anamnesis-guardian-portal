@@ -1,11 +1,12 @@
 
 /**
  * This component provides a search input for filtering the anamnesis entry list.
- * It allows users to search by patient identifier (name/number) and refresh the list.
+ * It allows users to search by patient identifier (reference number) and refresh the list.
+ * Enhanced to highlight that it searches reference numbers.
  */
 
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SearchInputProps {
@@ -24,12 +25,15 @@ export const SearchInput = ({
   return (
     <div className="relative flex gap-2 items-center">
       <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1 text-muted-foreground">
+          <Search className="h-4 w-4" />
+          <Hash className="h-3 w-3" />
+        </div>
         <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Sök efter patient (namn/nummer)..."
-          className="pl-9 rounded-xl bg-white border-muted"
+          placeholder="Sök efter referensnummer eller patient..."
+          className="pl-12 rounded-xl bg-white border-muted"
         />
       </div>
       

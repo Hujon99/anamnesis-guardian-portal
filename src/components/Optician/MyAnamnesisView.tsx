@@ -140,6 +140,11 @@ export function MyAnamnesisView() {
     }
   };
 
+  // Handle entry updates (including reference number changes)
+  const handleEntryUpdated = () => {
+    refetch?.();
+  };
+
   const getEntryExpirationInfo = (entry: AnamnesesEntry) => {
     if (!entry.auto_deletion_timestamp) return { isExpired: false, daysUntilExpiration: null };
     
@@ -237,6 +242,7 @@ export function MyAnamnesisView() {
           entries={enhancedEntries}
           onSelectEntry={setSelectedEntry}
           onEntryDeleted={refetch}
+          onEntryUpdated={handleEntryUpdated}
           onEntryAssigned={handleEntryAssigned}
           onStoreAssigned={handleStoreAssigned}
         />

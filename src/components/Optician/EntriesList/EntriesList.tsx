@@ -25,6 +25,7 @@ interface EntriesListProps {
   })[];
   onSelectEntry: (entry: AnamnesesEntry) => void;
   onEntryDeleted?: () => void;
+  onEntryUpdated?: () => void;
   onEntryAssigned?: (entryId: string, opticianId: string | null) => Promise<void>;
   onStoreAssigned?: (entryId: string, storeId: string | null) => Promise<void>;
   showQuickAssign?: boolean;
@@ -35,6 +36,7 @@ export function EntriesList({
   entries,
   onSelectEntry,
   onEntryDeleted,
+  onEntryUpdated,
   onEntryAssigned,
   onStoreAssigned,
   showQuickAssign = true,
@@ -201,6 +203,7 @@ export function EntriesList({
               }}
               onClick={() => onSelectEntry(entry)}
               onDelete={onEntryDeleted}
+              onEntryUpdated={onEntryUpdated}
               onAssign={onEntryAssigned}
               onStoreAssign={handleStoreAssign}
               showAssignmentIndicator={true}

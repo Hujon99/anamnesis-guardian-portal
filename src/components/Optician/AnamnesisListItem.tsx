@@ -45,7 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getPatientDisplayName } from "@/lib/utils";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useStores } from "@/hooks/useStores";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
 
@@ -188,6 +188,8 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
     e.preventDefault();
   };
 
+  console.log(`AnamnesisListItem: Entry ${entry.id} has patient_identifier:`, entry.patient_identifier);
+
   return (
     <>
       <Card
@@ -264,7 +266,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
           </div>
 
           {/* Reference Number Display - Prominent placement */}
-          <div className="mt-2" onClick={stopPropagation}>
+          <div className="mt-3 pt-2 border-t border-gray-100" onClick={stopPropagation}>
             <ReferenceNumberDisplay
               patientIdentifier={entry.patient_identifier || ""}
               entryId={entry.id}

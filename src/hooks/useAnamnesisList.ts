@@ -13,7 +13,7 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { subDays } from "date-fns";
 import { useAnamnesis } from "@/contexts/AnamnesisContext";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface AnamnesisFilters {
@@ -269,9 +269,14 @@ export const useAnamnesisList = () => {
 
   // Filter and sort the entries based on current filters
   const filteredEntries = entries.filter(entry => {
-    // Filter by search query (patient identifier)
-    if (filters.searchQuery && entry.patient_identifier) {
-      if (!entry.patient_identifier.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
+    // Filter by search query (patient identifier, first name, or booking ID)
+    if (filters.searchQuery) {
+      const searchLower = filters.searchQuery.toLowerCase();
+      const matchesIdentifier = entry.patient_identifier?.toLowerCase().includes(searchLower);
+      const matchesFirstName = entry.first_name?.toLowerCase().includes(searchLower);
+      const matchesBookingId = entry.booking_id?.toLowerCase().includes(searchLower);
+      
+      if (!matchesIdentifier && !matchesFirstName && !matchesBookingId) {
         return false;
       }
     }

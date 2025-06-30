@@ -5,6 +5,7 @@
  * to access form state and functions.
  * Enhanced to handle conditional validation when submitting the form and
  * support direct navigation between form sections.
+ * Fixed premature validation issues on the last step.
  */
 
 import React, { useEffect, useState } from "react";
@@ -45,6 +46,9 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
   const [animationClass, setAnimationClass] = useState("");
   const [previousStepValue, setPreviousStepValue] = useState(currentStep);
   
+  // Track which fields have been touched to avoid premature validation
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  
   // Run animation when step changes
   useEffect(() => {
     if (previousStepValue !== currentStep) {
@@ -81,56 +85,39 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     }
   }, [watchedValues]);
 
+  // Track field interactions to prevent premature validation
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name) {
+        setTouchedFields(prev => new Set([...prev, name]));
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   // The onSubmit handler now only prevents default behavior but doesn't trigger submission
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // console.log("[FormLayout/onSubmit]: Form submit event intercepted and prevented");
-    // We no longer automatically submit the form here
-    // The actual submission will only happen when the user clicks the Submit button
   };
-
-  // Ensure form re-validation when values change
-  useEffect(() => {
-    if (isLastStep && !isSubmitting) {
-      // Trigger validation for all current step fields
-      // console.log("[FormLayout]: On last step, re-validating fields");
-      
-      // Only validate visible fields on the current step
-      if (visibleFieldIds && visibleFieldIds.length > 0) {
-        // Get the visible fields for the current step
-        const currentStepVisibleFields = visibleSections[currentStep]?.flatMap(section => 
-          section.questions.map(q => q.id || q.runtimeId)
-        ) || [];
-        
-        // Filter by what's actually visible
-        const fieldsToValidate = currentStepVisibleFields.filter(
-          fieldId => visibleFieldIds.includes(fieldId)
-        );
-        
-        // console.log("[FormLayout]: Re-validating visible fields:", fieldsToValidate);
-        form.trigger(fieldsToValidate);
-      }
-    }
-  }, [isLastStep, form, isSubmitting, visibleFieldIds, currentStep, visibleSections]);
 
   // Enhanced submit handler with better error handling and conditional validation
   const handleFormSubmission = () => {
-    // console.log("[FormLayout/handleFormSubmission]: Starting form submission process");
+    console.log("[FormLayout/handleFormSubmission]: Starting form submission process");
     
     try {
       // Get all current form values
       const formValues = form.getValues();
-      // console.log("[FormLayout/handleFormSubmission]: Current form values for submission:", formValues);
+      console.log("[FormLayout/handleFormSubmission]: Current form values for submission:", formValues);
       
       // Count dynamic follow-up values
       const dynamicValues = Object.keys(formValues).filter(key => key.includes('_for_'));
-      // console.log("[FormLayout/handleFormSubmission]: Found", dynamicValues.length, "dynamic follow-up values");
-      
-
+      console.log("[FormLayout/handleFormSubmission]: Found", dynamicValues.length, "dynamic follow-up values");
       
       // If we have visible field IDs, only validate those
       if (visibleFieldIds && visibleFieldIds.length > 0) {
-        // console.log("[FormLayout/handleFormSubmission]: Validating only visible fields:", visibleFieldIds.length);
+        console.log("[FormLayout/handleFormSubmission]: Validating only visible fields:", visibleFieldIds.length);
         
         // Use custom submission handler that only validates visible fields
         toast.info("Skickar in dina svar...");
@@ -140,21 +127,21 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
         submitHandler(formValues);
       } else {
         // Fallback to normal validation if we don't have visibility data
-        // console.log("[FormLayout/handleFormSubmission]: No visibility data, using standard validation");
+        console.log("[FormLayout/handleFormSubmission]: No visibility data, using standard validation");
         
         // Simple circuit breaker to prevent getting stuck
         let submissionStarted = false;
         
         // Use handleSubmit from react-hook-form to validate and submit
         form.handleSubmit((data) => {
-          // console.log("[FormLayout/handleFormSubmission]: Form validated successfully, proceeding with submission");
+          console.log("[FormLayout/handleFormSubmission]: Form validated successfully, proceeding with submission");
           submissionStarted = true;
           toast.info("Skickar in dina svar...");
           
           // Call the submission handler from context with the current data
           try {
             const submitHandler = handleSubmit();
-            // console.log("[FormLayout/handleFormSubmission]: Calling submit handler with data");
+            console.log("[FormLayout/handleFormSubmission]: Calling submit handler with data");
             submitHandler(data);
           } catch (error) {
             console.error("[FormLayout/handleFormSubmission]: Error in submit handler:", error);
@@ -177,7 +164,7 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
             
             if (visibleErrors.length === 0) {
               // If errors are only in hidden fields, we can still submit
-              // console.log("[FormLayout/handleFormSubmission]: Errors only in hidden fields, proceeding with submission");
+              console.log("[FormLayout/handleFormSubmission]: Errors only in hidden fields, proceeding with submission");
               const submitHandler = handleSubmit();
               submitHandler(form.getValues());
               return;
@@ -191,7 +178,6 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
         setTimeout(() => {
           if (!submissionStarted) {
             console.warn("[FormLayout/handleFormSubmission]: Submission may have failed to start");
-            // Add error handling if needed
           }
         }, 1000);
       }

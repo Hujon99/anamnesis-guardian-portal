@@ -4,6 +4,7 @@
  * It generates a Zod schema based on the form template and validates form inputs against it.
  * It dynamically adapts validation rules based on form visibility conditions to prevent
  * validation of hidden fields.
+ * Enhanced to properly handle required fields and prevent premature validation errors.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,6 +17,9 @@ export function useFormValidation(
   currentValues?: Record<string, any>,
   visibleFieldIds?: string[]
 ) {
+  // Track which fields have been touched to avoid premature validation
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  
   // Create a Zod schema for validation based on the form template and visible fields
   const validationSchema = useMemo(() => {
     if (!formTemplate) {
@@ -71,7 +75,7 @@ export function useFormValidation(
           return;
         }
 
-        // Default validation - accept any value
+        // Create validation schema based on field type and requirements
         let fieldSchema: z.ZodTypeAny = z.any();
 
         // Add required validation if needed
@@ -90,13 +94,13 @@ export function useFormValidation(
             case 'radio':
             case 'select':
             case 'dropdown':
-              fieldSchema = z.string({ required_error: 'Detta fält är obligatoriskt' });
+              fieldSchema = z.string().min(1, { message: 'Detta fält är obligatoriskt' });
               break;
             case 'checkbox':
               fieldSchema = z.array(z.string()).min(1, { message: 'Välj minst ett alternativ' });
               break;
             default:
-              fieldSchema = z.any();
+              fieldSchema = z.string().min(1, { message: 'Detta fält är obligatoriskt' });
           }
         } else {
           // Optional fields
@@ -134,6 +138,8 @@ export function useFormValidation(
           if (!visibleFieldIds || visibleFieldIds.includes(key)) {
             // Extract the original question ID and parent answer
             const [originalId, parentValue] = key.split('_for_');
+            
+            // Find the original template question to check if it's required
             const isRequired = formTemplate.sections.some(section => {
               return section.questions.some(q => 
                 q.id === originalId && 
@@ -202,10 +208,92 @@ export function useFormValidation(
     });
   };
   
-  // New function to check if a field should be validated based on visibility
+  // Function to check if a field should be validated based on visibility
   const shouldValidateField = (fieldId: string): boolean => {
     if (!visibleFieldIds) return true;
     return visibleFieldIds.includes(fieldId);
+  };
+  
+  // Function to get all required fields that are currently visible
+  const getRequiredVisibleFields = (): string[] => {
+    if (!formTemplate || !currentValues) return [];
+    
+    const requiredFields: string[] = [];
+    
+    formTemplate.sections.forEach(section => {
+      // Check section visibility
+      if (section.show_if && currentValues) {
+        const { question, equals, contains } = section.show_if;
+        const value = currentValues[question];
+        
+        if (contains !== undefined) {
+          if (Array.isArray(value) && !value.includes(contains)) return;
+          if (!Array.isArray(value) && value !== contains) return;
+        } else if (equals !== undefined) {
+          if (Array.isArray(equals) && !equals.includes(value)) return;
+          if (!Array.isArray(equals) && value !== equals) return;
+        } else if (!value) {
+          return;
+        }
+      }
+      
+      section.questions.forEach(question => {
+        if (question.is_followup_template) return;
+        
+        // Check question visibility
+        if (question.show_if && currentValues) {
+          const { question: dependentQuestion, equals, contains } = question.show_if;
+          const dependentValue = currentValues[dependentQuestion];
+          
+          if (contains !== undefined) {
+            if (Array.isArray(dependentValue) && !dependentValue.includes(contains)) return;
+            if (!Array.isArray(dependentValue) && dependentValue !== contains) return;
+          } else if (equals !== undefined) {
+            if (Array.isArray(equals) && !equals.includes(dependentValue)) return;
+            if (!Array.isArray(equals) && dependentValue !== equals) return;
+          } else if (!dependentValue) {
+            return;
+          }
+        }
+        
+        // If question is required and visible, add to list
+        if (question.required && (!visibleFieldIds || visibleFieldIds.includes(question.id))) {
+          requiredFields.push(question.id);
+        }
+      });
+    });
+    
+    // Add dynamic follow-up questions that are required
+    if (currentValues) {
+      Object.keys(currentValues).forEach(key => {
+        if (key.includes('_for_') && (!visibleFieldIds || visibleFieldIds.includes(key))) {
+          const [originalId] = key.split('_for_');
+          const isRequired = formTemplate.sections.some(section => {
+            return section.questions.some(q => 
+              q.id === originalId && 
+              q.is_followup_template && 
+              q.required
+            );
+          });
+          
+          if (isRequired) {
+            requiredFields.push(key);
+          }
+        }
+      });
+    }
+    
+    return requiredFields;
+  };
+  
+  // Function to mark a field as touched
+  const markFieldAsTouched = (fieldId: string) => {
+    setTouchedFields(prev => new Set([...prev, fieldId]));
+  };
+  
+  // Function to check if a field has been touched
+  const isFieldTouched = (fieldId: string): boolean => {
+    return touchedFields.has(fieldId);
   };
   
   // Log validation schema for debugging
@@ -219,6 +307,10 @@ export function useFormValidation(
     validationSchema,
     defaultValues,
     getFieldsToValidate,
-    shouldValidateField
+    shouldValidateField,
+    getRequiredVisibleFields,
+    markFieldAsTouched,
+    isFieldTouched,
+    touchedFields
   };
 }

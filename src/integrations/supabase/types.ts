@@ -350,6 +350,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      debug_current_form_id: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          current_form_id: string
+          is_valid_uuid: boolean
+          organization_from_form: string
+        }[]
+      }
       get_form_organization_id: {
         Args: { form_id_param: string }
         Returns: string

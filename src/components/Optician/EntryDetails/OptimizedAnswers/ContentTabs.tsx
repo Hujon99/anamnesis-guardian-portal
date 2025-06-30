@@ -36,6 +36,8 @@ export const ContentTabs = ({
   isRegenerating = false
 }: ContentTabsProps) => {
   const hasSummary = summary && summary.trim().length > 0;
+  
+  console.log("ContentTabs render:", { activeTab, hasSummary, summaryLength: summary?.length });
 
   return (
     <div className="flex flex-col h-full">
@@ -123,7 +125,7 @@ export const ContentTabs = ({
               )}
             </div>
             
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden bg-white">
               <ScrollArea className="h-full">
                 <div className="p-4">
                   {hasSummary ? (
@@ -131,7 +133,7 @@ export const ContentTabs = ({
                       {summary}
                     </div>
                   ) : (
-                    <div className="text-muted-foreground italic text-center">
+                    <div className="text-muted-foreground italic text-center py-8">
                       Ingen AI-sammanfattning tillgänglig än. Generera en genom att klicka på "Generera sammanfattning"-knappen.
                     </div>
                   )}

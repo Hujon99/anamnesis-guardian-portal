@@ -1,10 +1,10 @@
-
 /**
  * This page handles magic links for anamnes forms. It parses URL parameters, validates them,
  * and creates a new entry in the database with the booking information.
  * After successful entry creation, it redirects the user to the form.
  * It ensures that the form is tied to the correct organization.
  * If only form_id is provided, it redirects to CustomerInfoPage for data collection.
+ * Updated to redirect to CustomerInfoPage when booking_date is present but other details are missing.
  */
 
 import { useEffect, useState } from "react";
@@ -66,10 +66,22 @@ const LinkPage = () => {
         
         setValidFormId(true);
         
-        // If only form_id is provided (no booking_id), redirect to customer info page
-        if (!bookingId) {
-          console.log("Only form_id provided, redirecting to customer info page");
-          navigate(`/customer-info?form_id=${formId}`);
+        // Updated logic: redirect to customer info page if missing essential booking details
+        // Only proceed directly to form if we have booking_id AND first_name (minimum required)
+        if (!bookingId || !firstName) {
+          console.log("Missing essential booking details, redirecting to customer info page");
+          
+          // Build URL with all available parameters
+          const params = new URLSearchParams();
+          params.set('form_id', formId);
+          
+          if (bookingDate) params.set('booking_date', bookingDate);
+          if (storeId) params.set('store_id', storeId);
+          if (storeName) params.set('store_name', storeName);
+          if (firstName) params.set('first_name', firstName);
+          if (bookingId) params.set('booking_id', bookingId);
+          
+          navigate(`/customer-info?${params.toString()}`);
           return;
         }
         
@@ -87,7 +99,7 @@ const LinkPage = () => {
       setError("Formulär-ID saknas i URL:en");
       setIsLoading(false);
     }
-  }, [bookingId, formId, navigate]);
+  }, [bookingId, formId, firstName, bookingDate, storeId, storeName, navigate]);
   
   const handleGenerateForm = async () => {
     try {

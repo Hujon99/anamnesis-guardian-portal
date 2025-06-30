@@ -1,8 +1,8 @@
-
 /**
  * This page collects basic customer information when only a form_id is provided in the URL.
  * It displays a simple form where customers enter their name, select a store, and choose a booking date.
  * After submission, it generates a token and redirects to the patient form.
+ * Updated to pre-fill booking date when provided in URL parameters.
  */
 
 import { useEffect, useState } from "react";
@@ -41,10 +41,45 @@ const CustomerInfoPage = () => {
   
   const formId = searchParams.get("form_id");
   
+  // Read additional URL parameters for pre-filling
+  const urlBookingDate = searchParams.get("booking_date");
+  const urlStoreId = searchParams.get("store_id");
+  const urlStoreName = searchParams.get("store_name");
+  const urlFirstName = searchParams.get("first_name");
+  const urlBookingId = searchParams.get("booking_id");
+  
   // Generate random order number
   const generateOrderNumber = () => {
     return `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
   };
+  
+  // Pre-fill form fields from URL parameters
+  useEffect(() => {
+    // Pre-fill first name if provided
+    if (urlFirstName && !firstName) {
+      setFirstName(urlFirstName);
+    }
+    
+    // Pre-fill store if provided and valid
+    if (urlStoreId && stores.length > 0) {
+      const storeExists = stores.some(store => store.id === urlStoreId);
+      if (storeExists) {
+        setSelectedStoreId(urlStoreId);
+      }
+    }
+    
+    // Pre-fill booking date if provided
+    if (urlBookingDate && !bookingDate) {
+      try {
+        const parsedDate = new Date(urlBookingDate);
+        if (!isNaN(parsedDate.getTime())) {
+          setBookingDate(parsedDate);
+        }
+      } catch (err) {
+        console.warn("Could not parse booking date from URL:", urlBookingDate);
+      }
+    }
+  }, [urlFirstName, urlStoreId, urlBookingDate, firstName, stores, bookingDate]);
   
   // Validate form and fetch data
   useEffect(() => {
@@ -128,7 +163,8 @@ const CustomerInfoPage = () => {
       setIsSubmitting(true);
       setError(null);
       
-      const orderNumber = generateOrderNumber();
+      // Use existing booking_id if provided from URL, otherwise generate new one
+      const orderNumber = urlBookingId || generateOrderNumber();
       const selectedStore = stores.find(store => store.id === selectedStoreId);
       
       console.log("CustomerInfoPage: Submitting form with data:", {
@@ -137,7 +173,13 @@ const CustomerInfoPage = () => {
         selectedStoreId,
         selectedStoreName: selectedStore?.name,
         bookingDate: bookingDate.toISOString(),
-        formId
+        formId,
+        wasPreFilled: {
+          firstName: !!urlFirstName,
+          storeId: !!urlStoreId,
+          bookingDate: !!urlBookingDate,
+          bookingId: !!urlBookingId
+        }
       });
       
       // Call the edge function to generate token
@@ -146,7 +188,7 @@ const CustomerInfoPage = () => {
           bookingId: orderNumber,
           firstName: firstName.trim(),
           storeId: selectedStoreId || null,
-          storeName: selectedStore?.name || null,
+          storeName: selectedStore?.name || urlStoreName || null,
           bookingDate: bookingDate.toISOString(),
           formId: formId
         }
@@ -214,6 +256,11 @@ const CustomerInfoPage = () => {
           <CardTitle>Dina uppgifter</CardTitle>
           <CardDescription>
             Vänligen fyll i dina uppgifter för att fortsätta till hälsoformuläret.
+            {(urlFirstName || urlBookingDate || urlStoreId) && (
+              <span className="block mt-2 text-sm text-accent-1">
+                Vissa uppgifter är förifyllda från din bokningslänk.
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -223,6 +270,11 @@ const CustomerInfoPage = () => {
               <Label htmlFor="firstName" className="flex items-center">
                 <UserIcon className="h-4 w-4 mr-2" />
                 Fullt namn *
+                {urlFirstName && (
+                  <span className="ml-2 text-xs text-accent-1 bg-accent-1/10 px-2 py-1 rounded">
+                    Förifyllt
+                  </span>
+                )}
               </Label>
               <Input
                 id="firstName"
@@ -239,6 +291,11 @@ const CustomerInfoPage = () => {
               <Label className="flex items-center">
                 <MapPinIcon className="h-4 w-4 mr-2" />
                 Butik
+                {urlStoreId && (
+                  <span className="ml-2 text-xs text-accent-1 bg-accent-1/10 px-2 py-1 rounded">
+                    Förifyllt
+                  </span>
+                )}
               </Label>
               {stores.length > 0 ? (
                 <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
@@ -265,6 +322,11 @@ const CustomerInfoPage = () => {
               <Label className="flex items-center">
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 Bokningsdatum *
+                {urlBookingDate && (
+                  <span className="ml-2 text-xs text-accent-1 bg-accent-1/10 px-2 py-1 rounded">
+                    Förifyllt
+                  </span>
+                )}
               </Label>
               <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger asChild>
@@ -295,6 +357,7 @@ const CustomerInfoPage = () => {
                       date < new Date(new Date().setHours(0, 0, 0, 0))
                     }
                     initialFocus
+                    className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>

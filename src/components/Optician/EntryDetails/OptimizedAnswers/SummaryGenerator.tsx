@@ -1,41 +1,24 @@
 
 /**
  * This component handles AI summary generation functionality.
- * It encapsulates the logic for generating, displaying, and managing AI summaries.
+ * Simplified to only handle generation logic, with state management moved to parent component.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SummaryGeneratorProps {
   formattedRawData: string;
-  aiSummary: string | null;
   onSaveSummary: (summary: string) => void;
 }
 
 export const useSummaryGenerator = ({
   formattedRawData,
-  aiSummary,
   onSaveSummary
 }: SummaryGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [summary, setSummary] = useState<string>(aiSummary || "");
   const [isCopied, setIsCopied] = useState(false);
-
-  // Synchronize summary state with aiSummary prop changes
-  useEffect(() => {
-    console.log("SummaryGenerator: Synchronizing summary state", {
-      aiSummary,
-      currentSummary: summary,
-      aiSummaryLength: aiSummary?.length || 0
-    });
-    
-    if (aiSummary && aiSummary !== summary) {
-      setSummary(aiSummary);
-      console.log("SummaryGenerator: Updated summary state to:", aiSummary.substring(0, 100) + "...");
-    }
-  }, [aiSummary]);
 
   const generateSummary = async () => {
     if (!formattedRawData) {
@@ -61,7 +44,6 @@ export const useSummaryGenerator = ({
       }
       
       if (data?.summary) {
-        setSummary(data.summary);
         onSaveSummary(data.summary);
         console.log("SummaryGenerator: Generated new summary:", data.summary.substring(0, 100) + "...");
       } else {
@@ -79,7 +61,7 @@ export const useSummaryGenerator = ({
     }
   };
 
-  const copySummaryToClipboard = () => {
+  const copySummaryToClipboard = (summary: string) => {
     if (summary) {
       navigator.clipboard.writeText(summary);
       setIsCopied(true);
@@ -95,8 +77,6 @@ export const useSummaryGenerator = ({
   };
 
   return {
-    summary,
-    setSummary,
     isGenerating,
     isCopied,
     generateSummary,

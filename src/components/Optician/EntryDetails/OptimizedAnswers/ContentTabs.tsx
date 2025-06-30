@@ -1,7 +1,7 @@
 
 /**
  * This component renders the tab content for raw data and AI summary views.
- * Simplified layout structure for better scrolling and improved user experience.
+ * Simplified to directly receive aiSummary prop for immediate display.
  */
 
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,7 +16,7 @@ interface ContentTabsProps {
   isEditing: boolean;
   formattedRawData: string;
   onRawDataChange: (value: string) => void;
-  summary: string;
+  aiSummary: string | null;
   isCopied: boolean;
   onCopy: () => void;
   onRegenerateData?: () => void;
@@ -29,19 +29,19 @@ export const ContentTabs = ({
   isEditing,
   formattedRawData,
   onRawDataChange,
-  summary,
+  aiSummary,
   isCopied,
   onCopy,
   onRegenerateData,
   isRegenerating = false
 }: ContentTabsProps) => {
-  const hasSummary = summary && summary.trim().length > 0;
+  const hasSummary = aiSummary && aiSummary.trim().length > 0;
   
   console.log("ContentTabs render:", { 
     activeTab, 
     hasSummary, 
-    summaryLength: summary?.length,
-    summaryContent: summary?.substring(0, 100) + "..."
+    aiSummaryLength: aiSummary?.length,
+    aiSummaryContent: aiSummary?.substring(0, 100) + "..."
   });
 
   return (
@@ -134,7 +134,7 @@ export const ContentTabs = ({
               <div className="p-4 min-h-full">
                 {hasSummary ? (
                   <div className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-foreground">
-                    {summary}
+                    {aiSummary}
                   </div>
                 ) : (
                   <div className="text-muted-foreground italic text-center py-8">

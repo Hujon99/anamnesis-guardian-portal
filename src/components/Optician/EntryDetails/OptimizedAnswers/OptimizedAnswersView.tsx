@@ -2,7 +2,7 @@
 /**
  * This is the main component for displaying optimized answers in the anamnesis entry details.
  * It orchestrates the interaction between its child components and manages the state for
- * editing, saving, and generating summaries. Refactored to use smaller, focused hooks.
+ * editing, saving, and generating summaries. Centralized summary state management.
  */
 
 import { FileText } from "lucide-react";
@@ -42,16 +42,20 @@ export const OptimizedAnswersView = ({
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
 
-  // Use the summary generator hook
+  console.log("OptimizedAnswersView render:", { 
+    aiSummary: aiSummary?.substring(0, 100) + "...", 
+    aiSummaryLength: aiSummary?.length,
+    activeTab 
+  });
+
+  // Use the summary generator hook (simplified)
   const {
-    summary,
     isGenerating,
     isCopied,
     generateSummary,
     copySummaryToClipboard
   } = useSummaryGenerator({
     formattedRawData: initialFormattedRawData,
-    aiSummary,
     onSaveSummary
   });
 
@@ -101,6 +105,10 @@ export const OptimizedAnswersView = ({
     }
   };
 
+  const handleCopySummary = () => {
+    copySummaryToClipboard(aiSummary || "");
+  };
+
   if (!hasAnswers) {
     return (
       status !== "draft" && (
@@ -136,7 +144,7 @@ export const OptimizedAnswersView = ({
             isGenerating={isGenerating}
             hasAnswers={hasAnswers}
             formattedRawData={formattedRawData}
-            summary={summary}
+            summary={aiSummary || ""}
             onEdit={() => setIsEditing(true)}
             onSave={handleSaveChanges}
             onCancel={() => {
@@ -156,9 +164,9 @@ export const OptimizedAnswersView = ({
           isEditing={isEditing}
           formattedRawData={formattedRawData}
           onRawDataChange={handleRawDataChange}
-          summary={summary}
+          aiSummary={aiSummary}
           isCopied={isCopied}
-          onCopy={copySummaryToClipboard}
+          onCopy={handleCopySummary}
           onRegenerateData={regenerateFormattedData}
           isRegenerating={isRegeneratingRawData}
         />

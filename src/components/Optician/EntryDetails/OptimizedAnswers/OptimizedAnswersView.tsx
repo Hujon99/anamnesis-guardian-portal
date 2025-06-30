@@ -1,4 +1,3 @@
-
 /**
  * This is the main component for displaying optimized answers in the anamnesis entry details.
  * It orchestrates the interaction between its child components and manages the state for
@@ -245,7 +244,7 @@ export const OptimizedAnswersView = ({
         </div>
       </div>
       
-      <div className="flex-grow overflow-hidden border rounded-md flex flex-col">
+      <div className="flex-1 min-h-0 border rounded-md flex flex-col">
         <ContentTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}

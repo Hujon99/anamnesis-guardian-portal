@@ -1,4 +1,3 @@
-
 /**
  * This page collects basic customer information when only a form_id is provided in the URL.
  * It displays a simple form where customers enter their name, select a store, and choose a booking date.
@@ -81,6 +80,16 @@ const CustomerInfoPage = () => {
         
         console.log(`CustomerInfoPage: Form found for organization: ${form.organization_id}`);
         setFormData(form);
+        
+        // Set the form_id in the session for RLS policy
+        console.log(`CustomerInfoPage: Setting current_form_id in session: ${formId}`);
+        try {
+          await supabase.rpc('set_current_form_id', { form_id: formId });
+          console.log(`CustomerInfoPage: Successfully set current_form_id in session`);
+        } catch (sessionError) {
+          console.error("Error setting form_id in session:", sessionError);
+          // Continue anyway, this might not be critical
+        }
         
         // Fetch stores for the organization (if organization exists)
         if (form.organization_id) {

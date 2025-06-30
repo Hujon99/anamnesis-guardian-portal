@@ -350,8 +350,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      get_form_organization_id: {
+        Args: { form_id_param: string }
+        Returns: string
+      }
       set_access_token: {
         Args: { token: string }
+        Returns: undefined
+      }
+      set_current_form_id: {
+        Args: { form_id: string }
         Returns: undefined
       }
     }

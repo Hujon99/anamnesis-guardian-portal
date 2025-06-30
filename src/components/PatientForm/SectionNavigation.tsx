@@ -2,10 +2,11 @@
 /**
  * This component renders clickable section navigation for the multi-step form.
  * It allows users to jump directly to any section while respecting validation rules.
- * Features responsive design and visual indicators for current/completed sections.
+ * Features responsive design, visual indicators for current/completed sections,
+ * and automatic scrolling in mobile view to keep the active section visible.
  */
 
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, Circle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,31 @@ const SectionNavigation: React.FC<SectionNavigationProps> = ({
   completedSteps = [],
   canNavigateToStep = () => true
 }) => {
+  // Refs for scroll container and buttons
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Auto-scroll to active section in mobile view
+  useEffect(() => {
+    const scrollToActiveSection = () => {
+      const container = scrollContainerRef.current;
+      const activeButton = buttonRefs.current[currentStep];
+      
+      if (container && activeButton) {
+        // Small delay to ensure DOM is updated
+        setTimeout(() => {
+          activeButton.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          });
+        }, 100);
+      }
+    };
+
+    scrollToActiveSection();
+  }, [currentStep]);
+
   if (!sections || sections.length === 0) return null;
 
   return (
@@ -72,9 +98,13 @@ const SectionNavigation: React.FC<SectionNavigationProps> = ({
         })}
       </div>
 
-      {/* Mobile Navigation - Horizontal Scroll */}
+      {/* Mobile Navigation - Horizontal Scroll with Auto-scroll */}
       <div className="md:hidden">
-        <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide">
+        <div 
+          ref={scrollContainerRef}
+          className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide"
+          style={{ scrollBehavior: 'smooth' }}
+        >
           {sections.map((stepSections, index) => {
             const isActive = index === currentStep;
             const isCompleted = completedSteps.includes(index);
@@ -90,6 +120,9 @@ const SectionNavigation: React.FC<SectionNavigationProps> = ({
             return (
               <Button
                 key={index}
+                ref={(el) => {
+                  buttonRefs.current[index] = el;
+                }}
                 variant={isActive ? "default" : "outline"}
                 size="sm"
                 onClick={() => canNavigate && onSectionClick(index)}
@@ -101,6 +134,8 @@ const SectionNavigation: React.FC<SectionNavigationProps> = ({
                   !canNavigate && !isPast && "opacity-50 cursor-not-allowed",
                   isPast && "hover:bg-accent-1/20 hover:border-accent-1/50"
                 )}
+                aria-current={isActive ? "step" : undefined}
+                aria-label={`${sectionTitle} - ${isActive ? 'nuvarande steg' : isCompleted ? 'slutfört' : 'väntande'}`}
               >
                 <div className="flex items-center gap-1.5">
                   {isCompleted ? (

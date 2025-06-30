@@ -1,3 +1,4 @@
+
 /**
  * This is the main component for displaying optimized answers in the anamnesis entry details.
  * It orchestrates the interaction between its child components and manages the state for
@@ -214,8 +215,8 @@ export const OptimizedAnswersView = ({
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex justify-between items-center mb-4">
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h3 className="text-lg font-medium flex items-center">
           <FileText className="h-5 w-5 mr-2 text-primary" />
           Patientens svar och anteckningar
@@ -244,7 +245,7 @@ export const OptimizedAnswersView = ({
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 border rounded-md flex flex-col">
+      <div className="flex-1 min-h-0 border rounded-md">
         <ContentTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}

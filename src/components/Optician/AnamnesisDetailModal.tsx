@@ -69,7 +69,7 @@ export function AnamnesisDetailModal({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-5xl h-[90vh] flex flex-col p-5 max-h-[90vh] overflow-hidden" 
+        className="max-w-5xl h-[90vh] flex flex-col p-5 max-h-[90vh]" 
         aria-label="Anamnesdetaljer"
       >
         <ModalHeader 
@@ -80,7 +80,7 @@ export function AnamnesisDetailModal({
           isSendingLink={sendLinkMutation.isPending}
         />
         
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0">
           <ModalTabContent
             patientIdentifier={patientIdentifier}
             isEditing={isEditing}

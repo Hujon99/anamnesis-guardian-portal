@@ -61,9 +61,9 @@ export function ModalTabContent({
       </TabsList>
       
       <div className="flex-1 overflow-hidden">
-        <TabsContent value="patient" className="h-full mt-0">
-          <ScrollArea className="h-full">
-            <div className="space-y-6 p-4">
+        <TabsContent value="patient" className="h-full mt-0 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="p-4 border-b bg-background">
               <PatientInfo
                 patientIdentifier={patientIdentifier}
                 isEditing={isEditing}
@@ -72,7 +72,9 @@ export function ModalTabContent({
                 savePatientIdentifier={savePatientIdentifier}
                 status={status}
               />
-              
+            </div>
+            
+            <div className="flex-1 overflow-hidden">
               <OptimizedAnswersView
                 answers={answers}
                 hasAnswers={hasAnswers}
@@ -86,7 +88,7 @@ export function ModalTabContent({
                 isPending={isPending}
               />
             </div>
-          </ScrollArea>
+          </div>
         </TabsContent>
         
         <TabsContent value="answers" className="h-full mt-0">

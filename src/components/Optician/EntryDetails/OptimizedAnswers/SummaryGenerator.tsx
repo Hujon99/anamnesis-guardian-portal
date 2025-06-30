@@ -4,7 +4,7 @@
  * It encapsulates the logic for generating, displaying, and managing AI summaries.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +22,20 @@ export const useSummaryGenerator = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [summary, setSummary] = useState<string>(aiSummary || "");
   const [isCopied, setIsCopied] = useState(false);
+
+  // Synchronize summary state with aiSummary prop changes
+  useEffect(() => {
+    console.log("SummaryGenerator: Synchronizing summary state", {
+      aiSummary,
+      currentSummary: summary,
+      aiSummaryLength: aiSummary?.length || 0
+    });
+    
+    if (aiSummary && aiSummary !== summary) {
+      setSummary(aiSummary);
+      console.log("SummaryGenerator: Updated summary state to:", aiSummary.substring(0, 100) + "...");
+    }
+  }, [aiSummary]);
 
   const generateSummary = async () => {
     if (!formattedRawData) {
@@ -49,6 +63,7 @@ export const useSummaryGenerator = ({
       if (data?.summary) {
         setSummary(data.summary);
         onSaveSummary(data.summary);
+        console.log("SummaryGenerator: Generated new summary:", data.summary.substring(0, 100) + "...");
       } else {
         throw new Error('Fick inget svar från AI-tjänsten');
       }
@@ -78,11 +93,6 @@ export const useSummaryGenerator = ({
       }, 2000);
     }
   };
-
-  // Update summary when aiSummary prop changes
-  if (aiSummary && aiSummary !== summary) {
-    setSummary(aiSummary);
-  }
 
   return {
     summary,

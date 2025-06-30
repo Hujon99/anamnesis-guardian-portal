@@ -123,7 +123,7 @@ Använd ett objektivt och kliniskt språk med korrekta facktermer där det är r
 Strukturera sammanfattningen tydligt, förslagsvis under följande rubriker (anpassa efter den information som finns tillgänglig i texten):
   - Anledning till besök: (Varför patienten söker vård)
   - Aktuella symtom/besvär: (Synproblem, huvudvärk, dubbelseende, torra ögon etc.)
-  - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar)
+  - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar, intresserad av linser)
   - Ärftlighet: (Ögonsjukdomar i släkten)
   - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier)
   - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)
@@ -131,8 +131,9 @@ Strukturera sammanfattningen tydligt, förslagsvis under följande rubriker (anp
 Viktiga instruktioner:
   1. Inkludera endast information som uttryckligen finns i den angivna fråge- och svarslistan. Gör inga egna antaganden,   tolkningar eller tillägg.
   2. Var koncis och fokusera på det kliniskt relevanta.
-  3. Använd tydliga rubriker (utan emojis) för enkel läsbarhet.
-  4. Formattera EJ som markdown, utan tänk txt`;
+  3. Tänk på att om något INTE står i anamnesen tolkas det som att man INTE har frågat om det.
+  4. Använd tydliga rubriker (utan emojis) för enkel läsbarhet.
+  5. Formattera EJ som markdown, utan tänk txt`;
 
     // Log request parameters for better debugging
     console.log("Request parameters:");

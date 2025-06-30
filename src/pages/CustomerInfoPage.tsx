@@ -91,22 +91,19 @@ const CustomerInfoPage = () => {
           // Continue anyway, this might not be critical
         }
         
-        // Fetch stores for the organization (if organization exists)
-        if (form.organization_id) {
-          console.log(`CustomerInfoPage: Fetching stores for organization: ${form.organization_id}`);
-          const { data: storesData, error: storesError } = await supabase
-            .from('stores')
-            .select('id, name')
-            .eq('organization_id', form.organization_id)
-            .order('name');
+        // Fetch stores using RLS policy (removed direct organization_id filtering)
+        console.log(`CustomerInfoPage: Fetching stores using RLS policy`);
+        const { data: storesData, error: storesError } = await supabase
+          .from('stores')
+          .select('id, name')
+          .order('name');
           
-          if (storesError) {
-            console.error("Error fetching stores:", storesError);
-            // Don't fail completely, just show empty stores list
-          } else {
-            console.log(`CustomerInfoPage: Found ${storesData?.length || 0} stores`);
-            setStores(storesData || []);
-          }
+        if (storesError) {
+          console.error("Error fetching stores:", storesError);
+          // Don't fail completely, just show empty stores list
+        } else {
+          console.log(`CustomerInfoPage: Found ${storesData?.length || 0} stores via RLS policy`);
+          setStores(storesData || []);
         }
         
         setIsLoading(false);

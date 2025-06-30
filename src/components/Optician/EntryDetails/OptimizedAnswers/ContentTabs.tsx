@@ -1,6 +1,7 @@
 
 /**
  * This component renders the tab content for raw data and AI summary views.
+ * Simplified layout structure for better scrolling and improved user experience.
  */
 
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -96,8 +97,15 @@ export const ContentTabs = ({
           value="summary" 
           className="flex-grow m-0 h-full border-0 p-0 overflow-hidden"
         >
+          {/* Simplified layout for AI summary */}
           <div className="h-full flex flex-col">
-            <div className="flex justify-end p-2 border-b">
+            {/* Header with title and copy button */}
+            <div className="flex items-center justify-between p-4 border-b bg-muted/20">
+              <div className="flex items-center">
+                <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
+                <h4 className="text-primary font-medium">AI-sammanfattning</h4>
+              </div>
+              
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -119,20 +127,18 @@ export const ContentTabs = ({
               </Button>
             </div>
             
-            <ScrollArea className="flex-1 h-full">
+            {/* Scrollable content area */}
+            <ScrollArea className="flex-1">
               <div className="p-4">
-                <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
-                  <h4 className="text-primary font-medium flex items-center mb-3">
-                    <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
-                    AI-sammanfattning
-                  </h4>
-                  
-                  <div className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed">
-                    {summary && summary.trim().length > 0 
-                      ? summary 
-                      : "Ingen AI-sammanfattning tillgänglig"
-                    }
-                  </div>
+                <div className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-foreground">
+                  {summary && summary.trim().length > 0 
+                    ? summary 
+                    : (
+                        <div className="text-muted-foreground italic">
+                          Ingen AI-sammanfattning tillgänglig
+                        </div>
+                      )
+                  }
                 </div>
               </div>
             </ScrollArea>

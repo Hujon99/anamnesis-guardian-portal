@@ -4,6 +4,7 @@
  * and creates a new entry in the database with the booking information.
  * After successful entry creation, it redirects the user to the form.
  * It ensures that the form is tied to the correct organization.
+ * If only form_id is provided, it redirects to CustomerInfoPage for data collection.
  */
 
 import { useEffect, useState } from "react";
@@ -64,6 +65,14 @@ const LinkPage = () => {
         }
         
         setValidFormId(true);
+        
+        // If only form_id is provided (no booking_id), redirect to customer info page
+        if (!bookingId) {
+          console.log("Only form_id provided, redirecting to customer info page");
+          navigate(`/customer-info?form_id=${formId}`);
+          return;
+        }
+        
         setIsLoading(false);
       } catch (err) {
         console.error("Error in form validation:", err);
@@ -72,19 +81,13 @@ const LinkPage = () => {
       }
     };
     
-    // Validate required parameters
-    if (!bookingId) {
-      setError("Boknings-ID saknas i URL:en");
-      setIsLoading(false);
-      return;
-    }
-    
     if (formId) {
       validateFormId();
     } else {
+      setError("Formulär-ID saknas i URL:en");
       setIsLoading(false);
     }
-  }, [bookingId, formId]);
+  }, [bookingId, formId, navigate]);
   
   const handleGenerateForm = async () => {
     try {

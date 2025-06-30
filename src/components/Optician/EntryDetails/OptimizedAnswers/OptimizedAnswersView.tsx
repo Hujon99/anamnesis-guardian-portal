@@ -2,18 +2,17 @@
 /**
  * This is the main component for displaying optimized answers in the anamnesis entry details.
  * It orchestrates the interaction between its child components and manages the state for
- * editing, saving, and generating summaries.
+ * editing, saving, and generating summaries. Refactored to use smaller, focused hooks.
  */
 
 import { FileText } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { ActionButtons } from "./ActionButtons";
 import { SaveIndicator } from "./SaveIndicator";
 import { ContentTabs } from "./ContentTabs";
-import { useFormTemplate } from "@/hooks/useFormTemplate";
-import { useFormattedRawData } from "@/hooks/useFormattedRawData";
-import { supabase } from "@/integrations/supabase/client";
+import { useSummaryGenerator } from "./SummaryGenerator";
+import { useRawDataManager } from "./RawDataManager";
 
 interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
@@ -41,49 +40,37 @@ export const OptimizedAnswersView = ({
 }: OptimizedAnswersViewProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
-  const [isCopied, setIsCopied] = useState(false);
-  const [summary, setSummary] = useState<string>(aiSummary || "");
-  const [saveIndicator, setSaveIndicator] = useState<"saved" | "unsaved" | null>(null);
 
-  // Get the form template to use for formatting
-  const formTemplateQuery = useFormTemplate();
-  const formTemplateData = formTemplateQuery.data;
-  
-  // Use the hook with all required parameters
+  // Use the summary generator hook
+  const {
+    summary,
+    isGenerating,
+    isCopied,
+    generateSummary,
+    copySummaryToClipboard
+  } = useSummaryGenerator({
+    formattedRawData: initialFormattedRawData,
+    aiSummary,
+    onSaveSummary
+  });
+
+  // Use the raw data manager hook
   const {
     formattedRawData,
-    setFormattedRawData: updateFormattedRawData,
-    generateRawData,
-    isGenerating: isRegeneratingRawData,
-  } = useFormattedRawData(
-    initialFormattedRawData || "", 
-    answers, 
+    updateFormattedRawData,
+    isRegeneratingRawData,
+    saveIndicator,
+    setSaveIndicator,
+    regenerateFormattedData,
+    handleRawDataChange
+  } = useRawDataManager({
+    answers,
     hasAnswers,
-    formTemplateData?.schema || null,
-    (data: string) => {
-      setFormattedRawData(data);
-      saveFormattedRawData();
-    }
-  );
-
-  // Update summary when aiSummary prop changes
-  useEffect(() => {
-    if (aiSummary) {
-      setSummary(aiSummary);
-      if (aiSummary.trim().length > 0) {
-        setActiveTab("summary");
-      }
-    }
-  }, [aiSummary]);
-  
-  // Regenerate raw data if it's empty but we have answers
-  useEffect(() => {
-    if (hasAnswers && formattedRawData === "" && formTemplateData?.schema) {
-      generateRawData();
-    }
-  }, [hasAnswers, formattedRawData, formTemplateData, generateRawData]);
+    initialFormattedRawData: initialFormattedRawData || "",
+    setFormattedRawData,
+    saveFormattedRawData
+  });
 
   const handleSaveChanges = () => {
     setIsSaving(true);
@@ -111,89 +98,6 @@ export const OptimizedAnswersView = ({
       setSaveIndicator(null);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const regenerateFormattedData = async () => {
-    if (!hasAnswers) {
-      toast({
-        title: "Kunde inte generera formatterad data",
-        description: "Det finns inga svar att formattera.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
-      await generateRawData();
-      toast({
-        title: "Formatterad data uppdaterad",
-        description: "Den formatterade textvyn har uppdaterats."
-      });
-    } catch (error) {
-      console.error("Error regenerating formatted data:", error);
-      toast({
-        title: "Kunde inte uppdatera formatterad data",
-        description: error instanceof Error ? error.message : "Ett oväntat fel uppstod",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const generateSummary = async () => {
-    if (!formattedRawData) {
-      toast({
-        title: "Kunde inte generera sammanfattning",
-        description: "Det finns inga svar att sammanfatta.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsGenerating(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-summary', {
-        body: {
-          promptText: formattedRawData
-        }
-      });
-      
-      if (error) {
-        throw new Error(`${error.message || 'Ett fel uppstod vid anrop till AI-sammanfattning'}`);
-      }
-      
-      if (data?.summary) {
-        setSummary(data.summary);
-        setActiveTab("summary");
-        onSaveSummary(data.summary);
-      } else {
-        throw new Error('Fick inget svar från AI-tjänsten');
-      }
-    } catch (error) {
-      console.error("Error generating summary:", error);
-      toast({
-        title: "Kunde inte generera sammanfattning",
-        description: error instanceof Error ? error.message : "Ett oväntat fel uppstod",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const copySummaryToClipboard = () => {
-    if (summary) {
-      navigator.clipboard.writeText(summary);
-      setIsCopied(true);
-      toast({
-        title: "Kopierad!",
-        description: "AI-sammanfattningen har kopierats till urklipp",
-      });
-      
-      setTimeout(() => {
-        setIsCopied(false);
-      }, 2000);
     }
   };
 
@@ -251,10 +155,7 @@ export const OptimizedAnswersView = ({
           onTabChange={setActiveTab}
           isEditing={isEditing}
           formattedRawData={formattedRawData}
-          onRawDataChange={(value) => {
-            updateFormattedRawData(value);
-            setSaveIndicator("unsaved");
-          }}
+          onRawDataChange={handleRawDataChange}
           summary={summary}
           isCopied={isCopied}
           onCopy={copySummaryToClipboard}

@@ -269,14 +269,30 @@ export const useAnamnesisList = () => {
 
   // Filter and sort the entries based on current filters
   const filteredEntries = entries.filter(entry => {
-    // Filter by search query (patient identifier, first name, or booking ID)
+    // Filter by search query - now includes patient_identifier, first name, and booking ID
     if (filters.searchQuery) {
       const searchLower = filters.searchQuery.toLowerCase();
-      const matchesIdentifier = entry.patient_identifier?.toLowerCase().includes(searchLower);
+      
+      // Search in multiple fields including the editable patient_identifier
+      const matchesPatientIdentifier = entry.patient_identifier?.toLowerCase().includes(searchLower);
       const matchesFirstName = entry.first_name?.toLowerCase().includes(searchLower);
       const matchesBookingId = entry.booking_id?.toLowerCase().includes(searchLower);
       
-      if (!matchesIdentifier && !matchesFirstName && !matchesBookingId) {
+      // Also search in any existing reference numbers or names
+      const matchesCreatedByName = entry.created_by_name?.toLowerCase().includes(searchLower);
+      
+      console.log(`Searching for "${filters.searchQuery}" in entry ${entry.id}:`, {
+        patient_identifier: entry.patient_identifier,
+        first_name: entry.first_name,
+        booking_id: entry.booking_id,
+        created_by_name: entry.created_by_name,
+        matchesPatientIdentifier,
+        matchesFirstName,
+        matchesBookingId,
+        matchesCreatedByName
+      });
+      
+      if (!matchesPatientIdentifier && !matchesFirstName && !matchesBookingId && !matchesCreatedByName) {
         return false;
       }
     }

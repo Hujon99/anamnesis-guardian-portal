@@ -94,47 +94,49 @@ export const ContentTabs = ({
         
         <TabsContent 
           value="summary" 
-          className="flex-grow m-0 h-full border-0 p-0 overflow-auto"
+          className="flex-grow m-0 h-full border-0 p-0 overflow-hidden"
         >
-          <ScrollArea className="h-full w-full">
-            <div className="p-4">
-              <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="text-primary font-medium flex items-center">
+          <div className="h-full flex flex-col">
+            <div className="flex justify-end p-2 border-b">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onCopy}
+                className="flex items-center"
+                disabled={!summary || summary.trim().length === 0}
+              >
+                {isCopied ? (
+                  <>
+                    <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
+                    Kopierad
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Kopiera
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <ScrollArea className="flex-1 h-full">
+              <div className="p-4">
+                <div className="bg-muted/40 p-4 rounded-md border border-primary/10">
+                  <h4 className="text-primary font-medium flex items-center mb-3">
                     <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
                     AI-sammanfattning
                   </h4>
                   
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={onCopy}
-                    className="flex items-center"
-                    disabled={!summary || summary.trim().length === 0}
-                  >
-                    {isCopied ? (
-                      <>
-                        <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
-                        Kopierad
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Kopiera
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                  {summary && summary.trim().length > 0 
-                    ? summary 
-                    : "Ingen AI-sammanfattning tillgänglig"
-                  }
+                  <div className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed">
+                    {summary && summary.trim().length > 0 
+                      ? summary 
+                      : "Ingen AI-sammanfattning tillgänglig"
+                    }
+                  </div>
                 </div>
               </div>
-            </div>
-          </ScrollArea>
+            </ScrollArea>
+          </div>
         </TabsContent>
       </div>
     </Tabs>

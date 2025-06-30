@@ -362,6 +362,17 @@ export type Database = {
         Args: { form_id_param: string }
         Returns: string
       }
+      get_stores_for_form: {
+        Args: { form_id: string }
+        Returns: {
+          id: string
+          name: string
+          organization_id: string
+          address: string
+          phone: string
+          email: string
+        }[]
+      }
       set_access_token: {
         Args: { token: string }
         Returns: undefined

@@ -28,7 +28,6 @@ const CustomerInfoPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>("");
   
   // Form state
   const [firstName, setFirstName] = useState("");
@@ -45,28 +44,6 @@ const CustomerInfoPage = () => {
   // Generate random order number
   const generateOrderNumber = () => {
     return `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-  };
-  
-  // Debug session variable function
-  const debugSessionVariable = async () => {
-    try {
-      console.log(`CustomerInfoPage: Testing debug function`);
-      const { data: debugData, error: debugError } = await supabase.rpc('debug_current_form_id');
-      
-      if (debugError) {
-        console.error("Error calling debug function:", debugError);
-        setDebugInfo(`Debug Error: ${debugError.message}`);
-      } else {
-        console.log("Debug function result:", debugData);
-        const debugResult = debugData?.[0];
-        if (debugResult) {
-          setDebugInfo(`Session Debug: form_id="${debugResult.current_form_id}", valid_uuid=${debugResult.is_valid_uuid}, org_from_form="${debugResult.organization_from_form}"`);
-        }
-      }
-    } catch (err) {
-      console.error("Error in debug function:", err);
-      setDebugInfo(`Debug Exception: ${err}`);
-    }
   };
   
   // Validate form and fetch data
@@ -105,59 +82,28 @@ const CustomerInfoPage = () => {
         console.log(`CustomerInfoPage: Form found for organization: ${form.organization_id}`);
         setFormData(form);
         
-        // Set the form_id in the session for RLS policy
-        console.log(`CustomerInfoPage: Setting current_form_id in session: ${formId}`);
-        try {
-          const { error: sessionError } = await supabase.rpc('set_current_form_id', { form_id: formId });
-          if (sessionError) {
-            console.error("Error setting form_id in session:", sessionError);
-            setDebugInfo(`Session Error: ${sessionError.message}`);
-          } else {
-            console.log(`CustomerInfoPage: Successfully set current_form_id in session`);
-            // Test the debug function immediately after setting
-            await debugSessionVariable();
-          }
-        } catch (sessionError) {
-          console.error("Exception setting form_id in session:", sessionError);
-          setDebugInfo(`Session Exception: ${sessionError}`);
+        // Fetch stores using the new database function
+        console.log(`CustomerInfoPage: Fetching stores using get_stores_for_form function`);
+        const { data: storesData, error: storesError } = await supabase.rpc('get_stores_for_form', {
+          form_id: formId
+        });
+            
+        if (storesError) {
+          console.error("Error fetching stores:", storesError);
+          setError(`Ett fel uppstod vid hämtning av butiker: ${storesError.message}`);
+          setIsLoading(false);
+          return;
         }
         
-        // Wait a moment for session to propagate, then fetch stores using RLS policy
-        setTimeout(async () => {
-          console.log(`CustomerInfoPage: Fetching stores using RLS policy`);
-          const { data: storesData, error: storesError } = await supabase
-            .from('stores')
-            .select('id, name, organization_id')
-            .order('name');
-            
-          if (storesError) {
-            console.error("Error fetching stores:", storesError);
-            setDebugInfo(prev => `${prev} | Store Error: ${storesError.message}`);
-            // Don't fail completely, just show empty stores list
-          } else {
-            console.log(`CustomerInfoPage: Found ${storesData?.length || 0} stores via RLS policy`);
-            console.log("Stores data:", storesData);
-            setStores(storesData || []);
-            
-            // Debug info about what we got
-            if (storesData && storesData.length > 0) {
-              const orgIds = [...new Set(storesData.map(s => s.organization_id))];
-              setDebugInfo(prev => `${prev} | Found ${storesData.length} store(s) for org(s): ${orgIds.join(', ')}`);
-            } else {
-              setDebugInfo(prev => `${prev} | No stores found via RLS policy`);
-            }
-          }
-          
-          // Run debug again after store fetch
-          await debugSessionVariable();
-          
-          setIsLoading(false);
-        }, 100); // Small delay to ensure session propagation
+        console.log(`CustomerInfoPage: Found ${storesData?.length || 0} stores`);
+        console.log("Stores data:", storesData);
+        setStores(storesData || []);
+        
+        setIsLoading(false);
         
       } catch (err) {
         console.error("Error in validation:", err);
         setError("Ett oväntat fel uppstod vid validering");
-        setDebugInfo(`Exception: ${err}`);
         setIsLoading(false);
       }
     };
@@ -232,12 +178,6 @@ const CustomerInfoPage = () => {
           <CardContent className="pt-6 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
             <p className="text-lg">Förbereder formuläret...</p>
-            {debugInfo && (
-              <div className="mt-4 p-2 bg-muted rounded text-xs text-left">
-                <strong>Debug:</strong><br />
-                {debugInfo}
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
@@ -256,12 +196,6 @@ const CustomerInfoPage = () => {
           </CardHeader>
           <CardContent>
             <p>{error}</p>
-            {debugInfo && (
-              <div className="mt-4 p-2 bg-muted rounded text-xs">
-                <strong>Debug info:</strong><br />
-                {debugInfo}
-              </div>
-            )}
           </CardContent>
           <CardFooter>
             <Button variant="outline" onClick={() => window.location.href = "/"}>
@@ -281,12 +215,6 @@ const CustomerInfoPage = () => {
           <CardDescription>
             Vänligen fyll i dina uppgifter för att fortsätta till hälsoformuläret.
           </CardDescription>
-          {debugInfo && (
-            <div className="mt-2 p-2 bg-muted rounded text-xs">
-              <strong>Debug info:</strong><br />
-              {debugInfo}
-            </div>
-          )}
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">

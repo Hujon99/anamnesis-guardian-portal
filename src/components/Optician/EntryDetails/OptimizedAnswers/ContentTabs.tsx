@@ -35,6 +35,8 @@ export const ContentTabs = ({
   onRegenerateData,
   isRegenerating = false
 }: ContentTabsProps) => {
+  const hasSummary = summary && summary.trim().length > 0;
+
   return (
     <div className="flex flex-col h-full">
       <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full">
@@ -49,7 +51,6 @@ export const ContentTabs = ({
             <TabsTrigger 
               value="summary" 
               className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-              disabled={!summary || summary.trim().length === 0}
             >
               AI-sammanfattning
             </TabsTrigger>
@@ -100,40 +101,40 @@ export const ContentTabs = ({
                 <h4 className="text-primary font-medium">AI-sammanfattning</h4>
               </div>
               
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onCopy}
-                className="flex items-center"
-                disabled={!summary || summary.trim().length === 0}
-              >
-                {isCopied ? (
-                  <>
-                    <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
-                    Kopierad
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Kopiera
-                  </>
-                )}
-              </Button>
+              {hasSummary && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={onCopy}
+                  className="flex items-center"
+                >
+                  {isCopied ? (
+                    <>
+                      <CheckCheck className="h-4 w-4 mr-2 text-green-500" />
+                      Kopierad
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Kopiera
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
             
             <div className="flex-1 overflow-hidden">
               <ScrollArea className="h-full">
                 <div className="p-4">
-                  <div className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-foreground">
-                    {summary && summary.trim().length > 0 
-                      ? summary 
-                      : (
-                          <div className="text-muted-foreground italic">
-                            Ingen AI-sammanfattning tillgänglig
-                          </div>
-                        )
-                    }
-                  </div>
+                  {hasSummary ? (
+                    <div className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-foreground">
+                      {summary}
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground italic text-center">
+                      Ingen AI-sammanfattning tillgänglig än. Generera en genom att klicka på "Generera sammanfattning"-knappen.
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </div>

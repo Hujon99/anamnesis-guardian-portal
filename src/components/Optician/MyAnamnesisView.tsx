@@ -1,7 +1,7 @@
-
 /**
  * This component provides a personal view of anamnesis entries assigned to the current optician.
  * It displays personal statistics and a filtered list of entries.
+ * Updated with improved filter design and layout consistency.
  */
 
 import { useState } from "react";
@@ -200,34 +200,30 @@ export function MyAnamnesisView() {
     <div className="space-y-6">
       <OpticianStatsCards stats={stats} />
       
-      <Card className="mb-6 p-4 bg-surface_light rounded-2xl shadow-sm">
-        <div className={`${isMobile ? 'space-y-4' : 'md:flex md:items-center md:gap-4'}`}>
-          <div className={`${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
-            <SearchInput
-              searchQuery={filters.searchQuery}
-              onSearchChange={(value) => updateFilter("searchQuery", value)}
-              onRefresh={handleManualRefresh}
-              isRefreshing={isFetching}
-            />
-          </div>
-          
-          <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-            <AnamnesisFilters
-              statusFilter={filters.statusFilter}
-              onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
-              timeFilter={filters.timeFilter}
-              onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
-              showOnlyUnanswered={filters.showOnlyUnanswered}
-              onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
-              sortDescending={filters.sortDescending}
-              onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
-              showOnlyBookings={filters.showOnlyBookings}
-              onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
-              onResetFilters={resetFilters}
-            />
-          </div>
-        </div>
+      {/* Search Section */}
+      <Card className="p-6 bg-white rounded-2xl shadow-sm border border-muted/30">
+        <SearchInput
+          searchQuery={filters.searchQuery}
+          onSearchChange={(value) => updateFilter("searchQuery", value)}
+          onRefresh={handleManualRefresh}
+          isRefreshing={isFetching}
+        />
       </Card>
+
+      {/* Filters Section */}
+      <AnamnesisFilters
+        statusFilter={filters.statusFilter}
+        onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
+        timeFilter={filters.timeFilter}
+        onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
+        showOnlyUnanswered={filters.showOnlyUnanswered}
+        onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
+        sortDescending={filters.sortDescending}
+        onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
+        showOnlyBookings={filters.showOnlyBookings}
+        onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
+        onResetFilters={resetFilters}
+      />
       
       <div>
         <EntriesSummary

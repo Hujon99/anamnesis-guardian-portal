@@ -1,8 +1,8 @@
-
 /**
  * This component provides a unified list view of all anamnesis entries
  * with filtering, searching, and sorting capabilities. It implements
  * Supabase's realtime functionality for live updates to entries.
+ * Redesigned with improved filter layout and visual hierarchy.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -245,48 +245,44 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
 
   return (
     <div className="space-y-6">
-      <Card className="mb-6 p-4 bg-surface_light rounded-2xl shadow-sm">
-        <div className={`${isMobile ? 'space-y-4' : 'md:flex md:items-center md:gap-4'}`}>
-          <div className={`${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
-            <SearchInput
-              searchQuery={filters.searchQuery}
-              onSearchChange={(value) => updateFilter("searchQuery", value)}
-              onRefresh={handleManualRefresh}
-              isRefreshing={isFetching || isLoadingStores}
-            />
-          </div>
-          
-          <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-            <AnamnesisFilters
-              statusFilter={filters.statusFilter}
-              onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
-              timeFilter={filters.timeFilter}
-              onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
-              showOnlyUnanswered={filters.showOnlyUnanswered}
-              onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
-              sortDescending={filters.sortDescending}
-              onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
-              showOnlyBookings={filters.showOnlyBookings}
-              onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
-              onResetFilters={resetFilters}
-            />
-          </div>
-        </div>
-        
-        {showAdvancedFilters && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <AdvancedFilters 
-              storeFilter={storeFilter}
-              onStoreFilterChange={setStoreFilter}
-              opticianFilter={opticianFilter}
-              onOpticianFilterChange={setOpticianFilter}
-              assignmentFilter={assignmentFilter}
-              onAssignmentFilterChange={setAssignmentFilter}
-            />
-          </div>
-        )}
+      {/* Search Section */}
+      <Card className="p-6 bg-white rounded-2xl shadow-sm border border-muted/30">
+        <SearchInput
+          searchQuery={filters.searchQuery}
+          onSearchChange={(value) => updateFilter("searchQuery", value)}
+          onRefresh={handleManualRefresh}
+          isRefreshing={isFetching || isLoadingStores}
+        />
       </Card>
+
+      {/* Filters Section */}
+      <AnamnesisFilters
+        statusFilter={filters.statusFilter}
+        onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
+        timeFilter={filters.timeFilter}
+        onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
+        showOnlyUnanswered={filters.showOnlyUnanswered}
+        onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
+        sortDescending={filters.sortDescending}
+        onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
+        showOnlyBookings={filters.showOnlyBookings}
+        onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
+        onResetFilters={resetFilters}
+      />
       
+      {/* Advanced Filters Section */}
+      {showAdvancedFilters && (
+        <AdvancedFilters 
+          storeFilter={storeFilter}
+          onStoreFilterChange={setStoreFilter}
+          opticianFilter={opticianFilter}
+          onOpticianFilterChange={setOpticianFilter}
+          assignmentFilter={assignmentFilter}
+          onAssignmentFilterChange={setAssignmentFilter}
+        />
+      )}
+      
+      {/* Results Section */}
       <div>
         <EntriesSummary
           filteredCount={enhancedEntries.length}

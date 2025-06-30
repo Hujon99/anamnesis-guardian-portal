@@ -56,6 +56,8 @@ const CustomerInfoPage = () => {
       }
       
       try {
+        console.log(`CustomerInfoPage: Validating form_id: ${formId}`);
+        
         // Validate form exists and get organization
         const { data: form, error: formError } = await supabase
           .from('anamnes_forms')
@@ -71,15 +73,18 @@ const CustomerInfoPage = () => {
         }
         
         if (!form) {
+          console.error("Form not found for id:", formId);
           setError("Det angivna formuläret finns inte");
           setIsLoading(false);
           return;
         }
         
+        console.log(`CustomerInfoPage: Form found for organization: ${form.organization_id}`);
         setFormData(form);
         
         // Fetch stores for the organization (if organization exists)
         if (form.organization_id) {
+          console.log(`CustomerInfoPage: Fetching stores for organization: ${form.organization_id}`);
           const { data: storesData, error: storesError } = await supabase
             .from('stores')
             .select('id, name')
@@ -90,6 +95,7 @@ const CustomerInfoPage = () => {
             console.error("Error fetching stores:", storesError);
             // Don't fail completely, just show empty stores list
           } else {
+            console.log(`CustomerInfoPage: Found ${storesData?.length || 0} stores`);
             setStores(storesData || []);
           }
         }
@@ -125,6 +131,15 @@ const CustomerInfoPage = () => {
       const orderNumber = generateOrderNumber();
       const selectedStore = stores.find(store => store.id === selectedStoreId);
       
+      console.log("CustomerInfoPage: Submitting form with data:", {
+        orderNumber,
+        firstName: firstName.trim(),
+        selectedStoreId,
+        selectedStoreName: selectedStore?.name,
+        bookingDate: bookingDate.toISOString(),
+        formId
+      });
+      
       // Call the edge function to generate token
       const { data, error } = await supabase.functions.invoke('issue-form-token', {
         body: {
@@ -143,6 +158,8 @@ const CustomerInfoPage = () => {
         setIsSubmitting(false);
         return;
       }
+      
+      console.log("CustomerInfoPage: Token generated successfully, redirecting to patient form");
       
       // Redirect to patient form with token
       navigate(`/patient-form?token=${data.accessToken}`);
@@ -223,24 +240,24 @@ const CustomerInfoPage = () => {
                 <MapPinIcon className="h-4 w-4 mr-2" />
                 Butik
               </Label>
-              <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Välj en butik (valfritt)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stores.length > 0 ? (
-                    stores.map((store) => (
+              {stores.length > 0 ? (
+                <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj en butik (valfritt)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stores.map((store) => (
                       <SelectItem key={store.id} value={store.id}>
                         {store.name}
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="" disabled>
-                      Inga butiker tillgängliga
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-sm text-muted-foreground p-2 border rounded-md bg-muted/50">
+                  Inga butiker tillgängliga för denna organisation
+                </div>
+              )}
             </div>
             
             {/* Date picker */}

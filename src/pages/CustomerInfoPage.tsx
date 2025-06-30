@@ -300,7 +300,7 @@ const CustomerInfoPage = () => {
               {stores.length > 0 ? (
                 <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Välj en butik (valfritt)" />
+                    <SelectValue placeholder="Välj en butik" />
                   </SelectTrigger>
                   <SelectContent>
                     {stores.map((store) => (

@@ -1,11 +1,10 @@
 
 /**
  * This component renders the tab content for raw data and AI summary views.
- * Simplified to directly receive aiSummary prop for immediate display.
+ * Simplified to use conditional rendering instead of nested tabs to avoid conflicts.
  */
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Copy, CheckCheck, Lightbulb, RefreshCw } from "lucide-react";
@@ -41,31 +40,42 @@ export const ContentTabs = ({
     activeTab, 
     hasSummary, 
     aiSummaryLength: aiSummary?.length,
-    aiSummaryContent: aiSummary?.substring(0, 100) + "..."
+    aiSummaryPreview: aiSummary?.substring(0, 50) + "..."
   });
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col h-full">
-        <div className="border-b px-4 pt-2 flex-shrink-0">
-          <TabsList className="bg-transparent p-0 h-auto">
-            <TabsTrigger 
-              value="raw" 
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-            >
-              Rådatavy
-            </TabsTrigger>
-            <TabsTrigger 
-              value="summary" 
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-            >
-              AI-sammanfattning
-            </TabsTrigger>
-          </TabsList>
+      {/* Tab Headers */}
+      <div className="border-b px-4 pt-2 flex-shrink-0">
+        <div className="flex space-x-4">
+          <button
+            onClick={() => onTabChange("raw")}
+            className={`pb-2 px-1 border-b-2 transition-colors ${
+              activeTab === "raw"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Rådatavy
+          </button>
+          <button
+            onClick={() => onTabChange("summary")}
+            className={`pb-2 px-1 border-b-2 transition-colors ${
+              activeTab === "summary"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            AI-sammanfattning
+          </button>
         </div>
-        
-        <div className="flex-1 overflow-hidden">
-          <TabsContent value="raw" className="h-full m-0 flex flex-col">
+      </div>
+      
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {/* Raw Data Tab */}
+        {activeTab === "raw" && (
+          <div className="h-full flex flex-col">
             <div className="flex justify-end p-2 flex-shrink-0">
               {onRegenerateData && !isEditing && (
                 <Button
@@ -99,9 +109,12 @@ export const ContentTabs = ({
                 </ScrollArea>
               )}
             </div>
-          </TabsContent>
-          
-          <TabsContent value="summary" className="h-full m-0 flex flex-col">
+          </div>
+        )}
+        
+        {/* AI Summary Tab */}
+        {activeTab === "summary" && (
+          <div className="h-full flex flex-col">
             <div className="flex items-center justify-between p-4 border-b bg-muted/20 flex-shrink-0">
               <div className="flex items-center">
                 <Lightbulb className="h-4 w-4 mr-2 text-amber-500" />
@@ -130,11 +143,13 @@ export const ContentTabs = ({
               )}
             </div>
             
-            <div className="flex-1 overflow-auto">
-              <div className="p-4 min-h-full">
+            <div className="flex-1 overflow-auto bg-white">
+              <div className="p-6 min-h-full">
                 {hasSummary ? (
-                  <div className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-foreground">
-                    {aiSummary}
+                  <div className="prose prose-sm max-w-none leading-relaxed text-foreground">
+                    <div className="whitespace-pre-wrap">
+                      {aiSummary}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-muted-foreground italic text-center py-8">
@@ -143,9 +158,9 @@ export const ContentTabs = ({
                 )}
               </div>
             </div>
-          </TabsContent>
-        </div>
-      </Tabs>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

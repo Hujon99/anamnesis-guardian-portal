@@ -1,10 +1,27 @@
 
+/**
+ * Submit Form Edge Function
+ * Handles form submissions for both patient and optician modes with comprehensive error handling,
+ * token validation, and database operations. Integrates with AI summary generation and 
+ * provides detailed logging for debugging purposes.
+ */
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { corsHeaders } from "./corsHeaders.ts";
-import { createErrorResponse } from "./errorHandler.ts";
 import { DatabaseOperations } from "./databaseOperations.ts";
 import { Logger } from "./logger.ts";
+
+// Simple error response function to avoid import complications
+const createErrorResponse = (message: string, status = 400) => {
+  return new Response(
+    JSON.stringify({ error: message }),
+    {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+};
 
 // Initialize Supabase client for internal function calls
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';

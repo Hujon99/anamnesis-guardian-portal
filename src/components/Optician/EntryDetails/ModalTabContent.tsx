@@ -54,16 +54,16 @@ export function ModalTabContent({
 }: ModalTabContentProps) {
   return (
     <Tabs defaultValue="patient" className="h-full flex flex-col">
-      <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+      <TabsList className="grid w-full grid-cols-3 flex-shrink-0 mb-2">
         <TabsTrigger value="patient">Patient</TabsTrigger>
         <TabsTrigger value="answers">Svar</TabsTrigger>
         <TabsTrigger value="assignment">Tilldelning</TabsTrigger>
       </TabsList>
       
-      <div className="flex-1 min-h-0">
-        <TabsContent value="patient" className="h-full m-0 flex flex-col">
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="p-4 border-b bg-background flex-shrink-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <TabsContent value="patient" className="h-full m-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div className="p-3 sm:p-4 border-b bg-background flex-shrink-0">
               <PatientInfo
                 patientIdentifier={patientIdentifier}
                 isEditing={isEditing}
@@ -74,7 +74,7 @@ export function ModalTabContent({
               />
             </div>
             
-            <div className="flex-1 min-h-0 p-4">
+            <div className="flex-1 min-h-0 overflow-hidden">
               <OptimizedAnswersView
                 answers={answers}
                 hasAnswers={hasAnswers}
@@ -91,9 +91,9 @@ export function ModalTabContent({
           </div>
         </TabsContent>
         
-        <TabsContent value="answers" className="h-full m-0">
+        <TabsContent value="answers" className="h-full m-0 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <EntryAnswers 
                 answers={answers} 
                 hasAnswers={hasAnswers} 
@@ -103,9 +103,9 @@ export function ModalTabContent({
           </ScrollArea>
         </TabsContent>
         
-        <TabsContent value="assignment" className="h-full m-0">
+        <TabsContent value="assignment" className="h-full m-0 overflow-hidden">
           <ScrollArea className="h-full">
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <AssignmentSection
                 entry={entry}
                 onAssignOptician={onAssignOptician}

@@ -112,10 +112,10 @@ export const OptimizedAnswersView = ({
   if (!hasAnswers) {
     return (
       status !== "draft" && (
-        <div className="text-center p-4 border border-dashed rounded-md flex-1 min-h-[200px] flex items-center justify-center">
+        <div className="text-center p-4 border border-dashed rounded-md h-full flex items-center justify-center">
           <div>
             <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {status === "sent" 
                 ? "Väntar på att patienten ska fylla i anamnesen" 
                 : "Ingen information från patienten"}
@@ -127,11 +127,11 @@ export const OptimizedAnswersView = ({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <h3 className="text-lg font-medium flex items-center">
-          <FileText className="h-5 w-5 mr-2 text-primary" />
-          Patientens svar och anteckningar
+    <div className="flex flex-col h-full p-3 sm:p-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 gap-2 flex-shrink-0">
+        <h3 className="text-base sm:text-lg font-medium flex items-center">
+          <FileText className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary" />
+          <span className="text-sm sm:text-base">Patientens svar och anteckningar</span>
         </h3>
         
         <div className="flex gap-2 items-center">
@@ -157,7 +157,7 @@ export const OptimizedAnswersView = ({
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 border rounded-md flex flex-col">
+      <div className="flex-1 min-h-0 border rounded-md overflow-hidden">
         <ContentTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}

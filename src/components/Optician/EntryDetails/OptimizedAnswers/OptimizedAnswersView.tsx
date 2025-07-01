@@ -112,23 +112,21 @@ export const OptimizedAnswersView = ({
   if (!hasAnswers) {
     return (
       status !== "draft" && (
-        <div className="text-center p-4 border border-dashed rounded-md h-full flex items-center justify-center">
-          <div>
-            <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-muted-foreground text-sm">
-              {status === "sent" 
-                ? "Väntar på att patienten ska fylla i anamnesen" 
-                : "Ingen information från patienten"}
-            </p>
-          </div>
+        <div className="text-center p-8 border border-dashed rounded-lg">
+          <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+          <p className="text-muted-foreground text-sm">
+            {status === "sent" 
+              ? "Väntar på att patienten ska fylla i anamnesen" 
+              : "Ingen information från patienten"}
+          </p>
         </div>
       )
     );
   }
 
   return (
-    <div className="flex flex-col h-full p-3 sm:p-4">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 gap-2 flex-shrink-0">
+    <div className="border rounded-lg bg-background">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border-b gap-2">
         <h3 className="text-base sm:text-lg font-medium flex items-center">
           <FileText className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary" />
           <span className="text-sm sm:text-base">Patientens svar och anteckningar</span>
@@ -157,20 +155,18 @@ export const OptimizedAnswersView = ({
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 border rounded-md overflow-hidden">
-        <ContentTabs
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          isEditing={isEditing}
-          formattedRawData={formattedRawData}
-          onRawDataChange={handleRawDataChange}
-          aiSummary={aiSummary}
-          isCopied={isCopied}
-          onCopy={handleCopySummary}
-          onRegenerateData={regenerateFormattedData}
-          isRegenerating={isRegeneratingRawData}
-        />
-      </div>
+      <ContentTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        isEditing={isEditing}
+        formattedRawData={formattedRawData}
+        onRawDataChange={handleRawDataChange}
+        aiSummary={aiSummary}
+        isCopied={isCopied}
+        onCopy={handleCopySummary}
+        onRegenerateData={regenerateFormattedData}
+        isRegenerating={isRegeneratingRawData}
+      />
     </div>
   );
 };

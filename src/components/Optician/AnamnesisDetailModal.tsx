@@ -69,18 +69,20 @@ export function AnamnesisDetailModal({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-5xl max-h-[95vh] sm:max-h-[90vh] min-h-[50vh] flex flex-col p-4 sm:p-5 w-[95vw] sm:w-full" 
+        className="max-w-5xl w-[95vw] sm:w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-0" 
         aria-label="Anamnesdetaljer"
       >
-        <ModalHeader 
-          entry={entry}
-          isExpired={isExpired}
-          copyLinkToClipboard={copyLinkToClipboard}
-          handleSendLink={handleSendLink}
-          isSendingLink={sendLinkMutation.isPending}
-        />
+        <div className="sticky top-0 z-10 bg-background border-b p-4 sm:p-5">
+          <ModalHeader 
+            entry={entry}
+            isExpired={isExpired}
+            copyLinkToClipboard={copyLinkToClipboard}
+            handleSendLink={handleSendLink}
+            isSendingLink={sendLinkMutation.isPending}
+          />
+        </div>
         
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="p-4 sm:p-5">
           <ModalTabContent
             patientIdentifier={patientIdentifier}
             isEditing={isEditing}
@@ -102,14 +104,16 @@ export function AnamnesisDetailModal({
           />
         </div>
         
-        <ModalActions
-          status={entry.status || ""}
-          hasAnswers={hasAnswers}
-          isPending={updateEntryMutation.isPending}
-          onUpdateStatus={handleStatusUpdate}
-          entryToken={entry.access_token || undefined}
-          onCloseModal={() => onOpenChange(false)}
-        />
+        <div className="sticky bottom-0 z-10 bg-background border-t p-4 sm:p-5">
+          <ModalActions
+            status={entry.status || ""}
+            hasAnswers={hasAnswers}
+            isPending={updateEntryMutation.isPending}
+            onUpdateStatus={handleStatusUpdate}
+            entryToken={entry.access_token || undefined}
+            onCloseModal={() => onOpenChange(false)}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

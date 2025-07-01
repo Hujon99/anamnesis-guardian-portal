@@ -6,7 +6,6 @@
  */
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { PatientInfo } from "./PatientInfo";
 import { EntryAnswers } from "./EntryAnswers";
 import { AssignmentSection } from "./AssignmentSection";
@@ -53,69 +52,59 @@ export function ModalTabContent({
   onAssignStore
 }: ModalTabContentProps) {
   return (
-    <Tabs defaultValue="patient" className="h-full flex flex-col">
-      <TabsList className="grid w-full grid-cols-3 flex-shrink-0 mb-2">
+    <Tabs defaultValue="patient" className="w-full">
+      <TabsList className="grid w-full grid-cols-3 mb-4">
         <TabsTrigger value="patient">Patient</TabsTrigger>
         <TabsTrigger value="answers">Svar</TabsTrigger>
         <TabsTrigger value="assignment">Tilldelning</TabsTrigger>
       </TabsList>
       
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <TabsContent value="patient" className="h-full m-0 flex flex-col overflow-hidden">
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div className="p-3 sm:p-4 border-b bg-background flex-shrink-0">
-              <PatientInfo
-                patientIdentifier={patientIdentifier}
-                isEditing={isEditing}
-                toggleEditing={toggleEditing}
-                setPatientIdentifier={setPatientIdentifier}
-                savePatientIdentifier={savePatientIdentifier}
-                status={status}
-              />
-            </div>
-            
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <OptimizedAnswersView
-                answers={answers}
-                hasAnswers={hasAnswers}
-                status={status}
-                entryId={entry.id}
-                aiSummary={entry.ai_summary}
-                onSaveSummary={onSaveAiSummary}
-                formattedRawData={formattedRawData}
-                setFormattedRawData={setFormattedRawData}
-                saveFormattedRawData={saveFormattedRawData}
-                isPending={isPending}
-              />
-            </div>
-          </div>
-        </TabsContent>
+      <TabsContent value="patient" className="mt-0 space-y-6">
+        <div className="p-4 border rounded-lg bg-background">
+          <PatientInfo
+            patientIdentifier={patientIdentifier}
+            isEditing={isEditing}
+            toggleEditing={toggleEditing}
+            setPatientIdentifier={setPatientIdentifier}
+            savePatientIdentifier={savePatientIdentifier}
+            status={status}
+          />
+        </div>
         
-        <TabsContent value="answers" className="h-full m-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-3 sm:p-4">
-              <EntryAnswers 
-                answers={answers} 
-                hasAnswers={hasAnswers} 
-                status={status}
-              />
-            </div>
-          </ScrollArea>
-        </TabsContent>
-        
-        <TabsContent value="assignment" className="h-full m-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-3 sm:p-4">
-              <AssignmentSection
-                entry={entry}
-                onAssignOptician={onAssignOptician}
-                onAssignStore={onAssignStore}
-                isPending={isPending}
-              />
-            </div>
-          </ScrollArea>
-        </TabsContent>
-      </div>
+        <OptimizedAnswersView
+          answers={answers}
+          hasAnswers={hasAnswers}
+          status={status}
+          entryId={entry.id}
+          aiSummary={entry.ai_summary}
+          onSaveSummary={onSaveAiSummary}
+          formattedRawData={formattedRawData}
+          setFormattedRawData={setFormattedRawData}
+          saveFormattedRawData={saveFormattedRawData}
+          isPending={isPending}
+        />
+      </TabsContent>
+      
+      <TabsContent value="answers" className="mt-0">
+        <div className="p-4 border rounded-lg bg-background">
+          <EntryAnswers 
+            answers={answers} 
+            hasAnswers={hasAnswers} 
+            status={status}
+          />
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="assignment" className="mt-0">
+        <div className="p-4 border rounded-lg bg-background">
+          <AssignmentSection
+            entry={entry}
+            onAssignOptician={onAssignOptician}
+            onAssignStore={onAssignStore}
+            isPending={isPending}
+          />
+        </div>
+      </TabsContent>
     </Tabs>
   );
 }

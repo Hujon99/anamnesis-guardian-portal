@@ -5,6 +5,7 @@
  * Enhanced with improved error reporting, logging, SQL safety, debouncing, and
  * better cache control to prevent excessive verification attempts.
  * Also includes better handling of missing or invalid tokens.
+ * FIXED: Now uses correct table name 'anamnes_forms' instead of 'form_templates'
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -147,7 +148,7 @@ serve(async (req: Request) => {
     }
 
     // Check if the form has already been submitted
-    if (entry.status === 'submitted') {
+    if (entry.status === 'ready') {
       console.log(`[verify-token/${requestId}]: Form already submitted, status: ${entry.status}`);
       return new Response(
         JSON.stringify({ 
@@ -167,9 +168,9 @@ serve(async (req: Request) => {
       );
     }
 
-    // Fetch the form template for this entry
+    // Fetch the form template for this entry - FIXED: Use correct table name 'anamnes_forms'
     const { data: formTemplates, error: formError } = await supabase
-      .from('form_templates')
+      .from('anamnes_forms')
       .select('*')
       .eq('organization_id', entry.organization_id)
       .order('created_at', { ascending: false })

@@ -10,6 +10,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { corsHeaders } from "./corsHeaders.ts";
 import { DatabaseOperations } from "./databaseOperations.ts";
+import { DataFormatter } from "./dataFormatting.ts";
 import { Logger } from "./logger.ts";
 
 // Simple error response function to avoid import complications
@@ -45,8 +46,9 @@ serve(async (req: Request) => {
 
     logger.info(`Processing form submission for token: ${token.substring(0, 6)}...`);
     
-    // Initialize database operations
+    // Initialize database operations and data formatter
     const dbOps = new DatabaseOperations(logger);
+    const dataFormatter = new DataFormatter(logger);
     
     // Set access token for RLS policies
     const setTokenResult = await dbOps.setAccessToken(token);
@@ -104,13 +106,49 @@ serve(async (req: Request) => {
     const isOptician = formData._isOptician === true || 
                       formData._metadata?.submittedBy === 'optician';
 
-    // Prepare update data
-    const updateData = {
-      answers: formData,
-      formatted_raw_data: JSON.stringify(formData, null, 2),
-      status: 'ready', // Both patients and opticians set to 'ready'
-      updated_at: new Date().toISOString()
-    };
+    // Extract the actual form data
+    const extractedFormData = dataFormatter.extractFormData(formData);
+    
+    // Get form template for proper formatting
+    let formTemplate = null;
+    let formattedRawData = '';
+    
+    if (entry.form_id) {
+      logger.info(`Fetching form template for form_id: ${entry.form_id}`);
+      const templateResult = await dbOps.getFormTemplate(entry.form_id);
+      
+      if (templateResult.success && templateResult.data) {
+        formTemplate = templateResult.data;
+        logger.info("Form template fetched successfully");
+        
+        // Extract formatted answers from the submitted data
+        const formattedAnswers = dataFormatter.extractFormattedAnswers(extractedFormData);
+        
+        if (formattedAnswers && formTemplate) {
+          // Create optimized formatted text using the same logic as frontend
+          formattedRawData = dataFormatter.createOptimizedPromptInput(formTemplate, formattedAnswers);
+          logger.info("Successfully created optimized formatted text");
+        } else {
+          logger.warn("Could not extract formatted answers or missing template, using fallback formatting");
+          formattedRawData = JSON.stringify(extractedFormData, null, 2);
+        }
+      } else {
+        logger.warn("Could not fetch form template, using basic formatting");
+        formattedRawData = JSON.stringify(extractedFormData, null, 2);
+      }
+    } else {
+      logger.warn("No form_id available, using basic formatting");
+      formattedRawData = JSON.stringify(extractedFormData, null, 2);
+    }
+
+    // Prepare update data with properly formatted text
+    const updateData = dataFormatter.prepareUpdateData(
+      extractedFormData,
+      formattedRawData,
+      'ready'
+    );
+
+    logger.info("Prepared update data with formatted text");
 
     // Update the entry
     const updateResult = await dbOps.updateEntry(entry.id, updateData);
@@ -122,8 +160,9 @@ serve(async (req: Request) => {
 
     logger.info(`Form submission completed successfully for entry: ${entry.id}`);
 
-    // After successful submission, trigger AI summary generation
+    // After successful submission with formatted data, trigger AI summary generation
     try {
+      logger.info("Triggering AI summary generation with formatted data");
       const { error: summaryError } = await supabase.functions.invoke('generate-summary', {
         body: { entryId: entry.id }
       });

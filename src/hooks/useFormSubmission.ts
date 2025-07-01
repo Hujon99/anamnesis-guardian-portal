@@ -80,11 +80,11 @@ export function useFormSubmission() {
       
       console.log("[useFormSubmission]: Calling submit-form edge function with token", token.substring(0, 6) + "...");
       
-      // Use the edge function to submit the form (same for both patient and optician)
+      // FIXED: Send data in correct format - spread formData directly instead of wrapping in "answers"
       const { data, error } = await supabase.functions.invoke('submit-form', {
         body: { 
           token,
-          answers: formattedFormData
+          ...formattedFormData  // Spread the data directly instead of wrapping in "answers"
         }
       });
       

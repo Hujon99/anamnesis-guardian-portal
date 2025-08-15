@@ -40,6 +40,7 @@ const CustomerInfoPage = () => {
   const [formData, setFormData] = useState<{id: string, organization_id: string} | null>(null);
   
   const formId = searchParams.get("form_id");
+  const examinationType = searchParams.get("examination_type");
   
   // Read additional URL parameters for pre-filling
   const urlBookingDate = searchParams.get("booking_date");
@@ -256,6 +257,11 @@ const CustomerInfoPage = () => {
           <CardTitle>Dina uppgifter</CardTitle>
           <CardDescription>
             Vänligen fyll i dina uppgifter för att fortsätta till hälsoformuläret.
+            {examinationType && (
+              <span className="block mt-2 text-sm font-medium text-accent-2">
+                Vald undersökning: {examinationType}
+              </span>
+            )}
             {(urlFirstName || urlBookingDate || urlStoreId) && (
               <span className="block mt-2 text-sm text-accent-1">
                 Vissa uppgifter är förifyllda från din bokningslänk.

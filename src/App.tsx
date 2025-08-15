@@ -22,6 +22,7 @@ import PatientFormPage from "@/pages/PatientFormPage";
 import OpticianFormPage from "@/pages/OpticianFormPage";
 import LinkPage from "@/pages/LinkPage";
 import CustomerInfoPage from "@/pages/CustomerInfoPage";
+import ExaminationTypeSelectionPage from "@/pages/ExaminationTypeSelectionPage";
 
 // Components
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -55,6 +56,7 @@ function App() {
           <Route path="/optician-form" element={<OpticianFormPage />} /> {/* Moved outside ProtectedRoute */}
           <Route path="/link" element={<LinkPage />} />
           <Route path="/customer-info" element={<CustomerInfoPage />} />
+          <Route path="/examination-type" element={<ExaminationTypeSelectionPage />} />
           
           {/* Protected routes that require authentication */}
           <Route 

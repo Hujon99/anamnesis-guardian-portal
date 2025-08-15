@@ -19,12 +19,12 @@ export interface FormTemplateWithMeta {
   organization_id: string | null;
 }
 
-export const useFormTemplate = () => {
+export const useFormTemplate = (examinationType?: string) => {
   const { organization } = useOrganization();
   const { supabase } = useSupabaseClient();
   
   return useQuery({
-    queryKey: ["form-template", organization?.id],
+    queryKey: ["form-template", organization?.id, examinationType],
     queryFn: async (): Promise<FormTemplateWithMeta | null> => {
       try {
         // console.log("[useFormTemplate]: Fetching template for org:", organization?.id || "No org ID");
@@ -39,14 +39,20 @@ export const useFormTemplate = () => {
           .from('anamnes_forms')
           .select("*");
 
-        // Apply proper filtering - safely handling organization ID
+        // Apply proper filtering - safely handling organization ID and examination type
         if (organization?.id) {
-          // First get organization-specific template if it exists
-          const { data: orgTemplate, error: orgError } = await supabase
+          // Build query for organization-specific template
+          let orgQuery = supabase
             .from('anamnes_forms')
             .select("*")
-            .eq('organization_id', organization.id)
-            .maybeSingle();
+            .eq('organization_id', organization.id);
+            
+          // Add examination type filter if provided
+          if (examinationType) {
+            orgQuery = orgQuery.eq('examination_type', examinationType);
+          }
+          
+          const { data: orgTemplate, error: orgError } = await orgQuery.maybeSingle();
             
           if (orgError) {
             console.error("[useFormTemplate]: Error fetching org template:", orgError);

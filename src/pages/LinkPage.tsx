@@ -32,74 +32,90 @@ const LinkPage = () => {
   const storeId = searchParams.get("store_id");
   const storeName = searchParams.get("store_name"); // Add explicit store_name parameter
   const bookingDate = searchParams.get("booking_date");
-  const formId = searchParams.get("form_id"); // Form ID is required
+  const formId = searchParams.get("form_id");
+  const orgId = searchParams.get("org_id");
   
-  // Validate the form ID exists in the database
+  // Handle both org_id and form_id based flows
   useEffect(() => {
-    const validateFormId = async () => {
-      if (!formId) {
-        setError("Formulär-ID saknas i URL:en");
+    const validateAndRedirect = async () => {
+      // Handle org_id based flow (new examination type selection)
+      if (orgId && !formId) {
+        console.log("Organization ID provided, redirecting to examination type selection");
+        const params = new URLSearchParams();
+        params.set("org_id", orgId);
+        
+        // Add any existing parameters
+        if (bookingId) params.set("booking_id", bookingId);
+        if (firstName) params.set("first_name", firstName);
+        if (storeId) params.set("store_id", storeId);
+        if (storeName) params.set("store_name", storeName);
+        if (bookingDate) params.set("booking_date", bookingDate);
+
+        navigate(`/examination-type?${params.toString()}`);
+        return;
+      }
+
+      // Handle legacy form_id based flow (backward compatibility)
+      if (!formId && !orgId) {
+        setError("Formulär-ID eller organisations-ID saknas i URL:en");
         setIsLoading(false);
         return;
       }
-      
-      try {
-        // Check that the form exists
-        const { data, error } = await supabase
-          .from('anamnes_forms')
-          .select('id')
-          .eq('id', formId)
-          .maybeSingle();
-        
-        if (error) {
-          console.error("Error validating form ID:", error);
-          setError(`Ett fel uppstod vid validering av formuläret: ${error.message}`);
+
+      if (formId) {
+        try {
+          // Check that the form exists
+          const { data, error } = await supabase
+            .from('anamnes_forms')
+            .select('id')
+            .eq('id', formId)
+            .maybeSingle();
+          
+          if (error) {
+            console.error("Error validating form ID:", error);
+            setError(`Ett fel uppstod vid validering av formuläret: ${error.message}`);
+            setIsLoading(false);
+            return;
+          }
+          
+          if (!data) {
+            setError("Det angivna formuläret finns inte");
+            setIsLoading(false);
+            return;
+          }
+          
+          setValidFormId(true);
+          
+          // Updated logic: redirect to customer info page if missing essential booking details
+          // Only proceed directly to form if we have booking_id AND first_name (minimum required)
+          if (!bookingId || !firstName) {
+            console.log("Missing essential booking details, redirecting to customer info page");
+            
+            // Build URL with all available parameters
+            const params = new URLSearchParams();
+            params.set('form_id', formId);
+            
+            if (bookingDate) params.set('booking_date', bookingDate);
+            if (storeId) params.set('store_id', storeId);
+            if (storeName) params.set('store_name', storeName);
+            if (firstName) params.set('first_name', firstName);
+            if (bookingId) params.set('booking_id', bookingId);
+            
+            navigate(`/customer-info?${params.toString()}`);
+            return;
+          }
+          
           setIsLoading(false);
-          return;
-        }
-        
-        if (!data) {
-          setError("Det angivna formuläret finns inte");
+        } catch (err) {
+          console.error("Error in form validation:", err);
+          setError("Ett oväntat fel uppstod vid validering av formuläret");
           setIsLoading(false);
-          return;
         }
-        
-        setValidFormId(true);
-        
-        // Updated logic: redirect to customer info page if missing essential booking details
-        // Only proceed directly to form if we have booking_id AND first_name (minimum required)
-        if (!bookingId || !firstName) {
-          console.log("Missing essential booking details, redirecting to customer info page");
-          
-          // Build URL with all available parameters
-          const params = new URLSearchParams();
-          params.set('form_id', formId);
-          
-          if (bookingDate) params.set('booking_date', bookingDate);
-          if (storeId) params.set('store_id', storeId);
-          if (storeName) params.set('store_name', storeName);
-          if (firstName) params.set('first_name', firstName);
-          if (bookingId) params.set('booking_id', bookingId);
-          
-          navigate(`/customer-info?${params.toString()}`);
-          return;
-        }
-        
-        setIsLoading(false);
-      } catch (err) {
-        console.error("Error in form validation:", err);
-        setError("Ett oväntat fel uppstod vid validering av formuläret");
-        setIsLoading(false);
       }
     };
     
-    if (formId) {
-      validateFormId();
-    } else {
-      setError("Formulär-ID saknas i URL:en");
-      setIsLoading(false);
-    }
-  }, [bookingId, formId, firstName, bookingDate, storeId, storeName, navigate]);
+    validateAndRedirect();
+  }, [bookingId, formId, orgId, firstName, bookingDate, storeId, storeName, navigate]);
   
   const handleGenerateForm = async () => {
     try {

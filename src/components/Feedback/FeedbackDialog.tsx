@@ -10,7 +10,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useOrganization } from "@clerk/clerk-react";
 import { MessageSquare, Send, Upload, X } from "lucide-react";
 import {
   Dialog,
@@ -64,7 +64,8 @@ const categoryLabels = {
 };
 
 export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
-  const { userId, has } = useAuth();
+  const { userId } = useAuth();
+  const { organization } = useOrganization();
   const { supabase, isReady } = useSupabaseClient();
   const { toast } = useToast();
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -78,12 +79,14 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
     },
   });
 
-  const organizationId = has({ role: "org:admin" }) 
-    ? (localStorage.getItem("clerk-organization-id") || "") 
-    : (localStorage.getItem("clerk-organization-id") || "");
-
   const handleSubmit = async (data: FeedbackFormData) => {
-    if (!userId || !organizationId || !isReady) {
+    console.log("Form submitted with data:", data);
+    console.log("User ID:", userId);
+    console.log("Organization:", organization);
+    console.log("Supabase ready:", isReady);
+    
+    if (!userId || !organization?.id || !isReady) {
+      console.log("Validation failed - missing required data");
       toast({
         variant: "destructive",
         title: "Fel",
@@ -95,6 +98,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
     setIsSubmitting(true);
 
     try {
+      console.log("Starting feedback submission...");
       // First, insert the feedback record
       const { data: feedbackData, error: feedbackError } = await supabase
         .from("feedback")
@@ -104,11 +108,13 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
             description: data.description,
             category: data.category,
             user_id: userId,
-            organization_id: organizationId,
+            organization_id: organization.id,
           },
         ])
         .select()
         .single();
+
+      console.log("Feedback insert result:", { feedbackData, feedbackError });
 
       if (feedbackError) throw feedbackError;
 
@@ -118,7 +124,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
       if (screenshot && feedbackData) {
         const fileExt = screenshot.name.split('.').pop();
         const fileName = `${feedbackData.id}/${Date.now()}.${fileExt}`;
-        const filePath = `${organizationId}/${fileName}`;
+        const filePath = `${organization.id}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from("feedback-screenshots")

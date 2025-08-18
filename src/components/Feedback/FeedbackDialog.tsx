@@ -66,7 +66,7 @@ const categoryLabels = {
 export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
   const { userId } = useAuth();
   const { organization } = useOrganization();
-  const { supabase, isReady } = useSupabaseClient();
+  const { supabase, isReady, refreshClient } = useSupabaseClient();
   const { toast } = useToast();
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -134,16 +134,53 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
         .select()
         .single();
 
-      if (feedbackError) {
+      // Handle JWT expiry specifically
+      if (feedbackError?.code === 'PGRST301' || feedbackError?.message?.includes('JWT expired')) {
+        console.log("JWT expired, refreshing client and retrying...");
+        toast({
+          title: "Sessionen uppdateras",
+          description: "Väntar på ny inloggning...",
+        });
+        
+        // Force refresh the Supabase client
+        await refreshClient(true);
+        
+        // Wait a moment for the refresh to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Retry the submission
+        const { data: retryFeedbackData, error: retryError } = await supabase
+          .from("feedback")
+          .insert([
+            {
+              title: data.title,
+              description: data.description,
+              category: data.category,
+              user_id: userId,
+              organization_id: organization.id,
+              status: 'open'
+            },
+          ])
+          .select()
+          .single();
+          
+        if (retryError) {
+          console.error("Retry failed:", retryError);
+          throw new Error(`Kunde inte spara feedback efter retry: ${retryError.message}`);
+        }
+        
+        // Use retry data for the rest of the process
+        Object.assign(feedbackData || {}, retryFeedbackData);
+      } else if (feedbackError) {
         console.error("Database insert failed:", feedbackError);
         throw new Error(`Kunde inte spara feedback: ${feedbackError.message}`);
       }
 
-      console.log("✅ Feedback saved to database with ID:", feedbackData.id);
+      console.log("✅ Feedback saved to database with ID:", feedbackData?.id);
 
       // Handle image upload separately (optional - don't fail if this fails)
       let imageUploadSuccess = false;
-      if (screenshot) {
+      if (screenshot && feedbackData) {
         console.log("=== STEP 2: UPLOADING IMAGE ===");
         
         // Validate file first

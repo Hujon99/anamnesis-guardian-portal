@@ -29,8 +29,8 @@ export function ImageUploader({ file, onFileChange, onRemove }: ImageUploaderPro
     if (!ACCEPTED_TYPES.includes(file.type)) {
       toast({
         variant: "destructive",
-        title: "Invalid File Type",
-        description: "Please upload a JPG, PNG, or WebP image.",
+        title: "Ogiltigt filformat",
+        description: "Vänligen ladda upp en JPG, PNG eller WebP bild.",
       });
       return false;
     }
@@ -38,8 +38,8 @@ export function ImageUploader({ file, onFileChange, onRemove }: ImageUploaderPro
     if (file.size > MAX_FILE_SIZE) {
       toast({
         variant: "destructive",
-        title: "File Too Large",
-        description: "Please upload an image smaller than 2MB.",
+        title: "Filen är för stor",
+        description: "Vänligen ladda upp en bild som är mindre än 2MB.",
       });
       return false;
     }
@@ -144,9 +144,9 @@ export function ImageUploader({ file, onFileChange, onRemove }: ImageUploaderPro
         </div>
         <div>
           <p className="text-sm font-medium text-foreground">
-            Drop an image here, or{" "}
+            Dra och släpp en bild här, eller{" "}
             <label className="text-primary hover:text-primary/80 cursor-pointer underline">
-              browse
+              bläddra
               <input
                 type="file"
                 accept={ACCEPTED_TYPES.join(",")}
@@ -156,7 +156,7 @@ export function ImageUploader({ file, onFileChange, onRemove }: ImageUploaderPro
             </label>
           </p>
           <p className="text-xs text-muted-foreground">
-            PNG, JPG, WebP up to 2MB
+            PNG, JPG, WebP upp till 2MB
           </p>
         </div>
       </div>

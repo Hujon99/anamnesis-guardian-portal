@@ -42,10 +42,10 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { ImageUploader } from "./ImageUploader";
 
 const feedbackSchema = z.object({
-  title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
-  description: z.string().min(1, "Description is required").max(1000, "Description must be less than 1000 characters"),
+  title: z.string().min(1, "Titel krävs").max(100, "Titel måste vara kortare än 100 tecken"),
+  description: z.string().min(1, "Beskrivning krävs").max(1000, "Beskrivning måste vara kortare än 1000 tecken"),
   category: z.enum(["bug_report", "feature_request", "improvement", "other"], {
-    required_error: "Please select a category",
+    required_error: "Välj en kategori",
   }),
 });
 
@@ -57,10 +57,10 @@ interface FeedbackDialogProps {
 }
 
 const categoryLabels = {
-  bug_report: "Bug Report",
-  feature_request: "Feature Request", 
-  improvement: "Improvement Suggestion",
-  other: "Other"
+  bug_report: "Buggrapport",
+  feature_request: "Funktionsförslag", 
+  improvement: "Förbättringsförslag",
+  other: "Övrigt"
 };
 
 export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
@@ -86,8 +86,8 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
     if (!userId || !organizationId || !isReady) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Please ensure you are logged in and part of an organization.",
+        title: "Fel",
+        description: "Se till att du är inloggad och tillhör en organisation.",
       });
       return;
     }
@@ -145,8 +145,8 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 
       toast({
         variant: "default",
-        title: "Feedback Submitted",
-        description: "Thank you for your feedback! We'll review it soon.",
+        title: "Feedback skickat",
+        description: "Tack för din feedback! Vi kommer att granska den snart.",
       });
 
       // Reset form and close dialog
@@ -157,8 +157,8 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
       console.error("Error submitting feedback:", error);
       toast({
         variant: "destructive",
-        title: "Submission Failed",
-        description: "Failed to submit feedback. Please try again.",
+        title: "Inlämning misslyckades",
+        description: "Kunde inte skicka feedback. Försök igen.",
       });
     } finally {
       setIsSubmitting(false);
@@ -167,28 +167,28 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-8">
+        <DialogHeader className="space-y-4">
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            Send Feedback
+            Skicka feedback
           </DialogTitle>
           <DialogDescription>
-            Help us improve the application by sharing your feedback, reporting bugs, or suggesting new features.
+            Hjälp oss förbättra applikationen genom att dela din feedback, rapportera buggar eller föreslå nya funktioner.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 mt-6">
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel>Titel</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Brief description of your feedback"
+                      placeholder="Kort beskrivning av din feedback"
                       {...field}
                       maxLength={100}
                     />
@@ -203,11 +203,11 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>Kategori</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select feedback type" />
+                        <SelectValue placeholder="Välj typ av feedback" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -228,10 +228,10 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Beskrivning</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Please provide detailed information about your feedback..."
+                      placeholder="Vänligen ge detaljerad information om din feedback..."
                       className="min-h-[100px]"
                       {...field}
                       maxLength={1000}
@@ -242,8 +242,8 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
               )}
             />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Screenshot (Optional)</label>
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Skärmbild (Valfritt)</label>
               <ImageUploader
                 file={screenshot}
                 onFileChange={setScreenshot}
@@ -251,25 +251,25 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-3 pt-6">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
-                Cancel
+                Avbryt
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Upload className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
+                    Skickar...
                   </>
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
-                    Submit Feedback
+                    Skicka feedback
                   </>
                 )}
               </Button>

@@ -18,10 +18,10 @@ export function FeedbackButton() {
       <SidebarMenuItem>
         <SidebarMenuButton 
           onClick={() => setDialogOpen(true)}
-          tooltip="Send feedback about the application"
+          tooltip="Skicka feedback om applikationen"
         >
           <MessageSquare />
-          <span>Send Feedback</span>
+          <span>Skicka feedback</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
       

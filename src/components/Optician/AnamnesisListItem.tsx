@@ -293,6 +293,15 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                       Bokning: {entry.booking_id}
                     </span>
                   )}
+                  {entry.booking_date && (
+                    <span className="text-xs bg-primary/10 px-2 py-0.5 rounded-sm">
+                      Datum: {new Date(entry.booking_date).toLocaleDateString('sv-SE', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </span>
+                  )}
                 </div>
               )}
             </div>

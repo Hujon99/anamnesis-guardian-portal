@@ -79,18 +79,36 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
     },
   });
 
+  // Validate file before upload
+  const validateFile = (file: File): { isValid: boolean; error?: string } => {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    
+    if (file.size > maxSize) {
+      return { isValid: false, error: "Filen är för stor. Max storlek är 10MB." };
+    }
+    
+    if (!allowedTypes.includes(file.type)) {
+      return { isValid: false, error: "Filformat stöds inte. Använd JPG, PNG, GIF eller WebP." };
+    }
+    
+    return { isValid: true };
+  };
+
   const handleSubmit = async (data: FeedbackFormData) => {
-    console.log("Form submitted with data:", data);
+    console.log("=== FEEDBACK SUBMISSION START ===");
+    console.log("Form values:", data);
+    console.log("Screenshot:", screenshot?.name);
     console.log("User ID:", userId);
-    console.log("Organization:", organization);
+    console.log("Organization ID:", organization?.id);
     console.log("Supabase ready:", isReady);
     
     if (!userId || !organization?.id || !isReady) {
-      console.log("Validation failed - missing required data");
+      console.error("Missing required data for submission");
       toast({
         variant: "destructive",
-        title: "Fel",
-        description: "Se till att du är inloggad och tillhör en organisation.",
+        title: "Autentiseringsfel",
+        description: "Du måste vara inloggad och tillhöra en organisation.",
       });
       return;
     }
@@ -98,8 +116,9 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
     setIsSubmitting(true);
 
     try {
-      console.log("Starting feedback submission...");
-      // First, insert the feedback record
+      console.log("=== STEP 1: INSERTING FEEDBACK TO DATABASE ===");
+      
+      // Always insert feedback first, regardless of image
       const { data: feedbackData, error: feedbackError } = await supabase
         .from("feedback")
         .insert([
@@ -109,79 +128,106 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
             category: data.category,
             user_id: userId,
             organization_id: organization.id,
+            status: 'open'
           },
         ])
         .select()
         .single();
 
-      console.log("Feedback insert result:", { feedbackData, feedbackError });
+      if (feedbackError) {
+        console.error("Database insert failed:", feedbackError);
+        throw new Error(`Kunde inte spara feedback: ${feedbackError.message}`);
+      }
 
-      if (feedbackError) throw feedbackError;
+      console.log("✅ Feedback saved to database with ID:", feedbackData.id);
 
-      let screenshotUrl = null;
-
-      // Upload screenshot if provided
-      if (screenshot && feedbackData) {
-        console.log("Starting screenshot upload...", { screenshot: screenshot.name, feedbackId: feedbackData.id });
-        const fileExt = screenshot.name.split('.').pop();
-        const fileName = `${feedbackData.id}/${Date.now()}.${fileExt}`;
-        const filePath = `${organization.id}/${fileName}`;
+      // Handle image upload separately (optional - don't fail if this fails)
+      let imageUploadSuccess = false;
+      if (screenshot) {
+        console.log("=== STEP 2: UPLOADING IMAGE ===");
         
-        console.log("Upload path:", filePath);
-
-        const { error: uploadError, data: uploadData } = await supabase.storage
-          .from("feedback-screenshots")
-          .upload(filePath, screenshot, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-        console.log("Upload result:", { uploadError, uploadData });
-
-        if (uploadError) {
-          console.error("Screenshot upload error:", uploadError);
+        // Validate file first
+        const validation = validateFile(screenshot);
+        if (!validation.isValid) {
+          console.warn("File validation failed:", validation.error);
           toast({
-            variant: "destructive", 
-            title: "Bilduppladdning misslyckades",
-            description: "Feedback skickades men bilden kunde inte laddas upp.",
+            variant: "destructive",
+            title: "Bildfel",
+            description: validation.error + " Feedback skickades utan bild.",
           });
         } else {
-          screenshotUrl = filePath;
-          console.log("Screenshot uploaded successfully to:", screenshotUrl);
+          try {
+            const fileExt = screenshot.name.split('.').pop();
+            const fileName = `${feedbackData.id}_${Date.now()}.${fileExt}`;
+            const filePath = `${organization.id}/${fileName}`;
+            
+            console.log("Uploading to path:", filePath);
+
+            const { error: uploadError } = await supabase.storage
+              .from("feedback-screenshots")
+              .upload(filePath, screenshot, {
+                cacheControl: "3600",
+                upsert: false,
+              });
+
+            if (uploadError) {
+              console.error("Image upload failed:", uploadError);
+              toast({
+                variant: "destructive",
+                title: "Bilduppladdning misslyckades",
+                description: "Feedback skickades men bilden kunde inte laddas upp.",
+              });
+            } else {
+              console.log("✅ Image uploaded successfully");
+              
+              // Update feedback with screenshot URL
+              const { error: updateError } = await supabase
+                .from("feedback")
+                .update({ screenshot_url: filePath })
+                .eq("id", feedbackData.id);
+                
+              if (updateError) {
+                console.error("Failed to update screenshot URL:", updateError);
+                toast({
+                  variant: "destructive",
+                  title: "Bildlänkning misslyckades",
+                  description: "Bilden laddades upp men kunde inte länkas till feedback.",
+                });
+              } else {
+                console.log("✅ Screenshot URL saved to database");
+                imageUploadSuccess = true;
+              }
+            }
+          } catch (imageError) {
+            console.error("Image upload process failed:", imageError);
+            // Don't fail the entire submission for image issues
+          }
         }
       }
 
-      // Update feedback with screenshot URL if uploaded
-      if (screenshotUrl) {
-        console.log("Updating feedback with screenshot URL:", screenshotUrl);
-        const { error: updateError } = await supabase
-          .from("feedback")
-          .update({ screenshot_url: screenshotUrl })
-          .eq("id", feedbackData.id);
-          
-        if (updateError) {
-          console.error("Error updating feedback with screenshot URL:", updateError);
-        } else {
-          console.log("Screenshot URL saved to database successfully");
-        }
-      }
-
+      // Success message
+      const successMessage = imageUploadSuccess 
+        ? "Feedback och bild skickades framgångsrikt!"
+        : "Feedback skickades framgångsrikt!";
+        
       toast({
-        variant: "default",
-        title: "Feedback skickat",
-        description: "Tack för din feedback! Vi kommer att granska den snart.",
+        title: "Tack för din feedback!",
+        description: successMessage,
       });
 
-      // Reset form and close dialog
+      console.log("=== SUBMISSION COMPLETED SUCCESSFULLY ===");
+
+      // Reset and close
       form.reset();
       setScreenshot(null);
       onOpenChange(false);
+
     } catch (error) {
-      console.error("Error submitting feedback:", error);
+      console.error("=== SUBMISSION FAILED ===", error);
       toast({
         variant: "destructive",
-        title: "Inlämning misslyckades",
-        description: "Kunde inte skicka feedback. Försök igen.",
+        title: "Kunde inte skicka feedback",
+        description: error instanceof Error ? error.message : "Ett oväntat fel inträffade. Försök igen.",
       });
     } finally {
       setIsSubmitting(false);

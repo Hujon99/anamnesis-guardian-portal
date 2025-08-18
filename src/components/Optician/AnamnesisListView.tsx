@@ -14,6 +14,7 @@ import { LoadingState } from "./EntriesList/LoadingState";
 import { SearchInput } from "./EntriesList/SearchInput";
 import { EntriesSummary } from "./EntriesList/EntriesSummary";
 import { EntriesList } from "./EntriesList/EntriesList";
+import { TodayBookingsSection } from "./TodayBookingsSection";
 import { useAnamnesisList } from "@/hooks/useAnamnesisList";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
@@ -230,6 +231,24 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     };
   });
 
+  // Separate today's bookings from other entries
+  const now = new Date();
+  const todayBookings = enhancedEntries.filter(entry => {
+    if (!entry.booking_date) return false;
+    const bookingDate = new Date(entry.booking_date);
+    return bookingDate.getDate() === now.getDate() &&
+           bookingDate.getMonth() === now.getMonth() &&
+           bookingDate.getFullYear() === now.getFullYear();
+  });
+
+  const otherEntries = enhancedEntries.filter(entry => {
+    if (!entry.booking_date) return true;
+    const bookingDate = new Date(entry.booking_date);
+    return !(bookingDate.getDate() === now.getDate() &&
+             bookingDate.getMonth() === now.getMonth() &&
+             bookingDate.getFullYear() === now.getFullYear());
+  });
+
   // Force refresh when we first view the component
   useEffect(() => {
     handleManualRefresh();
@@ -283,22 +302,47 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
       )}
       
       {/* Results Section */}
-      <div>
+      <div className="space-y-6">
         <EntriesSummary
           filteredCount={enhancedEntries.length}
           totalCount={entries.length}
           statusFilter={filters.statusFilter}
           isFetching={isFetching || isLoadingStores}
           lastUpdated={dataLastUpdated}
+          todayBookingsCount={todayBookings.length}
         />
         
-        <EntriesList
-          entries={enhancedEntries}
-          onSelectEntry={setSelectedEntry}
-          onEntryDeleted={refetch}
-          onEntryAssigned={handleEntryAssigned}
-          onStoreAssigned={handleStoreAssigned}
-        />
+        {/* Today's Bookings Section */}
+        {todayBookings.length > 0 && filters.timeFilter !== "today_bookings" && (
+          <TodayBookingsSection
+            todayBookings={todayBookings}
+            onSelectEntry={setSelectedEntry}
+            onEntryDeleted={refetch}
+            onEntryAssigned={handleEntryAssigned}
+            onStoreAssigned={handleStoreAssigned}
+          />
+        )}
+        
+        {/* Other Entries */}
+        {(filters.timeFilter !== "today_bookings" ? otherEntries : enhancedEntries).length > 0 && (
+          <div>
+            {todayBookings.length > 0 && filters.timeFilter !== "today_bookings" && (
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-px bg-muted flex-1"></div>
+                <span className="text-sm text-muted-foreground px-3">Övriga anamnesdformulär</span>
+                <div className="h-px bg-muted flex-1"></div>
+              </div>
+            )}
+            
+            <EntriesList
+              entries={filters.timeFilter === "today_bookings" ? enhancedEntries : otherEntries}
+              onSelectEntry={setSelectedEntry}
+              onEntryDeleted={refetch}
+              onEntryAssigned={handleEntryAssigned}
+              onStoreAssigned={handleStoreAssigned}
+            />
+          </div>
+        )}
       </div>
       
       {selectedEntry && (

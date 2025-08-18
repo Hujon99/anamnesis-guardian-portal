@@ -18,7 +18,8 @@ interface UnifiedTimeFilterProps {
 
 const timeOptions = [
   { value: "all", label: "Alla tidsperioder", icon: Calendar },
-  { value: "today", label: "Idag", icon: Clock },
+  { value: "today_bookings", label: "Dagens bokningar", icon: Clock },
+  { value: "today", label: "Idag (inskickade)", icon: Clock },
   { value: "week", label: "Senaste veckan", icon: Calendar },
   { value: "month", label: "Senaste månaden", icon: Calendar },
 ];

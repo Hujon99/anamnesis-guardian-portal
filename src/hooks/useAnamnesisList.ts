@@ -89,6 +89,7 @@ export const useAnamnesisList = () => {
           .from("anamnes_entries")
           .select("*")
           .eq("organization_id", organization.id)
+          .order("booking_date", { ascending: false, nullsFirst: false })
           .order("sent_at", { ascending: false });
 
         if (error) {
@@ -304,21 +305,31 @@ export const useAnamnesisList = () => {
     
     // Filter by time
     if (filters.timeFilter) {
-      const sentDate = entry.sent_at ? new Date(entry.sent_at) : null;
-      if (!sentDate) return false;
-      
       const now = new Date();
-      if (filters.timeFilter === "today" && !isSameDay(sentDate, now)) {
-        return false;
-      } else if (filters.timeFilter === "week") {
-        const weekAgo = subDays(now, 7);
-        if (sentDate < weekAgo) {
+      
+      if (filters.timeFilter === "today_bookings") {
+        // Filter by booking_date for today's bookings
+        const bookingDate = entry.booking_date ? new Date(entry.booking_date) : null;
+        if (!bookingDate || !isSameDay(bookingDate, now)) {
           return false;
         }
-      } else if (filters.timeFilter === "month") {
-        const monthAgo = subDays(now, 30);
-        if (sentDate < monthAgo) {
+      } else {
+        // Filter by sent_at for other time filters
+        const sentDate = entry.sent_at ? new Date(entry.sent_at) : null;
+        if (!sentDate) return false;
+        
+        if (filters.timeFilter === "today" && !isSameDay(sentDate, now)) {
           return false;
+        } else if (filters.timeFilter === "week") {
+          const weekAgo = subDays(now, 7);
+          if (sentDate < weekAgo) {
+            return false;
+          }
+        } else if (filters.timeFilter === "month") {
+          const monthAgo = subDays(now, 30);
+          if (sentDate < monthAgo) {
+            return false;
+          }
         }
       }
     }
@@ -339,7 +350,31 @@ export const useAnamnesisList = () => {
     
     return true;
   }).sort((a, b) => {
-    // Sort by sent_at date
+    // Primary sort by booking_date (today's bookings first)
+    const bookingDateA = a.booking_date ? new Date(a.booking_date) : null;
+    const bookingDateB = b.booking_date ? new Date(b.booking_date) : null;
+    const now = new Date();
+    
+    // Check if entries have today's booking date
+    const isBookingTodayA = bookingDateA && isSameDay(bookingDateA, now);
+    const isBookingTodayB = bookingDateB && isSameDay(bookingDateB, now);
+    
+    // Prioritize today's bookings
+    if (isBookingTodayA && !isBookingTodayB) return -1;
+    if (!isBookingTodayA && isBookingTodayB) return 1;
+    
+    // If both have booking dates, sort by booking date
+    if (bookingDateA && bookingDateB) {
+      return filters.sortDescending 
+        ? bookingDateB.getTime() - bookingDateA.getTime() 
+        : bookingDateA.getTime() - bookingDateB.getTime();
+    }
+    
+    // If only one has booking date, prioritize that one
+    if (bookingDateA && !bookingDateB) return -1;
+    if (!bookingDateA && bookingDateB) return 1;
+    
+    // Fallback to sent_at date for entries without booking_date
     const dateA = a.sent_at ? new Date(a.sent_at) : new Date(0);
     const dateB = b.sent_at ? new Date(b.sent_at) : new Date(0);
     

@@ -102,6 +102,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
     console.log("User ID:", userId);
     console.log("Organization ID:", organization?.id);
     console.log("Supabase ready:", isReady);
+    console.log("refreshClient function:", typeof refreshClient);
     
     if (!userId || !organization?.id || !isReady) {
       console.error("Missing required data for submission");

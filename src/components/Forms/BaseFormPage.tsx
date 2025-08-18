@@ -434,8 +434,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
           }}
         >
           <div className="space-y-4" key={formKey}>
-            {/* Show info card for magic link entries */}
-            {showBookingInfo && isMagicLink && (
+            {/* Show info card when booking information is available */}
+            {showBookingInfo && (firstName || bookingId || bookingDate || storeId) && (
               <BookingInfoCard 
                 firstName={firstName}
                 bookingId={bookingId}

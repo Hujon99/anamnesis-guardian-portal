@@ -32,6 +32,7 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
+import { FeedbackButton } from "@/components/Feedback/FeedbackButton";
 
 export function AppSidebar() {
   const { has, userId } = useAuth();
@@ -142,6 +143,15 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup>
+          <SidebarGroupLabel>Support</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <FeedbackButton />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

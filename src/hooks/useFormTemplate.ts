@@ -73,11 +73,20 @@ export const useFormTemplate = (examinationType?: string) => {
           
           // Otherwise, fetch the default template
           // console.log("[useFormTemplate]: No org template found, using default");
-          const { data: defaultTemplate, error: defaultError } = await supabase
+          let defaultQuery = supabase
             .from('anamnes_forms')
             .select("*")
-            .is('organization_id', null)
-            .maybeSingle();
+            .is('organization_id', null);
+            
+          // Add examination type filter if provided
+          if (examinationType) {
+            defaultQuery = defaultQuery.eq('examination_type', examinationType);
+            var { data: defaultTemplate, error: defaultError } = await defaultQuery.maybeSingle();
+          } else {
+            // If no examination type specified, get the first available default template
+            var { data: defaultTemplates, error: defaultError } = await defaultQuery.limit(1);
+            var defaultTemplate = defaultTemplates?.[0] || null;
+          }
             
           if (defaultError) {
             console.error("[useFormTemplate]: Error fetching default template:", defaultError);
@@ -99,11 +108,20 @@ export const useFormTemplate = (examinationType?: string) => {
           };
         } else {
           // No organization ID, just get the default template
-          const { data, error } = await supabase
+          let query = supabase
             .from('anamnes_forms')
             .select("*")
-            .is('organization_id', null)
-            .maybeSingle();
+            .is('organization_id', null);
+            
+          // Add examination type filter if provided
+          if (examinationType) {
+            query = query.eq('examination_type', examinationType);
+            var { data, error } = await query.maybeSingle();
+          } else {
+            // If no examination type specified, get the first available default template
+            var { data: templates, error } = await query.limit(1);
+            var data = templates?.[0] || null;
+          }
             
           if (error) {
             console.error("[useFormTemplate]: Error fetching default template:", error);

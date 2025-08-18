@@ -96,6 +96,80 @@ export async function runAutoDeletion(supabase: SupabaseClient): Promise<{
 }
 
 /**
+ * Runs cleanup for stuck forms (status='sent' older than 2 hours)
+ * @returns Object containing information about the cleanup process
+ */
+export async function runStuckFormsCleanup(supabase: SupabaseClient): Promise<{
+  deletedEntries: number;
+  organizationsAffected?: string[];
+  error?: any;
+}> {
+  try {
+    console.log('Starting stuck forms cleanup process...');
+    
+    // Calculate 2 hours ago timestamp
+    const twoHoursAgo = new Date();
+    twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
+    
+    // Find stuck forms (status='sent' and older than 2 hours) in batches
+    const { data: stuckForms, error: fetchError } = await supabase
+      .from('anamnes_entries')
+      .select('id, organization_id, status, created_at')
+      .eq('status', 'sent')
+      .lt('created_at', twoHoursAgo.toISOString())
+      .limit(500); // Process in batches to avoid timeouts
+
+    if (fetchError) {
+      console.error('Error fetching stuck forms:', fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Found ${stuckForms?.length || 0} stuck forms to delete`);
+
+    if (!stuckForms || stuckForms.length === 0) {
+      return { deletedEntries: 0 };
+    }
+
+    const organizationIds = [...new Set(stuckForms.map(entry => entry.organization_id))];
+    console.log('Organizations affected by stuck form cleanup:', organizationIds);
+    
+    // Delete the stuck forms
+    const { error: deleteError } = await supabase
+      .from('anamnes_entries')
+      .delete()
+      .in('id', stuckForms.map(entry => entry.id));
+
+    if (deleteError) {
+      console.error('Error deleting stuck forms:', deleteError);
+      throw deleteError;
+    }
+
+    // Update last_auto_deletion_run for affected organizations
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        organizationIds.map(id => ({
+          organization_id: id,
+          last_auto_deletion_run: new Date().toISOString()
+        })),
+        { onConflict: 'organization_id' }
+      );
+
+    return {
+      deletedEntries: stuckForms.length,
+      organizationsAffected: organizationIds
+    };
+  } catch (error) {
+    console.error('Error in runStuckFormsCleanup:', error);
+    return {
+      deletedEntries: 0,
+      error
+    };
+  }
+}
+
+
+/**
  * Logs the result of an auto deletion process
  * @param supabase Supabase client
  * @param result Result of the auto deletion process

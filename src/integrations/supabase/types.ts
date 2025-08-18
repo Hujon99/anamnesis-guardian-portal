@@ -110,7 +110,9 @@ export type Database = {
       anamnes_forms: {
         Row: {
           created_at: string | null
-          examination_type: string | null
+          examination_type:
+            | Database["public"]["Enums"]["Synundersökning"]
+            | null
           id: string
           organization_id: string | null
           schema: Json
@@ -118,7 +120,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          examination_type?: string | null
+          examination_type?:
+            | Database["public"]["Enums"]["Synundersökning"]
+            | null
           id?: string
           organization_id?: string | null
           schema: Json
@@ -126,7 +130,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          examination_type?: string | null
+          examination_type?:
+            | Database["public"]["Enums"]["Synundersökning"]
+            | null
           id?: string
           organization_id?: string | null
           schema?: Json
@@ -391,7 +397,10 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      Synundersökning:
+        | "Synundersökning"
+        | "Körkortsundersökning"
+        | "Linsundersökning"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -518,6 +527,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      Synundersökning: [
+        "Synundersökning",
+        "Körkortsundersökning",
+        "Linsundersökning",
+      ],
+    },
   },
 } as const

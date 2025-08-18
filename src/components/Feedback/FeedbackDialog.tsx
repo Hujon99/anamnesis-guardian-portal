@@ -122,31 +122,48 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 
       // Upload screenshot if provided
       if (screenshot && feedbackData) {
+        console.log("Starting screenshot upload...", { screenshot: screenshot.name, feedbackId: feedbackData.id });
         const fileExt = screenshot.name.split('.').pop();
         const fileName = `${feedbackData.id}/${Date.now()}.${fileExt}`;
         const filePath = `${organization.id}/${fileName}`;
+        
+        console.log("Upload path:", filePath);
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError, data: uploadData } = await supabase.storage
           .from("feedback-screenshots")
           .upload(filePath, screenshot, {
             cacheControl: "3600",
             upsert: false,
           });
 
+        console.log("Upload result:", { uploadError, uploadData });
+
         if (uploadError) {
           console.error("Screenshot upload error:", uploadError);
-          // Don't fail the entire submission for screenshot upload failure
+          toast({
+            variant: "destructive", 
+            title: "Bilduppladdning misslyckades",
+            description: "Feedback skickades men bilden kunde inte laddas upp.",
+          });
         } else {
           screenshotUrl = filePath;
+          console.log("Screenshot uploaded successfully to:", screenshotUrl);
         }
       }
 
       // Update feedback with screenshot URL if uploaded
       if (screenshotUrl) {
-        await supabase
+        console.log("Updating feedback with screenshot URL:", screenshotUrl);
+        const { error: updateError } = await supabase
           .from("feedback")
           .update({ screenshot_url: screenshotUrl })
           .eq("id", feedbackData.id);
+          
+        if (updateError) {
+          console.error("Error updating feedback with screenshot URL:", updateError);
+        } else {
+          console.log("Screenshot URL saved to database successfully");
+        }
       }
 
       toast({

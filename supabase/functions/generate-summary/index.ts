@@ -128,6 +128,12 @@ Strukturera sammanfattningen tydligt, förslagsvis under följande rubriker (anp
   - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier)
   - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)
 
+
+OBS! OM det är ett kortare formulär med frågor bara för körkort behöver du inte ha alla rubriker ovan.
+OM allt är NORMALT (Nej på alla frågor) - Säg att allt är normalt och att licens kan ges, samt vilken typ av licens de vill ha.
+OM något är AVVIKANDE (Ja + förklarande svar/text), inkludera fråga och svar och säg att resten var normalt!
+OBS OBS OBS! Detta är ENDAST för körkortsformulär, inte för de övriga.
+
 Viktiga instruktioner:
   1. Inkludera endast information som uttryckligen finns i den angivna fråge- och svarslistan. Gör inga egna antaganden,   tolkningar eller tillägg.
   2. Var koncis och fokusera på det kliniskt relevanta.

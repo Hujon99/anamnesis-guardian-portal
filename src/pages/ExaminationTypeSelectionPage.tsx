@@ -119,9 +119,9 @@ const ExaminationTypeSelectionPage = () => {
     params.set("form_id", examinationType.formId);
     params.set("examination_type", examinationType.type);
     
-    // Add all preserved parameters if they exist
+    // Add preserved parameters EXCEPT booking_date (customer should choose their own date)
     Object.entries(preservedParams).forEach(([key, value]) => {
-      if (value) {
+      if (value && key !== 'booking_date') {
         params.set(key, value);
       }
     });

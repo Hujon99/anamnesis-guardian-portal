@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { useFormTemplate, FormTemplateWithMeta } from "./useFormTemplate";
+import { useFormTemplateByFormId, FormTemplateWithMeta as FormTemplateByIdWithMeta } from "./useFormTemplateByFormId";
 import { useTokenManager } from "./useTokenManager";
 import { AnamnesesEntry } from "@/types/anamnesis";
 
@@ -77,7 +78,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     }
   }, [token]);
   
-  // Get the form template for the organization
+  // Get the form template - prioritize specific form_id if available
   const { 
     data: formTemplate, 
     refetch: refetchFormTemplate,
@@ -85,6 +86,22 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     isSuccess: formTemplateSuccess,
     isError: formTemplateError
   } = useFormTemplate();
+  
+  // Get specific form template by form_id if we have one
+  const { 
+    data: specificFormTemplate, 
+    refetch: refetchSpecificFormTemplate,
+    isLoading: specificFormTemplateLoading,
+    isSuccess: specificFormTemplateSuccess,
+    isError: specificFormTemplateError
+  } = useFormTemplateByFormId(formId || undefined);
+  
+  // Determine which template to use - prioritize specific form template
+  const activeFormTemplate = specificFormTemplate || formTemplate;
+  const activeFormTemplateLoading = formId ? specificFormTemplateLoading : formTemplateLoading;
+  const activeFormTemplateSuccess = formId ? specificFormTemplateSuccess : formTemplateSuccess;
+  const activeFormTemplateError = formId ? specificFormTemplateError : formTemplateError;
+  const activeRefetchFormTemplate = formId ? refetchSpecificFormTemplate : refetchFormTemplate;
   
   // Circuit breaker reset when unmounting/remounting or token changes
   useEffect(() => {
@@ -147,10 +164,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     // Check for completion conditions
     if (!loading && 
         !isVerifyingRef.current && 
-        formTemplateSuccess && 
-        !formTemplateLoading && 
+        activeFormTemplateSuccess && 
+        !activeFormTemplateLoading && 
         entryData && 
-        formTemplate && 
+        activeFormTemplate && 
         !error && 
         !expired && 
         !submitted) {
@@ -176,14 +193,14 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     }
     
     // If verification is already completed AND we have data, skip
-    if (verificationCompletedRef.current && entryData && formTemplate) {
+    if (verificationCompletedRef.current && entryData && activeFormTemplate) {
       return;
     }
     
     // Skip if same token was already verified successfully
     if (lastVerifiedTokenRef.current === effectiveToken && entryData) {
       // But still mark as fully loaded if needed
-      if (!isFullyLoaded && formTemplate) {
+      if (!isFullyLoaded && activeFormTemplate) {
         setIsFullyLoaded(true);
         setFormLoading(false);
       }
@@ -295,7 +312,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
           
           // Continue to fetch form template
           setLoading(false);
-          await refetchFormTemplate();
+          await activeRefetchFormTemplate();
           requestInProgressRef.current = false;
           return;
         }
@@ -361,7 +378,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         foundDataRef.current = true;
         
         // Fetch form template
-        await refetchFormTemplate();
+        await activeRefetchFormTemplate();
         
         // Clear errors
         setError(null);
@@ -394,7 +411,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     
     // Start verification process
     verifyToken();
-  }, [token, supabase, refetchFormTemplate, tokenManager, retryCount, isSupabaseReady, entryData, formTemplate, isFullyLoaded]);
+  }, [token, supabase, activeRefetchFormTemplate, tokenManager, retryCount, isSupabaseReady, entryData, activeFormTemplate, isFullyLoaded]);
 
   // Form template effect - handle form template loading status
   useEffect(() => {
@@ -406,7 +423,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     }
     
     // Handle form template error
-    if (formTemplateError) {
+    if (activeFormTemplateError) {
       console.error(`[useTokenVerification/${instanceIdRef.current}]: Form template error`);
       setError("Kunde inte ladda formulärmallen");
       setErrorCode("template_error");
@@ -415,7 +432,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     }
     
     // Handle form template success
-    if (formTemplateSuccess && formTemplate) {
+    if (activeFormTemplateSuccess && activeFormTemplate) {
       console.log(`[useTokenVerification/${instanceIdRef.current}]: Form template loaded successfully`);
       isVerifyingRef.current = false;
       verificationCompletedRef.current = true;
@@ -426,7 +443,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
         setFormLoading(false);
       }
     }
-  }, [formTemplateError, formTemplateSuccess, formTemplate, token, entryData]);
+  }, [activeFormTemplateError, activeFormTemplateSuccess, activeFormTemplate, token, entryData]);
   
   // Retry handler
   const handleRetry = () => {
@@ -460,7 +477,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     setRetryCount(prev => prev + 1);
     
     // Trigger form template refetch
-    refetchFormTemplate();
+    activeRefetchFormTemplate();
   };
   
   // Return appropriate result for null token
@@ -489,7 +506,7 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     diagnosticInfo,
     expired,
     submitted,
-    formTemplate,
+    formTemplate: activeFormTemplate,
     entryData,
     handleRetry,
     isFullyLoaded

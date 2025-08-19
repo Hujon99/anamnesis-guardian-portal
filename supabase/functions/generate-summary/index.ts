@@ -130,8 +130,8 @@ Strukturera sammanfattningen tydligt, förslagsvis under följande rubriker (anp
 
 
 OBS! OM det är ett kortare formulär med frågor bara för körkort behöver du inte ha alla rubriker ovan.
-OM allt är NORMALT (Nej på alla frågor) - Säg att allt är normalt och att licens kan ges, samt vilken typ av licens de vill ha.
-OM något är AVVIKANDE (Ja + förklarande svar/text), inkludera fråga och svar och säg att resten var normalt!
+OM allt är NORMALT (Nej på alla frågor) - Säg att allt är normalt och att licens kan ges, samt vilken typ av licens de vill ha. Skippa då alla rubriker, och ha bara en KORT anamnes.
+OM något är AVVIKANDE (Ja + förklarande svar/text), inkludera fråga och svar och säg att resten var normalt! Skippa även här alla rubriker.
 OBS OBS OBS! Detta är ENDAST för körkortsformulär, inte för de övriga.
 
 Viktiga instruktioner:

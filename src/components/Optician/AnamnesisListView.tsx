@@ -176,6 +176,21 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   function getEntryExpirationInfo(entry: AnamnesesEntry) {
     if (!entry.auto_deletion_timestamp) return { isExpired: false, daysUntilExpiration: null };
     
+    // Only show deletion messages for entries that will actually be auto-deleted
+    const deletionEligibleStatuses = ['journaled', 'ready', 'reviewed'];
+    if (!deletionEligibleStatuses.includes(entry.status)) {
+      return { isExpired: false, daysUntilExpiration: null };
+    }
+    
+    // For bookings, only show deletion message if booking date has passed
+    if (entry.booking_date) {
+      const now = new Date();
+      const bookingDate = new Date(entry.booking_date);
+      if (bookingDate > now) {
+        return { isExpired: false, daysUntilExpiration: null };
+      }
+    }
+    
     const now = new Date();
     const expirationDate = new Date(entry.auto_deletion_timestamp);
     const isExpired = expirationDate < now;

@@ -131,50 +131,6 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
              now - cachedData.lastVerified < VERIFICATION_COOLDOWN_MS);
   }, []);
   
-  // Verify token directly in the database if edge function fails
-  const verifyTokenWithDatabase = useCallback(async (token: string) => {
-    if (!supabaseClient) {
-      throw new Error("Supabase client not initialized");
-    }
-    
-    console.log("[useTokenManager]: Attempting direct database verification");
-    
-    try {
-      // First get the entry
-      const { data: entry, error } = await supabaseClient
-        .from('anamnes_entries')
-        .select('*')
-        .eq('access_token', token)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("[useTokenManager/verifyTokenWithDatabase]: Database error:", error);
-        throw new Error(`Database error: ${error.message}`);
-      }
-      
-      if (!entry) {
-        console.log("[useTokenManager/verifyTokenWithDatabase]: No entry found");
-        return { valid: false, error: "Token not found" };
-      }
-      
-      // Check if the entry has expired
-      if (entry.expires_at && new Date(entry.expires_at) < new Date()) {
-        console.log("[useTokenManager/verifyTokenWithDatabase]: Token expired");
-        return { valid: false, error: "Token expired", expired: true };
-      }
-      
-      // Check if already submitted
-      if (entry.status === 'submitted') {
-        return { valid: true, entry, submitted: true };
-      }
-      
-      console.log("[useTokenManager/verifyTokenWithDatabase]: Token verified successfully");
-      return { valid: true, entry };
-    } catch (error) {
-      console.error("[useTokenManager]: Database verification error:", error);
-      throw error;
-    }
-  }, [supabaseClient]);
   
   // Reset verification state
   const resetVerification = useCallback(() => {
@@ -296,13 +252,15 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
               console.error("[useTokenManager]: Failed to parse error response:", parseError);
             }
             
-            // If edge function returned 404 (not found) or other server error,
-            // fall back to direct database verification
+            // If edge function returned 404 (not found) or server error, fail
             if (response.status === 404 || response.status >= 500) {
-              console.warn("[useTokenManager]: Edge function unavailable, falling back to direct database verification");
-              const dbResult = await verifyTokenWithDatabase(token);
-              saveToCache(token, dbResult);
-              return dbResult;
+              console.error("[useTokenManager]: Edge function unavailable, no fallback available");
+              setVerificationError("Tjänsten är för närvarande otillgänglig");
+              setIsVerifying(false);
+              
+              const result = { valid: false, error: "Service unavailable" };
+              saveToCache(token, result);
+              return result;
             }
             
             // Otherwise, handle as a legitimate error
@@ -353,22 +311,14 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
           saveToCache(token, result);
           return result;
         } catch (fetchError: any) {
-          // Network error or other fetch error - fall back to direct database verification
-          console.warn("[useTokenManager]: Edge function fetch error, falling back to direct database:", fetchError);
-          try {
-            const dbResult = await verifyTokenWithDatabase(token);
-            saveToCache(token, dbResult);
-            return dbResult;
-          } catch (dbError) {
-            // If database verification also fails, handle as an error
-            console.error("[useTokenManager]: Database verification also failed:", dbError);
-            const errorMsg = "Failed to verify token: " + (dbError.message || "Unknown error");
-            setVerificationError(errorMsg);
-            
-            const result = { valid: false, error: errorMsg };
-            saveToCache(token, result);
-            return result;
-          }
+          // Network error or other fetch error - no fallback available
+          console.error("[useTokenManager]: Edge function fetch error:", fetchError);
+          const errorMsg = "Nätverksfel: Kunde inte nå verifieringstjänsten";
+          setVerificationError(errorMsg);
+          
+          const result = { valid: false, error: errorMsg };
+          saveToCache(token, result);
+          return result;
         }
         
       } catch (err: any) {
@@ -396,7 +346,7 @@ export const useTokenManager = (supabaseClient?: SupabaseClient<Database>) => {
     };
     
     return verificationPromise;
-  }, [supabaseClient, verifyTokenWithDatabase, getFromCache, saveToCache, isVerificationInProgress]);
+  }, [supabaseClient, getFromCache, saveToCache, isVerificationInProgress]);
 
   return {
     getTokenFromCache: getFromCache,

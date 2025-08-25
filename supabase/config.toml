@@ -34,3 +34,6 @@ verify_jwt = false
 
 [functions.generate-summary]
 verify_jwt = false
+
+[functions.save-draft]
+verify_jwt = false

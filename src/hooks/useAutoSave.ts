@@ -57,24 +57,13 @@ export const useAutoSave = ({
       
       console.log("[AutoSave] Saving form data for token:", token.substring(0, 6) + "...");
       
-      // Format data for storage
-      const formattedRawData = JSON.stringify({ 
-        answers: data,
-        meta: {
-          auto_saved: true,
-          saved_at: new Date().toISOString(),
-          form_template_id: formTemplate?.id || null
+      // Call the save-draft edge function instead of direct database access
+      const { error } = await supabase.functions.invoke('save-draft', {
+        body: {
+          token,
+          formData: data
         }
       });
-      
-      // Call the update endpoint to save the data
-      const { error } = await supabase
-        .from("anamnes_entries")
-        .update({ 
-          formatted_raw_data: formattedRawData,
-          status: "in_progress" 
-        })
-        .eq("access_token", token);
       
       if (error) {
         console.error("[AutoSave] Error saving data:", error);

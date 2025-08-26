@@ -1,12 +1,18 @@
+
 /**
  * This file provides utility functions for anamnesis entry mutations.
  * It includes functions for updating entry statuses, formatted raw data, notes, patient information,
  * and ensures consistent error handling and payload formatting.
+ *
+ * Additions:
+ *  - Access logging (READ) via RPC for explicit SELECTs we perform during mutation flows
+ *    (e.g., validation lookups). Writes are already covered by DB triggers.
  */
 
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { handleSupabaseError } from "./supabaseClientUtils";
+import { logAccess } from "./auditLogClient";
 
 /**
  * Updates an anamnesis entry with the provided fields
@@ -34,6 +40,10 @@ export const updateEntry = async (
     console.error("Error updating entry:", error);
     throw handleSupabaseError(error);
   }
+
+  // DB trigger will log the change; add context access log for traceability:
+  logAccess(supabase, { table: "anamnes_entries", recordId: entryId, purpose: "update_via_util" });
+
   return data;
 };
 
@@ -144,6 +154,9 @@ export const assignStoreToEntry = async (
     if (!entryData) {
       throw new Error("Anamnesen hittades inte");
     }
+
+    // Access log: we explicitly read the entry to validate assignment
+    logAccess(supabase, { table: "anamnes_entries", recordId: entryId, purpose: "store_assignment:entry_validation" });
     
     const entryOrganizationId = entryData.organization_id;
     console.log(`entryMutationUtils: Anamnesen tillhör organisation ${entryOrganizationId}`);
@@ -174,6 +187,9 @@ export const assignStoreToEntry = async (
       if (!storeData) {
         throw new Error(`Butik med ID ${storeId} existerar inte`);
       }
+
+      // Access log: we explicitly read a store record to validate assignment
+      logAccess(supabase, { table: "stores", recordId: storeData.id, purpose: "store_assignment:store_validation" });
       
       // Critical validation: Check if store belongs to the same organization as the entry
       if (storeData.organization_id !== entryOrganizationId) {
@@ -206,6 +222,9 @@ export const assignStoreToEntry = async (
     }
     
     console.log(`entryMutationUtils: Butikstilldelning lyckades, fick resultat:`, data);
+
+    // DB trigger will log the update; add context access log
+    logAccess(supabase, { table: "anamnes_entries", recordId: entryId, purpose: "store_assignment:update" });
     return data;
   } catch (error) {
     console.error(`entryMutationUtils: Butikstilldelning misslyckades:`, error);

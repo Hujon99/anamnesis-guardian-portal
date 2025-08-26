@@ -3,10 +3,15 @@
  * Utilities for creating and configuring Supabase clients.
  * These functions handle the creation of authenticated and unauthenticated
  * Supabase clients with the appropriate configuration.
+ *
+ * Additions:
+ *  - Lightweight access logging (READ) via public.log_access RPC using the centralized helper.
+ *  - This improves GDPR auditability without altering existing data flows.
  */
 
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
+import { logAccess } from "./auditLogClient";
 
 // Supabase configuration
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://jawtwwwelxaaprzsqfyp.supabase.co";
@@ -99,6 +104,8 @@ export const storesUtils = {
       .single();
       
     if (!findError && existingStore) {
+      // Access log for direct match
+      logAccess(supabase, { table: 'stores', recordId: existingStore.id, purpose: 'find_or_create:found' });
       return existingStore;
     }
     
@@ -117,6 +124,8 @@ export const storesUtils = {
       throw handleSupabaseError(createError);
     }
     
+    // Creation is a write; DB triggers will log the change. We still log an access context if needed:
+    logAccess(supabase, { table: 'stores', recordId: newStore?.id ?? null, purpose: 'find_or_create:created' });
     return newStore;
   },
   
@@ -140,6 +149,9 @@ export const storesUtils = {
     if (error) {
       throw handleSupabaseError(error);
     }
+
+    // Access log for listing (no single record id)
+    logAccess(supabase, { table: 'stores', recordId: null, purpose: 'list_by_org' });
     
     return data || [];
   },
@@ -168,6 +180,9 @@ export const storesUtils = {
       }
       throw handleSupabaseError(error);
     }
+
+    // Access log with specific record id
+    logAccess(supabase, { table: 'stores', recordId: storeId, purpose: 'detail_view' });
     
     return data;
   }
@@ -200,6 +215,8 @@ export const opticianUtils = {
       throw handleSupabaseError(error);
     }
     
+    // Writes are logged by DB triggers; optionally add context access log:
+    logAccess(supabase, { table: 'anamnes_entries', recordId: entryId, purpose: 'assign_optician' });
     return data;
   },
   
@@ -224,6 +241,9 @@ export const opticianUtils = {
     if (error) {
       throw handleSupabaseError(error);
     }
+
+    // Access log for list view for the optician
+    logAccess(supabase, { table: 'anamnes_entries', recordId: null, purpose: 'assigned_entries_list' });
     
     return data || [];
   },
@@ -248,6 +268,9 @@ export const opticianUtils = {
     if (error) {
       throw handleSupabaseError(error);
     }
+
+    // Access log for listing org opticians
+    logAccess(supabase, { table: 'users', recordId: null, purpose: 'org_opticians_list' });
     
     return data || [];
   }

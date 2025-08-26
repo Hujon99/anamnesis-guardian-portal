@@ -6,19 +6,23 @@
 
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { logAccess } from "@/utils/auditLogClient";
 
 interface SummaryGeneratorProps {
   formattedRawData: string;
   onSaveSummary: (summary: string) => void;
+  entryId?: string; // Add entryId for audit logging
 }
 
 export const useSummaryGenerator = ({
   formattedRawData,
-  onSaveSummary
+  onSaveSummary,
+  entryId
 }: SummaryGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const { supabase } = useSupabaseClient();
 
   const generateSummary = async () => {
     if (!formattedRawData) {
@@ -33,6 +37,16 @@ export const useSummaryGenerator = ({
     setIsGenerating(true);
     
     try {
+      // Log AI summary generation request
+      if (entryId) {
+        await logAccess(supabase, {
+          table: 'anamnes_entries',
+          recordId: entryId,
+          purpose: 'generate_summary',
+          route: window.location.pathname
+        });
+      }
+      
       const { data, error } = await supabase.functions.invoke('generate-summary', {
         body: {
           promptText: formattedRawData

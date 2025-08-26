@@ -48,6 +48,7 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { toast } from "@/hooks/use-toast";
 import { useStores } from "@/hooks/useStores";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
+import { logAccess } from "@/utils/auditLogClient";
 
 interface AnamnesisListItemProps {
   entry: AnamnesesEntry & {
@@ -125,6 +126,14 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
+      
+      // Log the deletion attempt
+      await logAccess(supabase, {
+        table: 'anamnes_entries',
+        recordId: entry.id,
+        purpose: 'delete',
+        route: window.location.pathname
+      });
       
       const { error } = await supabase
         .from("anamnes_entries")

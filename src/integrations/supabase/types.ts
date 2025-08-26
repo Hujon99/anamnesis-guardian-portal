@@ -182,6 +182,48 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_data_access: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          ip_address_anonymized: string | null
+          organization_id: string
+          purpose: string | null
+          record_id: string | null
+          route: string | null
+          table_name: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          ip_address_anonymized?: string | null
+          organization_id: string
+          purpose?: string | null
+          record_id?: string | null
+          route?: string | null
+          table_name: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          ip_address_anonymized?: string | null
+          organization_id?: string
+          purpose?: string | null
+          record_id?: string | null
+          route?: string | null
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       auto_deletion_logs: {
         Row: {
           entries_deleted: number | null
@@ -467,6 +509,15 @@ export type Database = {
           organization_id: string
           phone: string
         }[]
+      }
+      log_access: {
+        Args: {
+          p_purpose?: string
+          p_record_id?: string
+          p_route?: string
+          p_table_name: string
+        }
+        Returns: undefined
       }
       set_access_token: {
         Args: { token: string }

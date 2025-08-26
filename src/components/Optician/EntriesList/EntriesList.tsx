@@ -15,6 +15,8 @@ import { useStores } from "@/hooks/useStores";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { logAccess } from "@/utils/auditLogClient";
 
 interface EntriesListProps {
   entries: (AnamnesesEntry & {
@@ -45,6 +47,7 @@ export function EntriesList({
   const { opticians } = useOpticians();
   const { stores, refetch: refetchStores, getStoreName, getStoreMap, forceRefreshStores } = useStores();
   const { has } = useAuth();
+  const { supabase } = useSupabaseClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showStoreDataWarning, setShowStoreDataWarning] = useState(false);
   
@@ -191,8 +194,22 @@ export function EntriesList({
           // Lookup store name directly from our map
           const storeNameFromMap = entry.store_id ? getStoreName(entry.store_id) : null;
           
-          // Set final store name, with fallbacks
+  // Set final store name, with fallbacks
           const storeName = storeNameFromMap || entry.storeName || null;
+          
+          // Handler for entry selection with audit logging
+          const handleSelectEntry = async () => {
+            // Log the access to anamnesis entry
+            await logAccess(supabase, {
+              table: 'anamnes_entries',
+              recordId: entry.id,
+              purpose: 'detail_view',
+              route: window.location.pathname
+            });
+            
+            // Call the original onSelectEntry
+            onSelectEntry(entry);
+          };
           
           return (
             <AnamnesisListItem
@@ -201,7 +218,7 @@ export function EntriesList({
                 ...entry,
                 storeName: storeName
               }}
-              onClick={() => onSelectEntry(entry)}
+              onClick={handleSelectEntry}
               onDelete={onEntryDeleted}
               onEntryUpdated={onEntryUpdated}
               onAssign={onEntryAssigned}

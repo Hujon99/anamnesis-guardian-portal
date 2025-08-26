@@ -31,6 +31,7 @@ export const OptimizedAnswersView = ({
   answers,
   hasAnswers,
   status,
+  entryId,
   aiSummary,
   onSaveSummary,
   formattedRawData: initialFormattedRawData,
@@ -56,7 +57,8 @@ export const OptimizedAnswersView = ({
     copySummaryToClipboard
   } = useSummaryGenerator({
     formattedRawData: initialFormattedRawData,
-    onSaveSummary
+    onSaveSummary,
+    entryId // Pass entryId for audit logging
   });
 
   // Use the raw data manager hook

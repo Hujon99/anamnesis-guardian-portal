@@ -8,6 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.40.0';
+import { Webhook } from 'https://esm.sh/svix@1.19.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,8 +18,9 @@ const corsHeaders = {
 interface ClerkWebhookEvent {
   type: string;
   data: {
-    id: string;
-    email_addresses?: Array<{ email_address: string }>;
+    id: string; // For user: user id, for session: session id
+    user_id?: string; // Present on session events
+    email_addresses?: Array<{ id?: string; email_address: string }>;
     primary_email_address_id?: string;
     created_at?: number;
     updated_at?: number;
@@ -29,6 +31,7 @@ interface ClerkWebhookEvent {
   };
   object?: string;
 }
+
 
 // Initialize Supabase client with service role for database operations
 const supabase = createClient(
@@ -100,8 +103,34 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const webhookEvent: ClerkWebhookEvent = await req.json();
+    const bodyText = await req.text();
+    const svixId = req.headers.get('svix-id') || '';
+    const svixTimestamp = req.headers.get('svix-timestamp') || '';
+    const svixSignature = req.headers.get('svix-signature') || '';
+    const webhookSecret = Deno.env.get('CLERK_WEBHOOK_SECRET');
+
+    if (webhookSecret) {
+      try {
+        const wh = new Webhook(webhookSecret);
+        wh.verify(bodyText, {
+          'svix-id': svixId,
+          'svix-timestamp': svixTimestamp,
+          'svix-signature': svixSignature,
+        });
+      } catch (err) {
+        console.error('Clerk webhook signature verification failed:', err);
+        return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+    } else {
+      console.warn('CLERK_WEBHOOK_SECRET not set - skipping signature verification');
+    }
+
+    const webhookEvent: ClerkWebhookEvent = JSON.parse(bodyText);
     console.log('Received Clerk webhook:', webhookEvent.type);
+
 
     // Only process authentication-related events
     const relevantEvents = [
@@ -121,42 +150,62 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data } = webhookEvent;
     
-    // Get user's organization
-    const organizationId = await getUserOrganization(data.id);
-    if (!organizationId) {
-      console.log(`Skipping audit log for user ${data.id} - no organization found`);
-      return new Response(JSON.stringify({ status: 'skipped_no_org' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+    const isSessionEvent = webhookEvent.type.startsWith('session.');
+    const clerkUserId = isSessionEvent ? (data as any).user_id ?? (data as any).actor_user_id : (data as any).id;
+    const sessionId = isSessionEvent ? (data as any).id ?? null : null;
+
+    // Get user's organization (may be null)
+    const organizationId = await getUserOrganization(clerkUserId);
+
+    // Resolve primary email from payload; fallback to DB lookup
+    let primaryEmail: string | null = null;
+    if (Array.isArray((data as any).email_addresses) && (data as any).email_addresses.length > 0) {
+      const addresses = (data as any).email_addresses as Array<{ id?: string; email_address: string }>;
+      if ((data as any).primary_email_address_id) {
+        primaryEmail =
+          addresses.find((e) => e.id && e.id === (data as any).primary_email_address_id)?.email_address ??
+          addresses[0]?.email_address ??
+          null;
+      } else {
+        primaryEmail = addresses[0]?.email_address ?? null;
+      }
     }
 
-    // Get primary email
-    const primaryEmail = data.email_addresses?.find(
-      (email, index) => index === 0 || email.email_address
-    )?.email_address;
+    if (!primaryEmail) {
+      const { data: userRow, error: userFetchError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('clerk_user_id', clerkUserId)
+        .maybeSingle();
+
+      if (!userFetchError && userRow) {
+        primaryEmail = (userRow as any).email ?? null;
+      }
+    }
 
     // Get client information
     const userAgent = req.headers.get('user-agent') || 'unknown';
-    const clientIP = req.headers.get('x-forwarded-for') || 
-                     req.headers.get('x-real-ip') || 
-                     'unknown';
+    const clientIP =
+      req.headers.get('x-forwarded-for') ||
+      req.headers.get('x-real-ip') ||
+      'unknown';
 
     // Create audit log entry
     const auditLogData = {
       event_type: mapClerkEventToAuditType(webhookEvent.type),
-      user_id: data.id,
+      user_id: clerkUserId,
       organization_id: organizationId,
-      clerk_user_id: data.id,
+      clerk_user_id: clerkUserId,
       email: primaryEmail,
       ip_address_anonymized: anonymizeIP(clientIP),
       user_agent: userAgent.substring(0, 500), // Limit length
-      session_id: null, // Clerk doesn't provide session ID in webhooks
+      session_id: sessionId,
       metadata: {
         webhook_type: webhookEvent.type,
         timestamp: new Date().toISOString(),
-        created_at: data.created_at,
-        last_sign_in_at: data.last_sign_in_at
+        created_at: (data as any).created_at,
+        last_sign_in_at: (data as any).last_sign_in_at,
+        raw: { id: (data as any).id, user_id: (data as any).user_id ?? null }
       }
     };
 

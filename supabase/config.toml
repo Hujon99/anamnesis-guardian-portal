@@ -37,3 +37,6 @@ verify_jwt = false
 
 [functions.save-draft]
 verify_jwt = false
+
+[functions.clerk-auth-webhook]
+verify_jwt = false

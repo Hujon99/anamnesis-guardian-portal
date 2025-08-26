@@ -140,6 +140,48 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_auth_logs: {
+        Row: {
+          clerk_user_id: string | null
+          created_at: string
+          email: string | null
+          event_type: string
+          id: string
+          ip_address_anonymized: string | null
+          metadata: Json | null
+          organization_id: string
+          session_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          clerk_user_id?: string | null
+          created_at?: string
+          email?: string | null
+          event_type: string
+          id?: string
+          ip_address_anonymized?: string | null
+          metadata?: Json | null
+          organization_id: string
+          session_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          clerk_user_id?: string | null
+          created_at?: string
+          email?: string | null
+          event_type?: string
+          id?: string
+          ip_address_anonymized?: string | null
+          metadata?: Json | null
+          organization_id?: string
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       auto_deletion_logs: {
         Row: {
           entries_deleted: number | null

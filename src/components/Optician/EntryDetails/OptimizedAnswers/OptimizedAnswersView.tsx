@@ -6,8 +6,10 @@
  */
 
 import { FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { logAccess } from "@/utils/auditLogClient";
 import { ActionButtons } from "./ActionButtons";
 import { SaveIndicator } from "./SaveIndicator";
 import { ContentTabs } from "./ContentTabs";
@@ -42,6 +44,19 @@ export const OptimizedAnswersView = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
+  const { supabase } = useSupabaseClient();
+
+  // Log access to patient answers when component mounts with answers
+  useEffect(() => {
+    if (hasAnswers && answers && Object.keys(answers).length > 0) {
+      logAccess(supabase, {
+        table: 'anamnes_entries',
+        recordId: entryId,
+        purpose: 'view_patient_answers',
+        route: window.location.pathname
+      });
+    }
+  }, [hasAnswers, answers, entryId, supabase]);
 
   console.log("OptimizedAnswersView render:", { 
     aiSummary: aiSummary?.substring(0, 100) + "...", 

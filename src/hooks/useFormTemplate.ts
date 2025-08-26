@@ -52,6 +52,9 @@ export const useFormTemplate = (examinationType?: string) => {
             orgQuery = orgQuery.eq('examination_type', examinationType);
           }
           
+          // When multiple templates exist, pick the latest by created_at
+          orgQuery = orgQuery.order('created_at', { ascending: false }).limit(1);
+          
           const { data: orgTemplate, error: orgError } = await orgQuery.maybeSingle();
             
           if (orgError) {
@@ -80,11 +83,14 @@ export const useFormTemplate = (examinationType?: string) => {
             
           // Add examination type filter if provided
           if (examinationType) {
-            defaultQuery = defaultQuery.eq('examination_type', examinationType);
+            defaultQuery = defaultQuery
+              .eq('examination_type', examinationType)
+              .order('created_at', { ascending: false })
+              .limit(1);
             var { data: defaultTemplate, error: defaultError } = await defaultQuery.maybeSingle();
           } else {
-            // If no examination type specified, get the first available default template
-            var { data: defaultTemplates, error: defaultError } = await defaultQuery.limit(1);
+            // If no examination type specified, get the first available default template (latest)
+            var { data: defaultTemplates, error: defaultError } = await defaultQuery.order('created_at', { ascending: false }).limit(1);
             var defaultTemplate = defaultTemplates?.[0] || null;
           }
             
@@ -115,11 +121,14 @@ export const useFormTemplate = (examinationType?: string) => {
             
           // Add examination type filter if provided
           if (examinationType) {
-            query = query.eq('examination_type', examinationType);
+            query = query
+              .eq('examination_type', examinationType)
+              .order('created_at', { ascending: false })
+              .limit(1);
             var { data, error } = await query.maybeSingle();
           } else {
-            // If no examination type specified, get the first available default template
-            var { data: templates, error } = await query.limit(1);
+            // If no examination type specified, get the first available default template (latest)
+            var { data: templates, error } = await query.order('created_at', { ascending: false }).limit(1);
             var data = templates?.[0] || null;
           }
             

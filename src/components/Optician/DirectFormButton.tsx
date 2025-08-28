@@ -201,19 +201,7 @@ export const DirectFormButton: React.FC = () => {
 
   return (
     <>
-      <div className="space-y-2">
-        <div className="text-sm text-muted-foreground">
-          <Badge variant="secondary" className="mr-2">
-            {forms.length} formulär tillgängliga
-          </Badge>
-          {forms.length === 1 ? (
-            `Skapar automatiskt: ${forms[0].title}`
-          ) : (
-            "Välj undersökningstyp vid skapande"
-          )}
-        </div>
-        
-        <Button
+      <Button
           onClick={handleCreateDirectForm}
           disabled={isCreating || createDirectFormEntry.isPending}
           className="w-full"
@@ -232,13 +220,12 @@ export const DirectFormButton: React.FC = () => {
           )}
         </Button>
         
-        <ExaminationTypeSelector
-          open={showTypeSelector}
-          onOpenChange={setShowTypeSelector}
-          onSelect={handleFormTypeSelect}
-          isCreating={isCreating}
-        />
-      </div>
+      <ExaminationTypeSelector
+        open={showTypeSelector}
+        onOpenChange={setShowTypeSelector}
+        onSelect={handleFormTypeSelect}
+        isCreating={isCreating}
+      />
     </>
   );
 };

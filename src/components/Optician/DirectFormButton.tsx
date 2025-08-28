@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Plus, Users, Loader2 } from "lucide-react";
 import { useOrganizationForms, OrganizationForm } from "@/hooks/useOrganizationForms";
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useOrganization, useUser } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
@@ -29,6 +29,7 @@ export const DirectFormButton: React.FC = () => {
   const navigate = useNavigate();
   const { organization } = useOrganization();
   const { user } = useUser();
+  const { supabase, isReady } = useSupabaseClient();
   
   // Get available forms for the organization
   const { 
@@ -69,6 +70,7 @@ export const DirectFormButton: React.FC = () => {
           is_magic_link: false,
           created_by: user.id,
           created_by_name: user.fullName || user.firstName || "Okänd optiker",
+          patient_identifier: "Direkt ifyllning i butik",
           expires_at: expiresAt.toISOString(),
           // Set initial answers as empty object
           answers: {},

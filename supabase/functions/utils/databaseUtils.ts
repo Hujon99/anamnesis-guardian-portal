@@ -3,6 +3,10 @@
  * This utility module provides database operations for edge functions.
  * It includes functions for creating Supabase clients and common database queries.
  * Enhanced with improved error handling and SQL safety.
+ *
+ * Update: Introduced auto-redaction workflow for journaled/ready/reviewed entries.
+ * - runAutoRedaction: clears medical content and flags entries as redacted instead of deleting them
+ * - logRedactionResult: logs redaction outcomes to auto_redaction_logs
  */
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -168,7 +172,6 @@ export async function runStuckFormsCleanup(supabase: SupabaseClient): Promise<{
   }
 }
 
-
 /**
  * Logs the result of an auto deletion process
  * @param supabase Supabase client
@@ -196,5 +199,106 @@ export async function logDeletionResult(
     console.log('Successfully logged deletion result');
   } catch (logError) {
     console.error('Error logging deletion result:', logError);
+  }
+}
+
+/**
+ * Runs the auto redaction process for due journaled/ready/reviewed entries.
+ * Instead of deleting, clears medical content and flags as redacted.
+ */
+export async function runAutoRedaction(supabase: SupabaseClient): Promise<{
+  redactedEntries: number;
+  organizationsAffected?: string[];
+  error?: any;
+}> {
+  try {
+    console.log('Starting auto redaction process...');
+
+    // Find entries that are due for redaction: auto_deletion_timestamp passed, not yet redacted, and in target statuses
+    const { data: entriesToRedact, error: fetchError } = await supabase
+      .from('anamnes_entries')
+      .select('id, organization_id')
+      .lt('auto_deletion_timestamp', new Date().toISOString())
+      .not('auto_deletion_timestamp', 'is', null)
+      .eq('is_redacted', false)
+      .in('status', ['journaled', 'ready', 'reviewed']);
+
+    if (fetchError) {
+      console.error('Error fetching entries to redact:', fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Found ${entriesToRedact?.length || 0} entries to redact`);
+
+    if (!entriesToRedact || entriesToRedact.length === 0) {
+      return { redactedEntries: 0 };
+    }
+
+    const ids = entriesToRedact.map(e => e.id);
+    const organizationIds = [...new Set(entriesToRedact.map(e => e.organization_id))];
+
+    // Perform redaction: clear medical content and revoke access token, flag as redacted
+    const { error: updateError } = await supabase
+      .from('anamnes_entries')
+      .update({
+        is_redacted: true,
+        redacted_at: new Date().toISOString(),
+        answers: null,
+        formatted_raw_data: null,
+        ai_summary: null,
+        internal_notes: null,
+        access_token: null,
+      })
+      .in('id', ids);
+
+    if (updateError) {
+      console.error('Error redacting entries:', updateError);
+      throw updateError;
+    }
+
+    // Update last_auto_deletion_run (reuse setting to track maintenance cadence)
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        organizationIds.map(id => ({
+          organization_id: id,
+          last_auto_deletion_run: new Date().toISOString()
+        })),
+        { onConflict: 'organization_id' }
+      );
+
+    return {
+      redactedEntries: ids.length,
+      organizationsAffected: organizationIds,
+    };
+  } catch (error) {
+    console.error('Error in runAutoRedaction:', error);
+    return { redactedEntries: 0, error };
+  }
+}
+
+/**
+ * Logs the result of an auto redaction process
+ */
+export async function logRedactionResult(
+  supabase: SupabaseClient,
+  result: {
+    redactedEntries: number;
+    organizationsAffected?: string[];
+    error?: any;
+  }
+): Promise<void> {
+  try {
+    await supabase
+      .from('auto_redaction_logs')
+      .insert({
+        entries_redacted: result.redactedEntries,
+        organizations_affected: result.organizationsAffected || [],
+        error: result.error ? (result.error.message || String(result.error)) : null,
+        run_at: new Date().toISOString(),
+      });
+    console.log('Successfully logged redaction result');
+  } catch (logError) {
+    console.error('Error logging redaction result:', logError);
   }
 }

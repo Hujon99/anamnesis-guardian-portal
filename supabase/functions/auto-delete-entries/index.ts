@@ -7,7 +7,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { Database } from '../utils/database.types.ts'
-import { createSupabaseClient, runAutoDeletion, runStuckFormsCleanup, logDeletionResult } from '../utils/databaseUtils.ts'
+import { createSupabaseClient, runAutoRedaction, runStuckFormsCleanup, logDeletionResult, logRedactionResult } from '../utils/databaseUtils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,26 +29,26 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create Supabase client - missing credentials');
     }
 
-    // Run both auto deletion and stuck forms cleanup
-    console.log('Running both auto deletion and stuck forms cleanup...');
-    const [autoDeletionResult, stuckFormsResult] = await Promise.all([
-      runAutoDeletion(supabase),
+    // Run auto redaction and stuck forms cleanup in parallel
+    console.log('Running auto redaction and stuck forms cleanup...');
+    const [autoRedactionResult, stuckFormsResult] = await Promise.all([
+      runAutoRedaction(supabase),
       runStuckFormsCleanup(supabase)
     ]);
     
-    const totalDeleted = autoDeletionResult.deletedEntries + stuckFormsResult.deletedEntries;
+    const totalProcessed = autoRedactionResult.redactedEntries + stuckFormsResult.deletedEntries;
     const allOrganizations = [
-      ...(autoDeletionResult.organizationsAffected || []),
+      ...(autoRedactionResult.organizationsAffected || []),
       ...(stuckFormsResult.organizationsAffected || [])
     ];
     const uniqueOrganizations = [...new Set(allOrganizations)];
     
     // Log both results separately for audit trail
     await Promise.all([
-      logDeletionResult(supabase, {
-        deletedEntries: autoDeletionResult.deletedEntries,
-        organizationsAffected: autoDeletionResult.organizationsAffected,
-        error: autoDeletionResult.error
+      logRedactionResult(supabase, {
+        redactedEntries: autoRedactionResult.redactedEntries,
+        organizationsAffected: autoRedactionResult.organizationsAffected,
+        error: autoRedactionResult.error
       }),
       logDeletionResult(supabase, {
         deletedEntries: stuckFormsResult.deletedEntries,
@@ -57,26 +57,26 @@ Deno.serve(async (req) => {
       })
     ]);
 
-    if (totalDeleted === 0) {
-      console.log('No entries to delete from either cleanup process');
+    if (totalProcessed === 0) {
+      console.log('No entries to process from either redaction or cleanup');
       return new Response(JSON.stringify({ 
-        message: 'No entries to delete',
-        autoDeletion: autoDeletionResult.deletedEntries,
+        message: 'No entries to process',
+        autoRedaction: autoRedactionResult.redactedEntries,
         stuckFormsCleanup: stuckFormsResult.deletedEntries,
-        totalDeleted: 0
+        totalProcessed: 0
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
       });
     }
 
-    console.log(`Successfully deleted ${totalDeleted} total entries (auto: ${autoDeletionResult.deletedEntries}, stuck: ${stuckFormsResult.deletedEntries})`);
+    console.log(`Successfully processed ${totalProcessed} total entries (redacted: ${autoRedactionResult.redactedEntries}, stuck deleted: ${stuckFormsResult.deletedEntries})`);
 
     return new Response(JSON.stringify({ 
-      message: 'Cleanup completed successfully',
-      autoDeletion: autoDeletionResult.deletedEntries,
+      message: 'Redaction and cleanup completed successfully',
+      autoRedaction: autoRedactionResult.redactedEntries,
       stuckFormsCleanup: stuckFormsResult.deletedEntries,
-      totalDeleted,
+      totalProcessed,
       organizationsAffected: uniqueOrganizations
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

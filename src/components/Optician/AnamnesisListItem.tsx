@@ -240,6 +240,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
               <EntryStatusBadge
                 status={entry.status || "sent"}
+                isRedacted={entry.is_redacted}
               />
               
               {/* Delete button dropdown */}

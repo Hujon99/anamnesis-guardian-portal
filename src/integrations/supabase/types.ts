@@ -32,9 +32,11 @@ export type Database = {
           id: string
           internal_notes: string | null
           is_magic_link: boolean | null
+          is_redacted: boolean
           optician_id: string | null
           organization_id: string
           patient_identifier: string | null
+          redacted_at: string | null
           sent_at: string | null
           status: string | null
           store_id: string | null
@@ -57,9 +59,11 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           is_magic_link?: boolean | null
+          is_redacted?: boolean
           optician_id?: string | null
           organization_id: string
           patient_identifier?: string | null
+          redacted_at?: string | null
           sent_at?: string | null
           status?: string | null
           store_id?: string | null
@@ -82,9 +86,11 @@ export type Database = {
           id?: string
           internal_notes?: string | null
           is_magic_link?: boolean | null
+          is_redacted?: boolean
           optician_id?: string | null
           organization_id?: string
           patient_identifier?: string | null
+          redacted_at?: string | null
           sent_at?: string | null
           status?: string | null
           store_id?: string | null
@@ -248,6 +254,30 @@ export type Database = {
           organizations_affected?: string[] | null
           run_at?: string | null
           status?: string | null
+        }
+        Relationships: []
+      }
+      auto_redaction_logs: {
+        Row: {
+          entries_redacted: number | null
+          error: string | null
+          id: string
+          organizations_affected: string[] | null
+          run_at: string | null
+        }
+        Insert: {
+          entries_redacted?: number | null
+          error?: string | null
+          id?: string
+          organizations_affected?: string[] | null
+          run_at?: string | null
+        }
+        Update: {
+          entries_redacted?: number | null
+          error?: string | null
+          id?: string
+          organizations_affected?: string[] | null
+          run_at?: string | null
         }
         Relationships: []
       }

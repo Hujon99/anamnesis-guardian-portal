@@ -9,9 +9,13 @@ import { Badge } from "@/components/ui/badge";
 interface EntryStatusBadgeProps {
   status: string;
   isExpired?: boolean;
+  isRedacted?: boolean;
 }
 
-export const EntryStatusBadge = ({ status, isExpired }: EntryStatusBadgeProps) => {
+export const EntryStatusBadge = ({ status, isExpired, isRedacted }: EntryStatusBadgeProps) => {
+  if (isRedacted) {
+    return <Badge variant="secondary" className="bg-muted/40 text-muted-foreground border-muted/50">Journalförd och gallrad</Badge>;
+  }
   if (isExpired) {
     return <Badge variant="destructive">Utgången</Badge>;
   }

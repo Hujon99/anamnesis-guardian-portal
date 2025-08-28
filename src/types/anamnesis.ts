@@ -22,6 +22,9 @@ export type AnamnesesEntry = {
   ai_summary: string | null;
   internal_notes: string | null;
   auto_deletion_timestamp: string | null;
+  // GDPR redaction flags
+  is_redacted?: boolean;
+  redacted_at?: string | null;
   // Magic link related properties
   booking_id?: string | null;
   store_id?: string | null;

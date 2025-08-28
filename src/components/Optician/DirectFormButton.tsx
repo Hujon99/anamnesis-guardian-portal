@@ -70,6 +70,7 @@ export const DirectFormButton: React.FC = () => {
           created_by_name: user.fullName || user.firstName || "Okänd optiker",
           patient_identifier: "Direkt ifyllning i butik",
           expires_at: expiresAt.toISOString(),
+          booking_date: new Date().toISOString(), // Automatically set today's date
           // Set initial answers as empty object
           answers: {},
         })

@@ -164,6 +164,96 @@ export function EntriesList({
     return <EmptyState status={status} />;
   }
 
+  // Helper function to check if two dates are the same day
+  const isSameDay = (date1: Date, date2: Date) => {
+    return date1.getDate() === date2.getDate() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getFullYear() === date2.getFullYear();
+  };
+
+  // Group entries by booking date category for visual separation
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const groupedEntries = safeEntries.reduce((groups, entry) => {
+    const bookingDate = entry.booking_date ? new Date(entry.booking_date) : null;
+    
+    if (bookingDate && isSameDay(bookingDate, now)) {
+      groups.today.push(entry);
+    } else if (bookingDate && bookingDate > today) {
+      groups.future.push(entry);
+    } else if (bookingDate && bookingDate < today) {
+      groups.past.push(entry);
+    } else {
+      groups.noDate.push(entry);
+    }
+    
+    return groups;
+  }, {
+    today: [] as typeof safeEntries,
+    future: [] as typeof safeEntries,
+    past: [] as typeof safeEntries,
+    noDate: [] as typeof safeEntries
+  });
+
+  const renderEntryGroup = (entries: typeof safeEntries, showSeparator = false) => (
+    <>
+      {showSeparator && entries.length > 0 && (
+        <div className="border-t border-border/50 pt-6 mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-px bg-border flex-1" />
+            <span className="text-xs text-muted-foreground px-2">
+              Tidigare bokningar
+            </span>
+            <div className="h-px bg-border flex-1" />
+          </div>
+        </div>
+      )}
+      {entries.map((entry) => {
+          // Lookup store name directly from our map
+          const storeNameFromMap = entry.store_id ? getStoreName(entry.store_id) : null;
+          
+  // Set final store name, with fallbacks
+          const storeName = storeNameFromMap || entry.storeName || null;
+          
+          // Handler for entry selection with audit logging
+          const handleSelectEntry = async () => {
+            // Log the access to anamnesis entry
+            await logAccess(supabase, {
+              table: 'anamnes_entries',
+              recordId: entry.id,
+              purpose: 'detail_view',
+              route: window.location.pathname
+            });
+            
+            // Call the original onSelectEntry
+            onSelectEntry(entry);
+          };
+          
+        return (
+          <AnamnesisListItem
+            key={entry.id}
+            entry={{
+              ...entry,
+              storeName: storeName
+            }}
+            onClick={handleSelectEntry}
+            onDelete={onEntryDeleted}
+            onEntryUpdated={onEntryUpdated}
+            onAssign={onEntryAssigned}
+            onStoreAssign={handleStoreAssign}
+            showAssignmentIndicator={true}
+            showQuickAssign={showQuickAssign && (isAdmin || true)}
+            opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}
+            storeName={storeName}
+            storeMap={storeMap}
+            isBookingWithoutStore={entry.isBookingWithoutStore}
+          />
+        );
+      })}
+    </>
+  );
+
   return (
     <>
       {showStoreDataWarning && (
@@ -190,48 +280,17 @@ export function EntriesList({
       )}
     
       <div className="space-y-4 mt-4">
-        {safeEntries.map((entry) => {
-          // Lookup store name directly from our map
-          const storeNameFromMap = entry.store_id ? getStoreName(entry.store_id) : null;
-          
-  // Set final store name, with fallbacks
-          const storeName = storeNameFromMap || entry.storeName || null;
-          
-          // Handler for entry selection with audit logging
-          const handleSelectEntry = async () => {
-            // Log the access to anamnesis entry
-            await logAccess(supabase, {
-              table: 'anamnes_entries',
-              recordId: entry.id,
-              purpose: 'detail_view',
-              route: window.location.pathname
-            });
-            
-            // Call the original onSelectEntry
-            onSelectEntry(entry);
-          };
-          
-          return (
-            <AnamnesisListItem
-              key={entry.id}
-              entry={{
-                ...entry,
-                storeName: storeName
-              }}
-              onClick={handleSelectEntry}
-              onDelete={onEntryDeleted}
-              onEntryUpdated={onEntryUpdated}
-              onAssign={onEntryAssigned}
-              onStoreAssign={handleStoreAssign}
-              showAssignmentIndicator={true}
-              showQuickAssign={showQuickAssign && (isAdmin || true)}
-              opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}
-              storeName={storeName}
-              storeMap={storeMap}
-              isBookingWithoutStore={entry.isBookingWithoutStore}
-            />
-          );
-        })}
+        {/* Today's bookings */}
+        {renderEntryGroup(groupedEntries.today)}
+        
+        {/* Future bookings */}
+        {renderEntryGroup(groupedEntries.future)}
+        
+        {/* Entries without booking dates */}
+        {renderEntryGroup(groupedEntries.noDate)}
+        
+        {/* Past bookings with separator */}
+        {renderEntryGroup(groupedEntries.past, true)}
       </div>
     </>
   );

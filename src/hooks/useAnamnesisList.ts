@@ -360,29 +360,47 @@ export const useAnamnesisList = () => {
     
     return true;
   }).sort((a, b) => {
-    // Primary sort by booking_date (today's bookings first)
+    // Primary sort by booking_date with proper categorization
     const bookingDateA = a.booking_date ? new Date(a.booking_date) : null;
     const bookingDateB = b.booking_date ? new Date(b.booking_date) : null;
     const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     // Check if entries have today's booking date
     const isBookingTodayA = bookingDateA && isSameDay(bookingDateA, now);
     const isBookingTodayB = bookingDateB && isSameDay(bookingDateB, now);
     
-    // Prioritize today's bookings
+    // Check if entries are future or past bookings
+    const isFutureBookingA = bookingDateA && bookingDateA > today && !isBookingTodayA;
+    const isFutureBookingB = bookingDateB && bookingDateB > today && !isBookingTodayB;
+    const isPastBookingA = bookingDateA && bookingDateA < today;
+    const isPastBookingB = bookingDateB && bookingDateB < today;
+    
+    // 1. Today's bookings come first
     if (isBookingTodayA && !isBookingTodayB) return -1;
     if (!isBookingTodayA && isBookingTodayB) return 1;
     
-    // If both have booking dates, sort by booking date
-    if (bookingDateA && bookingDateB) {
-      return filters.sortDescending 
-        ? bookingDateB.getTime() - bookingDateA.getTime() 
-        : bookingDateA.getTime() - bookingDateB.getTime();
-    }
+    // 2. Future bookings come before past bookings and entries without dates
+    if (isFutureBookingA && (isPastBookingB || !bookingDateB)) return -1;
+    if (isFutureBookingB && (isPastBookingA || !bookingDateA)) return 1;
     
-    // If only one has booking date, prioritize that one
-    if (bookingDateA && !bookingDateB) return -1;
-    if (!bookingDateA && bookingDateB) return 1;
+    // 3. Past bookings come before entries without booking dates
+    if (isPastBookingA && !bookingDateB) return -1;
+    if (isPastBookingB && !bookingDateA) return 1;
+    
+    // Sort within each category
+    if (bookingDateA && bookingDateB) {
+      if (isBookingTodayA && isBookingTodayB) {
+        // Today's bookings: sort by time (earliest first)
+        return bookingDateA.getTime() - bookingDateB.getTime();
+      } else if (isFutureBookingA && isFutureBookingB) {
+        // Future bookings: sort ascending (closest dates first)
+        return bookingDateA.getTime() - bookingDateB.getTime();
+      } else if (isPastBookingA && isPastBookingB) {
+        // Past bookings: sort descending (most recent first)
+        return bookingDateB.getTime() - bookingDateA.getTime();
+      }
+    }
     
     // Fallback to sent_at date for entries without booking_date
     const dateA = a.sent_at ? new Date(a.sent_at) : new Date(0);

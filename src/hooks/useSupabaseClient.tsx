@@ -90,7 +90,14 @@ export const useSupabaseClient = () => {
       try {
         console.log(`[useSupabaseClient] Getting fresh token (${attempt}/${MAX_RETRIES})`);
         
-        const token = await getToken({ template: "supabase" });
+        // Try with supabase template first, fallback to default if it doesn't exist
+        let token;
+        try {
+          token = await getToken({ template: "supabase" });
+        } catch (templateError) {
+          console.log("[useSupabaseClient] Supabase template not found, using default");
+          token = await getToken();
+        }
         
         if (token) {
           console.log("[useSupabaseClient] Fresh token retrieved");

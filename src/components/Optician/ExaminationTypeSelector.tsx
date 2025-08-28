@@ -74,12 +74,12 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader className="pb-4">
+      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto p-8">
+        <DialogHeader className="pb-6">
           <DialogTitle className="text-xl font-semibold">Välj undersökningstyp</DialogTitle>
         </DialogHeader>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {forms.map((form) => {
             const IconComponent = getIcon(form.icon);
             

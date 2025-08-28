@@ -17,9 +17,7 @@ import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExaminationTypeSelector } from "./ExaminationTypeSelector";
-
-const FORM_TOKEN_KEY = "direct_form_token";
-const FORM_MODE_KEY = "direct_form_mode";
+import { DIRECT_FORM_TOKEN_KEY, DIRECT_FORM_MODE_KEY } from "@/utils/opticianFormTokenUtils";
 
 export const DirectFormButton: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -88,11 +86,11 @@ export const DirectFormButton: React.FC = () => {
     },
     onSuccess: ({ entry, token }) => {
       // Store token and mode in localStorage for form access
-      localStorage.setItem(FORM_TOKEN_KEY, token);
-      localStorage.setItem(FORM_MODE_KEY, "direct");
+      localStorage.setItem(DIRECT_FORM_TOKEN_KEY, token);
+      localStorage.setItem(DIRECT_FORM_MODE_KEY, "optician");
       
-      // Navigate to form with entry ID
-      navigate(`/patient-form/${entry.id}`);
+      // Navigate to optician form
+      navigate("/optician-form");
       
       toast({
         title: "Formulär skapat!",

@@ -1,308 +1,198 @@
-
 /**
- * This component provides functionality for creating direct in-store anamnesis forms.
- * It allows opticians to generate an immediate form for walk-in customers
- * without creating a patient record first.
- * Uses the organization-specific form template.
- * Enhanced with longer token validity period (72 hours) for better user experience,
- * improved token persistence for reliable form access, and better error handling.
- * Auto-assigns the creating optician to the entry for better workflow.
+ * This component provides a button for opticians to create direct in-store anamnesis forms,
+ * generating a form for walk-in customers without requiring prior patient record creation.
+ * It allows opticians to select from available examination types and auto-assigns the creating optician.
  */
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
-import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/components/ui/use-toast";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileEdit, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { useFormTemplate } from "@/hooks/useFormTemplate";
-import { useUserSyncStore } from "@/hooks/useUserSyncStore";
+import { AlertCircle, Plus, Users, Loader2 } from "lucide-react";
+import { useOrganizationForms, OrganizationForm } from "@/hooks/useOrganizationForms";
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useOrganization, useUser } from "@clerk/clerk-react";
+import { toast } from "@/components/ui/use-toast";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ExaminationTypeSelector } from "./ExaminationTypeSelector";
 
-// Key for storing the form token in localStorage
-const DIRECT_FORM_TOKEN_KEY = 'opticianDirectFormToken';
-const DIRECT_FORM_MODE_KEY = 'opticianDirectFormMode';
+const FORM_TOKEN_KEY = "direct_form_token";
+const FORM_MODE_KEY = "direct_form_mode";
 
-export function DirectFormButton() {
+export const DirectFormButton: React.FC = () => {
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
+  
+  const navigate = useNavigate();
   const { organization } = useOrganization();
   const { user } = useUser();
-  const { userId } = useAuth();
-  const { supabase, isReady: isSupabaseReady } = useSupabaseClient();
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [isSyncingUsers, setIsSyncingUsers] = useState(false);
-  const queryClient = useQueryClient();
   
-  const { syncUsersWithToast } = useSyncClerkUsers();
-  const { getSyncStatus } = useUserSyncStore();
-  
-  // Get organization's form template
+  // Get available forms for the organization
   const { 
-    data: formTemplate, 
-    isLoading: templateLoading, 
-    error: templateError,
-    isError: isTemplateError,
-    refetch: refetchTemplate 
-  } = useFormTemplate();
+    data: forms, 
+    isLoading: formsLoading, 
+    error: formsError 
+  } = useOrganizationForms();
   
-  // Check user sync status for current organization
-  const orgId = organization?.id || '';
-  const syncStatus = getSyncStatus(orgId);
-  const isUserSynced = syncStatus === 'synced';
-  
-  // Reset error state when organization changes
-  useEffect(() => {
-    if (organization?.id) {
-      setHasError(false);
-    }
-  }, [organization?.id]);
-  
-  // Provide feedback if there's a template error
-  useEffect(() => {
-    if (templateError) {
-      console.error("[DirectFormButton]: Error loading form template:", templateError);
-      setHasError(true);
-      
-      // Only show toast for non-network errors
-      if (!templateError.message?.includes("Failed to fetch")) {
-        toast({
-          title: "Fel vid laddning av formulärmall",
-          description: "Kunde inte ladda organisationens formulärmall. Kontakta administratör.",
-          variant: "destructive",
-        });
-      }
-    }
-  }, [templateError]);
-  
-  // Get the creator's name from user object
-  const creatorName = user?.fullName || user?.id || "Okänd";
+  // User sync functionality
+  const { syncUsers, isSyncing } = useSyncClerkUsers();
 
-  // Mutation for creating a direct form entry
+  // Create form entry mutation
   const createDirectFormEntry = useMutation({
-    mutationFn: async () => {
-      if (!organization?.id) {
-        throw new Error("Organisation saknas");
-      }
-      
-      if (!formTemplate) {
-        throw new Error("Ingen formulärmall hittades för denna organisation");
+    mutationFn: async (selectedForm: OrganizationForm) => {
+      if (!organization?.id || !user?.id || !selectedForm) {
+        throw new Error("Saknar nödvändig information för att skapa formulär");
       }
 
-      if (!isSupabaseReady || !supabase) {
-        throw new Error("Databasanslutning ej klar");
-      }
-
-      console.log("[DirectFormButton]: Creating direct form entry with organization ID:", organization.id);
-      console.log("[DirectFormButton]: Current user ID:", userId || null);
-      console.log("[DirectFormButton]: Creator name:", creatorName);
-      console.log("[DirectFormButton]: Using form template ID:", formTemplate.id);
-
-      // Use a fixed identifier for direct in-store forms
-      const patientIdentifier = "Direkt ifyllning i butik";
-
-      // Generate a unique access token
+      // Generate unique access token (valid for 72 hours)
       const accessToken = crypto.randomUUID();
-      console.log("[DirectFormButton]: Generated access token:", accessToken.substring(0, 6) + "...");
+      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours from now
 
-      // Token valid for 72 hours
-      const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(); // 72 hours from now
-      console.log("[DirectFormButton]: Token will expire at:", expiresAt);
+      console.log("Creating direct form entry with:", {
+        organizationId: organization.id,
+        formId: selectedForm.id,
+        userId: user.id,
+        expiresAt
+      });
 
-      // Store the token in localStorage immediately to ensure it's available
-      localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
-      localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
-      console.log("[DirectFormButton]: Token saved to localStorage before API call");
-
-      // Auto-assign the current optician who's creating the form
-      // We use the Clerk user ID as the optician_id
-      const opticianId = userId || null;
-      console.log("[DirectFormButton]: Auto-assigning optician ID:", opticianId);
-
+      // Create entry in anamnes_entries
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
           organization_id: organization.id,
+          form_id: selectedForm.id,
           access_token: accessToken,
           status: "sent",
-          expires_at: expiresAt,
-          form_id: formTemplate.id,
-          patient_identifier: patientIdentifier,
-          created_by: userId || null,
-          created_by_name: creatorName,
-          sent_at: new Date().toISOString(),
-          optician_id: opticianId // Auto-assign the current optician
+          is_magic_link: false,
+          created_by: user.id,
+          created_by_name: user.fullName || user.firstName || "Okänd optiker",
+          expires_at: expiresAt.toISOString(),
+          // Set initial answers as empty object
+          answers: {},
         })
-        .select()
+        .select("*")
         .single();
 
       if (error) {
-        console.error("[DirectFormButton]: Error creating direct form entry:", error);
-        
-        // Check if error is related to missing user in the database
-        if (error.message?.includes("violates foreign key constraint") || 
-            error.message?.includes("foreign key violation")) {
-          throw new Error("Användaren saknas i databasen. Synkronisera användare först.");
-        }
-        
-        // Remove the stored token on error
-        localStorage.removeItem(DIRECT_FORM_TOKEN_KEY);
-        localStorage.removeItem(DIRECT_FORM_MODE_KEY);
-        throw error;
+        console.error("Error creating entry:", error);
+        throw new Error(`Kunde inte skapa formulär: ${error.message}`);
       }
-      
-      // Double-check that token is still in localStorage
-      const storedToken = localStorage.getItem(DIRECT_FORM_TOKEN_KEY);
-      if (!storedToken) {
-        console.log("[DirectFormButton]: Token missing from localStorage after API call, restoring");
-        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
-        localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
-      }
-      
-      console.log("[DirectFormButton]: Direct form entry created successfully, token in localStorage");
-      console.log("[DirectFormButton]: Form is auto-assigned to optician:", opticianId);
-      
-      return {
-        data,
-        accessToken
-      };
+
+      console.log("Successfully created entry:", data);
+      return { entry: data, token: accessToken };
     },
-    onSuccess: (result) => {
-      console.log("[DirectFormButton]: Form entry created, navigating to form page");
+    onSuccess: ({ entry, token }) => {
+      // Store token and mode in localStorage for form access
+      localStorage.setItem(FORM_TOKEN_KEY, token);
+      localStorage.setItem(FORM_MODE_KEY, "direct");
       
-      // Ensure token is in localStorage
-      const accessToken = result.accessToken;
-      const isStoredInLocalStorage = localStorage.getItem(DIRECT_FORM_TOKEN_KEY) === accessToken;
+      // Navigate to form with entry ID
+      navigate(`/patient-form/${entry.id}`);
       
-      if (!isStoredInLocalStorage) {
-        console.log("[DirectFormButton]: Token not found in localStorage, restoring before navigation");
-        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
-        localStorage.setItem(DIRECT_FORM_MODE_KEY, 'optician');
-      }
+      toast({
+        title: "Formulär skapat!",
+        description: "Du dirigeras nu till det nya formuläret",
+      });
       
-      // Use a short timeout to ensure localStorage is updated
-      setTimeout(() => {
-        // Use replace navigation to prevent adding to history stack
-        navigate(`/optician-form?token=${accessToken}&mode=optician`, { replace: true });
-        
-        toast({
-          title: "Formulär skapat",
-          description: "Direkt ifyllningsformulär förberett och tilldelat till dig",
-        });
-      }, 150); // Slightly longer delay for reliable navigation
+      setShowTypeSelector(false);
+      setIsCreating(false);
     },
-    onError: (error: any) => {
-      console.error("[DirectFormButton]: Error creating direct form:", error);
-      setHasError(true);
-      setIsLoading(false);
-      
-      // Special handling for user sync errors
-      if (error.message?.includes("Användaren saknas i databasen")) {
-        toast({
-          title: "Användare saknas",
-          description: "Du behöver synkronisera användare innan du kan skapa formulär. Klicka på 'Synkronisera användare' för att fortsätta.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Fel vid skapande av formulär",
-          description: error.message || "Ett oväntat fel uppstod",
-          variant: "destructive",
-        });
-      }
+    onError: (error: Error) => {
+      console.error("Failed to create form:", error);
+      setError(error.message);
+      setIsCreating(false);
+      toast({
+        title: "Kunde inte skapa formulär",
+        description: error.message,
+        variant: "destructive",
+      });
     },
-    onSettled: () => {
-      setIsLoading(false);
-    }
   });
 
   const handleSyncUsers = async () => {
-    if (isSyncingUsers) return;
+    if (isSyncing) return;
     
-    setIsSyncingUsers(true);
     try {
-      const result = await syncUsersWithToast();
-      
-      if (result.success) {
-        // Invalidate queries that might depend on user data
-        queryClient.invalidateQueries({ queryKey: ["orgUsers"] });
-        
-        toast({
-          title: "Användare synkroniserade",
-          description: "Du kan nu skapa formulär. Försök igen.",
-        });
-      }
+      await syncUsers();
+      toast({
+        title: "Användare synkroniserade",
+        description: "Du kan nu skapa formulär.",
+      });
     } catch (error) {
-      console.error("[DirectFormButton]: Error syncing users:", error);
-    } finally {
-      setIsSyncingUsers(false);
+      console.error("Error syncing users:", error);
+      toast({
+        title: "Synkronisering misslyckades",
+        description: "Försök igen senare.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleCreateDirectForm = () => {
-    // Don't allow multiple attempts while loading
-    if (isLoading || createDirectFormEntry.isPending) {
+    setError(null);
+    
+    if (!forms || forms.length === 0) {
+      setError("Inga formulär tillgängliga");
       return;
     }
     
-    // Reset error state and start loading
-    setHasError(false);
-    setIsLoading(true);
-    
-    // If template had an error, try refetching before proceeding
-    if (isTemplateError) {
-      refetchTemplate().then((result) => {
-        if (result.data) {
-          createDirectFormEntry.mutate();
-        } else {
-          setIsLoading(false);
-          setHasError(true);
-          
-          toast({
-            title: "Fel vid laddning av formulärmall",
-            description: "Kunde inte ladda formulärmallen, kontrollera din internetanslutning och försök igen",
-            variant: "destructive",
-          });
-        }
-      });
+    // If only one form, create it directly
+    if (forms.length === 1) {
+      setIsCreating(true);
+      createDirectFormEntry.mutate(forms[0]);
     } else {
-      createDirectFormEntry.mutate();
+      // Show type selector for multiple forms
+      setShowTypeSelector(true);
     }
   };
 
-  // Allow manual retry if there was an error
-  const handleRetry = () => {
-    setHasError(false);
-    refetchTemplate();
+  const handleFormTypeSelect = (selectedForm: OrganizationForm) => {
+    setIsCreating(true);
+    createDirectFormEntry.mutate(selectedForm);
   };
 
-  // Determine if button should be disabled
-  const isButtonDisabled = !isSupabaseReady || isLoading || createDirectFormEntry.isPending || templateLoading;
-  
-  // Show informative tooltip if button is disabled due to missing template
-  const buttonTitle = !formTemplate && !templateLoading 
-    ? "Ingen formulärmall finns tillgänglig för denna organisation"
-    : "Skapa formulär för direkt ifyllning i butik";
-
-  // If users need to be synced first
-  if (hasError && syncStatus !== 'synced' && syncStatus !== 'syncing') {
+  // User sync check - remove this section since needsSync doesn't exist
+  // Loading state
+  if (formsLoading) {
     return (
-      <div className="flex gap-2">
-        <Button 
-          onClick={handleSyncUsers}
-          variant="destructive"
-          disabled={isSyncingUsers}
-          title="Synkronisera användare"
-          className="whitespace-nowrap"
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Laddar formulär...
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (formsError || !forms || forms.length === 0) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Kunde inte ladda formulär. Kontrollera att det finns formulär för din organisation.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Error display
+  if (error) {
+    return (
+      <div className="space-y-2">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button
+          onClick={() => setError(null)}
+          variant="outline"
+          size="sm"
         >
-          {isSyncingUsers ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          )}
-          Synkronisera användare
+          Försök igen
         </Button>
       </div>
     );
@@ -310,30 +200,44 @@ export function DirectFormButton() {
 
   return (
     <>
-      {hasError ? (
-        <Button 
-          onClick={handleRetry}
-          variant="destructive"
-          title="Försök igen"
-        >
-          <AlertCircle className="h-4 w-4 mr-2" />
-          Försök igen
-        </Button>
-      ) : (
-        <Button 
-          onClick={handleCreateDirectForm}
-          disabled={isButtonDisabled}
-          variant="secondary"
-          title={buttonTitle}
-        >
-          {(isLoading || createDirectFormEntry.isPending || templateLoading) ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+      <div className="space-y-4">
+        <div className="text-sm text-muted-foreground">
+          <Badge variant="secondary" className="mr-2">
+            {forms.length} formulär tillgängliga
+          </Badge>
+          {forms.length === 1 ? (
+            `Skapar automatiskt: ${forms[0].title}`
           ) : (
-            <FileEdit className="h-4 w-4 mr-2" />
+            "Välj undersökningstyp vid skapande"
           )}
-          Direkt ifyllning i butik
+        </div>
+        
+        <Button
+          onClick={handleCreateDirectForm}
+          disabled={isCreating || createDirectFormEntry.isPending}
+          className="w-full"
+          size="lg"
+        >
+          {isCreating || createDirectFormEntry.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Skapar formulär...
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-2" />
+              Skapa formulär för direkt ifyllning
+            </>
+          )}
         </Button>
-      )}
+        
+        <ExaminationTypeSelector
+          open={showTypeSelector}
+          onOpenChange={setShowTypeSelector}
+          onSelect={handleFormTypeSelect}
+          isCreating={isCreating}
+        />
+      </div>
     </>
   );
-}
+};

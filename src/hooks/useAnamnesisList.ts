@@ -94,6 +94,12 @@ export const useAnamnesisList = () => {
 
         if (error) {
           console.error("Error fetching anamnes entries:", error);
+          
+          // Check for JWT expired error and handle automatically
+          if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
+            console.log("[useAnamnesisList] JWT error detected, will be handled by custom fetch");
+          }
+          
           throw error;
         }
 
@@ -106,11 +112,15 @@ export const useAnamnesisList = () => {
         const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
         console.error("Error in query function:", fetchError);
         
-        toast({
-          title: "Fel vid hämtning av anamneser",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        // Don't show toast for JWT errors as they should be handled transparently
+        const isJwtError = errorMessage.includes('JWT') || errorMessage.includes('PGRST301');
+        if (!isJwtError) {
+          toast({
+            title: "Fel vid hämtning av anamneser",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
         
         throw fetchError;
       }

@@ -18,23 +18,59 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://jawtwwwelxaap
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk";
 
 /**
- * Creates an authenticated Supabase client with the provided JWT token
- * @param token The JWT token to authenticate the client
- * @returns A Supabase client with authentication headers
+ * Creates an authenticated Supabase client with dynamic token refresh capability
+ * @param tokenProvider Function that returns a fresh JWT token
+ * @returns A Supabase client with dynamic authentication
  */
-export const createSupabaseClient = (token?: string) => {
-  const headers: Record<string, string> = {};
-  
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+export const createSupabaseClient = (tokenProvider?: () => Promise<string | null>) => {
+  // Create a custom fetch that injects fresh tokens for each request
+  const customFetch = async (url: RequestInfo | URL, options: RequestInit = {}) => {
+    const isSupabaseRequest = typeof url === 'string' && url.includes('supabase.co');
+    
+    if (isSupabaseRequest && tokenProvider) {
+      try {
+        const token = await tokenProvider();
+        if (token) {
+          const headers = new Headers(options.headers);
+          headers.set('Authorization', `Bearer ${token}`);
+          options = { ...options, headers };
+        }
+      } catch (error) {
+        console.warn('[createSupabaseClient] Failed to get fresh token:', error);
+      }
+    }
+    
+    // Make the request with fresh token
+    const response = await fetch(url, options);
+    
+    // If we get a JWT error, try once more with a fresh token
+    if (response.status === 401 && isSupabaseRequest && tokenProvider) {
+      try {
+        const errorData = await response.clone().json();
+        if (errorData?.code === 'PGRST301' || errorData?.message?.includes('JWT')) {
+          console.log('[createSupabaseClient] JWT error detected, retrying with fresh token');
+          
+          const freshToken = await tokenProvider();
+          if (freshToken) {
+            const retryHeaders = new Headers(options.headers);
+            retryHeaders.set('Authorization', `Bearer ${freshToken}`);
+            return fetch(url, { ...options, headers: retryHeaders });
+          }
+        }
+      } catch (retryError) {
+        console.warn('[createSupabaseClient] Failed to retry with fresh token:', retryError);
+      }
+    }
+    
+    return response;
+  };
   
   return createClient<Database>(
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
     {
       global: {
-        headers
+        fetch: customFetch
       },
       auth: {
         autoRefreshToken: false,

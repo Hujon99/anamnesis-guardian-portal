@@ -75,12 +75,18 @@ const OpticianContent = () => {
   };
 
   if (combinedError) {
+    const errorMessage = typeof combinedError === 'string' 
+      ? combinedError 
+      : combinedError instanceof Error 
+        ? combinedError.message 
+        : 'Ett okänt fel uppstod';
+        
     return (
       <Alert variant="destructive" className="mb-6">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Fel</AlertTitle>
         <AlertDescription className="space-y-4">
-          <p>{combinedError.message}</p>
+          <p>{errorMessage}</p>
           <Button onClick={handleRetry} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Försök igen

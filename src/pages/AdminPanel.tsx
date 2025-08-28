@@ -90,7 +90,7 @@ const AdminPanel = () => {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Fel vid anslutning till Supabase</AlertTitle>
           <AlertDescription>
-            {supabaseError.message}
+            {typeof supabaseError === 'string' ? supabaseError : supabaseError}
           </AlertDescription>
         </Alert>
       )}

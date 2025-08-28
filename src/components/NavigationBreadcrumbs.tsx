@@ -73,7 +73,7 @@ export function NavigationBreadcrumbs({ className }: NavigationBreadcrumbsProps)
     <Breadcrumb className={className}>
       <BreadcrumbList>
         {breadcrumbs.map((crumb, index) => (
-          <React.Fragment key={crumb.path}>
+          <div key={crumb.path}>
             <BreadcrumbItem>
               <BreadcrumbLink 
                 to={crumb.path}
@@ -93,7 +93,7 @@ export function NavigationBreadcrumbs({ className }: NavigationBreadcrumbsProps)
             {index < breadcrumbs.length - 1 && (
               <BreadcrumbSeparator />
             )}
-          </React.Fragment>
+          </div>
         ))}
       </BreadcrumbList>
     </Breadcrumb>

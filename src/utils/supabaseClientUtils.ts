@@ -18,11 +18,16 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://jawtwwwelxaap
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk";
 
 /**
- * Creates an authenticated Supabase client with dynamic token refresh capability
- * @param tokenProvider Function that returns a fresh JWT token
- * @returns A Supabase client with dynamic authentication
+ * Creates a Supabase client with optional dynamic token refresh capability
+ * @param tokenProvider Optional function that returns a fresh JWT token
+ * @returns A Supabase client with optional authentication
  */
 export const createSupabaseClient = (tokenProvider?: () => Promise<string | null>) => {
+  // If no token provider, return a basic unauthenticated client
+  if (!tokenProvider) {
+    console.log('[createSupabaseClient] No token provider, creating unauthenticated client');
+    return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
   // Create a custom fetch that injects fresh tokens for each request
   const customFetch = async (url: RequestInfo | URL, options: RequestInit = {}) => {
     const isSupabaseRequest = typeof url === 'string' && url.includes('supabase.co');

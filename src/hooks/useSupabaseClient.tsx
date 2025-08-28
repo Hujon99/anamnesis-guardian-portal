@@ -121,12 +121,17 @@ export const useSupabaseClient = () => {
   }, [isSignedIn, getToken]);
 
   /**
-   * Create authenticated Supabase client with token provider
+   * Create authenticated or unauthenticated Supabase client
    */
   const createAuthenticatedClient = useCallback(() => {
-    console.log("[useSupabaseClient] Creating authenticated client with token provider");
-    return createSupabaseClient(tokenProvider);
-  }, [tokenProvider]);
+    if (isSignedIn) {
+      console.log("[useSupabaseClient] Creating authenticated client with token provider");
+      return createSupabaseClient(tokenProvider);
+    } else {
+      console.log("[useSupabaseClient] Creating unauthenticated client");
+      return createSupabaseClient(); // No token provider for unauthenticated
+    }
+  }, [isSignedIn, tokenProvider]);
 
   /**
    * Set up the Supabase client with dynamic token provider
@@ -140,14 +145,6 @@ export const useSupabaseClient = () => {
       }
     }
 
-    if (!isSignedIn) {
-      console.log("[useSupabaseClient] User not signed in, cannot setup client");
-      setClient(null);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
-    
     console.log("[useSupabaseClient] Setting up Supabase client" + (force ? " (forced)" : ""));
     
     isSettingUpRef.current = true;
@@ -156,16 +153,19 @@ export const useSupabaseClient = () => {
 
     const setupPromise = (async () => {
       try {
-        // Test token provider to ensure it works
-        const testToken = await tokenProvider();
-        if (!testToken) {
-          throw new Error("Kunde inte hämta åtkomsttoken");
+        if (isSignedIn) {
+          // For authenticated users, test token provider
+          const testToken = await tokenProvider();
+          if (!testToken) {
+            throw new Error("Kunde inte hämta åtkomsttoken");
+          }
+          console.log("[useSupabaseClient] Client setup complete with token provider");
+        } else {
+          console.log("[useSupabaseClient] Client setup complete without authentication");
         }
 
         const newClient = createAuthenticatedClient();
         setClient(newClient);
-        
-        console.log("[useSupabaseClient] Client setup complete with token provider");
       } catch (err) {
         console.error("[useSupabaseClient] Setup failed:", err);
         const errorMessage = err instanceof Error ? err.message : "Okänt fel uppstod";
@@ -203,7 +203,7 @@ export const useSupabaseClient = () => {
     await setupClient(force);
   }, [setupClient]);
 
-  // Set up client when authentication state changes
+  // Set up client when authentication state changes or on mount
   useEffect(() => {
     console.log("[useSupabaseClient] Auth state changed:", { isSignedIn, userId });
     setupClient();

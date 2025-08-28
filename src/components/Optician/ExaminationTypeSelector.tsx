@@ -37,10 +37,10 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Välj undersökningstyp</DialogTitle>
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-xl font-semibold">Välj undersökningstyp</DialogTitle>
           </DialogHeader>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         </DialogContent>
@@ -52,17 +52,17 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Välj undersökningstyp</DialogTitle>
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-xl font-semibold">Välj undersökningstyp</DialogTitle>
           </DialogHeader>
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
+          <div className="text-center py-16">
+            <p className="text-muted-foreground mb-6">
               {error ? "Kunde inte ladda formulär" : "Inga formulär tillgängliga"}
             </p>
             <Button 
               variant="outline" 
               onClick={() => onOpenChange(false)}
-              className="mt-4"
+              className="px-6"
             >
               Stäng
             </Button>
@@ -74,39 +74,41 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Välj undersökningstyp</DialogTitle>
+      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="text-xl font-semibold">Välj undersökningstyp</DialogTitle>
         </DialogHeader>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">
           {forms.map((form) => {
             const IconComponent = getIcon(form.icon);
             
             return (
               <Card 
                 key={form.id} 
-                className="cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-2 hover:border-primary/20"
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <IconComponent className="h-6 w-6 text-primary" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-xl bg-primary/10 flex-shrink-0">
+                      <IconComponent className="h-8 w-8 text-primary" />
                     </div>
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{form.title}</CardTitle>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg font-semibold leading-tight mb-2">
+                        {form.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground leading-relaxed">
+                        {form.description}
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <CardDescription className="text-sm text-muted-foreground mb-4">
-                    {form.description}
-                  </CardDescription>
                   <Button 
                     onClick={() => onSelect(form)}
                     disabled={isCreating}
-                    className="w-full"
-                    size="sm"
+                    className="w-full h-10"
+                    size="default"
                   >
                     {isCreating ? (
                       <>

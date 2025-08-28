@@ -201,7 +201,7 @@ export const DirectFormButton: React.FC = () => {
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-2">
         <div className="text-sm text-muted-foreground">
           <Badge variant="secondary" className="mr-2">
             {forms.length} formulär tillgängliga

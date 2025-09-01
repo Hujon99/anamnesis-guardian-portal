@@ -173,16 +173,134 @@ export async function runStuckFormsCleanup(supabase: SupabaseClient): Promise<{
 }
 
 /**
+ * Cleans up unsubmitted/placeholder magic link entries (sent/in_progress)
+ * when their booking date has passed by 24h or the link has expired.
+ */
+export async function runPlaceholderCleanup(supabase: SupabaseClient): Promise<{
+  deletedEntries: number;
+  organizationsAffected?: string[];
+  error?: any;
+}> {
+  try {
+    console.log('Starting placeholder cleanup (sent/in_progress, magic links)...');
+    const nowIso = new Date().toISOString();
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: toDelete, error: fetchError } = await supabase
+      .from('anamnes_entries')
+      .select('id, organization_id')
+      .eq('is_magic_link', true)
+      .in('status', ['sent', 'in_progress'])
+      .or(`booking_date.lt.${cutoff},expires_at.lt.${nowIso}`);
+
+    if (fetchError) {
+      console.error('Error fetching placeholders to delete:', fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Found ${toDelete?.length || 0} placeholders to delete`);
+    if (!toDelete || toDelete.length === 0) return { deletedEntries: 0 };
+
+    const ids = toDelete.map(e => e.id);
+    const organizationIds = [...new Set(toDelete.map(e => e.organization_id))];
+
+    const { error: deleteError } = await supabase
+      .from('anamnes_entries')
+      .delete()
+      .in('id', ids);
+
+    if (deleteError) {
+      console.error('Error deleting placeholder entries:', deleteError);
+      throw deleteError;
+    }
+
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        organizationIds.map(id => ({
+          organization_id: id,
+          last_auto_deletion_run: new Date().toISOString()
+        })),
+        { onConflict: 'organization_id' }
+      );
+
+    return { deletedEntries: ids.length, organizationsAffected: organizationIds };
+  } catch (error) {
+    console.error('Error in runPlaceholderCleanup:', error);
+    return { deletedEntries: 0, error };
+  }
+}
+
+/**
+ * Cleans up journaled/reviewed magic link entries where booking date has passed by 24h.
+ * These are fully deleted to avoid keeping empty placeholders.
+ */
+export async function runJournaledMagicLinkCleanup(supabase: SupabaseClient): Promise<{
+  deletedEntries: number;
+  organizationsAffected?: string[];
+  error?: any;
+}> {
+  try {
+    console.log('Starting journaled magic link cleanup...');
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: toDelete, error: fetchError } = await supabase
+      .from('anamnes_entries')
+      .select('id, organization_id')
+      .eq('is_magic_link', true)
+      .in('status', ['journaled', 'reviewed'])
+      .lt('booking_date', cutoff);
+
+    if (fetchError) {
+      console.error('Error fetching journaled placeholders:', fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Found ${toDelete?.length || 0} journaled placeholders to delete`);
+    if (!toDelete || toDelete.length === 0) return { deletedEntries: 0 };
+
+    const ids = toDelete.map(e => e.id);
+    const organizationIds = [...new Set(toDelete.map(e => e.organization_id))];
+
+    const { error: deleteError } = await supabase
+      .from('anamnes_entries')
+      .delete()
+      .in('id', ids);
+
+    if (deleteError) {
+      console.error('Error deleting journaled placeholders:', deleteError);
+      throw deleteError;
+    }
+
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        organizationIds.map(id => ({
+          organization_id: id,
+          last_auto_deletion_run: new Date().toISOString()
+        })),
+        { onConflict: 'organization_id' }
+      );
+
+    return { deletedEntries: ids.length, organizationsAffected: organizationIds };
+  } catch (error) {
+    console.error('Error in runJournaledMagicLinkCleanup:', error);
+    return { deletedEntries: 0, error };
+  }
+}
+
+/**
  * Logs the result of an auto deletion process
  * @param supabase Supabase client
  * @param result Result of the auto deletion process
  */
 export async function logDeletionResult(
-  supabase: SupabaseClient, 
-  result: { 
-    deletedEntries: number; 
-    organizationsAffected?: string[]; 
-    error?: any 
+  supabase: SupabaseClient,
+  result: {
+    deletedEntries: number;
+    organizationsAffected?: string[];
+    error?: any;
+    status?: string;
   }
 ): Promise<void> {
   try {
@@ -191,7 +309,7 @@ export async function logDeletionResult(
       .insert({
         entries_deleted: result.deletedEntries,
         organizations_affected: result.organizationsAffected || [],
-        status: result.error ? 'error' : 'success',
+        status: result.error ? 'error' : (result.status || 'success'),
         error: result.error ? (result.error.message || String(result.error)) : null,
         run_at: new Date().toISOString()
       });

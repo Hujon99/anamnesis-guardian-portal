@@ -203,7 +203,7 @@ export async function logDeletionResult(
 }
 
 /**
- * Runs the auto redaction process for due journaled/ready/reviewed entries.
+ * Runs the auto redaction process for due journaled/reviewed entries.
  * Instead of deleting, clears medical content and flags as redacted.
  */
 export async function runAutoRedaction(supabase: SupabaseClient): Promise<{
@@ -221,7 +221,7 @@ export async function runAutoRedaction(supabase: SupabaseClient): Promise<{
       .lt('auto_deletion_timestamp', new Date().toISOString())
       .not('auto_deletion_timestamp', 'is', null)
       .eq('is_redacted', false)
-      .in('status', ['journaled', 'ready', 'reviewed']);
+      .in('status', ['journaled', 'reviewed']);
 
     if (fetchError) {
       console.error('Error fetching entries to redact:', fetchError);

@@ -14,7 +14,12 @@ interface EntryStatusBadgeProps {
 
 export const EntryStatusBadge = ({ status, isExpired, isRedacted }: EntryStatusBadgeProps) => {
   if (isRedacted) {
-    return <Badge variant="secondary" className="bg-muted/40 text-muted-foreground border-muted/50">Journalförd och gallrad</Badge>;
+    const isJournaled = status === "journaled" || status === "reviewed";
+    return (
+      <Badge variant="secondary" className="bg-muted/40 text-muted-foreground border-muted/50">
+        {isJournaled ? "Journalförd och gallrad" : "Gallrad"}
+      </Badge>
+    );
   }
   if (isExpired) {
     return <Badge variant="destructive">Utgången</Badge>;

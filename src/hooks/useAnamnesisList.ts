@@ -87,7 +87,10 @@ export const useAnamnesisList = () => {
         
         const { data, error } = await supabase
           .from("anamnes_entries")
-          .select("*")
+          .select(`
+            *,
+            anamnes_forms!inner(examination_type)
+          `)
           .eq("organization_id", organization.id)
           .order("booking_date", { ascending: false, nullsFirst: false })
           .order("sent_at", { ascending: false });
@@ -106,8 +109,17 @@ export const useAnamnesisList = () => {
         console.log(`Fetched ${data?.length || 0} entries`);
         setInitialLoadComplete(true);
         
+        // Process the joined data to flatten examination_type
+        const processedEntries = data?.map((entry: any) => {
+          const { anamnes_forms, ...entryData } = entry;
+          return {
+            ...entryData,
+            examination_type: anamnes_forms?.examination_type || null
+          };
+        }) || [];
+        
         // Cast the data to AnamnesesEntry[] to ensure it matches the expected type
-        return data as unknown as AnamnesesEntry[];
+        return processedEntries as AnamnesesEntry[];
       } catch (fetchError) {
         const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
         console.error("Error in query function:", fetchError);

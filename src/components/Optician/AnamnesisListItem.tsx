@@ -203,7 +203,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   console.log(`AnamnesisListItem: Entry ${entry.id} has patient_identifier:`, entry.patient_identifier);
 
   // Check if this is a driving license examination
-  const isDrivingLicenseExam = entry.examination_type === 'körkortsundersökning';
+  const isDrivingLicenseExam = entry.examination_type === 'Körkortsundersökning';
 
   const handleDrivingLicenseExamination = (e: React.MouseEvent) => {
     e.stopPropagation();

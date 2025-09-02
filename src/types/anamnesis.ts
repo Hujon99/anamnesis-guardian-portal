@@ -33,6 +33,8 @@ export type AnamnesesEntry = {
   is_magic_link?: boolean | null;
   // New properties
   optician_id?: string | null;
+  // Form-related properties
+  examination_type?: string | null;
 };
 
 export type FormQuestionOption = string | {

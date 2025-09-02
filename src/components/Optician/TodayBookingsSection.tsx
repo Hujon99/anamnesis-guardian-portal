@@ -7,8 +7,9 @@
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisListItem } from "./AnamnesisListItem";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users } from "lucide-react";
+import { Calendar, Users, CheckCircle, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 interface TodayBookingsSectionProps {
   todayBookings: AnamnesesEntry[];
@@ -25,6 +26,15 @@ export function TodayBookingsSection({
   onEntryAssigned,
   onStoreAssigned
 }: TodayBookingsSectionProps) {
+  // Group bookings by status
+  const activeBookings = todayBookings.filter(entry => 
+    entry.status !== 'journaled' && entry.status !== 'reviewed'
+  );
+  
+  const journaledBookings = todayBookings.filter(entry => 
+    entry.status === 'journaled' || entry.status === 'reviewed'
+  );
+
   const submittedCount = todayBookings.filter(entry => 
     entry.answers && Object.keys(entry.answers as Record<string, any>).length > 0
   ).length;
@@ -58,21 +68,69 @@ export function TodayBookingsSection({
         </div>
       </div>
       
-      <div className="space-y-3">
-        {todayBookings.map((entry) => (
-          <div key={entry.id} className="relative">
-            <AnamnesisListItem
-              entry={entry}
-              onClick={() => onSelectEntry(entry)}
-              onDelete={onEntryDeleted}
-              onAssign={onEntryAssigned}
-              onStoreAssign={onStoreAssigned}
-              showQuickAssign={true}
-            />
-            {/* Visual indicator for today's booking */}
-            <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-full"></div>
+      <div className="space-y-6">
+        {/* Active Bookings Section */}
+        {activeBookings.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="h-4 w-4 text-amber-600" />
+              <h4 className="font-medium text-foreground">Behöver hantering</h4>
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                {activeBookings.length}
+              </Badge>
+            </div>
+            <div className="space-y-3">
+              {activeBookings.map((entry) => (
+                <div key={entry.id} className="relative">
+                  <AnamnesisListItem
+                    entry={entry}
+                    onClick={() => onSelectEntry(entry)}
+                    onDelete={onEntryDeleted}
+                    onAssign={onEntryAssigned}
+                    onStoreAssign={onStoreAssigned}
+                    showQuickAssign={true}
+                  />
+                  {/* Visual indicator for active booking */}
+                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-amber-500 rounded-full"></div>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
+
+        {/* Separator between sections */}
+        {activeBookings.length > 0 && journaledBookings.length > 0 && (
+          <Separator className="my-4" />
+        )}
+
+        {/* Journaled Bookings Section */}
+        {journaledBookings.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <h4 className="font-medium text-muted-foreground">Journalförda</h4>
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                {journaledBookings.length}
+              </Badge>
+            </div>
+            <div className="space-y-3">
+              {journaledBookings.map((entry) => (
+                <div key={entry.id} className="relative opacity-75">
+                  <AnamnesisListItem
+                    entry={entry}
+                    onClick={() => onSelectEntry(entry)}
+                    onDelete={onEntryDeleted}
+                    onAssign={onEntryAssigned}
+                    onStoreAssign={onStoreAssigned}
+                    showQuickAssign={true}
+                  />
+                  {/* Visual indicator for completed booking */}
+                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-green-500 rounded-full"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );

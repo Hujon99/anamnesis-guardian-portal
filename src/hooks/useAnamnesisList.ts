@@ -361,8 +361,9 @@ export const useAnamnesisList = () => {
     return true;
   }).sort((a, b) => {
     // 0. Journaled entries go to bottom - highest priority sort rule
-    const isJournaledA = a.status === 'journaled' || a.status === 'reviewed';
-    const isJournaledB = b.status === 'journaled' || b.status === 'reviewed';
+    // Include all journaled states: journaled, reviewed, and redacted entries
+    const isJournaledA = a.status === 'journaled' || a.status === 'reviewed' || a.is_redacted;
+    const isJournaledB = b.status === 'journaled' || b.status === 'reviewed' || b.is_redacted;
     
     if (isJournaledA && !isJournaledB) return 1;  // A goes after B
     if (!isJournaledA && isJournaledB) return -1; // A goes before B

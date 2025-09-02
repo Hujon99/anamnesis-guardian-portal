@@ -180,16 +180,34 @@ export const useAnamnesisList = () => {
             });
           } 
           else if (payload.eventType === 'UPDATE') {
-            queryClient.setQueryData(
-              ["anamnes-entries-all", organization.id],
-              (oldData: AnamnesesEntry[] = []) => {
-                return oldData.map(entry => 
-                  entry.id === payload.new.id 
-                    ? { ...entry, ...payload.new as Partial<AnamnesesEntry> } 
-                    : entry
-                );
-              }
+            // Check if the update affects sorting (status or is_redacted changes)
+            const oldEntry = queryClient.getQueryData<AnamnesesEntry[]>(
+              ["anamnes-entries-all", organization.id]
+            )?.find(entry => entry.id === payload.new.id);
+            
+            const affectsSorting = oldEntry && (
+              oldEntry.status !== payload.new.status ||
+              oldEntry.is_redacted !== payload.new.is_redacted
             );
+
+            if (affectsSorting) {
+              // Invalidate and refetch to ensure proper sorting
+              queryClient.invalidateQueries({
+                queryKey: ["anamnes-entries-all", organization.id]
+              });
+            } else {
+              // Just update the cached data for non-sorting changes
+              queryClient.setQueryData(
+                ["anamnes-entries-all", organization.id],
+                (oldData: AnamnesesEntry[] = []) => {
+                  return oldData.map(entry => 
+                    entry.id === payload.new.id 
+                      ? { ...entry, ...payload.new as Partial<AnamnesesEntry> } 
+                      : entry
+                  );
+                }
+              );
+            }
           }
           else if (payload.eventType === 'DELETE') {
             queryClient.setQueryData(

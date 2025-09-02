@@ -360,6 +360,13 @@ export const useAnamnesisList = () => {
     
     return true;
   }).sort((a, b) => {
+    // 0. Journaled entries go to bottom - highest priority sort rule
+    const isJournaledA = a.status === 'journaled' || a.status === 'reviewed';
+    const isJournaledB = b.status === 'journaled' || b.status === 'reviewed';
+    
+    if (isJournaledA && !isJournaledB) return 1;  // A goes after B
+    if (!isJournaledA && isJournaledB) return -1; // A goes before B
+    
     // Primary sort by booking_date with proper categorization
     const bookingDateA = a.booking_date ? new Date(a.booking_date) : null;
     const bookingDateB = b.booking_date ? new Date(b.booking_date) : null;

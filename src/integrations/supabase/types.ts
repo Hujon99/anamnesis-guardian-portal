@@ -281,6 +281,105 @@ export type Database = {
         }
         Relationships: []
       }
+      driving_license_examinations: {
+        Row: {
+          correction_type: Database["public"]["Enums"]["correction_type"] | null
+          created_at: string
+          created_by: string | null
+          entry_id: string
+          examination_status:
+            | Database["public"]["Enums"]["examination_status"]
+            | null
+          id: string
+          id_type: Database["public"]["Enums"]["id_verification_type"] | null
+          id_verification_completed: boolean | null
+          notes: string | null
+          organization_id: string
+          passed_examination: boolean | null
+          requires_further_investigation: boolean | null
+          requires_optician_visit: boolean | null
+          updated_at: string
+          uses_contact_lenses: boolean | null
+          uses_glasses: boolean | null
+          verified_at: string | null
+          verified_by: string | null
+          vision_below_limit: boolean | null
+          visual_acuity_both_eyes: number | null
+          visual_acuity_left_eye: number | null
+          visual_acuity_right_eye: number | null
+          visual_acuity_with_correction: number | null
+          warning_flags: Json | null
+        }
+        Insert: {
+          correction_type?:
+            | Database["public"]["Enums"]["correction_type"]
+            | null
+          created_at?: string
+          created_by?: string | null
+          entry_id: string
+          examination_status?:
+            | Database["public"]["Enums"]["examination_status"]
+            | null
+          id?: string
+          id_type?: Database["public"]["Enums"]["id_verification_type"] | null
+          id_verification_completed?: boolean | null
+          notes?: string | null
+          organization_id: string
+          passed_examination?: boolean | null
+          requires_further_investigation?: boolean | null
+          requires_optician_visit?: boolean | null
+          updated_at?: string
+          uses_contact_lenses?: boolean | null
+          uses_glasses?: boolean | null
+          verified_at?: string | null
+          verified_by?: string | null
+          vision_below_limit?: boolean | null
+          visual_acuity_both_eyes?: number | null
+          visual_acuity_left_eye?: number | null
+          visual_acuity_right_eye?: number | null
+          visual_acuity_with_correction?: number | null
+          warning_flags?: Json | null
+        }
+        Update: {
+          correction_type?:
+            | Database["public"]["Enums"]["correction_type"]
+            | null
+          created_at?: string
+          created_by?: string | null
+          entry_id?: string
+          examination_status?:
+            | Database["public"]["Enums"]["examination_status"]
+            | null
+          id?: string
+          id_type?: Database["public"]["Enums"]["id_verification_type"] | null
+          id_verification_completed?: boolean | null
+          notes?: string | null
+          organization_id?: string
+          passed_examination?: boolean | null
+          requires_further_investigation?: boolean | null
+          requires_optician_visit?: boolean | null
+          updated_at?: string
+          uses_contact_lenses?: boolean | null
+          uses_glasses?: boolean | null
+          verified_at?: string | null
+          verified_by?: string | null
+          vision_below_limit?: boolean | null
+          visual_acuity_both_eyes?: number | null
+          visual_acuity_left_eye?: number | null
+          visual_acuity_right_eye?: number | null
+          visual_acuity_with_correction?: number | null
+          warning_flags?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_driving_license_examinations_entry_id"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "anamnes_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           category: string
@@ -559,6 +658,17 @@ export type Database = {
       }
     }
     Enums: {
+      correction_type: "glasses" | "contact_lenses" | "both" | "none"
+      examination_status:
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "requires_booking"
+      id_verification_type:
+        | "swedish_license"
+        | "swedish_id"
+        | "passport"
+        | "guardian_certificate"
       Synundersökning:
         | "Synundersökning"
         | "Körkortsundersökning"
@@ -690,6 +800,19 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      correction_type: ["glasses", "contact_lenses", "both", "none"],
+      examination_status: [
+        "pending",
+        "in_progress",
+        "completed",
+        "requires_booking",
+      ],
+      id_verification_type: [
+        "swedish_license",
+        "swedish_id",
+        "passport",
+        "guardian_certificate",
+      ],
       Synundersökning: [
         "Synundersökning",
         "Körkortsundersökning",

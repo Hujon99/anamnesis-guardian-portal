@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle } from "lucide-react";
+import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car, Eye } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -56,12 +56,14 @@ interface AnamnesisListItemProps {
     daysUntilExpiration?: number | null;
     storeName?: string | null;
     isBookingWithoutStore?: boolean;
+    examination_type?: string;
   };
   onClick?: () => void;
   onDelete?: () => void;
   onAssign?: (entryId: string, opticianId: string | null) => Promise<void>;
   onStoreAssign?: (entryId: string, storeId: string | null) => Promise<void>;
   onEntryUpdated?: () => void;
+  onDrivingLicenseExamination?: (entry: AnamnesesEntry) => void;
   showAssignmentIndicator?: boolean;
   showQuickAssign?: boolean;
   opticianName?: string | null;
@@ -77,6 +79,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   onAssign,
   onStoreAssign,
   onEntryUpdated,
+  onDrivingLicenseExamination,
   showAssignmentIndicator = false,
   showQuickAssign = false,
   opticianName,
@@ -198,6 +201,17 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   };
 
   console.log(`AnamnesisListItem: Entry ${entry.id} has patient_identifier:`, entry.patient_identifier);
+
+  // Check if this is a driving license examination
+  const isDrivingLicenseExam = entry.examination_type === 'körkortsundersökning';
+
+  const handleDrivingLicenseExamination = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onDrivingLicenseExamination) {
+      onDrivingLicenseExamination(entry);
+    }
+  };
 
   return (
     <>
@@ -411,6 +425,21 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
               )}
             </div>
           </div>
+
+          {/* Driving License Examination Button */}
+          {isDrivingLicenseExam && (
+            <div className="mt-3 pt-3 border-t border-gray-100" onClick={stopPropagation}>
+              <Button
+                onClick={handleDrivingLicenseExamination}
+                variant="default"
+                size="sm"
+                className="w-full bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
+              >
+                <Car className="h-4 w-4" />
+                <span>Genomför körkortsundersökning</span>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -7,7 +7,11 @@
 
 import { EmptyState } from "./EmptyState";
 import { AnamnesisListItem } from "../AnamnesisListItem";
+import { AnamnesisDetailModal } from "../AnamnesisDetailModal";
+import { DrivingLicenseExamination } from "../DrivingLicense/DrivingLicenseExamination";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AnamnesesEntry } from "@/types/anamnesis";
+import React, { useState } from "react";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useAuth } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
@@ -44,6 +48,10 @@ export function EntriesList({
   showQuickAssign = true,
   status = "pending" // Default status to handle the empty state
 }: EntriesListProps) {
+  const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [drivingLicenseEntry, setDrivingLicenseEntry] = useState<AnamnesesEntry | null>(null);
+  const [isDrivingLicenseOpen, setIsDrivingLicenseOpen] = useState(false);
   const { opticians } = useOpticians();
   const { stores, refetch: refetchStores, getStoreName, getStoreMap, forceRefreshStores } = useStores();
   const { has } = useAuth();
@@ -216,18 +224,20 @@ export function EntriesList({
   // Set final store name, with fallbacks
           const storeName = storeNameFromMap || entry.storeName || null;
           
-          // Handler for entry selection with audit logging
           const handleSelectEntry = async () => {
-            // Log the access to anamnesis entry
             await logAccess(supabase, {
               table: 'anamnes_entries',
               recordId: entry.id,
               purpose: 'detail_view',
               route: window.location.pathname
             });
-            
-            // Call the original onSelectEntry
-            onSelectEntry(entry);
+            setSelectedEntry(entry);
+            setIsDetailModalOpen(true);
+          };
+
+          const handleDrivingLicenseExamination = (entry: AnamnesesEntry) => {
+            setDrivingLicenseEntry(entry);
+            setIsDrivingLicenseOpen(true);
           };
           
         return (
@@ -242,6 +252,7 @@ export function EntriesList({
             onEntryUpdated={onEntryUpdated}
             onAssign={onEntryAssigned}
             onStoreAssign={handleStoreAssign}
+            onDrivingLicenseExamination={handleDrivingLicenseExamination}
             showAssignmentIndicator={true}
             showQuickAssign={showQuickAssign && (isAdmin || true)}
             opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}
@@ -292,6 +303,35 @@ export function EntriesList({
         {/* Past bookings with separator */}
         {renderEntryGroup(groupedEntries.past, true)}
       </div>
+
+      {selectedEntry && (
+        <AnamnesisDetailModal
+          entry={selectedEntry}
+          isOpen={isDetailModalOpen}
+          onOpenChange={setIsDetailModalOpen}
+          onEntryUpdated={() => {
+            setSelectedEntry(null);
+            setIsDetailModalOpen(false);
+            if (onEntryUpdated) onEntryUpdated();
+          }}
+        />
+      )}
+
+      {drivingLicenseEntry && (
+        <Dialog open={isDrivingLicenseOpen} onOpenChange={setIsDrivingLicenseOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DrivingLicenseExamination
+              entry={drivingLicenseEntry}
+              onClose={() => {
+                setDrivingLicenseEntry(null);
+                setIsDrivingLicenseOpen(false);
+                if (onEntryUpdated) onEntryUpdated();
+              }}
+              onUpdate={onEntryUpdated || (() => {})}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

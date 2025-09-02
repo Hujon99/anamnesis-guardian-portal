@@ -420,3 +420,73 @@ export async function logRedactionResult(
     console.error('Error logging redaction result:', logError);
   }
 }
+
+// New function for cleaning up normal journaled entries that are redacted and past booking date
+export async function runJournaledEntriesCleanup(supabase: SupabaseClient): Promise<{ deletedEntries: number; organizationsAffected?: string[]; error?: any; }> {
+  try {
+    console.log('Starting cleanup of non-magic, journaled/reviewed, redacted entries with past booking dates...');
+    
+    // First, fetch entries that match our criteria to get organization info before deletion
+    const { data: entriesToDelete, error: fetchError } = await supabase
+      .from('anamnes_entries')
+      .select('id, organization_id, booking_date, status, is_redacted, is_magic_link')
+      .eq('is_magic_link', false)
+      .eq('is_redacted', true)
+      .in('status', ['journaled', 'reviewed'])
+      .not('booking_date', 'is', null)
+      .lt('booking_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()); // booking_date < now() - 24 hours
+
+    if (fetchError) {
+      console.error('Error fetching entries to delete:', fetchError);
+      return {
+        deletedEntries: 0,
+        error: fetchError
+      };
+    }
+
+    if (!entriesToDelete || entriesToDelete.length === 0) {
+      console.log('No journaled entries found for cleanup');
+      return {
+        deletedEntries: 0,
+        organizationsAffected: []
+      };
+    }
+
+    console.log(`Found ${entriesToDelete.length} journaled entries to delete:`, 
+      entriesToDelete.map(e => ({ id: e.id, booking_date: e.booking_date, status: e.status })));
+
+    const organizationsAffected = [...new Set(entriesToDelete.map(e => e.organization_id))];
+    const entryIds = entriesToDelete.map(e => e.id);
+
+    // Delete the entries
+    const { error: deleteError } = await supabase
+      .from('anamnes_entries')
+      .delete()
+      .in('id', entryIds);
+
+    if (deleteError) {
+      console.error('Error deleting journaled entries:', deleteError);
+      return {
+        deletedEntries: 0,
+        organizationsAffected,
+        error: deleteError
+      };
+    }
+
+    console.log(`Successfully deleted ${entriesToDelete.length} journaled entries`);
+    
+    return {
+      deletedEntries: entriesToDelete.length,
+      organizationsAffected
+    };
+    
+  } catch (error) {
+    console.error('Error in runJournaledEntriesCleanup:', error);
+    return {
+      deletedEntries: 0,
+      error
+    };
+  }
+}
+
+export { createSupabaseClient, runAutoDeletion, runStuckFormsCleanup, runPlaceholderCleanup, runJournaledMagicLinkCleanup, runJournaledEntriesCleanup, runAutoRedaction, logDeletionResult, logRedactionResult };

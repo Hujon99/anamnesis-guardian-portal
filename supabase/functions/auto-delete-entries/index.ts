@@ -7,7 +7,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { Database } from '../utils/database.types.ts'
-import { createSupabaseClient, runAutoRedaction, runStuckFormsCleanup, runPlaceholderCleanup, runJournaledMagicLinkCleanup, logDeletionResult, logRedactionResult } from '../utils/databaseUtils.ts''
+import { createSupabaseClient, runAutoRedaction, runStuckFormsCleanup, runPlaceholderCleanup, runJournaledMagicLinkCleanup, runJournaledEntriesCleanup, logDeletionResult, logRedactionResult } from '../utils/databaseUtils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,21 +29,23 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create Supabase client - missing credentials');
     }
 
-    // Run auto redaction, stuck forms cleanup, and placeholder cleanups in parallel
-    console.log('Running auto redaction and stuck forms cleanup...');
-    const [autoRedactionResult, stuckFormsResult, placeholderCleanupResult, journaledPlaceholderResult] = await Promise.all([
+    // Run auto redaction, stuck forms cleanup, placeholder cleanups, and journaled entries cleanup in parallel
+    console.log('Running auto redaction, stuck forms cleanup, and journaled entries cleanup...');
+    const [autoRedactionResult, stuckFormsResult, placeholderCleanupResult, journaledPlaceholderResult, journaledEntriesResult] = await Promise.all([
       runAutoRedaction(supabase),
       runStuckFormsCleanup(supabase),
       runPlaceholderCleanup(supabase),
-      runJournaledMagicLinkCleanup(supabase)
+      runJournaledMagicLinkCleanup(supabase),
+      runJournaledEntriesCleanup(supabase)
     ]);
     
-    const totalProcessed = autoRedactionResult.redactedEntries + stuckFormsResult.deletedEntries + placeholderCleanupResult.deletedEntries + journaledPlaceholderResult.deletedEntries;
+    const totalProcessed = autoRedactionResult.redactedEntries + stuckFormsResult.deletedEntries + placeholderCleanupResult.deletedEntries + journaledPlaceholderResult.deletedEntries + journaledEntriesResult.deletedEntries;
     const allOrganizations = [
       ...(autoRedactionResult.organizationsAffected || []),
       ...(stuckFormsResult.organizationsAffected || []),
       ...(placeholderCleanupResult.organizationsAffected || []),
-      ...(journaledPlaceholderResult.organizationsAffected || [])
+      ...(journaledPlaceholderResult.organizationsAffected || []),
+      ...(journaledEntriesResult.organizationsAffected || [])
     ];
     const uniqueOrganizations = [...new Set(allOrganizations)];
     
@@ -71,6 +73,12 @@ Deno.serve(async (req) => {
         organizationsAffected: journaledPlaceholderResult.organizationsAffected,
         error: journaledPlaceholderResult.error,
         status: 'journaled_placeholder_cleanup'
+      }),
+      logDeletionResult(supabase, {
+        deletedEntries: journaledEntriesResult.deletedEntries,
+        organizationsAffected: journaledEntriesResult.organizationsAffected,
+        error: journaledEntriesResult.error,
+        status: 'journaled_entries_cleanup'
       })
     ]);
 
@@ -82,6 +90,7 @@ Deno.serve(async (req) => {
         stuckFormsCleanup: stuckFormsResult.deletedEntries,
         placeholderCleanup: placeholderCleanupResult.deletedEntries,
         journaledPlaceholderCleanup: journaledPlaceholderResult.deletedEntries,
+        journaledEntriesCleanup: journaledEntriesResult.deletedEntries,
         totalProcessed: 0
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -89,7 +98,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Successfully processed ${totalProcessed} total entries (redacted: ${autoRedactionResult.redactedEntries}, stuck deleted: ${stuckFormsResult.deletedEntries}, placeholders deleted: ${placeholderCleanupResult.deletedEntries}, journaled placeholders deleted: ${journaledPlaceholderResult.deletedEntries})`);
+    console.log(`Successfully processed ${totalProcessed} total entries (redacted: ${autoRedactionResult.redactedEntries}, stuck deleted: ${stuckFormsResult.deletedEntries}, placeholders deleted: ${placeholderCleanupResult.deletedEntries}, journaled placeholders deleted: ${journaledPlaceholderResult.deletedEntries}, journaled entries deleted: ${journaledEntriesResult.deletedEntries})`);
 
     return new Response(JSON.stringify({ 
       message: 'Redaction and cleanup completed successfully',
@@ -97,6 +106,7 @@ Deno.serve(async (req) => {
       stuckFormsCleanup: stuckFormsResult.deletedEntries,
       placeholderCleanup: placeholderCleanupResult.deletedEntries,
       journaledPlaceholderCleanup: journaledPlaceholderResult.deletedEntries,
+      journaledEntriesCleanup: journaledEntriesResult.deletedEntries,
       totalProcessed,
       organizationsAffected: uniqueOrganizations
     }), {

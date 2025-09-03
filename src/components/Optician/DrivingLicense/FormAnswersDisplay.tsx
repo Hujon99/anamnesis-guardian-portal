@@ -2,6 +2,7 @@
  * Displays the patient's form answers for driving license examination.
  * Shows a summary of all responses and automatically flags answers 
  * that may require further investigation according to driving license requirements.
+ * Uses the form template to display proper question labels in form order.
  */
 
 import React from "react";
@@ -9,8 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, AlertTriangle, CheckCircle, Plus } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
+import { useFormTemplateByFormId } from "@/hooks/useFormTemplateByFormId";
+import { AnswerDisplayHelper } from "@/components/Optician/EntryDetails/AnswerDisplayHelper";
 
 interface FormAnswersDisplayProps {
   entry: AnamnesesEntry;
@@ -23,19 +27,59 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
 }) => {
   const answers = entry.answers as Record<string, any> || {};
   const hasAnswers = Object.keys(answers).length > 0;
+  
+  // Fetch form template to get proper question labels
+  const { data: formTemplate, isLoading: isLoadingTemplate } = useFormTemplateByFormId(entry.form_id);
+  
+  // Create a map of question IDs to labels from the form template
+  const questionLabelMap = React.useMemo(() => {
+    if (!formTemplate?.schema) return {};
+    
+    const labelMap: Record<string, string> = {};
+    formTemplate.schema.sections.forEach(section => {
+      section.questions.forEach(question => {
+        labelMap[question.id] = question.label;
+      });
+    });
+    return labelMap;
+  }, [formTemplate]);
+  
+  // Get ordered questions from form template
+  const orderedQuestions = React.useMemo(() => {
+    if (!formTemplate?.schema) return [];
+    
+    const questions: { id: string; label: string; sectionTitle: string; answer: any }[] = [];
+    formTemplate.schema.sections.forEach(section => {
+      section.questions.forEach(question => {
+        if (answers.hasOwnProperty(question.id)) {
+          questions.push({
+            id: question.id,
+            label: question.label,
+            sectionTitle: section.section_title,
+            answer: answers[question.id]
+          });
+        }
+      });
+    });
+    return questions;
+  }, [formTemplate, answers]);
 
   // Questions that typically require investigation for driving licenses
-  const concerningAnswers = [
-    { key: 'diabetes', label: 'Diabetes', value: answers.diabetes },
-    { key: 'eye_disease', label: 'Ögonsjukdom', value: answers.eye_disease },
-    { key: 'heart_condition', label: 'Hjärtproblem', value: answers.heart_condition },
-    { key: 'epilepsy', label: 'Epilepsi', value: answers.epilepsy },
-    { key: 'vision_problems', label: 'Synproblem', value: answers.vision_problems },
-    { key: 'double_vision', label: 'Dubbelseende', value: answers.double_vision },
-    { key: 'night_blindness', label: 'Nattblindhet', value: answers.night_blindness },
-    { key: 'color_blindness', label: 'Färgblindhet', value: answers.color_blindness },
-    { key: 'medications', label: 'Mediciner som påverkar syn', value: answers.medications }
-  ].filter(item => item.value === true || item.value === 'ja' || item.value === 'yes');
+  const concerningKeywords = [
+    'diabetes', 'eye_disease', 'heart_condition', 'epilepsy', 'vision_problems', 
+    'double_vision', 'night_blindness', 'color_blindness', 'medications',
+    'synproblem', 'ögonsjukdom', 'hjärt', 'medicin', 'dubbelseende', 'nattblind'
+  ];
+  
+  const concerningAnswers = orderedQuestions.filter(question => {
+    const value = question.answer;
+    const isPositive = value === true || value === 'ja' || value === 'yes';
+    const hasConcerningKeyword = concerningKeywords.some(keyword => 
+      question.id.toLowerCase().includes(keyword) || 
+      question.label.toLowerCase().includes(keyword)
+    );
+    return isPositive && hasConcerningKeyword;
+  });
 
   const renderAnswerValue = (value: any): string => {
     if (typeof value === 'boolean') {
@@ -106,7 +150,7 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
                 <ul className="list-disc list-inside text-sm space-y-1">
                   {concerningAnswers.map((item, index) => (
                     <li key={index}>
-                      {item.label}: {renderAnswerValue(item.value)}
+                      {item.label}: <AnswerDisplayHelper answer={item.answer} />
                     </li>
                   ))}
                 </ul>
@@ -115,32 +159,77 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
           </Alert>
         )}
 
-        {/* All answers display */}
-        <div className="space-y-4">
-          <h4 className="font-medium">Alla svar</h4>
-          <div className="grid gap-3">
-            {Object.entries(answers).map(([key, value]) => (
-              <div 
-                key={key} 
-                className={`flex justify-between items-start p-3 rounded-lg border ${
-                  concerningAnswers.some(item => item.key === key) 
-                    ? 'border-red-200 bg-red-50' 
-                    : 'border-border bg-background'
-                }`}
-              >
-                <span className="text-sm font-medium capitalize">
-                  {key.replace(/_/g, ' ')}:
-                </span>
-                <span className="text-sm text-right max-w-xs">
-                  {renderAnswerValue(value)}
-                  {concerningAnswers.some(item => item.key === key) && (
-                    <AlertTriangle className="h-3 w-3 text-red-500 inline ml-1" />
-                  )}
-                </span>
-              </div>
-            ))}
+        {/* Loading state for form template */}
+        {isLoadingTemplate ? (
+          <div className="space-y-4">
+            <h4 className="font-medium">Alla svar</h4>
+            <div className="grid gap-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-16 w-full" />
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Ordered answers display */
+          <div className="space-y-4">
+            <h4 className="font-medium">Alla svar</h4>
+            {orderedQuestions.length > 0 ? (
+              <div className="space-y-6">
+                {formTemplate?.schema.sections.map(section => {
+                  const sectionQuestions = orderedQuestions.filter(q => q.sectionTitle === section.section_title);
+                  if (sectionQuestions.length === 0) return null;
+                  
+                  return (
+                    <div key={section.section_title} className="space-y-3">
+                      <h5 className="text-sm font-semibold text-muted-foreground border-b pb-1">
+                        {section.section_title}
+                      </h5>
+                      <div className="grid gap-3">
+                        {sectionQuestions.map(question => (
+                          <div 
+                            key={question.id} 
+                            className={`flex justify-between items-start p-3 rounded-lg border ${
+                              concerningAnswers.some(item => item.id === question.id) 
+                                ? 'border-destructive/20 bg-destructive/5' 
+                                : 'border-border bg-background'
+                            }`}
+                          >
+                            <span className="text-sm font-medium flex-1 pr-4">
+                              {question.label}:
+                            </span>
+                            <div className="text-sm text-right max-w-xs flex items-center gap-1">
+                              <AnswerDisplayHelper answer={question.answer} />
+                              {concerningAnswers.some(item => item.id === question.id) && (
+                                <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Fallback for missing form template */
+              <div className="grid gap-3">
+                {Object.entries(answers).map(([key, value]) => (
+                  <div 
+                    key={key} 
+                    className="flex justify-between items-start p-3 rounded-lg border border-border bg-background"
+                  >
+                    <span className="text-sm font-medium capitalize">
+                      {questionLabelMap[key] || key.replace(/_/g, ' ')}:
+                    </span>
+                    <span className="text-sm text-right max-w-xs">
+                      <AnswerDisplayHelper answer={value} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Summary */}
         {concerningAnswers.length > 0 ? (

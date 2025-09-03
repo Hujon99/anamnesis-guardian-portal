@@ -14,7 +14,7 @@ interface AnamnesCardProps {
   children: ReactNode;
   className?: string;
   onClick?: () => void;
-  examinationType?: ExaminationType;
+  examinationType?: string;
   isExaminationCompleted?: boolean;
 }
 

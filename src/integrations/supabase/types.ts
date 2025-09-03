@@ -105,6 +105,13 @@ export type Database = {
             referencedColumns: ["clerk_user_id"]
           },
           {
+            foreignKeyName: "fk_anamnes_entries_form_id"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "anamnes_forms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_anamnes_entries_store"
             columns: ["store_id"]
             isOneToOne: false

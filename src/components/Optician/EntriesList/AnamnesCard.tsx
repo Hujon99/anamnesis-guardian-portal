@@ -6,19 +6,26 @@
 
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Eye, Car, FileText } from "lucide-react";
+import { ExaminationType } from "@/types/examinationType";
 
 interface AnamnesCardProps {
   status: "sent" | "pending" | "ready" | "reviewed" | "journaled" | "expiring";
   children: ReactNode;
   className?: string;
   onClick?: () => void;
+  examinationType?: ExaminationType;
+  isExaminationCompleted?: boolean;
 }
 
 export const AnamnesCard = ({ 
   status, 
   children, 
   className, 
-  onClick 
+  onClick,
+  examinationType,
+  isExaminationCompleted
 }: AnamnesCardProps) => {
   // Determine the accent color based on status
   const getAccentColor = () => {
@@ -40,6 +47,34 @@ export const AnamnesCard = ({
     }
   };
 
+  const getExaminationTypeIcon = () => {
+    switch (examinationType) {
+      case 'synundersökning':
+        return <Eye className="h-3 w-3" />;
+      case 'körkortsundersökning':
+        return <Car className="h-3 w-3" />;
+      case 'linsundersökning':
+        return <Eye className="h-3 w-3" />;
+      default:
+        return <FileText className="h-3 w-3" />;
+    }
+  };
+
+  const getExaminationTypeLabel = () => {
+    switch (examinationType) {
+      case 'synundersökning':
+        return 'Synundersökning';
+      case 'körkortsundersökning':
+        return 'Körkort';
+      case 'linsundersökning':
+        return 'Linser';
+      case 'allmän':
+        return 'Allmän';
+      default:
+        return 'Allmän';
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -57,6 +92,22 @@ export const AnamnesCard = ({
       }}
     >
       <div className={`absolute inset-y-0 left-0 w-1 rounded-l-2xl ${getAccentColor()}`} />
+      
+      {/* Examination type and completion badges */}
+      <div className="absolute top-2 right-2 flex gap-1">
+        {examinationType && (
+          <Badge variant="outline" className="h-5 px-1.5 text-xs bg-white/80 backdrop-blur-sm">
+            {getExaminationTypeIcon()}
+            <span className="ml-1">{getExaminationTypeLabel()}</span>
+          </Badge>
+        )}
+        {isExaminationCompleted && examinationType === 'körkortsundersökning' && (
+          <Badge className="h-5 px-1.5 text-xs bg-green-100 text-green-800 border-green-200">
+            Klar
+          </Badge>
+        )}
+      </div>
+      
       {children}
     </div>
   );

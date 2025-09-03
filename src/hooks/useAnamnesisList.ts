@@ -85,15 +85,11 @@ export const useAnamnesisList = () => {
       try {
         console.log(`Fetching all entries for org: ${organization.id}`);
         
+        // Use RPC function or direct query with LEFT JOIN since there's no FK constraint
         const { data, error } = await supabase
-          .from("anamnes_entries")
-          .select(`
-            *,
-            anamnes_forms!inner(examination_type)
-          `)
-          .eq("organization_id", organization.id)
-          .order("booking_date", { ascending: false, nullsFirst: false })
-          .order("sent_at", { ascending: false });
+          .rpc('get_entries_with_examination_type', { 
+            org_id: organization.id 
+          });
 
         if (error) {
           console.error("Error fetching anamnes entries:", error);

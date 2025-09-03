@@ -143,26 +143,24 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   }, [entry.id, entry.organization_id, isReady, db]);
 
   const saveExamination = async (updates: Database['public']['Tables']['driving_license_examinations']['Update']) => {
+    console.log('[DrivingLicenseExamination] saveExamination called with updates:', updates);
+    console.log('[DrivingLicenseExamination] Current state:', { 
+      examination: examination?.id, 
+      isOffline, 
+      offlineData: !!offlineData,
+      isReady,
+      hasDb: !!db 
+    });
+
     try {
       setIsSaving(true);
 
-      if (examination) {
-        if (!isReady || !db) throw new Error('Databasen är inte redo');
-        const { error } = await db
-          .from('driving_license_examinations')
-          .update(updates)
-          .eq('id', examination.id);
-
-        if (error) throw error;
-
-        setExamination({ ...examination, ...updates });
-        setIsOffline(false);
-        toast({ title: 'Sparat', description: 'Ändringar har sparats' });
-        onUpdate();
-        return;
+      if (!isReady || !db) {
+        console.error('[DrivingLicenseExamination] Database not ready');
+        throw new Error('Databasen är inte redo');
       }
 
-      // No DB record yet — try to create one with the provided updates
+      // Use proper upsert with onConflict to handle both insert and update cases
       const payload = {
         entry_id: entry.id,
         organization_id: entry.organization_id,
@@ -170,35 +168,58 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
         ...updates,
       } as Database['public']['Tables']['driving_license_examinations']['Insert'];
 
-      const { data: created, error: insertError } = await db!
+      console.log('[DrivingLicenseExamination] Attempting upsert with payload:', payload);
+
+      const { data: upserted, error: upsertError } = await db
         .from('driving_license_examinations')
-        .insert(payload)
+        .upsert(payload, { 
+          onConflict: 'entry_id',
+          ignoreDuplicates: false 
+        })
         .select()
         .single();
 
-      if (insertError) {
-        console.warn('[DrivingLicenseExamination] Persist failed, keeping data locally', insertError);
+      console.log('[DrivingLicenseExamination] Upsert result:', { upserted, upsertError });
+
+      if (upsertError) {
+        console.error('[DrivingLicenseExamination] Upsert failed:', upsertError);
+        throw upsertError;
+      }
+
+      if (upserted) {
+        console.log('[DrivingLicenseExamination] Successfully upserted to database');
+        setExamination(upserted);
+        setIsOffline(false);
+        setOfflineData(null);
+        toast({ 
+          title: 'Sparat', 
+          description: 'Undersökningen har sparats i databasen' 
+        });
+        onUpdate();
+      } else {
+        console.warn('[DrivingLicenseExamination] Upsert returned no data, falling back to offline');
         setIsOffline(true);
         setOfflineData((prev) => ({ ...(prev || {}), ...payload }));
         toast({
           title: 'Sparat lokalt',
-          description: 'Kunde inte spara i databasen. Vi försöker igen senare.',
+          description: 'Kunde inte spara i databasen. Data sparad lokalt.',
         });
-      } else {
-        setExamination(created);
-        setIsOffline(false);
-        setOfflineData(null);
-        toast({ title: 'Sparat', description: 'Undersökningen sparades.' });
-        onUpdate();
       }
     } catch (error) {
-      console.error('Error saving examination:', error);
-      // Fallback to local cache
+      console.error('[DrivingLicenseExamination] Error in saveExamination:', error);
+      // Fallback to offline storage
+      const fallbackPayload = {
+        entry_id: entry.id,
+        organization_id: entry.organization_id,
+        examination_status: 'in_progress' as const,
+        ...updates,
+      };
+      
       setIsOffline(true);
-      setOfflineData((prev) => ({ ...(prev || {}), ...(updates as any) }));
+      setOfflineData((prev) => ({ ...(prev || {}), ...fallbackPayload }));
       toast({
-        title: 'Fel vid sparning',
-        description: 'Kunde inte spara till databasen. Värdena är sparade lokalt.',
+        title: 'Sparat lokalt',
+        description: 'Kunde inte spara i databasen. Värdena är sparade lokalt och synkroniseras senare.',
         variant: 'destructive',
       });
     } finally {
@@ -328,41 +349,13 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           )}
           
           {currentStep === 5 && (
-            examination ? (
-              <ExaminationSummary
-                examination={examination}
-                entry={entry}
-                onSave={saveExamination}
-                onComplete={onClose}
-                isSaving={isSaving}
-              />
-            ) : effectiveExam ? (
-              <ExaminationSummary
-                examination={effectiveExam}
-                entry={entry}
-                onSave={saveExamination}
-                onComplete={onClose}
-                isSaving={isSaving}
-              />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Slutförande kräver sparad undersökning</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Alert>
-                    <AlertDescription>
-                      För att slutföra måste undersökningen sparas i databasen. Försök spara nu.
-                    </AlertDescription>
-                  </Alert>
-                  <div className="flex justify-end">
-                    <Button onClick={() => offlineData && saveExamination(offlineData as any)} disabled={isSaving}>
-                      {isSaving ? 'Sparar...' : 'Försök spara nu'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )
+            <ExaminationSummary
+              examination={effectiveExam}
+              entry={entry}
+              onSave={saveExamination}
+              onComplete={onClose}
+              isSaving={isSaving}
+            />
           )}
         </div>
 

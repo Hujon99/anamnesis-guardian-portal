@@ -94,7 +94,7 @@ export const AnamnesCard = ({
     >
       {/* Examination type and completion badges - properly positioned */}
       {(examinationType || isExaminationCompleted) && (
-        <div className="flex justify-end gap-1 mb-1">
+        <div className="flex justify-start gap-1 mb-1">
           {examinationType && (
             <Badge variant="outline" className="h-5 px-1.5 text-xs bg-white/80 backdrop-blur-sm">
               {getExaminationTypeIcon()}

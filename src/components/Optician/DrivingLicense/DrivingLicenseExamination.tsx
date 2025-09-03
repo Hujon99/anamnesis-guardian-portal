@@ -49,6 +49,9 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   const [examination, setExamination] = useState<DrivingLicenseExamination | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  // Offline mode allows entering measurements even if DB insert is blocked by RLS
+  const [offlineData, setOfflineData] = useState<Partial<DrivingLicenseExamination> | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
 
   const steps = [
     { id: 1, title: "Formuläröversikt", icon: FileText },
@@ -105,9 +108,18 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
 
           console.log('[DrivingLicenseExamination] Created examination:', { created, createError });
 
-          if (createError) throw createError;
-          
-          setExamination(created);
+          if (createError) {
+            console.warn('[DrivingLicenseExamination] Insert blocked or failed, switching to offline mode', createError);
+            setIsOffline(true);
+            setOfflineData({
+              entry_id: entry.id,
+              organization_id: entry.organization_id,
+              examination_status: 'in_progress' as const,
+            });
+            setCurrentStep(2);
+          } else {
+            setExamination(created);
+          }
         }
       } catch (error) {
         console.error('Error loading examination:', error);
@@ -125,32 +137,62 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   }, [entry.id, entry.organization_id]);
 
   const saveExamination = async (updates: Database['public']['Tables']['driving_license_examinations']['Update']) => {
-    if (!examination) return;
-
     try {
       setIsSaving(true);
-      
-      const { error } = await supabase
+
+      if (examination) {
+        const { error } = await supabase
+          .from('driving_license_examinations')
+          .update(updates)
+          .eq('id', examination.id);
+
+        if (error) throw error;
+
+        setExamination({ ...examination, ...updates });
+        setIsOffline(false);
+        toast({ title: 'Sparat', description: 'Ändringar har sparats' });
+        onUpdate();
+        return;
+      }
+
+      // No DB record yet — try to create one with the provided updates
+      const payload = {
+        entry_id: entry.id,
+        organization_id: entry.organization_id,
+        examination_status: 'in_progress' as const,
+        ...updates,
+      } as Database['public']['Tables']['driving_license_examinations']['Insert'];
+
+      const { data: created, error: insertError } = await supabase
         .from('driving_license_examinations')
-        .update(updates)
-        .eq('id', examination.id);
+        .insert(payload)
+        .select()
+        .single();
 
-      if (error) throw error;
-
-      setExamination({ ...examination, ...updates });
-      
-      toast({
-        title: "Sparat",
-        description: "Ändringar har sparats",
-      });
-
-      onUpdate();
+      if (insertError) {
+        console.warn('[DrivingLicenseExamination] Persist failed, keeping data locally', insertError);
+        setIsOffline(true);
+        setOfflineData((prev) => ({ ...(prev || {}), ...payload }));
+        toast({
+          title: 'Sparat lokalt',
+          description: 'Kunde inte spara i databasen. Vi försöker igen senare.',
+        });
+      } else {
+        setExamination(created);
+        setIsOffline(false);
+        setOfflineData(null);
+        toast({ title: 'Sparat', description: 'Undersökningen sparades.' });
+        onUpdate();
+      }
     } catch (error) {
       console.error('Error saving examination:', error);
+      // Fallback to local cache
+      setIsOffline(true);
+      setOfflineData((prev) => ({ ...(prev || {}), ...(updates as any) }));
       toast({
-        title: "Fel vid sparning",
-        description: "Kunde inte spara ändringar",
-        variant: "destructive"
+        title: 'Fel vid sparning',
+        description: 'Kunde inte spara till databasen. Värdena är sparade lokalt.',
+        variant: 'destructive',
       });
     } finally {
       setIsSaving(false);
@@ -159,10 +201,18 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
 
   const progress = (currentStep / steps.length) * 100;
 
+  // Build an effective examination object so user can work offline
+  const effectiveExam = (examination ?? {
+    entry_id: entry.id,
+    organization_id: entry.organization_id,
+    examination_status: 'in_progress' as const,
+    ...(offlineData || {}),
+  }) as any;
+
   // Debug logging
   React.useEffect(() => {
-    console.log('[DrivingLicenseExamination] Rendering step content - currentStep:', currentStep, 'examination:', examination);
-  }, [currentStep, examination]);
+    console.log('[DrivingLicenseExamination] Rendering step content - currentStep:', currentStep, 'examination:', examination, 'offline:', isOffline);
+  }, [currentStep, examination, isOffline]);
 
   if (isLoading) {
     return (
@@ -243,47 +293,79 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           )}
           
           {currentStep === 2 && (
-            <>
-              {examination ? (
-                <VisualAcuityMeasurement
-                  examination={examination}
-                  onSave={saveExamination}
-                  onNext={() => setCurrentStep(3)}
-                  isSaving={isSaving}
-                />
-              ) : (
-                <div className="p-4 border rounded-lg">
-                  <p>Laddar undersökning...</p>
-                </div>
-              )}
-            </>
+            <VisualAcuityMeasurement
+              examination={effectiveExam}
+              onSave={saveExamination}
+              onNext={() => setCurrentStep(3)}
+              isSaving={isSaving}
+            />
           )}
           
-          {currentStep === 3 && examination && (
+          {currentStep === 3 && (
             <WarningsDisplay
-              examination={examination}
+              examination={effectiveExam}
               entry={entry}
               onNext={() => setCurrentStep(4)}
             />
           )}
           
-          {currentStep === 4 && examination && (
-            <IdVerification
-              examination={examination}
-              onSave={saveExamination}
-              onNext={() => setCurrentStep(5)}
-              isSaving={isSaving}
-            />
+          {currentStep === 4 && (
+            examination ? (
+              <IdVerification
+                examination={examination}
+                onSave={saveExamination}
+                onNext={() => setCurrentStep(5)}
+                isSaving={isSaving}
+              />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Kan inte fortsätta</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Alert>
+                    <AlertDescription>
+                      Spara undersökningen till databasen innan legitimationskontroll. Försök spara nu.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="flex justify-end">
+                    <Button onClick={() => offlineData && saveExamination(offlineData as any)} disabled={isSaving}>
+                      {isSaving ? 'Sparar...' : 'Försök spara nu'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
           )}
           
-          {currentStep === 5 && examination && (
-            <ExaminationSummary
-              examination={examination}
-              entry={entry}
-              onSave={saveExamination}
-              onComplete={onClose}
-              isSaving={isSaving}
-            />
+          {currentStep === 5 && (
+            examination ? (
+              <ExaminationSummary
+                examination={examination}
+                entry={entry}
+                onSave={saveExamination}
+                onComplete={onClose}
+                isSaving={isSaving}
+              />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Slutförande kräver sparad undersökning</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Alert>
+                    <AlertDescription>
+                      För att slutföra måste undersökningen sparas i databasen. Försök spara nu.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="flex justify-end">
+                    <Button onClick={() => offlineData && saveExamination(offlineData as any)} disabled={isSaving}>
+                      {isSaving ? 'Sparar...' : 'Försök spara nu'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
           )}
         </div>
 

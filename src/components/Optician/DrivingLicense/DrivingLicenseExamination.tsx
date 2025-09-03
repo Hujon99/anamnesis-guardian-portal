@@ -335,6 +335,14 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
                 onComplete={onClose}
                 isSaving={isSaving}
               />
+            ) : effectiveExam ? (
+              <ExaminationSummary
+                examination={effectiveExam}
+                entry={entry}
+                onSave={saveExamination}
+                onComplete={onClose}
+                isSaving={isSaving}
+              />
             ) : (
               <Card>
                 <CardHeader>

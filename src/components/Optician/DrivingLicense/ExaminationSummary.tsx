@@ -147,19 +147,41 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
           <h4 className="font-medium flex items-center gap-2">
             <Eye className="h-4 w-4" />
             Visusmätningar
+            {(examination?.uses_glasses || examination?.uses_contact_lenses) && (
+              <Badge variant="secondary" className="text-xs">
+                Med korrektion
+              </Badge>
+            )}
           </h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="space-y-1">
-              <p>Båda ögon: <span className="font-mono">{examination?.visual_acuity_both_eyes || 'Ej mätt'}</span></p>
-              <p>Höger öga: <span className="font-mono">{examination?.visual_acuity_right_eye || 'Ej mätt'}</span></p>
-              <p>Vänster öga: <span className="font-mono">{examination?.visual_acuity_left_eye || 'Ej mätt'}</span></p>
+              <p>Båda ögon: <span className="font-mono">
+                {(examination?.uses_glasses || examination?.uses_contact_lenses) 
+                  ? (examination?.visual_acuity_with_correction_both || examination?.visual_acuity_both_eyes || 'Ej mätt')
+                  : (examination?.visual_acuity_both_eyes || 'Ej mätt')
+                }
+              </span></p>
+              <p>Höger öga: <span className="font-mono">
+                {(examination?.uses_glasses || examination?.uses_contact_lenses) 
+                  ? (examination?.visual_acuity_with_correction_right || examination?.visual_acuity_right_eye || 'Ej mätt')
+                  : (examination?.visual_acuity_right_eye || 'Ej mätt')
+                }
+              </span></p>
+              <p>Vänster öga: <span className="font-mono">
+                {(examination?.uses_glasses || examination?.uses_contact_lenses) 
+                  ? (examination?.visual_acuity_with_correction_left || examination?.visual_acuity_left_eye || 'Ej mätt')
+                  : (examination?.visual_acuity_left_eye || 'Ej mätt')
+                }
+              </span></p>
             </div>
             <div className="space-y-1">
-              {examination?.visual_acuity_with_correction && (
-                <p>Med korrektion: <span className="font-mono">{examination.visual_acuity_with_correction}</span></p>
+              {examination?.uses_glasses ? (
+                <p>Använder glasögon: <span className="text-green-600 font-medium">Ja</span></p>
+              ) : examination?.uses_contact_lenses ? (
+                <p>Använder linser: <span className="text-green-600 font-medium">Ja</span></p>
+              ) : (
+                <p>Använder korrektion: <span className="text-muted-foreground">Nej</span></p>
               )}
-              {examination?.uses_glasses && <p>Använder glasögon: Ja</p>}
-              {examination?.uses_contact_lenses && <p>Använder linser: Ja</p>}
             </div>
           </div>
           

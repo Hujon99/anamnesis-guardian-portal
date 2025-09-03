@@ -216,11 +216,11 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
   return (
     <>
-      <Card
+      <AnamnesCard
+        status={entry.status as any || "sent"}
         onClick={onClick}
-        className={`cursor-pointer hover:shadow-md transition-shadow ${
-          entry.isExpired ? "opacity-50" : ""
-        }`}
+        className={entry.isExpired ? "opacity-50" : ""}
+        examinationType={entry.examination_type as any}
       >
         <CardHeader className="py-3 px-4">
           <div className="flex items-start justify-between">
@@ -442,7 +442,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
             </div>
           )}
         </CardContent>
-      </Card>
+      </AnamnesCard>
 
       <AlertDialog
         open={isDeleteDialogOpen}

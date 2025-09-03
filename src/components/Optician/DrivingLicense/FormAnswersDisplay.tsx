@@ -82,6 +82,26 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
     'synproblem', 'ögonsjukdom', 'hjärt', 'medicin', 'dubbelseende', 'nattblind'
   ];
   
+  // Identify follow-up questions from form template
+  const followupQuestions = React.useMemo(() => {
+    if (!formTemplate?.schema) return new Set<string>();
+    
+    const followupIds = new Set<string>();
+    formTemplate.schema.sections.forEach(section => {
+      section.questions.forEach(question => {
+        // Check if question has show_if condition (indicates it's a follow-up)
+        if (question.show_if) {
+          followupIds.add(question.id);
+        }
+        // Check if question is listed in followup_question_ids of other questions
+        if (question.followup_question_ids) {
+          question.followup_question_ids.forEach(id => followupIds.add(id));
+        }
+      });
+    });
+    return followupIds;
+  }, [formTemplate]);
+  
   const concerningAnswers = orderedQuestions.filter(question => {
     const value = question.answer;
     const isPositive = value === true || value === 'ja' || value === 'yes';
@@ -89,7 +109,9 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
       question.id.toLowerCase().includes(keyword) || 
       question.label.toLowerCase().includes(keyword)
     );
-    return isPositive && hasConcerningKeyword;
+    const isAnsweredFollowup = followupQuestions.has(question.id);
+    
+    return (isPositive && hasConcerningKeyword) || isAnsweredFollowup;
   });
 
   const renderAnswerValue = (value: any): string => {

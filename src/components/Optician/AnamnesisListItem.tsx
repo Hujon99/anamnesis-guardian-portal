@@ -213,7 +213,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
         className={entry.isExpired ? "opacity-50" : ""}
         examinationType={entry.examination_type}
       >
-        <div className="py-1.5 px-2.5">
+        <div className="py-1 px-0">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <EntryStatusIcon status={entry.status || "sent"} />
@@ -282,7 +282,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
           </div>
 
           {/* Reference Number Display - Prominent placement */}
-          <div className="mt-1.5 pt-1.5 border-t border-gray-100" onClick={stopPropagation}>
+          <div className="mt-1 pt-1 border-t border-gray-100" onClick={stopPropagation}>
             <ReferenceNumberDisplay
               patientIdentifier={entry.patient_identifier || ""}
               entryId={entry.id}
@@ -292,7 +292,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
           </div>
         </div>
 
-        <div className="py-1.5 px-2.5">
+        <div className="py-1 px-0">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
               {entry.daysUntilExpiration !== null && (

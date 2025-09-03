@@ -79,7 +79,7 @@ export const AnamnesCard = ({
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-0.5 p-1.5 rounded-lg bg-white transition-all hover:shadow-lg/20 hover:scale-[1.01] hover:bg-gray-50/80 focus-within:ring-2 focus-within:ring-ring cursor-pointer group",
+        "relative flex flex-col gap-0 p-3 rounded-lg bg-white transition-all hover:shadow-md hover:scale-[1.01] hover:bg-gray-50/80 focus-within:ring-2 focus-within:ring-ring cursor-pointer group border border-gray-100",
         className
       )}
       onClick={onClick}
@@ -92,11 +92,9 @@ export const AnamnesCard = ({
         }
       }}
     >
-      <div className={`absolute inset-y-0 left-0 w-1 rounded-l-lg ${getAccentColor()}`} />
-      
       {/* Examination type and completion badges - properly positioned */}
       {(examinationType || isExaminationCompleted) && (
-        <div className="flex justify-end gap-1 mb-0.5">
+        <div className="flex justify-end gap-1 mb-1">
           {examinationType && (
             <Badge variant="outline" className="h-5 px-1.5 text-xs bg-white/80 backdrop-blur-sm">
               {getExaminationTypeIcon()}

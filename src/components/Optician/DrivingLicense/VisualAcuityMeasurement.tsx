@@ -125,15 +125,15 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     const withCorrectionLeft = parseLocaleFloat(measurements.visual_acuity_with_correction_left);
 
     // Use corrected values if correction is used, otherwise use uncorrected
-    const effectiveBoth = measurements.uses_correction && withCorrectionBoth ? withCorrectionBoth : bothEyes;
-    const effectiveRight = measurements.uses_correction && withCorrectionRight ? withCorrectionRight : rightEye;
-    const effectiveLeft = measurements.uses_correction && withCorrectionLeft ? withCorrectionLeft : leftEye;
+    const effectiveBoth = measurements.uses_correction && !isNaN(withCorrectionBoth) ? withCorrectionBoth : bothEyes;
+    const effectiveRight = measurements.uses_correction && !isNaN(withCorrectionRight) ? withCorrectionRight : rightEye;
+    const effectiveLeft = measurements.uses_correction && !isNaN(withCorrectionLeft) ? withCorrectionLeft : leftEye;
 
     // Apply validation rules based on license category
     switch (licenseCategory) {
       case 'lower':
         // Lägre behörigheter: Minst 0,5 binokulart
-        if (effectiveBoth && effectiveBoth < 0.5) {
+        if (!isNaN(effectiveBoth) && effectiveBoth < 0.5) {
           newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,5 för lägre behörigheter");
         }
         break;
@@ -153,7 +153,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
         
       case 'taxi':
         // Taxiförarlegitimation: Minst 0,8 binokulart
-        if (effectiveBoth && effectiveBoth < 0.8) {
+        if (!isNaN(effectiveBoth) && effectiveBoth < 0.8) {
           newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,8 för taxiförarlegitimation");
         }
         break;
@@ -161,7 +161,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
 
     // Check correction requirements
     if (measurements.uses_correction && 
-        (!withCorrectionBoth && !withCorrectionRight && !withCorrectionLeft)) {
+        (isNaN(withCorrectionBoth) && isNaN(withCorrectionRight) && isNaN(withCorrectionLeft))) {
       newWarnings.push("Mätning med korrektion krävs när glasögon/linser används");
     }
 
@@ -176,24 +176,29 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
   };
 
   const handleSaveAndContinue = async () => {
+    const toNumberOrNull = (v: any) => {
+      const n = parseLocaleFloat(v as any);
+      return Number.isNaN(n) ? null : n;
+    };
+
     const updates = {
       ...measurements,
       // Map back to database fields
       uses_glasses: measurements.uses_correction,
       uses_contact_lenses: measurements.uses_correction,
       vision_below_limit: warnings.length > 0, // Any warning means vision issue
-      visual_acuity_both_eyes: parseLocaleFloat(measurements.visual_acuity_both_eyes) || null,
-      visual_acuity_right_eye: parseLocaleFloat(measurements.visual_acuity_right_eye) || null,
-      visual_acuity_left_eye: parseLocaleFloat(measurements.visual_acuity_left_eye) || null,
-      visual_acuity_with_correction_both: parseLocaleFloat(measurements.visual_acuity_with_correction_both) || null,
-      visual_acuity_with_correction_right: parseLocaleFloat(measurements.visual_acuity_with_correction_right) || null,
-      visual_acuity_with_correction_left: parseLocaleFloat(measurements.visual_acuity_with_correction_left) || null,
+      visual_acuity_both_eyes: toNumberOrNull(measurements.visual_acuity_both_eyes),
+      visual_acuity_right_eye: toNumberOrNull(measurements.visual_acuity_right_eye),
+      visual_acuity_left_eye: toNumberOrNull(measurements.visual_acuity_left_eye),
+      visual_acuity_with_correction_both: toNumberOrNull(measurements.visual_acuity_with_correction_both),
+      visual_acuity_with_correction_right: toNumberOrNull(measurements.visual_acuity_with_correction_right),
+      visual_acuity_with_correction_left: toNumberOrNull(measurements.visual_acuity_with_correction_left),
       // Store license category for reference
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
     };
 
-    console.log('[VisualAcuityMeasurement] Saving updates:', updates);
     console.log('[VisualAcuityMeasurement] Raw measurements before parsing:', measurements);
+    console.log('[VisualAcuityMeasurement] Saving updates:', updates);
 
     await onSave(updates);
     onNext();

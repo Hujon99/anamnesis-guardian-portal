@@ -182,21 +182,19 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     };
 
     const updates = {
-      ...measurements,
-      // Map back to database fields - for now, assume glasses if correction is used
-      uses_glasses: measurements.uses_correction || false,
-      uses_contact_lenses: false, // Set to false for now, can be expanded later
-      vision_below_limit: warnings.length > 0, // Any warning means vision issue
+      // Only include DB columns explicitly to avoid enum/type issues (no UI-only fields)
       visual_acuity_both_eyes: toNumberOrNull(measurements.visual_acuity_both_eyes),
       visual_acuity_right_eye: toNumberOrNull(measurements.visual_acuity_right_eye),
       visual_acuity_left_eye: toNumberOrNull(measurements.visual_acuity_left_eye),
       visual_acuity_with_correction_both: toNumberOrNull(measurements.visual_acuity_with_correction_both),
       visual_acuity_with_correction_right: toNumberOrNull(measurements.visual_acuity_with_correction_right),
       visual_acuity_with_correction_left: toNumberOrNull(measurements.visual_acuity_with_correction_left),
-      // Store license category for reference
+      uses_glasses: Boolean(measurements.uses_correction),
+      uses_contact_lenses: false,
+      vision_below_limit: warnings.length > 0,
+      // Append license category info into notes without overwriting any existing notes saved earlier
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
     };
-
     console.log('[VisualAcuityMeasurement] Raw measurements before parsing:', measurements);
     console.log('[VisualAcuityMeasurement] Saving updates:', updates);
 

@@ -390,7 +390,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
       {/* Driving License Examination Dialog */}
       {drivingLicenseEntry && (
         <Dialog open={isDrivingLicenseOpen} onOpenChange={setIsDrivingLicenseOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DrivingLicenseExamination
               entry={drivingLicenseEntry}
               onClose={() => {

@@ -62,6 +62,20 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
 
   const correctionType = getCorrectionType();
 
+  const getIdTypeInSwedish = (idType: string | null) => {
+    if (!idType) return '';
+    
+    const translations: Record<string, string> = {
+      'passport': 'Pass',
+      'driving_license': 'Körkort',
+      'national_id': 'Nationellt ID',
+      'eu_id': 'EU-ID',
+      'other': 'Annat'
+    };
+    
+    return translations[idType] || idType.replace('_', ' ');
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -156,7 +170,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                   <div className="space-y-1">
                     <p>Legitimation verifierad</p>
                     <p className="text-xs text-muted-foreground">
-                      Typ: {examination.id_type?.replace('_', ' ')} | Verifierad av: {examination.verified_by}
+                      Typ: {getIdTypeInSwedish(examination.id_type)} | Verifierad av: {examination.verified_by}
                     </p>
                   </div>
                 </AlertDescription>

@@ -39,16 +39,19 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   const canPass = visionPassed && idVerified;
   const handleComplete = async () => {
     if (!decision) return;
+    
     const updates = {
-      examination_status: 'completed',
+      examination_status: 'completed' as const,
       passed_examination: decision === 'pass',
       requires_optician_visit: decision === 'needs_booking',
       notes: notes.trim() || null
     };
+    
     try {
+      console.log('[ExaminationSummary] Completing examination with updates:', updates);
       await onSave(updates);
 
-      // Update the entry status if examination passed
+      // Show success message based on decision
       if (decision === 'pass') {
         toast({
           title: "Undersökning godkänd",
@@ -65,9 +68,17 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
           description: "Körkortsundersökningen uppfyller inte kraven"
         });
       }
+      
+      // Only close dialog after successful save
       onComplete();
-    } catch (error) {
-      console.error('Error completing examination:', error);
+    } catch (error: any) {
+      console.error('[ExaminationSummary] Error completing examination:', error);
+      toast({
+        title: "Kunde inte slutföra",
+        description: `Fel vid sparning: ${error.message || 'Okänt fel'}. Försök igen.`,
+        variant: "destructive"
+      });
+      // Don't close dialog on error
     }
   };
   const getDecisionBadge = () => {

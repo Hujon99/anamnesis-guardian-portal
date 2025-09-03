@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, AlertTriangle, Info } from "lucide-react";
 import { parseLocaleFloat, validateVisualAcuityInput, formatVisualAcuityValue } from "@/lib/number-utils";
+import { toast } from "@/hooks/use-toast";
 
 interface VisualAcuityMeasurementProps {
   examination: any;
@@ -198,8 +199,22 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     console.log('[VisualAcuityMeasurement] Raw measurements before parsing:', measurements);
     console.log('[VisualAcuityMeasurement] Saving updates:', updates);
 
-    await onSave(updates);
-    onNext();
+    try {
+      await onSave(updates);
+      toast({
+        title: "Visusmätningar sparade",
+        description: "Värdena har sparats och validering är klar",
+        variant: "default"
+      });
+      onNext();
+    } catch (error) {
+      console.error('[VisualAcuityMeasurement] Save failed:', error);
+      toast({
+        title: "Kunde inte spara",
+        description: "Ett fel uppstod vid sparning av visusmätningar",
+        variant: "destructive"
+      });
+    }
   };
 
   const isFormValid = measurements.visual_acuity_both_eyes && 

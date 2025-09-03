@@ -160,53 +160,82 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
         throw new Error('Databasen är inte redo');
       }
 
-      // Use proper upsert with onConflict to handle both insert and update cases
-      const payload = {
-        entry_id: entry.id,
-        organization_id: entry.organization_id,
-        examination_status: 'in_progress' as const,
-        ...updates,
-      } as Database['public']['Tables']['driving_license_examinations']['Insert'];
+      let result;
+      let error;
 
-      console.log('[DrivingLicenseExamination] Attempting upsert with payload:', payload);
+      if (examination?.id) {
+        // Update existing examination
+        console.log('[DrivingLicenseExamination] Updating existing examination:', examination.id);
+        const { data, error: updateError } = await db
+          .from('driving_license_examinations')
+          .update(updates)
+          .eq('id', examination.id)
+          .select()
+          .single();
+        
+        result = data;
+        error = updateError;
+      } else {
+        // Insert new examination
+        console.log('[DrivingLicenseExamination] Inserting new examination');
+        const payload = {
+          entry_id: entry.id,
+          organization_id: entry.organization_id,
+          examination_status: 'in_progress' as const,
+          ...updates,
+        } as Database['public']['Tables']['driving_license_examinations']['Insert'];
 
-      const { data: upserted, error: upsertError } = await db
-        .from('driving_license_examinations')
-        .upsert(payload, { 
-          onConflict: 'entry_id',
-          ignoreDuplicates: false 
-        })
-        .select()
-        .single();
-
-      console.log('[DrivingLicenseExamination] Upsert result:', { upserted, upsertError });
-
-      if (upsertError) {
-        console.error('[DrivingLicenseExamination] Upsert failed:', upsertError);
-        throw upsertError;
+        const { data, error: insertError } = await db
+          .from('driving_license_examinations')
+          .insert(payload)
+          .select()
+          .single();
+        
+        result = data;
+        error = insertError;
       }
 
-      if (upserted) {
-        console.log('[DrivingLicenseExamination] Successfully upserted to database');
-        setExamination(upserted);
+      console.log('[DrivingLicenseExamination] Operation result:', { result, error });
+
+      if (error) {
+        console.error('[DrivingLicenseExamination] Database operation failed:', error);
+        throw new Error(`Databasfel: ${error.message}`);
+      }
+
+      if (result) {
+        console.log('[DrivingLicenseExamination] Successfully saved to database');
+        setExamination(result);
         setIsOffline(false);
         setOfflineData(null);
+        
+        // Refetch to ensure we have latest data
+        try {
+          const { data: refetched } = await db
+            .from('driving_license_examinations')
+            .select('*')
+            .eq('entry_id', entry.id)
+            .single();
+          
+          if (refetched) {
+            setExamination(refetched);
+            console.log('[DrivingLicenseExamination] Refetched examination data:', refetched);
+          }
+        } catch (refetchError) {
+          console.warn('[DrivingLicenseExamination] Refetch failed, using operation result');
+        }
+        
         toast({ 
           title: 'Sparat', 
-          description: 'Undersökningen har sparats i databasen' 
+          description: 'Undersökningen har sparats i databasen',
+          variant: 'default'
         });
         onUpdate();
       } else {
-        console.warn('[DrivingLicenseExamination] Upsert returned no data, falling back to offline');
-        setIsOffline(true);
-        setOfflineData((prev) => ({ ...(prev || {}), ...payload }));
-        toast({
-          title: 'Sparat lokalt',
-          description: 'Kunde inte spara i databasen. Data sparad lokalt.',
-        });
+        throw new Error('Ingen data returnerades från databasen');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[DrivingLicenseExamination] Error in saveExamination:', error);
+      
       // Fallback to offline storage
       const fallbackPayload = {
         entry_id: entry.id,
@@ -217,9 +246,10 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
       
       setIsOffline(true);
       setOfflineData((prev) => ({ ...(prev || {}), ...fallbackPayload }));
+      
       toast({
-        title: 'Sparat lokalt',
-        description: 'Kunde inte spara i databasen. Värdena är sparade lokalt och synkroniseras senare.',
+        title: 'Kunde inte spara',
+        description: `Fel: ${error.message || 'Okänt fel'}. Data sparad lokalt.`,
         variant: 'destructive',
       });
     } finally {

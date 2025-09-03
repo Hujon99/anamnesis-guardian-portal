@@ -24,13 +24,13 @@ import {
 } from "lucide-react";
 
 import { AnamnesesEntry } from "@/types/anamnesis";
-import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { FormAnswersDisplay } from "./FormAnswersDisplay";
 import { VisualAcuityMeasurement } from "./VisualAcuityMeasurement";
 import { WarningsDisplay } from "./WarningsDisplay";
 import { IdVerification } from "./IdVerification";
 import { ExaminationSummary } from "./ExaminationSummary";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 interface DrivingLicenseExaminationProps {
   entry: AnamnesesEntry;
@@ -53,6 +53,9 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   const [offlineData, setOfflineData] = useState<Partial<DrivingLicenseExamination> | null>(null);
   const [isOffline, setIsOffline] = useState(false);
 
+  // Authenticated Supabase client (Clerk JWT) to satisfy RLS
+  const { supabase: db, isReady, error: dbError } = useSupabaseClient();
+
   const steps = [
     { id: 1, title: "Formuläröversikt", icon: FileText },
     { id: 2, title: "Visusmätningar", icon: Eye },
@@ -65,10 +68,13 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   useEffect(() => {
     const loadExamination = async () => {
       try {
+        if (!isReady || !db) {
+          return; // Wait until authenticated client is ready
+        }
         setIsLoading(true);
         console.log('[DrivingLicenseExamination] Loading examination for entry:', entry.id);
         
-        const { data: existingExam, error } = await supabase
+        const { data: existingExam, error } = await db
           .from('driving_license_examinations')
           .select('*')
           .eq('entry_id', entry.id)
@@ -100,7 +106,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
             examination_status: 'in_progress' as const
           };
 
-          const { data: created, error: createError } = await supabase
+          const { data: created, error: createError } = await db
             .from('driving_license_examinations')
             .insert(newExamination)
             .select()
@@ -134,14 +140,15 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
     };
 
     loadExamination();
-  }, [entry.id, entry.organization_id]);
+  }, [entry.id, entry.organization_id, isReady, db]);
 
   const saveExamination = async (updates: Database['public']['Tables']['driving_license_examinations']['Update']) => {
     try {
       setIsSaving(true);
 
       if (examination) {
-        const { error } = await supabase
+        if (!isReady || !db) throw new Error('Databasen är inte redo');
+        const { error } = await db
           .from('driving_license_examinations')
           .update(updates)
           .eq('id', examination.id);
@@ -163,7 +170,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
         ...updates,
       } as Database['public']['Tables']['driving_license_examinations']['Insert'];
 
-      const { data: created, error: insertError } = await supabase
+      const { data: created, error: insertError } = await db!
         .from('driving_license_examinations')
         .insert(payload)
         .select()

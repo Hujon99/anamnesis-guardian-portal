@@ -10,7 +10,9 @@ import { PatientInfo } from "./PatientInfo";
 import { EntryAnswers } from "./EntryAnswers";
 import { AssignmentSection } from "./AssignmentSection";
 import { OptimizedAnswersView } from "./OptimizedAnswers/OptimizedAnswersView";
+import { DrivingLicenseResults } from "./DrivingLicenseResults";
 import { AnamnesesEntry } from "@/types/anamnesis";
+import { useDrivingLicenseStatus } from "@/hooks/useDrivingLicenseStatus";
 
 interface ModalTabContentProps {
   patientIdentifier: string;
@@ -51,12 +53,21 @@ export function ModalTabContent({
   onAssignOptician,
   onAssignStore
 }: ModalTabContentProps) {
+  
+  // Check if this is a driving license examination
+  const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
+  const { isCompleted: isDrivingLicenseCompleted, examination } = useDrivingLicenseStatus(entry.id);
+  const showDrivingLicenseTab = isDrivingLicenseExam && isDrivingLicenseCompleted && examination;
+  
   return (
     <Tabs defaultValue="patient" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-4">
+      <TabsList className={`grid w-full ${showDrivingLicenseTab ? 'grid-cols-4' : 'grid-cols-3'} mb-4`}>
         <TabsTrigger value="patient">Patient</TabsTrigger>
         <TabsTrigger value="answers">Svar</TabsTrigger>
         <TabsTrigger value="assignment">Tilldelning</TabsTrigger>
+        {showDrivingLicenseTab && (
+          <TabsTrigger value="driving">Körkort</TabsTrigger>
+        )}
       </TabsList>
       
       <TabsContent value="patient" className="mt-0 space-y-6">
@@ -105,6 +116,17 @@ export function ModalTabContent({
           />
         </div>
       </TabsContent>
+      
+      {showDrivingLicenseTab && examination && (
+        <TabsContent value="driving" className="mt-0">
+          <div className="p-4 border rounded-lg bg-background">
+            <DrivingLicenseResults 
+              examination={examination}
+              entry={entry}
+            />
+          </div>
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

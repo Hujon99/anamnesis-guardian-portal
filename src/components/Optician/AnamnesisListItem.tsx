@@ -1,4 +1,3 @@
-
 /**
  * This component displays a single anamnesis entry in the list view.
  * It shows important information about the entry like status, creation date,
@@ -8,21 +7,13 @@
 
 import React, { useState } from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car, Eye } from "lucide-react";
+import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -220,19 +211,19 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
         status={entry.status as any || "sent"}
         onClick={onClick}
         className={entry.isExpired ? "opacity-50" : ""}
-        examinationType={entry.examination_type as any}
+        examinationType={entry.examination_type}
       >
-        <CardHeader className="py-3 px-4">
+        <div className="py-3 px-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <EntryStatusIcon status={entry.status || "sent"} />
               <div className="flex-1 min-w-0">
-                <CardTitle className="text-base truncate">
+                <h3 className="text-base truncate font-semibold">
                   {patientDisplayName}
-                </CardTitle>
-                <CardDescription className="text-xs">
+                </h3>
+                <p className="text-xs text-muted-foreground">
                   Skapad {formattedDate}
-                </CardDescription>
+                </p>
               </div>
             </div>
 
@@ -299,9 +290,9 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
               compact={true}
             />
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="py-2 px-4">
+        <div className="py-2 px-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
               {entry.daysUntilExpiration !== null && (
@@ -441,7 +432,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
               </Button>
             </div>
           )}
-        </CardContent>
+        </div>
       </AnamnesCard>
 
       <AlertDialog
@@ -469,9 +460,9 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                 handleDelete();
               }}
               disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/80"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Raderar..." : "Ta bort"}
+              {isDeleting ? "Raderar..." : "Radera"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

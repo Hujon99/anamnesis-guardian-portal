@@ -2,6 +2,7 @@
  * Component for conducting visual acuity measurements during driving license examinations.
  * Handles input for both eyes separately, with/without correction, and provides
  * real-time validation with automatic warnings when vision is below required limits.
+ * Validates based on Swedish driving license vision requirements for different license categories.
  */
 
 import React, { useState, useEffect } from "react";
@@ -21,6 +22,24 @@ interface VisualAcuityMeasurementProps {
   onNext: () => void;
   isSaving: boolean;
 }
+
+// License category types for vision requirements
+type LicenseCategory = 'lower' | 'higher' | 'taxi';
+
+const LICENSE_CATEGORIES = {
+  lower: {
+    name: 'Lägre behörigheter (AM, A1, A2, A, B, BE, traktor)',
+    requirements: 'Minst 0,5 binokulart (båda ögonen) - med eller utan glasögon/linser'
+  },
+  higher: {
+    name: 'Högre behörigheter (C1, C1E, C, CE, D1, D1E, D, DE)',
+    requirements: 'Minst 0,8 i bästa ögat och minst 0,1 i sämsta ögat'
+  },
+  taxi: {
+    name: 'Taxiförarlegitimation',
+    requirements: 'Minst 0,8 binokulart'
+  }
+};
 
 export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = ({
   examination,
@@ -52,6 +71,34 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     
     return false;
   }, [entry?.answers]);
+
+  // Try to detect license category from form answers
+  const detectedLicenseCategory = React.useMemo((): LicenseCategory => {
+    if (!entry?.answers) return 'lower'; // Default to lower category
+    
+    const answers = entry.answers;
+    
+    // Look for license type information in form answers
+    for (const [key, value] of Object.entries(answers)) {
+      const keyLower = key.toLowerCase();
+      const valueLower = String(value).toLowerCase();
+      
+      // Check for higher category licenses
+      if (keyLower.includes('körkortstyp') || keyLower.includes('behörighet') || keyLower.includes('license')) {
+        if (valueLower.includes('c1') || valueLower.includes('ce') || valueLower.includes('d1') || 
+            valueLower.includes('de') || valueLower.includes('lastbil') || valueLower.includes('buss')) {
+          return 'higher';
+        }
+        if (valueLower.includes('taxi')) {
+          return 'taxi';
+        }
+      }
+    }
+    
+    return 'lower'; // Default to lower category
+  }, [entry?.answers]);
+
+  const [licenseCategory, setLicenseCategory] = useState<LicenseCategory>(detectedLicenseCategory);
   const [measurements, setMeasurements] = useState({
     visual_acuity_both_eyes: examination?.visual_acuity_both_eyes || '',
     visual_acuity_right_eye: examination?.visual_acuity_right_eye || '',
@@ -65,7 +112,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
 
   const [warnings, setWarnings] = useState<string[]>([]);
 
-  // Validate measurements and generate warnings
+  // Validate measurements based on license category and generate warnings
   useEffect(() => {
     const newWarnings: string[] = [];
 
@@ -76,15 +123,39 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     const withCorrectionRight = parseFloat(measurements.visual_acuity_with_correction_right);
     const withCorrectionLeft = parseFloat(measurements.visual_acuity_with_correction_left);
 
-    // Check if any measurement is below 1.0
-    if (bothEyes && bothEyes < 1.0) {
-      newWarnings.push("Visus båda ögon är under gränsvärdet 1.0");
-    }
-    if (rightEye && rightEye < 0.5) {
-      newWarnings.push("Visus höger öga är under gränsvärdet 0.5");
-    }
-    if (leftEye && leftEye < 0.5) {
-      newWarnings.push("Visus vänster öga är under gränsvärdet 0.5");
+    // Use corrected values if correction is used, otherwise use uncorrected
+    const effectiveBoth = measurements.uses_correction && withCorrectionBoth ? withCorrectionBoth : bothEyes;
+    const effectiveRight = measurements.uses_correction && withCorrectionRight ? withCorrectionRight : rightEye;
+    const effectiveLeft = measurements.uses_correction && withCorrectionLeft ? withCorrectionLeft : leftEye;
+
+    // Apply validation rules based on license category
+    switch (licenseCategory) {
+      case 'lower':
+        // Lägre behörigheter: Minst 0,5 binokulart
+        if (effectiveBoth && effectiveBoth < 0.5) {
+          newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,5 för lägre behörigheter");
+        }
+        break;
+        
+      case 'higher':
+        // Högre behörigheter: 0,8 i bästa ögat, 0,1 i sämsta ögat
+        const bestEye = Math.max(effectiveRight || 0, effectiveLeft || 0);
+        const worstEye = Math.min(effectiveRight || 0, effectiveLeft || 0);
+        
+        if (bestEye < 0.8) {
+          newWarnings.push("Bästa ögat har under 0,8 i synskärpa (krävs för högre behörigheter)");
+        }
+        if (worstEye < 0.1) {
+          newWarnings.push("Sämsta ögat har under 0,1 i synskärpa (krävs för högre behörigheter)");
+        }
+        break;
+        
+      case 'taxi':
+        // Taxiförarlegitimation: Minst 0,8 binokulart
+        if (effectiveBoth && effectiveBoth < 0.8) {
+          newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,8 för taxiförarlegitimation");
+        }
+        break;
     }
 
     // Check correction requirements
@@ -93,19 +164,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       newWarnings.push("Mätning med korrektion krävs när glasögon/linser används");
     }
 
-    // Check correction measurements against limits
-    if (withCorrectionBoth && withCorrectionBoth < 1.0) {
-      newWarnings.push("Visus med korrektion båda ögon är under gränsvärdet 1.0");
-    }
-    if (withCorrectionRight && withCorrectionRight < 0.5) {
-      newWarnings.push("Visus med korrektion höger öga är under gränsvärdet 0.5");
-    }
-    if (withCorrectionLeft && withCorrectionLeft < 0.5) {
-      newWarnings.push("Visus med korrektion vänster öga är under gränsvärdet 0.5");
-    }
-
     setWarnings(newWarnings);
-  }, [measurements]);
+  }, [measurements, licenseCategory]);
 
   const handleInputChange = (field: string, value: any) => {
     setMeasurements(prev => ({
@@ -120,13 +180,15 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       // Map back to database fields
       uses_glasses: measurements.uses_correction,
       uses_contact_lenses: measurements.uses_correction,
-      vision_below_limit: warnings.some(w => w.includes("under gränsvärdet")),
+      vision_below_limit: warnings.length > 0, // Any warning means vision issue
       visual_acuity_both_eyes: parseFloat(measurements.visual_acuity_both_eyes) || null,
       visual_acuity_right_eye: parseFloat(measurements.visual_acuity_right_eye) || null,
       visual_acuity_left_eye: parseFloat(measurements.visual_acuity_left_eye) || null,
       visual_acuity_with_correction_both: parseFloat(measurements.visual_acuity_with_correction_both) || null,
       visual_acuity_with_correction_right: parseFloat(measurements.visual_acuity_with_correction_right) || null,
-      visual_acuity_with_correction_left: parseFloat(measurements.visual_acuity_with_correction_left) || null
+      visual_acuity_with_correction_left: parseFloat(measurements.visual_acuity_with_correction_left) || null,
+      // Store license category for reference
+      notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
     };
 
     await onSave(updates);
@@ -146,12 +208,46 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* License category selection */}
+        <div className="space-y-3">
+          <Label htmlFor="license-category">Typ av körkortsbehörighet</Label>
+          <Select value={licenseCategory} onValueChange={(value: LicenseCategory) => setLicenseCategory(value)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(LICENSE_CATEGORIES).map(([key, category]) => (
+                <SelectItem key={key} value={key}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {/* Display requirements for selected category */}
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-1">
+                <p className="font-medium">Krav för vald behörighetstyp:</p>
+                <p className="text-sm">{LICENSE_CATEGORIES[licenseCategory].requirements}</p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+
         {/* Information box */}
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Mät visus för båda ögonen tillsammans samt varje öga separat. 
-            Gränsvärden: Båda ögon ≥ 1.0, varje öga ≥ 0.5.
+            <div className="space-y-1">
+              <p className="font-medium">Mätinstruktioner:</p>
+              <p className="text-sm">
+                {licenseCategory === 'lower' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,5 krävs."}
+                {licenseCategory === 'higher' && "Mät synskärpa för varje öga separat. Minst 0,8 i bästa ögat och 0,1 i sämsta ögat krävs."}
+                {licenseCategory === 'taxi' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,8 krävs för taxiförarlegitimation."}
+              </p>
+            </div>
           </AlertDescription>
         </Alert>
 

@@ -311,32 +311,12 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           )}
           
           {currentStep === 4 && (
-            examination ? (
-              <IdVerification
-                examination={examination}
-                onSave={saveExamination}
-                onNext={() => setCurrentStep(5)}
-                isSaving={isSaving}
-              />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Kan inte fortsätta</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Alert>
-                    <AlertDescription>
-                      Spara undersökningen till databasen innan legitimationskontroll. Försök spara nu.
-                    </AlertDescription>
-                  </Alert>
-                  <div className="flex justify-end">
-                    <Button onClick={() => offlineData && saveExamination(offlineData as any)} disabled={isSaving}>
-                      {isSaving ? 'Sparar...' : 'Försök spara nu'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )
+            <IdVerification
+              examination={effectiveExam}
+              onSave={saveExamination}
+              onNext={() => setCurrentStep(5)}
+              isSaving={isSaving}
+            />
           )}
           
           {currentStep === 5 && (

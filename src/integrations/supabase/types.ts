@@ -390,7 +390,7 @@ export type Database = {
           {
             foreignKeyName: "fk_driving_license_examinations_entry_id"
             columns: ["entry_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "anamnes_entries"
             referencedColumns: ["id"]
           },

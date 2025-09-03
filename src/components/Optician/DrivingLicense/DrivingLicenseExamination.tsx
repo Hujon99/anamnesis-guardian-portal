@@ -209,12 +209,13 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   const progress = (currentStep / steps.length) * 100;
 
   // Build an effective examination object so user can work offline
-  const effectiveExam = (examination ?? {
+  const effectiveExam = {
     entry_id: entry.id,
     organization_id: entry.organization_id,
-    examination_status: 'in_progress' as const,
+    examination_status: (examination?.examination_status ?? 'in_progress') as any,
+    ...examination,
     ...(offlineData || {}),
-  }) as any;
+  } as any;
 
   // Debug logging
   React.useEffect(() => {

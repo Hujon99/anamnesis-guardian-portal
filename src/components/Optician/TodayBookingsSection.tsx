@@ -17,6 +17,7 @@ interface TodayBookingsSectionProps {
   onEntryDeleted: () => void;
   onEntryAssigned: (entryId: string, opticianId: string | null) => Promise<void>;
   onStoreAssigned: (entryId: string, storeId: string | null) => Promise<void>;
+  onDrivingLicenseExamination?: (entry: AnamnesesEntry) => void;
 }
 
 export function TodayBookingsSection({
@@ -24,7 +25,8 @@ export function TodayBookingsSection({
   onSelectEntry,
   onEntryDeleted,
   onEntryAssigned,
-  onStoreAssigned
+  onStoreAssigned,
+  onDrivingLicenseExamination
 }: TodayBookingsSectionProps) {
   // Group bookings by status
   const activeBookings = todayBookings.filter(entry => 
@@ -88,6 +90,7 @@ export function TodayBookingsSection({
                     onDelete={onEntryDeleted}
                     onAssign={onEntryAssigned}
                     onStoreAssign={onStoreAssigned}
+                    onDrivingLicenseExamination={onDrivingLicenseExamination}
                     showQuickAssign={true}
                   />
                   {/* Visual indicator for active booking */}
@@ -122,6 +125,7 @@ export function TodayBookingsSection({
                     onDelete={onEntryDeleted}
                     onAssign={onEntryAssigned}
                     onStoreAssign={onStoreAssigned}
+                    onDrivingLicenseExamination={onDrivingLicenseExamination}
                     showQuickAssign={true}
                   />
                   {/* Visual indicator for completed booking */}

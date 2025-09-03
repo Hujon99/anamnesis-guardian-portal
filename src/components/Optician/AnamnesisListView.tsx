@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisDetailModal } from "./AnamnesisDetailModal";
+import { DrivingLicenseExamination } from "./DrivingLicense/DrivingLicenseExamination";
 import { AnamnesisFilters } from "./AnamnesisFilters";
 import { ErrorState } from "./EntriesList/ErrorState";
 import { LoadingState } from "./EntriesList/LoadingState";
@@ -18,12 +19,13 @@ import { TodayBookingsSection } from "./TodayBookingsSection";
 import { useAnamnesisList } from "@/hooks/useAnamnesisList";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useStores } from "@/hooks/useStores";
 import { useOrganization } from "@clerk/clerk-react";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
-import { assignOpticianToEntry, assignStoreToEntry } from "@/utils/entryMutationUtils"; 
+import { assignOpticianToEntry, assignStoreToEntry } from "@/utils/entryMutationUtils";
 import { toast } from "@/components/ui/use-toast";
 
 interface AnamnesisListViewProps {
@@ -47,6 +49,8 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
   
   // State for selected entry and advanced filters
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
+  const [drivingLicenseEntry, setDrivingLicenseEntry] = useState<AnamnesesEntry | null>(null);
+  const [isDrivingLicenseOpen, setIsDrivingLicenseOpen] = useState(false);
   const [storeFilter, setStoreFilter] = useState<string | null>(null);
   const [opticianFilter, setOpticianFilter] = useState<string | null>(null);
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
@@ -171,6 +175,12 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
       setIsAssigningStore(false);
     }
   }, [refetch, refetchStores, supabase]);
+
+  // Handler for driving license examination
+  const handleDrivingLicenseExamination = (entry: AnamnesesEntry) => {
+    setDrivingLicenseEntry(entry);
+    setIsDrivingLicenseOpen(true);
+  };
 
   // Helper function to get expiration info
   function getEntryExpirationInfo(entry: AnamnesesEntry) {
@@ -335,6 +345,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
             onEntryDeleted={refetch}
             onEntryAssigned={handleEntryAssigned}
             onStoreAssigned={handleStoreAssigned}
+            onDrivingLicenseExamination={handleDrivingLicenseExamination}
           />
         )}
         
@@ -374,6 +385,25 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
             setSelectedEntry(null);
           }}
         />
+      )}
+      
+      {/* Driving License Examination Dialog */}
+      {drivingLicenseEntry && (
+        <Dialog open={isDrivingLicenseOpen} onOpenChange={setIsDrivingLicenseOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+            <DrivingLicenseExamination
+              entry={drivingLicenseEntry}
+              onClose={() => {
+                setIsDrivingLicenseOpen(false);
+                setDrivingLicenseEntry(null);
+                refetch(); // Refresh the entries list
+              }}
+              onUpdate={() => {
+                refetch(); // Refresh when examination is updated
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

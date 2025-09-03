@@ -20,6 +20,8 @@ interface EmailNotificationRequest {
   opticianId: string;
   patientName: string;
   entryId: string;
+  opticianEmail: string;
+  appUrl: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -34,33 +36,25 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { examinationId, opticianId, patientName, entryId }: EmailNotificationRequest = await req.json();
+    const { examinationId, opticianId, patientName, entryId, opticianEmail, appUrl }: EmailNotificationRequest = await req.json();
 
     console.log("Processing email notification for examination:", examinationId);
 
-    // Get optician details
-    const { data: optician, error: opticianError } = await supabase
-      .from("users")
-      .select("clerk_user_id")
-      .eq("id", opticianId)
-      .single();
-
-    if (opticianError || !optician) {
-      console.error("Error fetching optician:", opticianError);
-      throw new Error("Kunde inte hitta optiker");
+    // Validate required fields
+    if (!opticianEmail) {
+      console.error("Missing opticianEmail in request");
+      throw new Error("Optiker e-post saknas");
     }
 
-    // Get optician email from Clerk (simplified - would need Clerk integration)
-    // For now, we'll use a placeholder email structure
-    const opticianEmail = `optician-${optician.clerk_user_id}@example.com`;
+    if (!appUrl) {
+      console.error("Missing appUrl in request");
+      throw new Error("App URL saknas");
+    }
 
-    // Get organization name for context
+    // Get entry details first
     const { data: entry, error: entryError } = await supabase
       .from("anamnes_entries")
-      .select(`
-        organization_id,
-        organizations (name)
-      `)
+      .select("organization_id")
       .eq("id", entryId)
       .single();
 
@@ -69,7 +63,19 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Kunde inte hitta anamnespost");
     }
 
-    const organizationName = entry.organizations?.name || "Din organisation";
+    // Get organization name separately
+    const { data: organization, error: orgError } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", entry.organization_id)
+      .single();
+
+    if (orgError) {
+      console.error("Error fetching organization:", orgError);
+      // Continue with fallback name instead of failing
+    }
+
+    const organizationName = organization?.name || "Din organisation";
 
     // Send email notification
     const emailResponse = await resend.emails.send({
@@ -94,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Logga in på plattformen för att se fullständiga resultat och hantera undersökningen.</p>
           
           <div style="margin: 30px 0;">
-            <a href="${Deno.env.get("SUPABASE_URL")?.replace('/rest/v1', '')}/dashboard" 
+            <a href="${appUrl}/dashboard" 
                style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
               Öppna Dashboard
             </a>

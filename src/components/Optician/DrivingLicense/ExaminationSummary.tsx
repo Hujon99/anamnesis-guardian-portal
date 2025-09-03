@@ -62,6 +62,17 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       });
       return;
     }
+
+    // Find the selected optician and verify email
+    const selectedOptician = opticians.find(opt => opt.id === selectedOpticianId);
+    if (!selectedOptician?.email) {
+      toast({
+        title: "E-post saknas",
+        description: "Den valda optikern har ingen e-postadress registrerad",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const updates = {
       examination_status: 'completed' as const,
@@ -99,7 +110,9 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               examinationId: examination.id,
               opticianId: selectedOpticianId,
               patientName: entry.first_name || 'Okänd patient',
-              entryId: entry.id
+              entryId: entry.id,
+              opticianEmail: selectedOptician.email,
+              appUrl: window.location.origin
             }
           }
         );

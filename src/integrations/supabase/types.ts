@@ -315,6 +315,9 @@ export type Database = {
           visual_acuity_left_eye: number | null
           visual_acuity_right_eye: number | null
           visual_acuity_with_correction: number | null
+          visual_acuity_with_correction_both: number | null
+          visual_acuity_with_correction_left: number | null
+          visual_acuity_with_correction_right: number | null
           warning_flags: Json | null
         }
         Insert: {
@@ -345,6 +348,9 @@ export type Database = {
           visual_acuity_left_eye?: number | null
           visual_acuity_right_eye?: number | null
           visual_acuity_with_correction?: number | null
+          visual_acuity_with_correction_both?: number | null
+          visual_acuity_with_correction_left?: number | null
+          visual_acuity_with_correction_right?: number | null
           warning_flags?: Json | null
         }
         Update: {
@@ -375,6 +381,9 @@ export type Database = {
           visual_acuity_left_eye?: number | null
           visual_acuity_right_eye?: number | null
           visual_acuity_with_correction?: number | null
+          visual_acuity_with_correction_both?: number | null
+          visual_acuity_with_correction_left?: number | null
+          visual_acuity_with_correction_right?: number | null
           warning_flags?: Json | null
         }
         Relationships: [

@@ -47,7 +47,8 @@ export const AnamnesCard = ({
   };
 
   const getExaminationTypeIcon = () => {
-    switch (examinationType) {
+    const normalizedType = examinationType?.toLowerCase();
+    switch (normalizedType) {
       case 'synundersökning':
         return <Eye className="h-3 w-3" />;
       case 'körkortsundersökning':
@@ -60,7 +61,8 @@ export const AnamnesCard = ({
   };
 
   const getExaminationTypeLabel = () => {
-    switch (examinationType) {
+    const normalizedType = examinationType?.toLowerCase();
+    switch (normalizedType) {
       case 'synundersökning':
         return 'Synundersökning';
       case 'körkortsundersökning':
@@ -77,7 +79,7 @@ export const AnamnesCard = ({
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-2 p-3 rounded-2xl bg-white transition-all hover:shadow-lg/20 hover:scale-[1.01] hover:bg-gray-50/80 focus-within:ring-2 focus-within:ring-ring cursor-pointer group",
+        "relative flex flex-col gap-1 p-2 rounded-xl bg-white transition-all hover:shadow-lg/20 hover:scale-[1.01] hover:bg-gray-50/80 focus-within:ring-2 focus-within:ring-ring cursor-pointer group",
         className
       )}
       onClick={onClick}
@@ -90,7 +92,7 @@ export const AnamnesCard = ({
         }
       }}
     >
-      <div className={`absolute inset-y-0 left-0 w-1 rounded-l-2xl ${getAccentColor()}`} />
+      <div className={`absolute inset-y-0 left-0 w-1 rounded-l-xl ${getAccentColor()}`} />
       
       {/* Examination type and completion badges */}
       <div className="absolute top-2 right-2 flex gap-1">
@@ -100,7 +102,7 @@ export const AnamnesCard = ({
             <span className="ml-1">{getExaminationTypeLabel()}</span>
           </Badge>
         )}
-        {isExaminationCompleted && examinationType === 'körkortsundersökning' && (
+        {isExaminationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning' && (
           <Badge className="h-5 px-1.5 text-xs bg-green-100 text-green-800 border-green-200">
             Klar
           </Badge>

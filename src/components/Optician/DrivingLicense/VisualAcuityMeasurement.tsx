@@ -31,7 +31,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     visual_acuity_both_eyes: examination?.visual_acuity_both_eyes || '',
     visual_acuity_right_eye: examination?.visual_acuity_right_eye || '',
     visual_acuity_left_eye: examination?.visual_acuity_left_eye || '',
-    visual_acuity_with_correction: examination?.visual_acuity_with_correction || '',
+    visual_acuity_with_correction_both: examination?.visual_acuity_with_correction_both || '',
+    visual_acuity_with_correction_right: examination?.visual_acuity_with_correction_right || '',
+    visual_acuity_with_correction_left: examination?.visual_acuity_with_correction_left || '',
     uses_glasses: examination?.uses_glasses || false,
     uses_contact_lenses: examination?.uses_contact_lenses || false,
     correction_type: examination?.correction_type || 'none'
@@ -46,7 +48,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     const bothEyes = parseFloat(measurements.visual_acuity_both_eyes);
     const rightEye = parseFloat(measurements.visual_acuity_right_eye);
     const leftEye = parseFloat(measurements.visual_acuity_left_eye);
-    const withCorrection = parseFloat(measurements.visual_acuity_with_correction);
+    const withCorrectionBoth = parseFloat(measurements.visual_acuity_with_correction_both);
+    const withCorrectionRight = parseFloat(measurements.visual_acuity_with_correction_right);
+    const withCorrectionLeft = parseFloat(measurements.visual_acuity_with_correction_left);
 
     // Check if any measurement is below 1.0
     if (bothEyes && bothEyes < 1.0) {
@@ -60,8 +64,20 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     }
 
     // Check correction requirements
-    if ((measurements.uses_glasses || measurements.uses_contact_lenses) && !withCorrection) {
+    if ((measurements.uses_glasses || measurements.uses_contact_lenses) && 
+        (!withCorrectionBoth && !withCorrectionRight && !withCorrectionLeft)) {
       newWarnings.push("Mätning med korrektion krävs när glasögon/linser används");
+    }
+
+    // Check correction measurements against limits
+    if (withCorrectionBoth && withCorrectionBoth < 1.0) {
+      newWarnings.push("Visus med korrektion båda ögon är under gränsvärdet 1.0");
+    }
+    if (withCorrectionRight && withCorrectionRight < 0.5) {
+      newWarnings.push("Visus med korrektion höger öga är under gränsvärdet 0.5");
+    }
+    if (withCorrectionLeft && withCorrectionLeft < 0.5) {
+      newWarnings.push("Visus med korrektion vänster öga är under gränsvärdet 0.5");
     }
 
     setWarnings(newWarnings);
@@ -81,7 +97,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       visual_acuity_both_eyes: parseFloat(measurements.visual_acuity_both_eyes) || null,
       visual_acuity_right_eye: parseFloat(measurements.visual_acuity_right_eye) || null,
       visual_acuity_left_eye: parseFloat(measurements.visual_acuity_left_eye) || null,
-      visual_acuity_with_correction: parseFloat(measurements.visual_acuity_with_correction) || null
+      visual_acuity_with_correction_both: parseFloat(measurements.visual_acuity_with_correction_both) || null,
+      visual_acuity_with_correction_right: parseFloat(measurements.visual_acuity_with_correction_right) || null,
+      visual_acuity_with_correction_left: parseFloat(measurements.visual_acuity_with_correction_left) || null
     };
 
     await onSave(updates);
@@ -213,20 +231,53 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
             </div>
           )}
 
-          {/* Measurement with correction */}
+          {/* Measurements with correction */}
           {(measurements.uses_glasses || measurements.uses_contact_lenses) && (
-            <div className="space-y-2">
-              <Label htmlFor="with-correction">Visus med korrektion (båda ögon)</Label>
-              <Input
-                id="with-correction"
-                type="number"
-                step="0.1"
-                min="0"
-                max="2.0"
-                placeholder="1.2"
-                value={measurements.visual_acuity_with_correction}
-                onChange={(e) => handleInputChange('visual_acuity_with_correction', e.target.value)}
-              />
+            <div className="space-y-4">
+              <h5 className="font-medium text-sm">Visus med korrektion</h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="with-correction-both">Båda ögon</Label>
+                  <Input
+                    id="with-correction-both"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="2.0"
+                    placeholder="1.2"
+                    value={measurements.visual_acuity_with_correction_both}
+                    onChange={(e) => handleInputChange('visual_acuity_with_correction_both', e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="with-correction-right">Höger öga</Label>
+                  <Input
+                    id="with-correction-right"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="2.0"
+                    placeholder="1.0"
+                    value={measurements.visual_acuity_with_correction_right}
+                    onChange={(e) => handleInputChange('visual_acuity_with_correction_right', e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="with-correction-left">Vänster öga</Label>
+                  <Input
+                    id="with-correction-left"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="2.0"
+                    placeholder="1.0"
+                    value={measurements.visual_acuity_with_correction_left}
+                    onChange={(e) => handleInputChange('visual_acuity_with_correction_left', e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -53,6 +53,9 @@ export interface EntryData {
   first_name?: string | null;
   booking_date?: string | null;
   created_by_name?: string | null;
+  anamnes_forms?: {
+    examination_type: string;
+  };
 }
 
 // Update operation types
@@ -62,6 +65,7 @@ export interface EntryUpdateData {
   status: string;
   updated_at: string;
   sent_at?: string;
+  examination_type?: string;
 }
 
 // Result types

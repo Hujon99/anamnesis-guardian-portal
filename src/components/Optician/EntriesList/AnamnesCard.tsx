@@ -8,7 +8,6 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Car, FileText } from "lucide-react";
-import { ExaminationType } from "@/types/examinationType";
 
 interface AnamnesCardProps {
   status: "sent" | "pending" | "ready" | "reviewed" | "journaled" | "expiring";

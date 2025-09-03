@@ -25,6 +25,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
+          examination_type: string | null
           expires_at: string | null
           first_name: string | null
           form_id: string
@@ -52,6 +53,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           created_by_name?: string | null
+          examination_type?: string | null
           expires_at?: string | null
           first_name?: string | null
           form_id: string
@@ -79,6 +81,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           created_by_name?: string | null
+          examination_type?: string | null
           expires_at?: string | null
           first_name?: string | null
           form_id?: string

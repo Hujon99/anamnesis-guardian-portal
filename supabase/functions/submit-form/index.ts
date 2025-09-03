@@ -142,10 +142,12 @@ serve(async (req: Request) => {
     }
 
     // Prepare update data with properly formatted text
+    const examinationType = entry.anamnes_forms?.examination_type;
     const updateData = dataFormatter.prepareUpdateData(
       extractedFormData,
       formattedRawData,
-      'ready'
+      'ready',
+      examinationType
     );
 
     logger.info("Prepared update data with formatted text");

@@ -238,7 +238,8 @@ export class DataFormatter {
   prepareUpdateData(
     formData: Record<string, any>,
     formattedRawData: string,
-    status: string
+    status: string,
+    examinationType?: string
   ): Record<string, any> {
     const now = new Date().toISOString();
     
@@ -252,6 +253,11 @@ export class DataFormatter {
     // Add sent_at if status is 'ready'
     if (status === 'ready') {
       updateData['sent_at'] = now;
+    }
+    
+    // Add examination_type if provided
+    if (examinationType) {
+      updateData['examination_type'] = examinationType;
     }
     
     return updateData;

@@ -95,7 +95,10 @@ export class DatabaseOperations {
     try {
       const { data, error } = await this.supabase
         .from('anamnes_entries')
-        .select('id, status, is_magic_link, booking_id, form_id, organization_id, store_id, first_name, booking_date, created_by_name')
+        .select(`
+          id, status, is_magic_link, booking_id, form_id, organization_id, store_id, first_name, booking_date, created_by_name,
+          anamnes_forms!inner(examination_type)
+        `)
         .eq('access_token', token)
         .maybeSingle();
       
@@ -117,7 +120,10 @@ export class DatabaseOperations {
     try {
       const { data, error } = await this.supabaseAdmin
         .from('anamnes_entries')
-        .select('id, status, is_magic_link, booking_id, form_id, organization_id, store_id, first_name, booking_date, created_by_name')
+        .select(`
+          id, status, is_magic_link, booking_id, form_id, organization_id, store_id, first_name, booking_date, created_by_name,
+          anamnes_forms!inner(examination_type)
+        `)
         .eq('access_token', token)
         .maybeSingle();
         

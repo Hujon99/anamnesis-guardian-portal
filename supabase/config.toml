@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.clerk-auth-webhook]
 verify_jwt = false
+
+[functions.notify-optician-driving-license]
+verify_jwt = false

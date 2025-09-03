@@ -12,9 +12,12 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, XCircle, Eye, IdCard, AlertTriangle, FileText, Calendar, Clock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle, XCircle, Eye, IdCard, AlertTriangle, FileText, Calendar, Clock, User } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/hooks/use-toast";
+import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
+import { supabase } from "@/integrations/supabase/client";
 interface ExaminationSummaryProps {
   examination: any;
   entry: AnamnesesEntry;
@@ -31,6 +34,10 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
 }) => {
   const [notes, setNotes] = useState(examination?.notes || '');
   const [decision, setDecision] = useState<'pass' | 'fail' | 'needs_booking' | null>(examination?.examination_status === 'completed' ? examination?.passed_examination ? 'pass' : examination?.requires_optician_visit ? 'needs_booking' : 'fail' : null);
+  const [selectedOpticianId, setSelectedOpticianId] = useState<string>('');
+  
+  // Load opticians for assignment
+  const { opticians, isLoading: loadingOpticians } = useOpticians();
 
   // Check if examination meets requirements
   const hasMeasurements = !!(examination?.visual_acuity_both_eyes || examination?.visual_acuity_right_eye || examination?.visual_acuity_left_eye);
@@ -38,7 +45,23 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   const idVerified = examination?.id_verification_completed;
   const canPass = visionPassed && idVerified;
   const handleComplete = async () => {
-    if (!decision) return;
+    if (!decision) {
+      toast({
+        title: "Inget beslut valt",
+        description: "Du måste välja ett beslut innan du kan slutföra undersökningen.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!selectedOpticianId) {
+      toast({
+        title: "Ingen optiker vald",
+        description: "Du måste välja en ansvarig optiker innan du kan slutföra undersökningen.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     const updates = {
       examination_status: 'completed' as const,
@@ -51,25 +74,66 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       console.log('[ExaminationSummary] Completing examination with updates:', updates);
       await onSave(updates);
 
+      // Assign the entry to the selected optician
+      console.log('[ExaminationSummary] Assigning entry to optician:', selectedOpticianId);
+      const { error: assignError } = await supabase
+        .from('anamnes_entries')
+        .update({ 
+          optician_id: selectedOpticianId,
+          status: 'ready' // Update status to ready for optician review
+        })
+        .eq('id', entry.id);
+
+      if (assignError) {
+        console.error('[ExaminationSummary] Error assigning optician:', assignError);
+        throw new Error('Kunde inte tilldela optiker: ' + assignError.message);
+      }
+
+      // Send email notification to the optician
+      console.log('[ExaminationSummary] Sending email notification to optician');
+      try {
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+          'notify-optician-driving-license',
+          {
+            body: {
+              examinationId: examination.id,
+              opticianId: selectedOpticianId,
+              patientName: entry.first_name || 'Okänd patient',
+              entryId: entry.id
+            }
+          }
+        );
+
+        if (emailError) {
+          console.error('[ExaminationSummary] Email notification failed:', emailError);
+          // Don't fail the whole process for email errors, just log it
+        } else {
+          console.log('[ExaminationSummary] Email notification sent successfully:', emailResult);
+        }
+      } catch (emailErr) {
+        console.error('[ExaminationSummary] Email notification error:', emailErr);
+        // Don't fail the whole process for email errors
+      }
+
       // Show success message based on decision
       if (decision === 'pass') {
         toast({
           title: "Undersökning godkänd",
-          description: "Körkortsundersökningen har slutförts framgångsrikt"
+          description: `Körkortsundersökningen har slutförts och tilldelats ${getOpticianDisplayName(opticians.find(o => o.id === selectedOpticianId))}`
         });
       } else if (decision === 'needs_booking') {
         toast({
           title: "Bokning krävs",
-          description: "Kunden har bokats för vidare undersökning"
+          description: `Kunden har bokats för vidare undersökning och tilldelats ${getOpticianDisplayName(opticians.find(o => o.id === selectedOpticianId))}`
         });
       } else {
         toast({
           title: "Undersökning ej godkänd",
-          description: "Körkortsundersökningen uppfyller inte kraven"
+          description: `Körkortsundersökningen uppfyller inte kraven och har tilldelats ${getOpticianDisplayName(opticians.find(o => o.id === selectedOpticianId))}`
         });
       }
       
-      // Only close dialog after successful save
+      // Only close dialog after successful save and assignment
       onComplete();
     } catch (error: any) {
       console.error('[ExaminationSummary] Error completing examination:', error);
@@ -235,6 +299,47 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               </div>}
           </div>}
 
+        <Separator />
+
+        {/* Optician assignment section */}
+        {!isCompleted && <div className="space-y-4">
+            <h4 className="font-medium flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Tilldelning av ansvarig optiker
+            </h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="optician-select">Välj ansvarig optiker</Label>
+              <Select 
+                value={selectedOpticianId} 
+                onValueChange={setSelectedOpticianId}
+                disabled={loadingOpticians}
+              >
+                <SelectTrigger id="optician-select">
+                  <SelectValue placeholder={loadingOpticians ? "Laddar optiker..." : "Välj optiker"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {opticians.map((optician) => (
+                    <SelectItem key={optician.id} value={optician.id}>
+                      {getOpticianDisplayName(optician)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedOpticianId && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Undersökningen kommer att tilldelas {getOpticianDisplayName(opticians.find(o => o.id === selectedOpticianId))} och ett e-postmeddelande skickas automatiskt.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>}
+
+        <Separator />
+
         {/* Notes section */}
         <div className="space-y-2">
           <Label htmlFor="notes">Anteckningar</Label>
@@ -254,7 +359,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
             <Button variant="outline" onClick={onComplete}>
               Avbryt
             </Button>
-            <Button onClick={handleComplete} disabled={!decision || isSaving}>
+            <Button onClick={handleComplete} disabled={!decision || !selectedOpticianId || isSaving}>
               {isSaving ? "Sparar..." : "Slutför undersökning"}
             </Button>
           </div>}

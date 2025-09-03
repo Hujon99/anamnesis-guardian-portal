@@ -16,6 +16,7 @@ import { Eye, AlertTriangle, Info } from "lucide-react";
 
 interface VisualAcuityMeasurementProps {
   examination: any;
+  entry?: any; // Form entry with answers
   onSave: (updates: any) => Promise<void>;
   onNext: () => void;
   isSaving: boolean;
@@ -23,10 +24,34 @@ interface VisualAcuityMeasurementProps {
 
 export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = ({
   examination,
+  entry,
   onSave,
   onNext,
   isSaving
 }) => {
+  // Check if customer uses glasses/contact lenses from form answers
+  const usesCorrection = React.useMemo(() => {
+    if (!entry?.answers) return false;
+    
+    // Look for answers about glasses or contact lens usage
+    const answers = entry.answers;
+    
+    // Check various possible question patterns for glasses/contact usage
+    for (const [key, value] of Object.entries(answers)) {
+      const keyLower = key.toLowerCase();
+      const valueLower = String(value).toLowerCase();
+      
+      // Check if question is about glasses/contact lenses and answer is yes
+      if ((keyLower.includes('glasögon') || keyLower.includes('kontaktlinser') || 
+           keyLower.includes('linser') || keyLower.includes('synskärpa') ||
+           keyLower.includes('synhjälpmedel')) && 
+          (valueLower === 'ja' || valueLower === 'yes' || valueLower === 'true')) {
+        return true;
+      }
+    }
+    
+    return false;
+  }, [entry?.answers]);
   const [measurements, setMeasurements] = useState({
     visual_acuity_both_eyes: examination?.visual_acuity_both_eyes || '',
     visual_acuity_right_eye: examination?.visual_acuity_right_eye || '',
@@ -34,9 +59,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     visual_acuity_with_correction_both: examination?.visual_acuity_with_correction_both || '',
     visual_acuity_with_correction_right: examination?.visual_acuity_with_correction_right || '',
     visual_acuity_with_correction_left: examination?.visual_acuity_with_correction_left || '',
-    uses_glasses: examination?.uses_glasses || false,
-    uses_contact_lenses: examination?.uses_contact_lenses || false,
-    correction_type: examination?.correction_type || 'none'
+    uses_correction: examination?.uses_glasses || examination?.uses_contact_lenses || usesCorrection,
+    correction_type: examination?.correction_type || (usesCorrection ? 'glasses_or_lenses' : 'none')
   });
 
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -64,7 +88,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     }
 
     // Check correction requirements
-    if ((measurements.uses_glasses || measurements.uses_contact_lenses) && 
+    if (measurements.uses_correction && 
         (!withCorrectionBoth && !withCorrectionRight && !withCorrectionLeft)) {
       newWarnings.push("Mätning med korrektion krävs när glasögon/linser används");
     }
@@ -93,6 +117,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
   const handleSaveAndContinue = async () => {
     const updates = {
       ...measurements,
+      // Map back to database fields
+      uses_glasses: measurements.uses_correction,
+      uses_contact_lenses: measurements.uses_correction,
       vision_below_limit: warnings.some(w => w.includes("under gränsvärdet")),
       visual_acuity_both_eyes: parseFloat(measurements.visual_acuity_both_eyes) || null,
       visual_acuity_right_eye: parseFloat(measurements.visual_acuity_right_eye) || null,
@@ -177,62 +204,20 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
         <div className="space-y-4">
           <h4 className="font-medium">Korrektion</h4>
           
-          <div className="flex flex-wrap gap-6">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="glasses"
-                checked={measurements.uses_glasses}
-                onCheckedChange={(checked) => {
-                  handleInputChange('uses_glasses', checked);
-                  if (checked && !measurements.uses_contact_lenses) {
-                    handleInputChange('correction_type', 'glasses');
-                  } else if (!checked && !measurements.uses_contact_lenses) {
-                    handleInputChange('correction_type', 'none');
-                  }
-                }}
-              />
-              <Label htmlFor="glasses">Använder glasögon</Label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="lenses"
-                checked={measurements.uses_contact_lenses}
-                onCheckedChange={(checked) => {
-                  handleInputChange('uses_contact_lenses', checked);
-                  if (checked && !measurements.uses_glasses) {
-                    handleInputChange('correction_type', 'contact_lenses');
-                  } else if (!checked && !measurements.uses_glasses) {
-                    handleInputChange('correction_type', 'none');
-                  }
-                }}
-              />
-              <Label htmlFor="lenses">Använder kontaktlinser</Label>
-            </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="correction"
+              checked={measurements.uses_correction}
+              onCheckedChange={(checked) => {
+                handleInputChange('uses_correction', checked);
+                handleInputChange('correction_type', checked ? 'glasses_or_lenses' : 'none');
+              }}
+            />
+            <Label htmlFor="correction">Använder glasögon eller kontaktlinser</Label>
           </div>
 
-          {/* Correction type selection */}
-          {(measurements.uses_glasses && measurements.uses_contact_lenses) && (
-            <div className="space-y-2">
-              <Label>Typ av korrektion idag</Label>
-              <Select 
-                value={measurements.correction_type} 
-                onValueChange={(value) => handleInputChange('correction_type', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="glasses">Glasögon</SelectItem>
-                  <SelectItem value="contact_lenses">Kontaktlinser</SelectItem>
-                  <SelectItem value="both">Båda</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {/* Measurements with correction */}
-          {(measurements.uses_glasses || measurements.uses_contact_lenses) && (
+          {measurements.uses_correction && (
             <div className="space-y-4">
               <h5 className="font-medium text-sm">Visus med korrektion</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

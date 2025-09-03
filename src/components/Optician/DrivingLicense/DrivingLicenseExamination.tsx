@@ -295,6 +295,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           {currentStep === 2 && (
             <VisualAcuityMeasurement
               examination={effectiveExam}
+              entry={entry}
               onSave={saveExamination}
               onNext={() => setCurrentStep(3)}
               isSaving={isSaving}

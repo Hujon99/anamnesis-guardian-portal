@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, AlertTriangle, Info } from "lucide-react";
+import { parseLocaleFloat, validateVisualAcuityInput, formatVisualAcuityValue } from "@/lib/number-utils";
 
 interface VisualAcuityMeasurementProps {
   examination: any;
@@ -116,12 +117,12 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
   useEffect(() => {
     const newWarnings: string[] = [];
 
-    const bothEyes = parseFloat(measurements.visual_acuity_both_eyes);
-    const rightEye = parseFloat(measurements.visual_acuity_right_eye);
-    const leftEye = parseFloat(measurements.visual_acuity_left_eye);
-    const withCorrectionBoth = parseFloat(measurements.visual_acuity_with_correction_both);
-    const withCorrectionRight = parseFloat(measurements.visual_acuity_with_correction_right);
-    const withCorrectionLeft = parseFloat(measurements.visual_acuity_with_correction_left);
+    const bothEyes = parseLocaleFloat(measurements.visual_acuity_both_eyes);
+    const rightEye = parseLocaleFloat(measurements.visual_acuity_right_eye);
+    const leftEye = parseLocaleFloat(measurements.visual_acuity_left_eye);
+    const withCorrectionBoth = parseLocaleFloat(measurements.visual_acuity_with_correction_both);
+    const withCorrectionRight = parseLocaleFloat(measurements.visual_acuity_with_correction_right);
+    const withCorrectionLeft = parseLocaleFloat(measurements.visual_acuity_with_correction_left);
 
     // Use corrected values if correction is used, otherwise use uncorrected
     const effectiveBoth = measurements.uses_correction && withCorrectionBoth ? withCorrectionBoth : bothEyes;
@@ -181,15 +182,18 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       uses_glasses: measurements.uses_correction,
       uses_contact_lenses: measurements.uses_correction,
       vision_below_limit: warnings.length > 0, // Any warning means vision issue
-      visual_acuity_both_eyes: parseFloat(measurements.visual_acuity_both_eyes) || null,
-      visual_acuity_right_eye: parseFloat(measurements.visual_acuity_right_eye) || null,
-      visual_acuity_left_eye: parseFloat(measurements.visual_acuity_left_eye) || null,
-      visual_acuity_with_correction_both: parseFloat(measurements.visual_acuity_with_correction_both) || null,
-      visual_acuity_with_correction_right: parseFloat(measurements.visual_acuity_with_correction_right) || null,
-      visual_acuity_with_correction_left: parseFloat(measurements.visual_acuity_with_correction_left) || null,
+      visual_acuity_both_eyes: parseLocaleFloat(measurements.visual_acuity_both_eyes) || null,
+      visual_acuity_right_eye: parseLocaleFloat(measurements.visual_acuity_right_eye) || null,
+      visual_acuity_left_eye: parseLocaleFloat(measurements.visual_acuity_left_eye) || null,
+      visual_acuity_with_correction_both: parseLocaleFloat(measurements.visual_acuity_with_correction_both) || null,
+      visual_acuity_with_correction_right: parseLocaleFloat(measurements.visual_acuity_with_correction_right) || null,
+      visual_acuity_with_correction_left: parseLocaleFloat(measurements.visual_acuity_with_correction_left) || null,
       // Store license category for reference
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
     };
+
+    console.log('[VisualAcuityMeasurement] Saving updates:', updates);
+    console.log('[VisualAcuityMeasurement] Raw measurements before parsing:', measurements);
 
     await onSave(updates);
     onNext();
@@ -240,12 +244,15 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="font-medium">Mätinstruktioner:</p>
               <p className="text-sm">
                 {licenseCategory === 'lower' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,5 krävs."}
                 {licenseCategory === 'higher' && "Mät synskärpa för varje öga separat. Minst 0,8 i bästa ögat och 0,1 i sämsta ögat krävs."}
                 {licenseCategory === 'taxi' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,8 krävs för taxiförarlegitimation."}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                💡 Decimalformat: Använd komma (0,8) eller punkt (0.8) - båda fungerar
               </p>
             </div>
           </AlertDescription>

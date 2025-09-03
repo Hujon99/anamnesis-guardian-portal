@@ -600,19 +600,31 @@ export type Database = {
       users: {
         Row: {
           clerk_user_id: string
+          display_name: string | null
+          email: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           organization_id: string
           role: string
         }
         Insert: {
           clerk_user_id: string
+          display_name?: string | null
+          email?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           organization_id: string
-          role: string
+          role?: string
         }
         Update: {
           clerk_user_id?: string
+          display_name?: string | null
+          email?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           organization_id?: string
           role?: string
         }

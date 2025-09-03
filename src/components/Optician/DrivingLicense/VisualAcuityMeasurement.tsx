@@ -183,9 +183,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
 
     const updates = {
       ...measurements,
-      // Map back to database fields
-      uses_glasses: measurements.uses_correction,
-      uses_contact_lenses: measurements.uses_correction,
+      // Map back to database fields - for now, assume glasses if correction is used
+      uses_glasses: measurements.uses_correction || false,
+      uses_contact_lenses: false, // Set to false for now, can be expanded later
       vision_below_limit: warnings.length > 0, // Any warning means vision issue
       visual_acuity_both_eyes: toNumberOrNull(measurements.visual_acuity_both_eyes),
       visual_acuity_right_eye: toNumberOrNull(measurements.visual_acuity_right_eye),

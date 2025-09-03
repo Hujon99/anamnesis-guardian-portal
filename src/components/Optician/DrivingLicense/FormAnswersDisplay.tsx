@@ -44,7 +44,7 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
     return labelMap;
   }, [formTemplate]);
   
-  // Get ordered questions from form template
+  // Get ordered questions from form template, filtering out empty follow-up questions
   const orderedQuestions = React.useMemo(() => {
     if (!formTemplate?.schema) return [];
     
@@ -52,12 +52,23 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
     formTemplate.schema.sections.forEach(section => {
       section.questions.forEach(question => {
         if (answers.hasOwnProperty(question.id)) {
-          questions.push({
-            id: question.id,
-            label: question.label,
-            sectionTitle: section.section_title,
-            answer: answers[question.id]
-          });
+          const answer = answers[question.id];
+          
+          // Check if this is a meaningful answer (not empty, null, undefined, or empty string)
+          const hasValidAnswer = answer !== null && 
+                               answer !== undefined && 
+                               answer !== '' && 
+                               !(Array.isArray(answer) && answer.length === 0);
+          
+          // Only include questions with valid answers
+          if (hasValidAnswer) {
+            questions.push({
+              id: question.id,
+              label: question.label,
+              sectionTitle: section.section_title,
+              answer: answer
+            });
+          }
         }
       });
     });

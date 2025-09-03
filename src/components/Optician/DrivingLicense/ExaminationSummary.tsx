@@ -48,7 +48,8 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   );
 
   // Check if examination meets requirements
-  const visionPassed = !examination?.vision_below_limit;
+  const hasMeasurements = !!(examination?.visual_acuity_both_eyes || examination?.visual_acuity_right_eye || examination?.visual_acuity_left_eye);
+  const visionPassed = hasMeasurements && !examination?.vision_below_limit;
   const idVerified = examination?.id_verification_completed;
   const canPass = visionPassed && idVerified;
 

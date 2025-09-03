@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car } from "lucide-react";
+import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car, CheckCircle } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -33,6 +33,7 @@ import { EntryStatusIcon } from "./EntriesList/EntryStatusIcon";
 import { QuickAssignDropdown } from "./EntriesList/QuickAssignDropdown";
 import { QuickStoreAssignDropdown } from "./EntriesList/QuickStoreAssignDropdown";
 import { ReferenceNumberDisplay } from "./EntriesList/ReferenceNumberDisplay";
+import { useDrivingLicenseStatus } from "@/hooks/useDrivingLicenseStatus";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getPatientDisplayName } from "@/lib/utils";
@@ -196,6 +197,9 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
   // Check if this is a driving license examination
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
+  
+  // Get driving license examination status
+  const { isCompleted: isDrivingLicenseCompleted } = useDrivingLicenseStatus(entry.id);
 
   const handleDrivingLicenseExamination = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -212,6 +216,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
         onClick={onClick}
         className={entry.isExpired ? "opacity-50" : ""}
         examinationType={entry.examination_type}
+        isExaminationCompleted={isDrivingLicenseExam && isDrivingLicenseCompleted}
       >
         <div className="py-1 px-0">
           <div className="flex items-start justify-between">
@@ -421,15 +426,24 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
           {/* Driving License Examination Button */}
           {isDrivingLicenseExam && (
             <div className="mt-3 pt-3 border-t border-gray-100" onClick={stopPropagation}>
-              <Button
-                onClick={handleDrivingLicenseExamination}
-                variant="default"
-                size="sm"
-                className="w-full bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
-              >
-                <Car className="h-4 w-4" />
-                <span>Genomför körkortsundersökning</span>
-              </Button>
+              {isDrivingLicenseCompleted ? (
+                <div className="text-center py-2">
+                  <Badge className="bg-green-100 text-green-800 border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Körkortsundersökning slutförd
+                  </Badge>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleDrivingLicenseExamination}
+                  variant="default"
+                  size="sm"
+                  className="w-full bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
+                >
+                  <Car className="h-4 w-4" />
+                  <span>Genomför körkortsundersökning</span>
+                </Button>
+              )}
             </div>
           )}
         </div>

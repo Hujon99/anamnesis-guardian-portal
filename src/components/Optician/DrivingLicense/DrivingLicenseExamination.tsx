@@ -63,6 +63,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
     const loadExamination = async () => {
       try {
         setIsLoading(true);
+        console.log('[DrivingLicenseExamination] Loading examination for entry:', entry.id);
         
         const { data: existingExam, error } = await supabase
           .from('driving_license_examinations')
@@ -70,11 +71,14 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           .eq('entry_id', entry.id)
           .single();
 
+        console.log('[DrivingLicenseExamination] Query result:', { existingExam, error });
+
         if (error && error.code !== 'PGRST116') {
           throw error;
         }
 
         if (existingExam) {
+          console.log('[DrivingLicenseExamination] Found existing examination:', existingExam);
           setExamination(existingExam);
           // Determine current step based on completion
           if (!existingExam.visual_acuity_both_eyes) {
@@ -86,6 +90,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           }
         } else {
           // Create new examination record
+          console.log('[DrivingLicenseExamination] Creating new examination for entry:', entry.id);
           const newExamination = {
             entry_id: entry.id,
             organization_id: entry.organization_id,
@@ -97,6 +102,8 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
             .insert(newExamination)
             .select()
             .single();
+
+          console.log('[DrivingLicenseExamination] Created examination:', { created, createError });
 
           if (createError) throw createError;
           
@@ -151,6 +158,11 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   };
 
   const progress = (currentStep / steps.length) * 100;
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('[DrivingLicenseExamination] Rendering step content - currentStep:', currentStep, 'examination:', examination);
+  }, [currentStep, examination]);
 
   if (isLoading) {
     return (
@@ -230,13 +242,21 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
             />
           )}
           
-          {currentStep === 2 && examination && (
-            <VisualAcuityMeasurement
-              examination={examination}
-              onSave={saveExamination}
-              onNext={() => setCurrentStep(3)}
-              isSaving={isSaving}
-            />
+          {currentStep === 2 && (
+            <>
+              {examination ? (
+                <VisualAcuityMeasurement
+                  examination={examination}
+                  onSave={saveExamination}
+                  onNext={() => setCurrentStep(3)}
+                  isSaving={isSaving}
+                />
+              ) : (
+                <div className="p-4 border rounded-lg">
+                  <p>Laddar undersökning...</p>
+                </div>
+              )}
+            </>
           )}
           
           {currentStep === 3 && examination && (

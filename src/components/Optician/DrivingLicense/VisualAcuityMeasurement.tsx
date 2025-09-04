@@ -484,9 +484,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
 
             <div className="space-y-6">
               {/* Right eye (OD) */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <h5 className="font-medium text-sm">Höger öga (OD)</h5>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="od-sph">Sfär (Sph)</Label>
                     <Input
@@ -527,9 +527,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
               </div>
 
               {/* Left eye (OS) */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <h5 className="font-medium text-sm">Vänster öga (OS)</h5>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="os-sph">Sfär (Sph)</Label>
                     <Input

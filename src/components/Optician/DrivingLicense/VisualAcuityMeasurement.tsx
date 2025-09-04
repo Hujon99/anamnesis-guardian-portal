@@ -482,7 +482,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
               </AlertDescription>
             </Alert>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               {/* Right eye (OD) */}
               <div className="space-y-4">
                 <h5 className="font-medium text-sm">Höger öga (OD)</h5>

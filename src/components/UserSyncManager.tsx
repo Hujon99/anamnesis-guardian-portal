@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useUser, useOrganization, useAuth } from "@clerk/clerk-react";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { useSyncOrganization } from "@/hooks/useSyncOrganization";
+import { useEnsureUserRecord } from "@/hooks/useEnsureUserRecord";
 import { toast } from "@/components/ui/use-toast";
 import { useUserSyncStore } from "@/hooks/useUserSyncStore";
 import { Loader2 } from "lucide-react";
@@ -20,6 +21,7 @@ export function UserSyncManager() {
   const { userId, isLoaded: authLoaded } = useAuth();
   const { syncUsers } = useSyncClerkUsers();
   const { isSyncing: isSyncingOrg, isSynced: isOrgSynced } = useSyncOrganization();
+  const { ensureUserRecordWithToast } = useEnsureUserRecord();
   
   const { 
     setSyncStatus, 
@@ -60,6 +62,9 @@ export function UserSyncManager() {
       setSyncStatus(organization.id, 'syncing');
 
       try {
+        // First ensure the current user record exists
+        await ensureUserRecordWithToast();
+        
         // Sync users for this organization
         const result = await syncUsers();
 

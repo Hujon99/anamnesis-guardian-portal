@@ -107,9 +107,6 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
           'notify-optician-driving-license',
           {
             body: {
-              examinationId: examination.id,
-              opticianId: selectedOpticianId,
-              patientName: entry.first_name || 'Okänd patient',
               entryId: entry.id,
               opticianEmail: selectedOptician.email,
               appUrl: window.location.origin

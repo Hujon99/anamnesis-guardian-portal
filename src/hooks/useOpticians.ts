@@ -51,14 +51,8 @@ export function isValidUUID(id: string | null | undefined): boolean {
 export function useOpticians() {
   const { organization } = useOrganization();
   const { supabase, isReady } = useSupabaseClient();
-  const [error, setError] = useState<Error | null>(null);
   
-  // Query to fetch all opticians for the organization
-  const {
-    data: opticians = [],
-    isLoading,
-    refetch
-  } = useQuery({
+  const { data: opticians, error, isLoading, refetch } = useQuery({
     queryKey: ['opticians', organization?.id],
     queryFn: async () => {
       if (!organization?.id || !isReady) return [];
@@ -69,9 +63,10 @@ export function useOpticians() {
         
         const { data, error } = await supabase
           .from('users')
-          .select('*')
+          .select('id, clerk_user_id, role, email, first_name, last_name, display_name, organization_id')
           .eq('organization_id', organization.id)
-          .eq('role', 'optician');
+          .eq('role', 'optician')
+          .order('display_name, first_name, last_name');
           
         if (error) {
           console.error('Supabase error fetching opticians:', error);
@@ -85,57 +80,33 @@ export function useOpticians() {
           return [];
         }
         
-        // Get user data from Clerk for each optician
-        const enhancedOpticians: Optician[] = await Promise.all(
-          data.map(async (databaseRecord: OpticianDatabaseRecord) => {
-            try {
-              // Try to get user info from organization members
-              const members = await organization.getMemberships();
-              // Handle memberships response which has .data property for membership list
-              const membersList = members?.data || [];
-              
-              // Now match by clerk_user_id rather than looking up by database id
-              const member = membersList.find(m => 
-                m.publicUserData?.userId === databaseRecord.clerk_user_id
-              );
-              
-              const enhancedOptician: Optician = {
-                ...databaseRecord,
-                name: member?.publicUserData?.firstName 
-                  ? `${member.publicUserData.firstName} ${member.publicUserData.lastName || ''}`
-                  : undefined,
-                email: member?.publicUserData?.identifier // Using identifier instead of emailAddress
-              };
-              
-              console.log('Enhanced optician:', enhancedOptician);
-              return enhancedOptician;
-            } catch (err) {
-              console.error('Error fetching Clerk user data:', err);
-              // Return the database record with default values for name/email
-              return {
-                ...databaseRecord,
-                name: undefined, 
-                email: undefined
-              };
-            }
-          })
-        );
+        // Return opticians with database information
+        const opticians = data.map(user => ({
+          id: user.id,
+          clerk_user_id: user.clerk_user_id,
+          organization_id: user.organization_id,
+          role: user.role,
+          email: user.email,
+          name: user.display_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || undefined,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          display_name: user.display_name
+        }));
         
-        return enhancedOpticians;
+        console.log('Enhanced opticians:', opticians);
+        return opticians;
       } catch (err) {
         console.error('Error fetching opticians:', err);
-        setError(err instanceof Error ? err : new Error(String(err)));
         return [];
       }
     },
     enabled: !!organization?.id && isReady,
+    staleTime: 5 * 60 * 1000,
+    retry: 3,
   });
   
-  // Provide detailed logging about what's being returned
-  console.log('useOpticians hook returning opticians:', opticians);
-  
   return {
-    opticians,
+    opticians: opticians || [],
     isLoading,
     error,
     refetch

@@ -24,7 +24,7 @@ export const useSyncClerkUsers = () => {
   const checkUserExists = async (clerkUserId: string) => {
     const { data, error } = await supabase
       .from('users')
-      .select('id, role')
+      .select('id, role, email, first_name, last_name, display_name')
       .eq('clerk_user_id', clerkUserId)
       .maybeSingle();
       
@@ -78,13 +78,18 @@ export const useSyncClerkUsers = () => {
         const role = determineRole(member);
         
         if (!existingUser) {
-          // Create new user
+          // Create new user with email and name information
+          const memberUser = member.publicUserData;
           const { error: insertError } = await supabase
             .from('users')
             .insert({
               clerk_user_id: clerkUserId,
               organization_id: organization.id,
-              role: role
+              role: role,
+              email: memberUser.identifier || null, // Clerk identifier is usually email
+              first_name: memberUser.firstName || null,
+              last_name: memberUser.lastName || null,
+              display_name: [memberUser.firstName, memberUser.lastName].filter(Boolean).join(' ') || null
             });
             
           if (insertError) {
@@ -93,19 +98,41 @@ export const useSyncClerkUsers = () => {
           }
           
           createdCount++;
-        } else if (existingUser.role !== role) {
-          // Update user role if it has changed
-          const { error: updateError } = await supabase
-            .from('users')
-            .update({ role: role })
-            .eq('clerk_user_id', clerkUserId);
-            
-          if (updateError) {
-            console.error('Error updating user:', updateError);
-            continue;
-          }
+        } else {
+          // Update user information if it has changed
+          const memberUser = member.publicUserData;
+          const newEmail = memberUser.identifier || null;
+          const newFirstName = memberUser.firstName || null;
+          const newLastName = memberUser.lastName || null;
+          const newDisplayName = [memberUser.firstName, memberUser.lastName].filter(Boolean).join(' ') || null;
           
-          updatedCount++;
+          const needsUpdate = (
+            existingUser.role !== role ||
+            existingUser.email !== newEmail ||
+            existingUser.first_name !== newFirstName ||
+            existingUser.last_name !== newLastName ||
+            existingUser.display_name !== newDisplayName
+          );
+          
+          if (needsUpdate) {
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ 
+                role: role,
+                email: newEmail,
+                first_name: newFirstName,
+                last_name: newLastName,
+                display_name: newDisplayName
+              })
+              .eq('clerk_user_id', clerkUserId);
+              
+            if (updateError) {
+              console.error('Error updating user:', updateError);
+              continue;
+            }
+            
+            updatedCount++;
+          }
         }
       }
       

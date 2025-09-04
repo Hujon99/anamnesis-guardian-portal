@@ -16,11 +16,8 @@ const corsHeaders = {
 };
 
 interface EmailNotificationRequest {
-  examinationId: string;
-  opticianId: string;
-  patientName: string;
   entryId: string;
-  opticianEmail: string;
+  opticianEmail?: string; // Optional - will be fetched from DB if not provided
   appUrl: string;
 }
 
@@ -36,51 +33,104 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { examinationId, opticianId, patientName, entryId, opticianEmail, appUrl }: EmailNotificationRequest = await req.json();
+    const { entryId, opticianEmail, appUrl }: EmailNotificationRequest = await req.json();
 
-    console.log("Processing email notification for examination:", examinationId);
+    console.log("Processing email notification for entry:", entryId);
 
     // Validate required fields
-    if (!opticianEmail) {
-      console.error("Missing opticianEmail in request");
-      throw new Error("Optiker e-post saknas");
+    if (!entryId || !appUrl) {
+      console.error("Missing required fields");
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing required fields: entryId and appUrl are required' 
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
     }
 
-    if (!appUrl) {
-      console.error("Missing appUrl in request");
-      throw new Error("App URL saknas");
-    }
-
-    // Get entry details first
-    const { data: entry, error: entryError } = await supabase
-      .from("anamnes_entries")
-      .select("organization_id")
-      .eq("id", entryId)
+    // Get entry and organization information  
+    const { data: entryData, error: entryError } = await supabase
+      .from('anamnes_entries')
+      .select('organization_id, first_name, examination_type, booking_date, optician_id')
+      .eq('id', entryId)
       .single();
 
-    if (entryError || !entry) {
-      console.error("Error fetching entry:", entryError);
-      throw new Error("Kunde inte hitta anamnespost");
+    if (entryError || !entryData) {
+      console.error('Entry fetch error:', entryError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch entry details' }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
     }
 
-    // Get organization name separately
-    const { data: organization, error: orgError } = await supabase
-      .from("organizations")
-      .select("name")
-      .eq("id", entry.organization_id)
+    // Get organization name
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', entryData.organization_id)
       .single();
 
-    if (orgError) {
-      console.error("Error fetching organization:", orgError);
-      // Continue with fallback name instead of failing
+    if (orgError || !orgData) {
+      console.error('Organization fetch error:', orgError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch organization details' }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
     }
 
-    const organizationName = organization?.name || "Din organisation";
+    // Get optician email if not provided in request
+    let finalOpticianEmail = opticianEmail;
+    if (!finalOpticianEmail && entryData.optician_id) {
+      const { data: opticianData, error: opticianError } = await supabase
+        .from('users')
+        .select('email, display_name, first_name, last_name')
+        .eq('clerk_user_id', entryData.optician_id)
+        .eq('organization_id', entryData.organization_id)
+        .single();
+
+      if (opticianError || !opticianData?.email) {
+        console.error('Optician fetch error:', opticianError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to fetch optician email. Please ensure the optician has an email address in their profile.' 
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+
+      finalOpticianEmail = opticianData.email;
+    }
+
+    if (!finalOpticianEmail) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'No optician email provided and no optician assigned to entry' 
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    const organizationName = orgData.name || "Din organisation";
 
     // Send email notification
     const emailResponse = await resend.emails.send({
       from: `${organizationName} <noreply@resend.dev>`,
-      to: [opticianEmail],
+      to: [finalOpticianEmail],
       subject: "Ny körkortsundersökning tilldelad",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -92,8 +142,8 @@ const handler = async (req: Request): Promise<Response> => {
           
           <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="margin: 0 0 10px 0; color: #1e40af;">Patientinformation</h3>
-            <p><strong>Namn:</strong> ${patientName}</p>
-            <p><strong>Undersöknings-ID:</strong> ${examinationId}</p>
+            <p><strong>Namn:</strong> ${entryData.first_name || 'Okänd patient'}</p>
+            <p><strong>Undersökningstyp:</strong> ${entryData.examination_type || 'Körkortsundersökning'}</p>
             <p><strong>Organisation:</strong> ${organizationName}</p>
           </div>
           

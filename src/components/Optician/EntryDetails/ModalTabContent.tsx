@@ -56,7 +56,7 @@ export function ModalTabContent({
   
   // Check if this is a driving license examination
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
-  const { isCompleted: isDrivingLicenseCompleted, examination } = useDrivingLicenseStatus(entry.id);
+  const { isCompleted: isDrivingLicenseCompleted, examination, isLoading } = useDrivingLicenseStatus(entry.id);
   const showDrivingLicenseTab = isDrivingLicenseExam;
   
   return (
@@ -120,15 +120,26 @@ export function ModalTabContent({
       {showDrivingLicenseTab && (
         <TabsContent value="driving" className="mt-0">
           <div className="space-y-4">
-            <DrivingLicenseResults 
-              examination={examination}
-              entry={entry}
-              answers={answers}
-              onDecisionUpdate={() => {
-                // Trigger a refresh if needed
-                window.location.reload();
-              }}
-            />
+            {isLoading ? (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Laddar körkortsdata...</p>
+              </div>
+            ) : examination ? (
+              <DrivingLicenseResults 
+                examination={examination}
+                entry={entry}
+                answers={answers}
+                onDecisionUpdate={() => {
+                  // Trigger a refresh if needed
+                  window.location.reload();
+                }}
+              />
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-muted-foreground">Ingen körkortsdata tillgänglig</p>
+              </div>
+            )}
           </div>
         </TabsContent>
       )}

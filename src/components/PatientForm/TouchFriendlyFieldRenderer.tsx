@@ -56,6 +56,16 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
   // Only extract values on mount for complex nested objects from saved data
   React.useEffect(() => {
     const currentValue = watch(fieldName);
+    
+    // Special handling for dynamic follow-up questions - clear value if it matches parent value
+    if (isDynamicQuestion && (question as DynamicFollowupQuestion).parentValue) {
+      const parentValue = (question as DynamicFollowupQuestion).parentValue;
+      if (currentValue === parentValue) {
+        setValue(fieldName, "", { shouldValidate: false, shouldDirty: false });
+        return;
+      }
+    }
+    
     // Only extract if it's a complex object with nested structure (from saved data)
     if (currentValue && typeof currentValue === 'object' && 
         !Array.isArray(currentValue) && 

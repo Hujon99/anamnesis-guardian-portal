@@ -119,10 +119,15 @@ export function ModalTabContent({
       
       {showDrivingLicenseTab && examination && (
         <TabsContent value="driving" className="mt-0">
-          <div className="p-4 border rounded-lg bg-background">
+          <div className="space-y-4">
             <DrivingLicenseResults 
               examination={examination}
               entry={entry}
+              answers={answers}
+              onDecisionUpdate={() => {
+                // Trigger a refresh if needed
+                window.location.reload();
+              }}
             />
           </div>
         </TabsContent>

@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, XCircle, Eye, IdCard, AlertTriangle, FileText, Calendar, Clock, User } from "lucide-react";
+import { CheckCircle, Eye, IdCard, AlertTriangle, FileText, Calendar, Clock, User } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/hooks/use-toast";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
@@ -35,7 +35,6 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   isSaving
 }) => {
   const [notes, setNotes] = useState(examination?.notes || '');
-  const [decision, setDecision] = useState<'pass' | 'fail' | 'needs_booking' | null>(examination?.examination_status === 'completed' ? examination?.passed_examination ? 'pass' : examination?.requires_optician_visit ? 'needs_booking' : 'fail' : null);
   const [selectedOpticianId, setSelectedOpticianId] = useState<string>('');
   
   // Load opticians for assignment
@@ -53,15 +52,6 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   const idVerified = examination?.id_verification_completed;
   const canPass = visionPassed && idVerified;
   const handleComplete = async () => {
-    if (!decision) {
-      toast({
-        title: "Inget beslut valt",
-        description: "Du måste välja ett beslut innan du kan slutföra undersökningen.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     if (!selectedOpticianId) {
       toast({
         title: "Ingen optiker vald",
@@ -84,8 +74,6 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
     
     const updates = {
       examination_status: 'completed' as const,
-      passed_examination: decision === 'pass',
-      requires_optician_visit: decision === 'needs_booking',
       notes: notes.trim() || null
     };
     
@@ -128,23 +116,10 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
         // Don't fail the whole process for email errors
       }
 
-      // Show success message based on decision
-      if (decision === 'pass') {
-        toast({
-          title: "Undersökning godkänd",
-          description: `Körkortsundersökningen har slutförts och tilldelats ${getOpticianDisplayName(opticians.find(o => o.clerk_user_id === selectedOpticianId))}`
-        });
-      } else if (decision === 'needs_booking') {
-        toast({
-          title: "Bokning krävs",
-          description: `Kunden har bokats för vidare undersökning och tilldelats ${getOpticianDisplayName(opticians.find(o => o.clerk_user_id === selectedOpticianId))}`
-        });
-      } else {
-        toast({
-          title: "Undersökning ej godkänd",
-          description: `Körkortsundersökningen uppfyller inte kraven och har tilldelats ${getOpticianDisplayName(opticians.find(o => o.clerk_user_id === selectedOpticianId))}`
-        });
-      }
+      toast({
+        title: "Undersökning slutförd",
+        description: `Körkortsundersökningen har slutförts och tilldelats ${getOpticianDisplayName(opticians.find(o => o.clerk_user_id === selectedOpticianId))} för beslut.`
+      });
       
       // Only close dialog after successful save and assignment
       onComplete();
@@ -158,34 +133,12 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       // Don't close dialog on error
     }
   };
-  const getDecisionBadge = () => {
-    switch (decision) {
-      case 'pass':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Godkänd
-          </Badge>;
-      case 'fail':
-        return <Badge variant="destructive">
-            <XCircle className="h-3 w-3 mr-1" />
-            Ej godkänd
-          </Badge>;
-      case 'needs_booking':
-        return <Badge className="bg-amber-100 text-amber-800 border-amber-200">
-            <Calendar className="h-3 w-3 mr-1" />
-            Bokning krävs
-          </Badge>;
-      default:
-        return null;
-    }
-  };
   const isCompleted = examination?.examination_status === 'completed';
   return <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Sammanfattning och beslut
-          {isCompleted && getDecisionBadge()}
+          Sammanfattning
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -348,48 +301,6 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
 
         <Separator />
 
-        {/* Decision section */}
-        {!isCompleted && <div className="space-y-4">
-            <h4 className="font-medium">Beslut</h4>
-            
-            {canPass ? <div className="space-y-3">
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Alla krav är uppfyllda. Körkortsundersökningen kan godkännas.
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="flex gap-2">
-                  <Button onClick={() => setDecision('pass')} variant={decision === 'pass' ? 'default' : 'outline'} className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4" />
-                    Godkänn undersökning
-                  </Button>
-                  
-                  <Button onClick={() => setDecision('needs_booking')} variant={decision === 'needs_booking' ? 'default' : 'outline'}>
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Boka vidare undersökning
-                  </Button>
-                </div>
-              </div> : <div className="space-y-3">
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    Undersökningen kan inte godkännas på grund av:
-                    <ul className="list-disc list-inside mt-1 text-sm">
-                      {!visionPassed && <li>Visus under gränsvärde</li>}
-                      {!idVerified && <li>Legitimation ej verifierad</li>}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-                
-                <Button onClick={() => setDecision('needs_booking')} variant={decision === 'needs_booking' ? 'default' : 'outline'}>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Boka för vidare undersökning
-                </Button>
-              </div>}
-          </div>}
-
         <Separator />
 
         {/* Optician assignment section */}
@@ -443,16 +354,18 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
             <AlertDescription>
               <div className="flex items-center justify-between">
                 <span>Undersökning slutförd {new Date(examination.updated_at).toLocaleString('sv-SE')}</span>
-                {getDecisionBadge()}
               </div>
             </AlertDescription>
           </Alert> : <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onComplete}>
-              Avbryt
-            </Button>
-            <Button onClick={handleComplete} disabled={!decision || !selectedOpticianId || isSaving}>
-              {isSaving ? "Sparar..." : "Slutför undersökning"}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onComplete} disabled={isSaving}>
+                Avbryt
+              </Button>
+              <Button onClick={handleComplete} disabled={isSaving || !selectedOpticianId}>
+                {isSaving ? <Clock className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                {isSaving ? "Slutför..." : "Slutför undersökning"}
+              </Button>
+            </div>
           </div>}
       </CardContent>
     </Card>;

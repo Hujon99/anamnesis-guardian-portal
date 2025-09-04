@@ -296,6 +296,7 @@ export type Database = {
           correction_type: Database["public"]["Enums"]["correction_type"] | null
           created_at: string
           created_by: string | null
+          decided_by: string | null
           entry_id: string
           examination_status:
             | Database["public"]["Enums"]["examination_status"]
@@ -312,6 +313,9 @@ export type Database = {
           id_type: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed: boolean | null
           notes: string | null
+          optician_decision: string | null
+          optician_decision_date: string | null
+          optician_notes: string | null
           organization_id: string
           passed_examination: boolean | null
           requires_further_investigation: boolean | null
@@ -337,6 +341,7 @@ export type Database = {
             | null
           created_at?: string
           created_by?: string | null
+          decided_by?: string | null
           entry_id: string
           examination_status?:
             | Database["public"]["Enums"]["examination_status"]
@@ -353,6 +358,9 @@ export type Database = {
           id_type?: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed?: boolean | null
           notes?: string | null
+          optician_decision?: string | null
+          optician_decision_date?: string | null
+          optician_notes?: string | null
           organization_id: string
           passed_examination?: boolean | null
           requires_further_investigation?: boolean | null
@@ -378,6 +386,7 @@ export type Database = {
             | null
           created_at?: string
           created_by?: string | null
+          decided_by?: string | null
           entry_id?: string
           examination_status?:
             | Database["public"]["Enums"]["examination_status"]
@@ -394,6 +403,9 @@ export type Database = {
           id_type?: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed?: boolean | null
           notes?: string | null
+          optician_decision?: string | null
+          optician_decision_date?: string | null
+          optician_notes?: string | null
           organization_id?: string
           passed_examination?: boolean | null
           requires_further_investigation?: boolean | null

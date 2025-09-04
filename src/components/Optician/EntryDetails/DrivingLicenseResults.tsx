@@ -12,38 +12,55 @@ import { Separator } from "@/components/ui/separator";
 import { CheckCircle, XCircle, Eye, IdCard, Car, Calendar, Clock } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { AnamnesesEntry } from "@/types/anamnesis";
+import { DrivingLicenseOpticianDecision } from "./DrivingLicenseOpticianDecision";
+import { CopyableExaminationSummary } from "./CopyableExaminationSummary";
+import { RecommendationEngine } from "../DrivingLicense/RecommendationEngine";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { useUser } from "@clerk/clerk-react";
 
 type DrivingLicenseExamination = Database['public']['Tables']['driving_license_examinations']['Row'];
 
 interface DrivingLicenseResultsProps {
   examination: DrivingLicenseExamination;
   entry: AnamnesesEntry;
+  answers: Record<string, any>;
+  onDecisionUpdate?: () => void;
 }
 
 export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
   examination,
-  entry
+  entry,
+  answers,
+  onDecisionUpdate
 }) => {
+  const { user } = useUser();
   const getDecisionBadge = () => {
-    if (examination.passed_examination) {
+    if (examination.optician_decision === 'approved') {
       return (
         <Badge className="bg-green-100 text-green-800 border-green-200">
           <CheckCircle className="h-3 w-3 mr-1" />
           Godkänd
         </Badge>
       );
-    } else if (examination.requires_optician_visit) {
+    } else if (examination.optician_decision === 'requires_booking') {
       return (
         <Badge className="bg-amber-100 text-amber-800 border-amber-200">
           <Calendar className="h-3 w-3 mr-1" />
           Bokning krävs
         </Badge>
       );
-    } else {
+    } else if (examination.optician_decision === 'not_approved') {
       return (
         <Badge variant="destructive">
           <XCircle className="h-3 w-3 mr-1" />
           Ej godkänd
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="secondary">
+          <Clock className="h-3 w-3 mr-1" />
+          Väntar på beslut
         </Badge>
       );
     }
@@ -210,6 +227,35 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
           </Alert>
         </CardContent>
       </Card>
+
+      {/* Recommendation Engine */}
+      <div className="mt-6">
+        <RecommendationEngine 
+          examination={examination}
+          entry={entry}
+        />
+      </div>
+
+      {/* Optician Decision */}
+      <div className="mt-6">
+        <DrivingLicenseOpticianDecision
+          examination={examination}
+          entry={entry}
+          currentUserId={user?.id || ''}
+          onDecisionMade={() => onDecisionUpdate?.()}
+        />
+      </div>
+
+      {/* Export Section */}
+      {examination.optician_decision && (
+        <div className="mt-6">
+          <CopyableExaminationSummary
+            examination={examination}
+            entry={entry}
+            answers={answers}
+          />
+        </div>
+      )}
     </div>
   );
 };

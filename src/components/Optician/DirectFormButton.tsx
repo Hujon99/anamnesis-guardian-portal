@@ -54,14 +54,14 @@ export const DirectFormButton: React.FC = () => {
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours from now
 
       // Create patient identifier from name
-      const patientName = lastName ? `${firstName} ${lastName}` : firstName;
-      const patientIdentifier = `${patientName} (Direkt ifyllning i butik)`;
+      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+      const patientIdentifier = `${fullName} (Direkt ifyllning i butik)`;
 
       console.log("Creating direct form entry with:", {
         organizationId: organization.id,
         formId: form.id,
         userId: user.id,
-        patientName,
+        fullName,
         expiresAt
       });
 
@@ -77,7 +77,7 @@ export const DirectFormButton: React.FC = () => {
           created_by: user.id,
           created_by_name: user.fullName || user.firstName || "Okänd optiker",
           patient_identifier: patientIdentifier,
-          first_name: firstName,
+          first_name: fullName,
           expires_at: expiresAt.toISOString(),
           booking_date: new Date().toISOString(), // Automatically set today's date
           // Set initial answers as empty object

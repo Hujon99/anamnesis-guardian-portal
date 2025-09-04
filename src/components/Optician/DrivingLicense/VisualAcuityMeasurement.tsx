@@ -233,14 +233,14 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       vision_below_limit: warnings.length > 0,
       // Include glasses prescription data if applicable
       ...(licenseCategory === 'higher' && measurements.uses_correction && {
-        glasses_prescription_od_sph: measurements.glasses_prescription_od_sph || null,
-        glasses_prescription_od_cyl: measurements.glasses_prescription_od_cyl || null,
-        glasses_prescription_od_axis: measurements.glasses_prescription_od_axis || null,
-        glasses_prescription_od_add: measurements.glasses_prescription_od_add || null,
-        glasses_prescription_os_sph: measurements.glasses_prescription_os_sph || null,
-        glasses_prescription_os_cyl: measurements.glasses_prescription_os_cyl || null,
-        glasses_prescription_os_axis: measurements.glasses_prescription_os_axis || null,
-        glasses_prescription_os_add: measurements.glasses_prescription_os_add || null,
+        glasses_prescription_od_sph: toNumberOrNull(measurements.glasses_prescription_od_sph),
+        glasses_prescription_od_cyl: toNumberOrNull(measurements.glasses_prescription_od_cyl),
+        glasses_prescription_od_axis: measurements.glasses_prescription_od_axis ? parseInt(measurements.glasses_prescription_od_axis.toString()) : null,
+        glasses_prescription_od_add: toNumberOrNull(measurements.glasses_prescription_od_add),
+        glasses_prescription_os_sph: toNumberOrNull(measurements.glasses_prescription_os_sph),
+        glasses_prescription_os_cyl: toNumberOrNull(measurements.glasses_prescription_os_cyl),
+        glasses_prescription_os_axis: measurements.glasses_prescription_os_axis ? parseInt(measurements.glasses_prescription_os_axis.toString()) : null,
+        glasses_prescription_os_add: toNumberOrNull(measurements.glasses_prescription_os_add),
       }),
       // Append license category info into notes without overwriting any existing notes saved earlier
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`

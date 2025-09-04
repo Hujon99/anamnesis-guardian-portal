@@ -208,37 +208,107 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
           <h4 className="font-medium flex items-center gap-2">
             <Eye className="h-4 w-4" />
             Visusmätningar
-            {(examination?.uses_glasses || examination?.uses_contact_lenses) && <Badge variant="secondary" className="text-xs">
+            {(examination?.uses_glasses || examination?.uses_contact_lenses) && (
+              <Badge variant="secondary" className="text-xs">
                 Med korrektion
-              </Badge>}
+              </Badge>
+            )}
           </h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="space-y-1">
               <p>Båda ögon: <span className="font-mono">
-                {examination?.uses_glasses || examination?.uses_contact_lenses ? examination?.visual_acuity_with_correction_both || examination?.visual_acuity_both_eyes || 'Ej mätt' : examination?.visual_acuity_both_eyes || 'Ej mätt'}
+                {(() => {
+                  const withCorrection = examination?.visual_acuity_with_correction_both;
+                  const withoutCorrection = examination?.visual_acuity_both_eyes;
+                  const useCorrection = examination?.uses_glasses || examination?.uses_contact_lenses;
+                  const value = useCorrection ? (withCorrection || withoutCorrection) : withoutCorrection;
+                  return value ? String(value).replace('.', ',') : 'Ej mätt';
+                })()}
               </span></p>
               <p>Höger öga: <span className="font-mono">
-                {examination?.uses_glasses || examination?.uses_contact_lenses ? examination?.visual_acuity_with_correction_right || examination?.visual_acuity_right_eye || 'Ej mätt' : examination?.visual_acuity_right_eye || 'Ej mätt'}
+                {(() => {
+                  const withCorrection = examination?.visual_acuity_with_correction_right;
+                  const withoutCorrection = examination?.visual_acuity_right_eye;
+                  const useCorrection = examination?.uses_glasses || examination?.uses_contact_lenses;
+                  const value = useCorrection ? (withCorrection || withoutCorrection) : withoutCorrection;
+                  return value ? String(value).replace('.', ',') : 'Ej mätt';
+                })()}
               </span></p>
               <p>Vänster öga: <span className="font-mono">
-                {examination?.uses_glasses || examination?.uses_contact_lenses ? examination?.visual_acuity_with_correction_left || examination?.visual_acuity_left_eye || 'Ej mätt' : examination?.visual_acuity_left_eye || 'Ej mätt'}
+                {(() => {
+                  const withCorrection = examination?.visual_acuity_with_correction_left;
+                  const withoutCorrection = examination?.visual_acuity_left_eye;
+                  const useCorrection = examination?.uses_glasses || examination?.uses_contact_lenses;
+                  const value = useCorrection ? (withCorrection || withoutCorrection) : withoutCorrection;
+                  return value ? String(value).replace('.', ',') : 'Ej mätt';
+                })()}
               </span></p>
             </div>
-            
           </div>
           
-          {examination?.vision_below_limit ? <Alert variant="destructive">
+          {examination?.vision_below_limit ? (
+            <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 Visusvärden är under gränsvärdet för körkort
               </AlertDescription>
-            </Alert> : <Alert>
+            </Alert>
+          ) : (
+            <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
                 Visusvärden uppfyller kraven för körkort
               </AlertDescription>
-            </Alert>}
+            </Alert>
+          )}
         </div>
+
+        {/* Glasses prescription display for higher licenses */}
+        {(examination?.uses_glasses || examination?.uses_contact_lenses) && 
+         (examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph) && (
+          <div className="space-y-3">
+            <h4 className="font-medium">Glasögonstyrkor</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              {/* Right eye (OD) */}
+              <div className="space-y-2">
+                <h5 className="font-medium text-sm">Höger öga (OD)</h5>
+                <div className="space-y-1">
+                  {examination?.glasses_prescription_od_sph && (
+                    <p>Sfär: <span className="font-mono">{examination.glasses_prescription_od_sph}</span></p>
+                  )}
+                  {examination?.glasses_prescription_od_cyl && (
+                    <p>Cylinder: <span className="font-mono">{examination.glasses_prescription_od_cyl}</span></p>
+                  )}
+                  {examination?.glasses_prescription_od_axis && (
+                    <p>Axel: <span className="font-mono">{examination.glasses_prescription_od_axis}°</span></p>
+                  )}
+                  {examination?.glasses_prescription_od_add && (
+                    <p>Addition: <span className="font-mono">{examination.glasses_prescription_od_add}</span></p>
+                  )}
+                </div>
+              </div>
+
+              {/* Left eye (OS) */}
+              <div className="space-y-2">
+                <h5 className="font-medium text-sm">Vänster öga (OS)</h5>
+                <div className="space-y-1">
+                  {examination?.glasses_prescription_os_sph && (
+                    <p>Sfär: <span className="font-mono">{examination.glasses_prescription_os_sph}</span></p>
+                  )}
+                  {examination?.glasses_prescription_os_cyl && (
+                    <p>Cylinder: <span className="font-mono">{examination.glasses_prescription_os_cyl}</span></p>
+                  )}
+                  {examination?.glasses_prescription_os_axis && (
+                    <p>Axel: <span className="font-mono">{examination.glasses_prescription_os_axis}°</span></p>
+                  )}
+                  {examination?.glasses_prescription_os_add && (
+                    <p>Addition: <span className="font-mono">{examination.glasses_prescription_os_add}</span></p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Separator />
 

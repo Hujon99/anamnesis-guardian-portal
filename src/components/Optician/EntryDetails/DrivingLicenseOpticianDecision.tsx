@@ -24,14 +24,16 @@ interface DrivingLicenseOpticianDecisionProps {
   examination: DrivingLicenseExamination;
   entry: AnamnesesEntry;
   currentUserId: string;
-  onDecisionMade: () => void;
+  onDecisionMade?: () => void;
+  getUserName?: (userId: string | null) => string;
 }
 
 export const DrivingLicenseOpticianDecision: React.FC<DrivingLicenseOpticianDecisionProps> = ({
   examination,
   entry,
   currentUserId,
-  onDecisionMade
+  onDecisionMade,
+  getUserName
 }) => {
   const [decision, setDecision] = useState<'approved' | 'requires_booking' | 'not_approved' | null>(
     examination.optician_decision as any || null
@@ -67,7 +69,7 @@ export const DrivingLicenseOpticianDecision: React.FC<DrivingLicenseOpticianDeci
         description: "Ditt beslut har sparats för körkortsundersökningen."
       });
 
-      onDecisionMade();
+      onDecisionMade?.();
     } catch (error: any) {
       console.error('Error saving decision:', error);
       toast({
@@ -143,7 +145,7 @@ export const DrivingLicenseOpticianDecision: React.FC<DrivingLicenseOpticianDeci
             
             <div className="text-sm text-muted-foreground">
               <p>Datum: {new Date(examination.optician_decision_date!).toLocaleString('sv-SE')}</p>
-              <p>Av: {examination.decided_by}</p>
+              <p>Av: {getUserName ? getUserName(examination.decided_by) : examination.decided_by}</p>
             </div>
 
             {examination.optician_notes && (

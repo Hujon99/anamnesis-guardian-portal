@@ -95,38 +95,6 @@ Anamnes: ${entry.ai_summary || 'Ingen sammanfattning'}
 ${examination.optician_notes ? `Anteckningar: ${examination.optician_notes}` : ''}`;
   };
 
-  const formatRawData = () => {
-    return JSON.stringify({
-      patient: {
-        name: entry.first_name,
-        examination_date: entry.booking_date,
-        decision_date: examination.optician_decision_date
-      },
-      visual_acuity: {
-        both_eyes: examination.visual_acuity_both_eyes,
-        right_eye: examination.visual_acuity_right_eye,
-        left_eye: examination.visual_acuity_left_eye,
-        with_correction_both: examination.visual_acuity_with_correction_both,
-        with_correction_right: examination.visual_acuity_with_correction_right,
-        with_correction_left: examination.visual_acuity_with_correction_left,
-        uses_glasses: examination.uses_glasses,
-        uses_contact_lenses: examination.uses_contact_lenses
-      },
-      id_verification: {
-        completed: examination.id_verification_completed,
-        type: examination.id_type,
-        verified_by: examination.verified_by
-      },
-      decision: {
-        result: examination.optician_decision,
-        date: examination.optician_decision_date,
-        decided_by: examination.decided_by,
-        notes: examination.optician_notes
-      },
-      ai_summary: entry.ai_summary,
-      answers: answers
-    }, null, 2);
-  };
 
   const copyToClipboard = async (text: string, format: string) => {
     try {
@@ -248,45 +216,6 @@ ${examination.optician_notes ? `Anteckningar: ${examination.optician_notes}` : '
             </div>
           </div>
 
-          <Separator />
-
-          {/* Raw data format */}
-          <div className="border rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">Rådata (JSON)</h4>
-              <Badge variant="secondary">Teknisk</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Komplett data i JSON-format för teknisk användning
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => copyToClipboard(formatRawData(), 'Rådata')}
-                className="flex items-center gap-2"
-              >
-                {copiedFormat === 'Rådata' ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-                Kopiera
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => downloadAsFile(
-                  formatRawData(), 
-                  `korkortsunderskning-data-${new Date().toISOString().split('T')[0]}.json`
-                )}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Ladda ner
-              </Button>
-            </div>
-          </div>
         </div>
       </CardContent>
     </Card>

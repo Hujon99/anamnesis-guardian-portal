@@ -4,12 +4,13 @@
  * results including visual acuity measurements, ID verification, and final decision.
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, XCircle, Eye, IdCard, Car, Calendar, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Eye, IdCard, Car, Calendar, Clock, FileText, Sparkles } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { DrivingLicenseOpticianDecision } from "./DrivingLicenseOpticianDecision";
@@ -17,6 +18,8 @@ import { CopyableExaminationSummary } from "./CopyableExaminationSummary";
 import { RecommendationEngine } from "../DrivingLicense/RecommendationEngine";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useUser } from "@clerk/clerk-react";
+import { useOpticians } from "@/hooks/useOpticians";
+import { toast } from "@/hooks/use-toast";
 
 type DrivingLicenseExamination = Database['public']['Tables']['driving_license_examinations']['Row'];
 
@@ -34,6 +37,9 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
   onDecisionUpdate
 }) => {
   const { user } = useUser();
+  const { supabase } = useSupabaseClient();
+  const { opticians = [] } = useOpticians();
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const getDecisionBadge = () => {
     if (examination.optician_decision === 'approved') {
       return (
@@ -84,13 +90,59 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
     
     const translations: Record<string, string> = {
       'passport': 'Pass',
-      'driving_license': 'Körkort',
+      'driving_license': 'Körkort', 
       'national_id': 'Nationellt ID',
       'eu_id': 'EU-ID',
-      'other': 'Annat'
+      'other': 'Annat',
+      'swedish_license': 'Svenskt körkort',
+      'id_card': 'ID-kort'
     };
     
     return translations[idType] || idType.replace('_', ' ');
+  };
+
+  const getUserName = (userId: string | null) => {
+    if (!userId) return 'Okänd användare';
+    const optician = opticians.find(opt => opt.clerk_user_id === userId);
+    return optician ? `${optician.first_name || ''} ${optician.last_name || ''}`.trim() || optician.display_name || 'Okänd användare' : 'Okänd användare';
+  };
+
+  const generateAISummary = async () => {
+    setIsGeneratingSummary(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: {
+          entryId: entry.id,
+          formattedData: entry.formatted_raw_data || JSON.stringify(answers, null, 2),
+          prompt: 'Generera en kortfattad och professionell sammanfattning av denna anamnes för körkortsundersökning. Fokusera på relevanta medicinska faktorer och synhälsa.'
+        }
+      });
+
+      if (error) throw error;
+
+      const { data: updateData, error: updateError } = await supabase
+        .from('anamnes_entries')
+        .update({ ai_summary: data.summary })
+        .eq('id', entry.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "AI-sammanfattning genererad",
+        description: "Sammanfattningen har skapats och sparats."
+      });
+
+      onDecisionUpdate?.();
+    } catch (error: any) {
+      console.error('Error generating AI summary:', error);
+      toast({
+        title: "Kunde inte generera sammanfattning",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingSummary(false);
+    }
   };
 
   return (
@@ -112,6 +164,40 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
               <p>Datum: {entry.booking_date ? new Date(entry.booking_date).toLocaleDateString('sv-SE') : 'Idag'}</p>
               <p>Slutförd: {new Date(examination.updated_at).toLocaleString('sv-SE')}</p>
             </div>
+          </div>
+
+          <Separator />
+
+          {/* AI Summary */}
+          <div className="space-y-3">
+            <h4 className="font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              AI-sammanfattning av anamnes
+            </h4>
+            
+            {entry.ai_summary ? (
+              <div className="bg-muted p-4 rounded-md text-sm whitespace-pre-wrap">
+                {entry.ai_summary}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Alert>
+                  <FileText className="h-4 w-4" />
+                  <AlertDescription>
+                    Ingen AI-sammanfattning har genererats ännu för denna anamnes.
+                  </AlertDescription>
+                </Alert>
+                <Button
+                  onClick={generateAISummary}
+                  disabled={isGeneratingSummary}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {isGeneratingSummary ? "Genererar..." : "Generera AI-sammanfattning"}
+                </Button>
+              </div>
+            )}
           </div>
 
           <Separator />
@@ -242,7 +328,8 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
           examination={examination}
           entry={entry}
           currentUserId={user?.id || ''}
-          onDecisionMade={() => onDecisionUpdate?.()}
+          onDecisionMade={onDecisionUpdate}
+          getUserName={getUserName}
         />
       </div>
 

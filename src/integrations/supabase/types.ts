@@ -300,6 +300,14 @@ export type Database = {
           examination_status:
             | Database["public"]["Enums"]["examination_status"]
             | null
+          glasses_prescription_od_add: number | null
+          glasses_prescription_od_axis: number | null
+          glasses_prescription_od_cyl: number | null
+          glasses_prescription_od_sph: number | null
+          glasses_prescription_os_add: number | null
+          glasses_prescription_os_axis: number | null
+          glasses_prescription_os_cyl: number | null
+          glasses_prescription_os_sph: number | null
           id: string
           id_type: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed: boolean | null
@@ -333,6 +341,14 @@ export type Database = {
           examination_status?:
             | Database["public"]["Enums"]["examination_status"]
             | null
+          glasses_prescription_od_add?: number | null
+          glasses_prescription_od_axis?: number | null
+          glasses_prescription_od_cyl?: number | null
+          glasses_prescription_od_sph?: number | null
+          glasses_prescription_os_add?: number | null
+          glasses_prescription_os_axis?: number | null
+          glasses_prescription_os_cyl?: number | null
+          glasses_prescription_os_sph?: number | null
           id?: string
           id_type?: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed?: boolean | null
@@ -366,6 +382,14 @@ export type Database = {
           examination_status?:
             | Database["public"]["Enums"]["examination_status"]
             | null
+          glasses_prescription_od_add?: number | null
+          glasses_prescription_od_axis?: number | null
+          glasses_prescription_od_cyl?: number | null
+          glasses_prescription_od_sph?: number | null
+          glasses_prescription_os_add?: number | null
+          glasses_prescription_os_axis?: number | null
+          glasses_prescription_os_cyl?: number | null
+          glasses_prescription_os_sph?: number | null
           id?: string
           id_type?: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed?: boolean | null

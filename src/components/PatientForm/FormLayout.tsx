@@ -6,6 +6,7 @@
  * Enhanced to handle conditional validation when submitting the form and
  * support direct navigation between form sections.
  * Fixed premature validation issues on the last step.
+ * Now supports both traditional multi-section layout and single-question layout for mobile/iPad.
  */
 
 import React, { useEffect, useState } from "react";
@@ -13,6 +14,7 @@ import { CardContent, CardFooter } from "@/components/ui/card";
 import FormHeader from "@/components/PatientForm/FormHeader";
 import FormNavigation from "@/components/PatientForm/FormNavigation";
 import FormStepContent from "@/components/PatientForm/FormStepContent";
+import { SingleQuestionLayout } from "@/components/PatientForm/SingleQuestionLayout";
 import { useFormContext } from "@/contexts/FormContext";
 import { toast } from "sonner";
 import { FieldError } from "react-hook-form";
@@ -40,6 +42,19 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     form,
     visibleFieldIds
   } = useFormContext();
+
+  // Detect if user is on mobile/iPad (screens smaller than 1024px)
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const checkViewport = () => {
+      setIsMobileView(window.innerWidth < 1024);
+    };
+    
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
+  }, []);
 
   // Add state to track step transitions for animations
   const [animatingStep, setAnimatingStep] = useState(false);
@@ -186,6 +201,11 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
       toast.error("Ett oväntat fel uppstod");
     }
   };
+
+  // Use single question layout for mobile/iPad, traditional layout for desktop
+  if (isMobileView) {
+    return <SingleQuestionLayout createdByName={createdByName} />;
+  }
 
   return (
     <>

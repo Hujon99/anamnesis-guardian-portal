@@ -116,4 +116,41 @@
   .animate-pulse-once {
     animation: pulse-once 0.4s ease-out;
   }
+
+  /* Slide animations for single question layout */
+  .slide-out-left {
+    animation: slideOutLeft 0.2s ease-in forwards;
+  }
+  
+  .slide-out-right {
+    animation: slideOutRight 0.2s ease-in forwards;
+  }
+  
+  .slide-in-left {
+    animation: slideInLeft 0.3s ease-out forwards;
+  }
+  
+  .slide-in-right {
+    animation: slideInRight 0.3s ease-out forwards;
+  }
+
+  @keyframes slideOutLeft {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-50px); opacity: 0; }
+  }
+  
+  @keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(50px); opacity: 0; }
+  }
+  
+  @keyframes slideInLeft {
+    from { transform: translateX(-50px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  @keyframes slideInRight {
+    from { transform: translateX(50px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
 }

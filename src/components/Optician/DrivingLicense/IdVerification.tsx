@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { IdCard, CheckCircle, AlertTriangle } from "lucide-react";
+import { IdCard, CheckCircle, AlertTriangle, User } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 
 interface IdVerificationProps {
@@ -64,6 +65,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
   ]);
 
   const [isVerified, setIsVerified] = useState(examination?.id_verification_completed || false);
+  const [personalNumber, setPersonalNumber] = useState(examination?.personal_number || '');
 
   const handleIdTypeChange = (idTypeId: string, checked: boolean) => {
     setIdTypes(prev => prev.map(type => ({
@@ -83,7 +85,8 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
       id_verification_completed: true,
       id_type: selectedIdType.id,
       verified_by: user?.fullName || user?.firstName || 'Unknown',
-      verified_at: new Date().toISOString()
+      verified_at: new Date().toISOString(),
+      personal_number: personalNumber.trim() || null
     };
 
     await onSave(updates);
@@ -91,7 +94,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
   };
 
   const selectedIdType = idTypes.find(type => type.checked);
-  const canVerify = selectedIdType && !isVerified;
+  const canVerify = selectedIdType && personalNumber.trim() && !isVerified;
   const isCompleted = examination?.id_verification_completed || isVerified;
 
   return (
@@ -157,6 +160,29 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
           </div>
         </div>
 
+        {/* Personal number input */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            <h4 className="font-medium">Personnummer</h4>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="personal-number">Personnummer (obligatoriskt)</Label>
+            <Input
+              id="personal-number"
+              type="text"
+              placeholder="YYYYMMDD-XXXX eller YYYYMMDDXXXX"
+              value={personalNumber}
+              onChange={(e) => setPersonalNumber(e.target.value)}
+              disabled={isCompleted}
+              className="max-w-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Ange personnummer som det står på legitimationen
+            </p>
+          </div>
+        </div>
+
         {/* Verification status */}
         {isCompleted && (
           <Alert>
@@ -166,6 +192,9 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
                 <p className="font-medium">Legitimation verifierad</p>
                 <p className="text-sm">
                   Verifierad av: {examination?.verified_by || 'Unknown'}
+                </p>
+                <p className="text-sm">
+                  Personnummer: {examination?.personal_number || 'Ej angivet'}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {examination?.verified_at && 
@@ -198,6 +227,25 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
             {isCompleted ? "Gå till slutförande" : "Måste verifieras först"}
           </Button>
         </div>
+
+        {/* Help text for personal number */}
+        {!isCompleted && personalNumber.length > 0 && personalNumber.length < 10 && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Kontrollera att personnumret är korrekt ifyllt innan du bekräftar legitimationen.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isCompleted && !personalNumber.trim() && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Personnummer måste fyllas i för att kunna bekräfta legitimationen.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Warning if not completed */}
         {!isCompleted && (

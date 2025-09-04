@@ -59,7 +59,7 @@ Vänster öga: ${examination.visual_acuity_with_correction_left || examination.v
 LEGITIMATIONSKONTROLL:
 Status: ${examination.id_verification_completed ? 'Verifierad' : 'Ej verifierad'}
 Typ: ${examination.id_type?.replace('_', ' ') || 'N/A'}
-Verifierad av: ${examination.verified_by || 'N/A'}
+Verifierad av: ${examination.verified_by || 'N/A'}${examination.personal_number ? `\nPersonnummer: ${examination.personal_number}` : ''}
 
 ANAMNES:
 ${entry.ai_summary || 'Ingen sammanfattning tillgänglig'}
@@ -85,7 +85,7 @@ Datum: ${date}`;
 
     return `KÖRKORTSUNDERSÖKNING ${date}
 
-Patient: ${entry.first_name || 'N/A'}
+Patient: ${entry.first_name || 'N/A'}${examination.personal_number ? `\nPersonnummer: ${examination.personal_number}` : ''}
 Visus med ${correctionType}: ${examination.visual_acuity_with_correction_both || examination.visual_acuity_both_eyes || 'N/A'}
 ID verifierad: ${examination.id_verification_completed ? 'Ja' : 'Nej'}
 Beslut: ${decision}

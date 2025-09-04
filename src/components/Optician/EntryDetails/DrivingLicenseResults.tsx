@@ -274,6 +274,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                     <p>Legitimation verifierad</p>
                     <p className="text-xs text-muted-foreground">
                       Typ: {getIdTypeInSwedish(examination.id_type)} | Verifierad av: {examination.verified_by}
+                      {examination.personal_number && ` | Personnummer: ${examination.personal_number}`}
                     </p>
                   </div>
                 </AlertDescription>

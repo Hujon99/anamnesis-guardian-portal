@@ -318,6 +318,7 @@ export type Database = {
           optician_notes: string | null
           organization_id: string
           passed_examination: boolean | null
+          personal_number: string | null
           requires_further_investigation: boolean | null
           requires_optician_visit: boolean | null
           updated_at: string
@@ -363,6 +364,7 @@ export type Database = {
           optician_notes?: string | null
           organization_id: string
           passed_examination?: boolean | null
+          personal_number?: string | null
           requires_further_investigation?: boolean | null
           requires_optician_visit?: boolean | null
           updated_at?: string
@@ -408,6 +410,7 @@ export type Database = {
           optician_notes?: string | null
           organization_id?: string
           passed_examination?: boolean | null
+          personal_number?: string | null
           requires_further_investigation?: boolean | null
           requires_optician_visit?: boolean | null
           updated_at?: string

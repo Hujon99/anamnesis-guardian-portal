@@ -60,14 +60,14 @@ export function ModalTabContent({
   const showDrivingLicenseTab = isDrivingLicenseExam && isDrivingLicenseCompleted && examination;
   
   return (
-    <Tabs defaultValue="patient" className="w-full">
+    <Tabs defaultValue={showDrivingLicenseTab ? "driving" : "patient"} className="w-full">
       <TabsList className={`grid w-full ${showDrivingLicenseTab ? 'grid-cols-4' : 'grid-cols-3'} mb-4`}>
-        <TabsTrigger value="patient">Patient</TabsTrigger>
-        <TabsTrigger value="answers">Svar</TabsTrigger>
-        <TabsTrigger value="assignment">Tilldelning</TabsTrigger>
         {showDrivingLicenseTab && (
           <TabsTrigger value="driving">Körkort</TabsTrigger>
         )}
+        <TabsTrigger value="patient">Patient</TabsTrigger>
+        <TabsTrigger value="answers">Svar</TabsTrigger>
+        <TabsTrigger value="assignment">Tilldelning</TabsTrigger>
       </TabsList>
       
       <TabsContent value="patient" className="mt-0 space-y-6">

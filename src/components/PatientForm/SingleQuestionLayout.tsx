@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { TouchFriendlyFieldRenderer } from "./TouchFriendlyFieldRenderer";
+import { FormStepContent } from "./FormStepContent";
 import { useFormContext } from "@/contexts/FormContext";
 import { FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
 import { toast } from "sonner";
@@ -24,7 +25,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     watchedValues,
     isSubmitting,
     handleSubmit: contextHandleSubmit,
-    form
+    form,
+    processSectionsWithDebounce
   } = useFormContext();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -76,6 +78,14 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const currentQuestion = allQuestions[currentQuestionIndex];
   const totalQuestions = allQuestions.length;
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
+  
+  // Process form sections for proper submission handling
+  useEffect(() => {
+    if (processSectionsWithDebounce && visibleSections.length > 0) {
+      const allSections = visibleSections.flat();
+      processSectionsWithDebounce(allSections, watchedValues);
+    }
+  }, [visibleSections, watchedValues, processSectionsWithDebounce]);
 
   // Check if current question is answered
   const isCurrentQuestionAnswered = () => {

@@ -37,29 +37,32 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
   const fieldName = (question as DynamicFollowupQuestion).runtimeId || question.id;
   const fieldValue = watch(fieldName);
   
+  // Only extract values if they are complex nested objects from initial values
   const extractValue = (val: any): any => {
     if (val === null || val === undefined) return val;
     
-    if (val && typeof val === 'object') {
+    // Only extract from complex objects that have nested structure
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
       if ('answer' in val && typeof val.answer === 'object') {
         if ('value' in val.answer) return val.answer.value;
         return val.answer;
       }
-      if ('value' in val) return val.value;
-      if ('parent_question' in val && 'parent_value' in val && 'value' in val) return val.value;
+      if ('value' in val && Object.keys(val).length === 1) return val.value;
     }
     
     return val;
   };
 
+  // Only extract values on mount, not on every change to prevent cross-question contamination
   React.useEffect(() => {
-    if (fieldValue) {
-      const extractedValue = extractValue(fieldValue);
-      if (extractedValue !== fieldValue && extractedValue !== undefined) {
-        setValue(fieldName, extractedValue);
+    const currentValue = watch(fieldName);
+    if (currentValue !== undefined && currentValue !== null && typeof currentValue === 'object' && !Array.isArray(currentValue)) {
+      const extractedValue = extractValue(currentValue);
+      if (extractedValue !== currentValue && extractedValue !== undefined) {
+        setValue(fieldName, extractedValue, { shouldValidate: false, shouldDirty: false });
       }
     }
-  }, [fieldValue, fieldName, setValue]);
+  }, []); // Only run on mount
   
   const getOptionValue = (option: FormQuestionOption): string => {
     return typeof option === 'string' ? option : option.value;

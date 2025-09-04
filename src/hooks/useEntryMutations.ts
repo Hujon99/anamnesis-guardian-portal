@@ -43,9 +43,9 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     if (id === null) return true; // null is valid for clearing assignments
     
     if (isOpticianId) {
-      // For optician IDs, we now expect a Clerk user ID format
-      if (!CLERK_ID_REGEX.test(id)) {
-        console.error(`Invalid Clerk user ID format for ${fieldName}:`, id);
+      // For optician IDs, we now expect a UUID format from the public.users table
+      if (!UUID_REGEX.test(id)) {
+        console.error(`Invalid UUID format for ${fieldName}:`, id);
         return false;
       }
     } else {

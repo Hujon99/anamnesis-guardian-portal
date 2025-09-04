@@ -17,7 +17,8 @@ import { CheckCircle, XCircle, Eye, IdCard, AlertTriangle, FileText, Calendar, C
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/hooks/use-toast";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
-import { supabase } from "@/integrations/supabase/client";
+import { useEntryMutations } from "@/hooks/useEntryMutations";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 interface ExaminationSummaryProps {
   examination: any;
   entry: AnamnesesEntry;
@@ -38,6 +39,12 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   
   // Load opticians for assignment
   const { opticians, isLoading: loadingOpticians } = useOpticians();
+  
+  // Use mutation hook for better error handling
+  const { assignOptician } = useEntryMutations(entry.id);
+  
+  // Use supabase client for email notifications
+  const { supabase } = useSupabaseClient();
 
   // Check if examination meets requirements
   const hasMeasurements = !!(examination?.visual_acuity_both_eyes || examination?.visual_acuity_right_eye || examination?.visual_acuity_left_eye);
@@ -64,7 +71,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
     }
 
     // Find the selected optician and verify email
-    const selectedOptician = opticians.find(opt => opt.id === selectedOpticianId);
+    const selectedOptician = opticians.find(opt => opt.clerk_user_id === selectedOpticianId);
     if (!selectedOptician?.email) {
       toast({
         title: "E-post saknas",
@@ -85,20 +92,9 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       console.log('[ExaminationSummary] Completing examination with updates:', updates);
       await onSave(updates);
 
-      // Assign the entry to the selected optician
+      // Assign the entry to the selected optician using mutation hook
       console.log('[ExaminationSummary] Assigning entry to optician:', selectedOpticianId);
-      const { error: assignError } = await supabase
-        .from('anamnes_entries')
-        .update({ 
-          optician_id: selectedOpticianId,
-          status: 'ready' // Update status to ready for optician review
-        })
-        .eq('id', entry.id);
-
-      if (assignError) {
-        console.error('[ExaminationSummary] Error assigning optician:', assignError);
-        throw new Error('Kunde inte tilldela optiker: ' + assignError.message);
-      }
+      await assignOptician(selectedOpticianId);
 
       // Send email notification to the optician
       console.log('[ExaminationSummary] Sending email notification to optician');
@@ -129,17 +125,17 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       if (decision === 'pass') {
         toast({
           title: "Undersökning godkänd",
-          description: `Körkortsundersökningen har slutförts och tilldelats ${getOpticianDisplayName(opticians.find(o => o.id === selectedOpticianId))}`
+          description: `Körkortsundersökningen har slutförts och tilldelats ${getOpticianDisplayName(opticians.find(o => o.clerk_user_id === selectedOpticianId))}`
         });
       } else if (decision === 'needs_booking') {
         toast({
           title: "Bokning krävs",
-          description: `Kunden har bokats för vidare undersökning och tilldelats ${getOpticianDisplayName(opticians.find(o => o.id === selectedOpticianId))}`
+          description: `Kunden har bokats för vidare undersökning och tilldelats ${getOpticianDisplayName(opticians.find(o => o.clerk_user_id === selectedOpticianId))}`
         });
       } else {
         toast({
           title: "Undersökning ej godkänd",
-          description: `Körkortsundersökningen uppfyller inte kraven och har tilldelats ${getOpticianDisplayName(opticians.find(o => o.id === selectedOpticianId))}`
+          description: `Körkortsundersökningen uppfyller inte kraven och har tilldelats ${getOpticianDisplayName(opticians.find(o => o.clerk_user_id === selectedOpticianId))}`
         });
       }
       
@@ -330,7 +326,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {opticians.map((optician) => (
-                    <SelectItem key={optician.id} value={optician.id}>
+                    <SelectItem key={optician.id} value={optician.clerk_user_id}>
                       {getOpticianDisplayName(optician)}
                     </SelectItem>
                   ))}
@@ -342,7 +338,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               <Alert>
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Undersökningen kommer att tilldelas {getOpticianDisplayName(opticians.find(o => o.id === selectedOpticianId))} och ett e-postmeddelande skickas automatiskt.
+                  Undersökningen kommer att tilldelas {getOpticianDisplayName(opticians.find(o => o.clerk_user_id === selectedOpticianId))} och ett e-postmeddelande skickas automatiskt.
                 </AlertDescription>
               </Alert>
             )}

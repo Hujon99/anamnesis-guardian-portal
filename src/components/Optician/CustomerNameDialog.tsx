@@ -43,21 +43,21 @@ export const CustomerNameDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleCancel}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            <DialogTitle>Lägg till kundinfo</DialogTitle>
+      <DialogContent className="sm:max-w-[480px] p-8">
+        <DialogHeader className="space-y-4">
+          <div className="flex items-center gap-3">
+            <User className="h-6 w-6 text-primary" />
+            <DialogTitle className="text-xl">Lägg till kundinfo</DialogTitle>
           </div>
-          <DialogDescription>
+          <DialogDescription className="text-base leading-relaxed">
             Ange kundens namn för {examinationType.toLowerCase()}undersökningen.
             Förnamn krävs, efternamn är valfritt.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="firstName">Förnamn *</Label>
+        <div className="grid gap-6 py-6">
+          <div className="grid gap-3">
+            <Label htmlFor="firstName" className="text-base">Förnamn *</Label>
             <Input
               id="firstName"
               placeholder="Ange förnamn"
@@ -65,26 +65,29 @@ export const CustomerNameDialog = ({
               onChange={(e) => setFirstName(e.target.value)}
               disabled={isCreating}
               autoFocus
+              className="h-12 text-base"
             />
           </div>
           
-          <div className="grid gap-2">
-            <Label htmlFor="lastName">Efternamn</Label>
+          <div className="grid gap-3">
+            <Label htmlFor="lastName" className="text-base">Efternamn</Label>
             <Input
               id="lastName"
               placeholder="Ange efternamn (valfritt)"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               disabled={isCreating}
+              className="h-12 text-base"
             />
           </div>
         </div>
         
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-4 pt-4">
           <Button
             variant="outline"
             onClick={handleCancel}
             disabled={isCreating}
+            className="px-6 py-3"
           >
             Avbryt
           </Button>
@@ -92,6 +95,7 @@ export const CustomerNameDialog = ({
           <Button
             onClick={handleConfirm}
             disabled={!isValid || isCreating}
+            className="px-6 py-3"
           >
             {isCreating ? (
               <>

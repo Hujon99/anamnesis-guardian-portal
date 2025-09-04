@@ -19,6 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { RecommendationEngine } from "./RecommendationEngine";
 interface ExaminationSummaryProps {
   examination: any;
   entry: AnamnesesEntry;
@@ -336,6 +337,14 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               </AlertDescription>
             </Alert>}
         </div>
+
+        <Separator />
+
+        {/* Recommendation Engine */}
+        <RecommendationEngine 
+          examination={examination}
+          entry={entry}
+        />
 
         <Separator />
 

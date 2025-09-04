@@ -57,7 +57,7 @@ export function ModalTabContent({
   // Check if this is a driving license examination
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
   const { isCompleted: isDrivingLicenseCompleted, examination } = useDrivingLicenseStatus(entry.id);
-  const showDrivingLicenseTab = isDrivingLicenseExam && isDrivingLicenseCompleted && examination;
+  const showDrivingLicenseTab = isDrivingLicenseExam;
   
   return (
     <Tabs defaultValue={showDrivingLicenseTab ? "driving" : "patient"} className="w-full">
@@ -117,7 +117,7 @@ export function ModalTabContent({
         </div>
       </TabsContent>
       
-      {showDrivingLicenseTab && examination && (
+      {showDrivingLicenseTab && (
         <TabsContent value="driving" className="mt-0">
           <div className="space-y-4">
             <DrivingLicenseResults 

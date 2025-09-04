@@ -3,7 +3,7 @@
  * This component provides a dropdown for assigning or unassigning opticians to anamnesis entries.
  * It displays a list of opticians in the organization and allows authorized users to make assignments.
  * Enhanced with better error handling, retry logic, and user feedback for JWT authentication issues.
- * Updated to work with Clerk user IDs instead of database UUIDs.
+ * Updated to use database UUIDs from public.users for assignments.
  */
 
 import { useState, useCallback } from 'react';
@@ -57,17 +57,16 @@ export function OpticianSelector({
     })));
   }
   
-  // Check if current optician ID is valid - now using Clerk user ID format
+  // Validate current optician ID format (UUID)
   if (currentOpticianId) {
-    const isValidClerkId = currentOpticianId.startsWith('user_');
-    if (!isValidClerkId) {
-      console.warn(`Current optician ID is not a valid Clerk user ID: ${currentOpticianId}`);
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(currentOpticianId)) {
+      console.warn(`Current optician ID is not a valid UUID: ${currentOpticianId}`);
     }
   }
   
-  // Find the name of the currently assigned optician if any
-  // We need to match by clerk_user_id since that's now stored in optician_id
-  const currentOptician = opticians.find(opt => opt.clerk_user_id === currentOpticianId);
+  // Find the name of the currently assigned optician if any (match by users.id UUID)
+  const currentOptician = opticians.find(opt => opt.id === currentOpticianId);
   const currentOpticianLabel = currentOptician 
     ? getOpticianDisplayName(currentOptician)
     : 'Ingen optiker tilldelad';
@@ -113,8 +112,9 @@ export function OpticianSelector({
         return;
       }
       
-      // Validate Clerk user ID format - starts with "user_"
-      if (!value.startsWith('user_')) {
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(value)) {
         console.error('Invalid optician ID format:', value);
         toast({
           title: "Fel vid tilldelning",
@@ -208,7 +208,7 @@ export function OpticianSelector({
         <SelectContent>
           <SelectItem value="none">Ingen optiker tilldelad</SelectItem>
           {opticians.map((optician) => (
-            <SelectItem key={optician.id} value={optician.clerk_user_id}>
+            <SelectItem key={optician.id} value={optician.id}>
               {getOpticianDisplayName(optician)}
             </SelectItem>
           ))}

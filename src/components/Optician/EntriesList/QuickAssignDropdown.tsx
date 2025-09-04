@@ -2,7 +2,7 @@
 /**
  * This component provides a dropdown for quickly assigning opticians to anamnesis entries
  * directly from the list view.
- * Updated to work with Clerk user IDs instead of database UUIDs.
+ * Updated to use database UUIDs from public.users for assignments.
  */
 
 import { useState } from "react";
@@ -50,9 +50,12 @@ export function QuickAssignDropdown({
     setIsPending(true);
     
     try {
-      // Validate Clerk user ID format if an ID is provided
-      if (opticianId !== null && !opticianId.startsWith('user_')) {
-        throw new Error(`Invalid optician ID format: ${opticianId}`);
+      // Validate UUID format if an ID is provided
+      if (opticianId !== null) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(opticianId)) {
+          throw new Error(`Invalid optician ID format: ${opticianId}`);
+        }
       }
       
       console.log(`Assigning optician with ID: ${opticianId}`);
@@ -80,9 +83,8 @@ export function QuickAssignDropdown({
     }
   };
 
-  // Get currently selected optician name
-  // We need to match by clerk_user_id since that's now stored in optician_id
-  const selectedOptician = opticians.find(o => o.clerk_user_id === currentOpticianId);
+  // Get currently selected optician name (match by users.id UUID)
+  const selectedOptician = opticians.find(o => o.id === currentOpticianId);
   const selectedOpticianName = getOpticianDisplayName(selectedOptician);
   
   // Add a click handler to prevent event bubbling
@@ -134,13 +136,13 @@ export function QuickAssignDropdown({
             {opticians.map((optician) => (
               <DropdownMenuItem
                 key={optician.id}
-                onClick={(e) => handleAssign(optician.clerk_user_id, e)}
+                onClick={(e) => handleAssign(optician.id, e)}
                 disabled={isPending}
                 className="cursor-pointer"
               >
                 <div className="flex items-center justify-between w-full">
                   <span>{getOpticianDisplayName(optician)}</span>
-                  {optician.clerk_user_id === currentOpticianId && (
+                  {optician.id === currentOpticianId && (
                     <Check className="h-4 w-4 text-primary" />
                   )}
                 </div>

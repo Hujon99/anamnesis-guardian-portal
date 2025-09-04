@@ -81,6 +81,8 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
       return;
     }
 
+    console.log('[IdVerification] Saving with personal_number:', personalNumber.trim());
+
     const updates = {
       id_verification_completed: true,
       id_type: selectedIdType.id,
@@ -89,6 +91,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
       personal_number: personalNumber.trim() || null
     };
 
+    console.log('[IdVerification] Updates object:', updates);
     await onSave(updates);
     setIsVerified(true);
   };

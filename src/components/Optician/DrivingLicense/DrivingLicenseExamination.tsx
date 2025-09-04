@@ -144,6 +144,9 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
 
   const saveExamination = async (updates: Database['public']['Tables']['driving_license_examinations']['Update']) => {
     console.log('[DrivingLicenseExamination] saveExamination called with updates:', updates);
+    if (updates.personal_number !== undefined) {
+      console.log('[DrivingLicenseExamination] PERSONAL_NUMBER in updates:', updates.personal_number);
+    }
     console.log('[DrivingLicenseExamination] Current state:', { 
       examination: examination?.id, 
       isOffline, 

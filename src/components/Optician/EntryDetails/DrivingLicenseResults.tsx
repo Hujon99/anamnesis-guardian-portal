@@ -271,11 +271,17 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
                   <div className="space-y-1">
-                    <p>Legitimation verifierad</p>
-                    <p className="text-xs text-muted-foreground">
-                      Typ: {getIdTypeInSwedish(examination.id_type)} | Verifierad av: {examination.verified_by}
-                      {examination.personal_number && ` | Personnummer: ${examination.personal_number}`}
-                    </p>
+                    <p className="font-medium">Legitimation verifierad</p>
+                    <div className="text-sm space-y-1">
+                      <p>Typ: <span className="font-medium">{getIdTypeInSwedish(examination.id_type)}</span></p>
+                      <p>Verifierad av: <span className="font-medium">{examination.verified_by}</span></p>
+                      {examination.personal_number && (
+                        <p>Personnummer: <span className="font-mono font-medium">{examination.personal_number}</span></p>
+                      )}
+                      <p className="text-muted-foreground text-xs">
+                        {examination.verified_at && `Verifierad: ${new Date(examination.verified_at).toLocaleString('sv-SE')}`}
+                      </p>
+                    </div>
                   </div>
                 </AlertDescription>
               </Alert>

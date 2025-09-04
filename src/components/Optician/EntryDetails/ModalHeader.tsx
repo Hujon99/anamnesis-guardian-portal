@@ -3,7 +3,7 @@
  * including title, status badge, and action buttons.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { Badge } from "@/components/ui/badge";
@@ -29,10 +29,12 @@ export function ModalHeader({
   const [hasCopied, setHasCopied] = useState(false);
   const { opticians } = useOpticians();
   
-  // Find the assigned optician based on optician_id
-  const assignedOptician = entry.optician_id 
-    ? opticians.find(opt => opt.clerk_user_id === entry.optician_id)
-    : null;
+  // Find the assigned optician based on optician_id - memoized to prevent infinite loops
+  const assignedOptician = useMemo(() => {
+    return entry.optician_id 
+      ? opticians.find(opt => opt.clerk_user_id === entry.optician_id)
+      : null;
+  }, [entry.optician_id, opticians]);
   const handleCopy = () => {
     copyLinkToClipboard();
     setHasCopied(true);

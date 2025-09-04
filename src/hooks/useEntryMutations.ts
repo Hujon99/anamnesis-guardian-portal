@@ -43,9 +43,9 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
     if (id === null) return true; // null is valid for clearing assignments
     
     if (isOpticianId) {
-      // For optician IDs, we now expect a UUID format from the public.users table
-      if (!UUID_REGEX.test(id)) {
-        console.error(`Invalid UUID format for ${fieldName}:`, id);
+      // For optician IDs, we expect a Clerk user ID format (constraint references users.clerk_user_id)
+      if (!CLERK_ID_REGEX.test(id)) {
+        console.error(`Invalid Clerk user ID format for ${fieldName}:`, id);
         return false;
       }
     } else {
@@ -113,15 +113,21 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
         
         // Validate IDs - now using the new validation function
         if (!validateId(entryId, 'entryId')) {
+          console.error(`Invalid entry ID: ${entryId}`);
           throw new Error(`Invalid entry ID format: ${entryId}`);
         }
         
         if (opticianId !== null && !validateId(opticianId, 'opticianId', true)) {
+          console.error(`Invalid optician ID: ${opticianId}`);
           throw new Error(`Invalid optician ID format: ${opticianId}`);
         }
         
+        console.log(`Validation passed. Attempting database update...`);
+        
         // Use the helper function to handle JWT errors with retry
         await handleJwtErrorWithRetry(async () => {
+          console.log(`Executing Supabase update: optician_id = ${opticianId} WHERE id = ${entryId}`);
+          
           const { data, error } = await supabase
             .from("anamnes_entries")
             .update({ optician_id: opticianId })
@@ -130,10 +136,17 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
             .single();
             
           if (error) {
-            console.error("Supabase error in assignOpticianMutation:", error);
+            console.error("Supabase error in assignOpticianMutation:", {
+              error,
+              code: error.code,
+              message: error.message,
+              details: error.details,
+              hint: error.hint
+            });
             throw error;
           }
           
+          console.log(`Assignment successful:`, data);
           return data;
         });
         

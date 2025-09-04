@@ -50,11 +50,11 @@ export function QuickAssignDropdown({
     setIsPending(true);
     
     try {
-      // Validate UUID format if an ID is provided
+      // Validate Clerk user ID format if an ID is provided
       if (opticianId !== null) {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(opticianId)) {
-          throw new Error(`Invalid optician ID format: ${opticianId}`);
+        const clerkIdRegex = /^user_[a-zA-Z0-9]+$/;
+        if (!clerkIdRegex.test(opticianId)) {
+          throw new Error(`Invalid Clerk user ID format: ${opticianId}`);
         }
       }
       
@@ -83,8 +83,8 @@ export function QuickAssignDropdown({
     }
   };
 
-  // Get currently selected optician name (match by users.id UUID)
-  const selectedOptician = opticians.find(o => o.id === currentOpticianId);
+  // Get currently selected optician name (match by clerk_user_id)
+  const selectedOptician = opticians.find(o => o.clerk_user_id === currentOpticianId);
   const selectedOpticianName = getOpticianDisplayName(selectedOptician);
   
   // Add a click handler to prevent event bubbling
@@ -136,13 +136,13 @@ export function QuickAssignDropdown({
             {opticians.map((optician) => (
               <DropdownMenuItem
                 key={optician.id}
-                onClick={(e) => handleAssign(optician.id, e)}
+                onClick={(e) => handleAssign(optician.clerk_user_id, e)}
                 disabled={isPending}
                 className="cursor-pointer"
               >
                 <div className="flex items-center justify-between w-full">
                   <span>{getOpticianDisplayName(optician)}</span>
-                  {optician.id === currentOpticianId && (
+                  {optician.clerk_user_id === currentOpticianId && (
                     <Check className="h-4 w-4 text-primary" />
                   )}
                 </div>

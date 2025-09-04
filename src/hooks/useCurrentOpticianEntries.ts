@@ -2,7 +2,7 @@
 /**
  * This hook provides functionality to filter anamnesis entries assigned to the current user.
  * It leverages the useAnamnesisList hook and filters the results based on the logged-in user.
- * Updated to work with database UUIDs from the public.users table.
+ * Uses Clerk user IDs for filtering as optician_id references users.clerk_user_id.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,52 +16,19 @@ export const useCurrentOpticianEntries = () => {
   const { supabase, isReady, refreshClient } = useSupabaseClient();
   const { entries, filteredEntries, filters, updateFilter, resetFilters, isLoading, error, refetch, isFetching, dataLastUpdated, handleRetry } = useAnamnesisList();
   
-  // Fetch the current user's database UUID for filtering
-  const [currentUserDbId, setCurrentUserDbId] = useState<string | null>(null);
-  const [isLoadingOpticianId, setIsLoadingOpticianId] = useState(false);
-  
-  // Fetch the database user ID for the current Clerk user
-  useEffect(() => {
-    const fetchCurrentUserDbId = async () => {
-      if (!user || !isReady) return;
-      
-      setIsLoadingOpticianId(true);
-      try {
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('id')
-          .eq('clerk_user_id', user.id)
-          .single();
-          
-        if (error) {
-          console.error('Error fetching current user database ID:', error);
-          return;
-        }
-        
-        setCurrentUserDbId(userData.id);
-      } catch (error) {
-        console.error('Error fetching current user database ID:', error);
-      } finally {
-        setIsLoadingOpticianId(false);
-      }
-    };
-    
-    fetchCurrentUserDbId();
-  }, [user, supabase, isReady]);
-  
-  // Filter entries assigned to the current optician using the database UUID
+  // Filter entries assigned to the current optician using the Clerk user ID
   const myEntries = useMemo(() => {
-    if (!currentUserDbId) return [];
+    if (!user) return [];
     
-    return entries.filter(entry => entry.optician_id === currentUserDbId);
-  }, [entries, currentUserDbId]);
+    return entries.filter(entry => entry.optician_id === user.id);
+  }, [entries, user]);
   
   // Apply filters to the current user's entries
   const myFilteredEntries = useMemo(() => {
-    if (!currentUserDbId) return [];
+    if (!user) return [];
     
-    return filteredEntries.filter(entry => entry.optician_id === currentUserDbId);
-  }, [filteredEntries, currentUserDbId]);
+    return filteredEntries.filter(entry => entry.optician_id === user.id);
+  }, [filteredEntries, user]);
   
   // Stats for My Anamneses dashboard
   const stats = useMemo(() => {
@@ -100,14 +67,14 @@ export const useCurrentOpticianEntries = () => {
     filters,
     updateFilter,
     resetFilters,
-    isLoading: isLoading || isLoadingOpticianId,
+    isLoading: isLoading,
     error,
     refetch,
     isFetching,
     dataLastUpdated,
     stats,
-    isOpticianIdLoaded: !isLoadingOpticianId && !!currentUserDbId,
-    opticianId: currentUserDbId, // Optician ID is now the database UUID
+    isOpticianIdLoaded: !!user,
+    opticianId: user?.id, // Optician ID is the Clerk user ID
     handleRetry: handleRetryLocal
   };
 };

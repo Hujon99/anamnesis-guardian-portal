@@ -57,16 +57,16 @@ export function OpticianSelector({
     })));
   }
   
-  // Validate current optician ID format (UUID)
+  // Validate current optician ID format (Clerk user ID)
   if (currentOpticianId) {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(currentOpticianId)) {
-      console.warn(`Current optician ID is not a valid UUID: ${currentOpticianId}`);
+    const clerkIdRegex = /^user_[a-zA-Z0-9]+$/;
+    if (!clerkIdRegex.test(currentOpticianId)) {
+      console.warn(`Current optician ID is not a valid Clerk user ID: ${currentOpticianId}`);
     }
   }
   
-  // Find the name of the currently assigned optician if any (match by users.id UUID)
-  const currentOptician = opticians.find(opt => opt.id === currentOpticianId);
+  // Find current optician by matching clerk_user_id instead of database id
+  const currentOptician = opticians.find(o => o.clerk_user_id === currentOpticianId);
   const currentOpticianLabel = currentOptician 
     ? getOpticianDisplayName(currentOptician)
     : 'Ingen optiker tilldelad';
@@ -112,10 +112,10 @@ export function OpticianSelector({
         return;
       }
       
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(value)) {
-        console.error('Invalid optician ID format:', value);
+      // Validate Clerk user ID format
+      const clerkIdRegex = /^user_[a-zA-Z0-9]+$/;
+      if (!clerkIdRegex.test(value)) {
+        console.error('Invalid Clerk user ID format:', value);
         toast({
           title: "Fel vid tilldelning",
           description: "Ogiltigt format på optiker-ID",
@@ -124,7 +124,7 @@ export function OpticianSelector({
         return;
       }
       
-      console.log(`Assigning optician with ID: ${value}`);
+      console.log(`Assigning optician with Clerk user ID: ${value}`);
       await onAssignOptician(value);
     } catch (error: any) {
       console.error('Failed to assign optician:', error);
@@ -208,7 +208,7 @@ export function OpticianSelector({
         <SelectContent>
           <SelectItem value="none">Ingen optiker tilldelad</SelectItem>
           {opticians.map((optician) => (
-            <SelectItem key={optician.id} value={optician.id}>
+            <SelectItem key={optician.id} value={optician.clerk_user_id}>
               {getOpticianDisplayName(optician)}
             </SelectItem>
           ))}

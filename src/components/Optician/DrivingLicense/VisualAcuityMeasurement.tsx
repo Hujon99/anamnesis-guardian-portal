@@ -17,6 +17,27 @@ import { Eye, AlertTriangle, Info } from "lucide-react";
 import { parseLocaleFloat, validateVisualAcuityInput, formatVisualAcuityValue } from "@/lib/number-utils";
 import { toast } from "@/hooks/use-toast";
 
+// VISUS scale values according to Swedish driving license examination standards
+const VISUS_SCALE = [
+  { value: '0.05', label: '0,05 - mycket svårt nedsatt syn' },
+  { value: '0.08', label: '0,08' },
+  { value: '0.1', label: '0,1' },
+  { value: '0.16', label: '0,16' },
+  { value: '0.2', label: '0,2' },
+  { value: '0.25', label: '0,25' },
+  { value: '0.3', label: '0,3' },
+  { value: '0.4', label: '0,4' },
+  { value: '0.5', label: '0,5 - minsta tillåtna för körkort B' },
+  { value: '0.6', label: '0,6' },
+  { value: '0.7', label: '0,7' },
+  { value: '0.8', label: '0,8 - krav för högre körkortsbehörighet' },
+  { value: '0.9', label: '0,9' },
+  { value: '1.0', label: '1,0 - normalsyn' },
+  { value: '1.25', label: '1,25' },
+  { value: '1.5', label: '1,5' },
+  { value: '2.0', label: '2,0 - exceptionellt bra syn' }
+];
+
 interface VisualAcuityMeasurementProps {
   examination: any;
   entry?: any; // Form entry with answers
@@ -270,7 +291,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                 {licenseCategory === 'taxi' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,8 krävs för taxiförarlegitimation."}
               </p>
               <p className="text-xs text-muted-foreground">
-                💡 Decimalformat: Använd komma (0,8) eller punkt (0.8) - båda fungerar
+                💡 VISUS-skala: Välj korrekt värde från syntavlemätningen - minst 80% av tecknen måste läsas korrekt
               </p>
             </div>
           </AlertDescription>
@@ -280,44 +301,59 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="both-eyes">Båda ögon</Label>
-            <Input
-              id="both-eyes"
-              type="number"
-              step="0.1"
-              min="0"
-              max="2.0"
-              placeholder="1.0"
-              value={measurements.visual_acuity_both_eyes}
-              onChange={(e) => handleInputChange('visual_acuity_both_eyes', e.target.value)}
-            />
+            <Select 
+              value={measurements.visual_acuity_both_eyes.toString()} 
+              onValueChange={(value) => handleInputChange('visual_acuity_both_eyes', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Välj VISUS-värde" />
+              </SelectTrigger>
+              <SelectContent>
+                {VISUS_SCALE.map((visus) => (
+                  <SelectItem key={visus.value} value={visus.value}>
+                    {visus.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="right-eye">Höger öga</Label>
-            <Input
-              id="right-eye"
-              type="number"
-              step="0.1"
-              min="0"
-              max="2.0"
-              placeholder="0.8"
-              value={measurements.visual_acuity_right_eye}
-              onChange={(e) => handleInputChange('visual_acuity_right_eye', e.target.value)}
-            />
+            <Label htmlFor="right-eye">Höger öga (OD)</Label>
+            <Select 
+              value={measurements.visual_acuity_right_eye.toString()} 
+              onValueChange={(value) => handleInputChange('visual_acuity_right_eye', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Välj VISUS-värde" />
+              </SelectTrigger>
+              <SelectContent>
+                {VISUS_SCALE.map((visus) => (
+                  <SelectItem key={visus.value} value={visus.value}>
+                    {visus.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="left-eye">Vänster öga</Label>
-            <Input
-              id="left-eye"
-              type="number"
-              step="0.1"
-              min="0"
-              max="2.0"
-              placeholder="0.8"
-              value={measurements.visual_acuity_left_eye}
-              onChange={(e) => handleInputChange('visual_acuity_left_eye', e.target.value)}
-            />
+            <Label htmlFor="left-eye">Vänster öga (OS)</Label>
+            <Select 
+              value={measurements.visual_acuity_left_eye.toString()} 
+              onValueChange={(value) => handleInputChange('visual_acuity_left_eye', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Välj VISUS-värde" />
+              </SelectTrigger>
+              <SelectContent>
+                {VISUS_SCALE.map((visus) => (
+                  <SelectItem key={visus.value} value={visus.value}>
+                    {visus.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -343,45 +379,60 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
               <h5 className="font-medium text-sm">Visus med korrektion</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="with-correction-both">Båda ögon</Label>
-                  <Input
-                    id="with-correction-both"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="2.0"
-                    placeholder="1.2"
-                    value={measurements.visual_acuity_with_correction_both}
-                    onChange={(e) => handleInputChange('visual_acuity_with_correction_both', e.target.value)}
-                  />
+                  <Label htmlFor="with-correction-both">Båda ögon (OU)</Label>
+                  <Select 
+                    value={measurements.visual_acuity_with_correction_both.toString()} 
+                    onValueChange={(value) => handleInputChange('visual_acuity_with_correction_both', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Välj VISUS-värde" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VISUS_SCALE.map((visus) => (
+                        <SelectItem key={visus.value} value={visus.value}>
+                          {visus.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="with-correction-right">Höger öga</Label>
-                  <Input
-                    id="with-correction-right"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="2.0"
-                    placeholder="1.0"
-                    value={measurements.visual_acuity_with_correction_right}
-                    onChange={(e) => handleInputChange('visual_acuity_with_correction_right', e.target.value)}
-                  />
+                  <Label htmlFor="with-correction-right">Höger öga (OD)</Label>
+                  <Select 
+                    value={measurements.visual_acuity_with_correction_right.toString()} 
+                    onValueChange={(value) => handleInputChange('visual_acuity_with_correction_right', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Välj VISUS-värde" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VISUS_SCALE.map((visus) => (
+                        <SelectItem key={visus.value} value={visus.value}>
+                          {visus.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="with-correction-left">Vänster öga</Label>
-                  <Input
-                    id="with-correction-left"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="2.0"
-                    placeholder="1.0"
-                    value={measurements.visual_acuity_with_correction_left}
-                    onChange={(e) => handleInputChange('visual_acuity_with_correction_left', e.target.value)}
-                  />
+                  <Label htmlFor="with-correction-left">Vänster öga (OS)</Label>
+                  <Select 
+                    value={measurements.visual_acuity_with_correction_left.toString()} 
+                    onValueChange={(value) => handleInputChange('visual_acuity_with_correction_left', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Välj VISUS-värde" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VISUS_SCALE.map((visus) => (
+                        <SelectItem key={visus.value} value={visus.value}>
+                          {visus.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

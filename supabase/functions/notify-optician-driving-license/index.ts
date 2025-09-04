@@ -159,7 +159,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Logga in på plattformen för att se fullständiga resultat och hantera undersökningen.</p>
           
           <div style="margin: 30px 0;">
-            <a href="${appUrl}/dashboard" 
+            <a href="https://anamnes.binokeloptik.se/dashboard" 
                style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
               Öppna Dashboard
             </a>

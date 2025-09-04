@@ -113,7 +113,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
       const { data, error } = await supabase.functions.invoke('generate-summary', {
         body: {
           entryId: entry.id,
-          formattedData: entry.formatted_raw_data || JSON.stringify(answers, null, 2),
+          promptText: entry.formatted_raw_data || JSON.stringify(answers, null, 2),
           prompt: 'Generera en kortfattad och professionell sammanfattning av denna anamnes för körkortsundersökning. Fokusera på relevanta medicinska faktorer och synhälsa.'
         }
       });

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, Clock, Copy, CheckCircle2, User } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 interface ModalHeaderProps {
   entry: AnamnesesEntry;
   isExpired: boolean;
@@ -26,6 +27,12 @@ export function ModalHeader({
   isSendingLink
 }: ModalHeaderProps) {
   const [hasCopied, setHasCopied] = useState(false);
+  const { opticians } = useOpticians();
+  
+  // Find the assigned optician based on optician_id
+  const assignedOptician = entry.optician_id 
+    ? opticians.find(opt => opt.clerk_user_id === entry.optician_id)
+    : null;
   const handleCopy = () => {
     copyLinkToClipboard();
     setHasCopied(true);
@@ -63,9 +70,9 @@ export function ModalHeader({
           </span>
         </div>
         
-        {entry.created_by_name && <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        {assignedOptician && <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <User className="h-4 w-4" />
-            <span>Ansvarig optiker: {entry.created_by_name}</span>
+            <span>Ansvarig optiker: {getOpticianDisplayName(assignedOptician)}</span>
           </div>}
       </div>
       

@@ -17,12 +17,15 @@ import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExaminationTypeSelector } from "./ExaminationTypeSelector";
+import { CustomerNameDialog } from "./CustomerNameDialog";
 import { DIRECT_FORM_TOKEN_KEY, DIRECT_FORM_MODE_KEY } from "@/utils/opticianFormTokenUtils";
 
 export const DirectFormButton: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [showNameDialog, setShowNameDialog] = useState(false);
+  const [selectedForm, setSelectedForm] = useState<OrganizationForm | null>(null);
   
   const navigate = useNavigate();
   const { organization } = useOrganization();
@@ -41,8 +44,8 @@ export const DirectFormButton: React.FC = () => {
 
   // Create form entry mutation
   const createDirectFormEntry = useMutation({
-    mutationFn: async (selectedForm: OrganizationForm) => {
-      if (!organization?.id || !user?.id || !selectedForm) {
+    mutationFn: async ({ form, firstName, lastName }: { form: OrganizationForm, firstName: string, lastName: string }) => {
+      if (!organization?.id || !user?.id || !form) {
         throw new Error("Saknar nödvändig information för att skapa formulär");
       }
 
@@ -50,10 +53,15 @@ export const DirectFormButton: React.FC = () => {
       const accessToken = crypto.randomUUID();
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours from now
 
+      // Create patient identifier from name
+      const patientName = lastName ? `${firstName} ${lastName}` : firstName;
+      const patientIdentifier = `${patientName} (Direkt ifyllning i butik)`;
+
       console.log("Creating direct form entry with:", {
         organizationId: organization.id,
-        formId: selectedForm.id,
+        formId: form.id,
         userId: user.id,
+        patientName,
         expiresAt
       });
 
@@ -62,13 +70,14 @@ export const DirectFormButton: React.FC = () => {
         .from("anamnes_entries")
         .insert({
           organization_id: organization.id,
-          form_id: selectedForm.id,
+          form_id: form.id,
           access_token: accessToken,
           status: "sent",
           is_magic_link: false,
           created_by: user.id,
           created_by_name: user.fullName || user.firstName || "Okänd optiker",
-          patient_identifier: "Direkt ifyllning i butik",
+          patient_identifier: patientIdentifier,
+          first_name: firstName,
           expires_at: expiresAt.toISOString(),
           booking_date: new Date().toISOString(), // Automatically set today's date
           // Set initial answers as empty object
@@ -98,7 +107,10 @@ export const DirectFormButton: React.FC = () => {
         description: "Du dirigeras nu till det nya formuläret",
       });
       
+      // Reset all dialog states
       setShowTypeSelector(false);
+      setShowNameDialog(false);
+      setSelectedForm(null);
       setIsCreating(false);
     },
     onError: (error: Error) => {
@@ -140,19 +152,31 @@ export const DirectFormButton: React.FC = () => {
       return;
     }
     
-    // If only one form, create it directly
+    // If only one form, select it and show name dialog
     if (forms.length === 1) {
-      setIsCreating(true);
-      createDirectFormEntry.mutate(forms[0]);
+      setSelectedForm(forms[0]);
+      setShowNameDialog(true);
     } else {
       // Show type selector for multiple forms
       setShowTypeSelector(true);
     }
   };
 
-  const handleFormTypeSelect = (selectedForm: OrganizationForm) => {
+  const handleFormTypeSelect = (form: OrganizationForm) => {
+    setSelectedForm(form);
+    setShowTypeSelector(false);
+    setShowNameDialog(true);
+  };
+
+  const handleNameConfirm = (firstName: string, lastName: string) => {
+    if (!selectedForm) return;
+    
     setIsCreating(true);
-    createDirectFormEntry.mutate(selectedForm);
+    createDirectFormEntry.mutate({ 
+      form: selectedForm, 
+      firstName, 
+      lastName 
+    });
   };
 
   // User sync check - remove this section since needsSync doesn't exist
@@ -225,6 +249,14 @@ export const DirectFormButton: React.FC = () => {
         onOpenChange={setShowTypeSelector}
         onSelect={handleFormTypeSelect}
         isCreating={isCreating}
+      />
+      
+      <CustomerNameDialog
+        open={showNameDialog}
+        onOpenChange={setShowNameDialog}
+        onConfirm={handleNameConfirm}
+        isCreating={isCreating}
+        examinationType={selectedForm?.title || ""}
       />
     </>
   );

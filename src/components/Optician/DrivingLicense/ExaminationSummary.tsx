@@ -115,6 +115,12 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
           // Don't fail the whole process for email errors, just log it
         } else {
           console.log('[ExaminationSummary] Email notification sent successfully:', emailResult);
+          if (emailResult && emailResult.success === false) {
+            toast({
+              title: 'E-post kunde inte skickas',
+              description: emailResult.hint || 'Verifiera avsändardomänen i Resend och sätt RESEND_FROM.',
+            });
+          }
         }
       } catch (emailErr) {
         console.error('[ExaminationSummary] Email notification error:', emailErr);

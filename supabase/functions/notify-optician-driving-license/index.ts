@@ -9,6 +9,10 @@ import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+// Configurable sender and test-fallback recipients via secrets
+const FROM_EMAIL = Deno.env.get("RESEND_FROM") || "Lovable <onboarding@resend.dev>";
+const TEST_FALLBACK_TO = Deno.env.get("RESEND_TEST_TO") || null;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -127,9 +131,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const organizationName = orgData.name || "Din organisation";
 
+    // Build From header dynamically
+    const fromAddress = FROM_EMAIL.includes("<") 
+      ? FROM_EMAIL 
+      : `${organizationName} <${FROM_EMAIL}>`;
+
     // Send email notification
-    const emailResponse = await resend.emails.send({
-      from: `${organizationName} <noreply@resend.dev>`,
+    const emailResponse: any = await resend.emails.send({
+      from: fromAddress,
       to: [finalOpticianEmail],
       subject: "Ny körkortsundersökning tilldelad",
       html: `
@@ -163,7 +172,36 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log("Email send attempt response:", emailResponse);
+
+    // If Resend blocked because domain is not verified, optionally fallback to a test recipient
+    if (emailResponse?.error) {
+      const errText = typeof emailResponse.error === 'string' ? emailResponse.error : JSON.stringify(emailResponse.error);
+      console.warn("Primary email failed:", errText);
+
+      if (TEST_FALLBACK_TO && TEST_FALLBACK_TO !== finalOpticianEmail) {
+        const fallback = await resend.emails.send({
+          from: fromAddress,
+          to: [TEST_FALLBACK_TO],
+          subject: "[DEV FALLBACK] Ny körkortsundersökning tilldelad",
+          html: `Detta är ett utvecklingsmeddelande eftersom domänen inte är verifierad hos Resend.\n\nSkulle ha skickats till: ${finalOpticianEmail}.\n\nFel: ${errText}.`,
+        });
+        console.log("Fallback email send response:", fallback);
+      }
+
+      return new Response(JSON.stringify({
+        success: false,
+        message: "E-post kunde inte skickas till optikern (troligen o-verifierad avsändardomän).",
+        hint: "Verifiera avsändardomänen i Resend och sätt RESEND_FROM till en e-post på den domänen.",
+        originalError: emailResponse.error,
+      }), {
+        status: 202,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+    }
 
     return new Response(JSON.stringify({ 
       success: true, 

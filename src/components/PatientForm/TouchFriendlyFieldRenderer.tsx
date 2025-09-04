@@ -53,12 +53,15 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
     return val;
   };
 
-  // Only extract values on mount, not on every change to prevent cross-question contamination
+  // Only extract values on mount for complex nested objects from saved data
   React.useEffect(() => {
     const currentValue = watch(fieldName);
-    if (currentValue !== undefined && currentValue !== null && typeof currentValue === 'object' && !Array.isArray(currentValue)) {
+    // Only extract if it's a complex object with nested structure (from saved data)
+    if (currentValue && typeof currentValue === 'object' && 
+        !Array.isArray(currentValue) && 
+        ('answer' in currentValue || ('value' in currentValue && Object.keys(currentValue).length > 1))) {
       const extractedValue = extractValue(currentValue);
-      if (extractedValue !== currentValue && extractedValue !== undefined) {
+      if (extractedValue !== currentValue && extractedValue !== undefined && extractedValue !== null) {
         setValue(fieldName, extractedValue, { shouldValidate: false, shouldDirty: false });
       }
     }
@@ -133,7 +136,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value || ""}
                     className="space-y-3"
                   >
                     {question.options?.map(option => {
@@ -262,7 +265,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 </FormLabel>
                 <Select 
                   onValueChange={field.onChange} 
-                  defaultValue={field.value}
+                  value={field.value || ""}
                   name={fieldName}
                 >
                   <FormControl>

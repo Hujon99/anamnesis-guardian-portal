@@ -4,7 +4,7 @@
  * answer structures, ensuring correct display of all answer types.
  */
 
-import { FileText, MessageCircle } from "lucide-react";
+import { FileText, MessageCircle, AlertTriangle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AnswerDisplayHelper } from "./AnswerDisplayHelper";
+import { MultipleLicenseCategoriesAlert } from "./MultipleLicenseCategoriesAlert";
 
 interface FormattedAnswer {
   id: string;
@@ -54,6 +55,48 @@ interface EntryAnswersProps {
   hasAnswers: boolean;
   status: string;
 }
+
+// Function to detect multiple license categories
+const detectMultipleLicenseCategories = (answersData: any): string[] => {
+  const categories: string[] = [];
+  
+  // Helper function to recursively check for license category answers
+  const checkAnswers = (obj: any) => {
+    if (typeof obj !== 'object' || !obj) return;
+    
+    Object.entries(obj).forEach(([key, value]) => {
+      // Check for license/behörighet related questions
+      const isLicenseQuestion = key.toLowerCase().includes('behörighet') ||
+                               key.toLowerCase().includes('license') ||
+                               key.toLowerCase().includes('körkortstyp') ||
+                               key.toLowerCase().includes('vilken') && key.toLowerCase().includes('behörighet');
+      
+      if (isLicenseQuestion && value) {
+        if (Array.isArray(value)) {
+          // Multiple selections
+          const validCategories = value.filter(v => v && typeof v === 'string' && v.trim());
+          if (validCategories.length > 1) {
+            categories.push(...validCategories);
+          }
+        } else if (typeof value === 'object' && 'value' in value && Array.isArray(value.value)) {
+          // Nested structure with multiple values
+          const validCategories = value.value.filter((v: any) => v && typeof v === 'string' && v.trim());
+          if (validCategories.length > 1) {
+            categories.push(...validCategories);
+          }
+        }
+      } else if (typeof value === 'object') {
+        // Recurse into nested objects
+        checkAnswers(value);
+      }
+    });
+  };
+  
+  checkAnswers(answersData);
+  
+  // Remove duplicates and return
+  return Array.from(new Set(categories));
+};
 
 // Map of question IDs to human-readable labels
 const questionLabels: Record<string, string> = {
@@ -142,6 +185,9 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
           )}
         </h3>
         
+        {/* Multiple license categories alert */}
+        <MultipleLicenseCategoriesAlert categories={detectMultipleLicenseCategories(answers)} />
+        
         <div className="space-y-4">
           {formattedAnswersData.answeredSections.map((section, sectionIndex) => (
             <div 
@@ -177,7 +223,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                           )}
                         </TableCell>
                         <TableCell className="whitespace-pre-wrap break-words py-3">
-                          <AnswerDisplayHelper answer={response.answer} />
+                          <AnswerDisplayHelper answer={response.answer} questionId={response.id} />
                         </TableCell>
                       </TableRow>
                     );
@@ -199,6 +245,9 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
         Patientens svar
       </h3>
       
+      {/* Multiple license categories alert */}
+      <MultipleLicenseCategoriesAlert categories={detectMultipleLicenseCategories(answers)} />
+      
       <div className="border border-muted rounded-md overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
@@ -216,7 +265,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
                     {questionLabels[questionId] || questionId}
                   </TableCell>
                   <TableCell className="whitespace-pre-wrap break-words py-3">
-                    <AnswerDisplayHelper answer={answer} />
+                    <AnswerDisplayHelper answer={answer} questionId={questionId} />
                   </TableCell>
                 </TableRow>
               ))}

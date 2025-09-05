@@ -15,6 +15,7 @@ import { FileText, AlertTriangle, CheckCircle, Plus } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useFormTemplateByFormId } from "@/hooks/useFormTemplateByFormId";
 import { AnswerDisplayHelper } from "@/components/Optician/EntryDetails/AnswerDisplayHelper";
+import { MultipleLicenseCategoriesAlert } from "@/components/Optician/EntryDetails/MultipleLicenseCategoriesAlert";
 
 interface FormAnswersDisplayProps {
   entry: AnamnesesEntry;
@@ -114,15 +115,47 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
     return (isPositive && hasConcerningKeyword) || isAnsweredFollowup;
   });
 
-  const renderAnswerValue = (value: any): string => {
-    if (typeof value === 'boolean') {
-      return value ? 'Ja' : 'Nej';
-    }
-    if (Array.isArray(value)) {
-      return value.join(', ');
-    }
-    return String(value || 'Ej besvarat');
-  };
+  // Detect multiple license categories for special alert
+  const multipleLicenseCategories = React.useMemo(() => {
+    const categories: string[] = [];
+    
+    // Helper function to recursively check for license category answers
+    const checkAnswers = (obj: any) => {
+      if (typeof obj !== 'object' || !obj) return;
+      
+      Object.entries(obj).forEach(([key, value]) => {
+        // Check for license/behörighet related questions
+        const isLicenseQuestion = key.toLowerCase().includes('behörighet') ||
+                                 key.toLowerCase().includes('license') ||
+                                 key.toLowerCase().includes('körkortstyp') ||
+                                 (key.toLowerCase().includes('vilken') && key.toLowerCase().includes('behörighet'));
+        
+        if (isLicenseQuestion && value) {
+          if (Array.isArray(value)) {
+            // Multiple selections
+            const validCategories = value.filter(v => v && typeof v === 'string' && v.trim());
+            if (validCategories.length > 1) {
+              categories.push(...validCategories);
+            }
+          } else if (typeof value === 'object' && 'value' in value && Array.isArray(value.value)) {
+            // Nested structure with multiple values
+            const validCategories = value.value.filter((v: any) => v && typeof v === 'string' && v.trim());
+            if (validCategories.length > 1) {
+              categories.push(...validCategories);
+            }
+          }
+        } else if (typeof value === 'object') {
+          // Recurse into nested objects
+          checkAnswers(value);
+        }
+      });
+    };
+    
+    checkAnswers(answers);
+    
+    // Remove duplicates and return
+    return Array.from(new Set(categories));
+  }, [answers]);
 
   if (!hasAnswers) {
     return (
@@ -173,6 +206,9 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
           </Badge>
         </div>
 
+        {/* Multiple license categories alert */}
+        <MultipleLicenseCategoriesAlert categories={multipleLicenseCategories} />
+
         {/* Concerning answers alert */}
         {concerningAnswers.length > 0 && (
           <Alert variant="destructive">
@@ -183,7 +219,7 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
                 <ul className="list-disc list-inside text-sm space-y-1">
                   {concerningAnswers.map((item, index) => (
                     <li key={index}>
-                      {item.label}: <AnswerDisplayHelper answer={item.answer} />
+                      {item.label}: <AnswerDisplayHelper answer={item.answer} questionId={item.id} />
                     </li>
                   ))}
                 </ul>
@@ -231,7 +267,7 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
                               {question.label}:
                             </span>
                             <div className="text-sm text-right max-w-xs flex items-center gap-1">
-                              <AnswerDisplayHelper answer={question.answer} />
+                              <AnswerDisplayHelper answer={question.answer} questionId={question.id} />
                               {concerningAnswers.some(item => item.id === question.id) && (
                                 <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />
                               )}
@@ -255,7 +291,7 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
                       {questionLabelMap[key] || key.replace(/_/g, ' ')}:
                     </span>
                     <span className="text-sm text-right max-w-xs">
-                      <AnswerDisplayHelper answer={value} />
+                      <AnswerDisplayHelper answer={value} questionId={key} />
                     </span>
                   </div>
                 ))}

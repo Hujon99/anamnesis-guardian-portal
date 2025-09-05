@@ -82,42 +82,45 @@ export const IdVerificationDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleCancel}>
-      <DialogContent className="sm:max-w-[560px] p-8">
-        <DialogHeader className="space-y-4">
+      <DialogContent className="sm:max-w-[580px] p-0">
+        <DialogHeader className="p-6 pb-4">
           <div className="flex items-center gap-3">
             <IdCard className="h-6 w-6 text-primary" />
-            <DialogTitle className="text-xl">Legitimationskontroll</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Legitimationskontroll</DialogTitle>
           </div>
-          <DialogDescription className="text-base leading-relaxed">
-            Kontrollera kundens legitimation innan du skapar formuläret för <strong>{customerName}</strong>.
+          <DialogDescription className="text-base leading-relaxed text-muted-foreground mt-2">
+            Kontrollera kundens legitimation innan du skapar formuläret för <strong>{customerName}</strong>. 
             Detta är obligatoriskt för alla direktformulär som fylls i butik.
           </DialogDescription>
         </DialogHeader>
 
         {!isCompleted ? (
-          <div className="space-y-6 py-6">
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
+          <div className="px-6 space-y-8">
+            <Alert className="border-amber-200 bg-amber-50">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
                 <strong>Obligatorisk legitimationskontroll</strong><br />
                 Enligt gällande föreskrifter måste legitimation kontrolleras och verifieras innan undersökningen påbörjas.
               </AlertDescription>
             </Alert>
 
-            <div className="space-y-4">
-              <Label className="text-base font-semibold">Vilken typ av legitimation kontrollerar du?</Label>
-              <div className="grid gap-3">
+            <div className="space-y-5">
+              <Label className="text-base font-semibold text-foreground">
+                Vilken typ av legitimation kontrollerar du?
+              </Label>
+              <div className="space-y-3">
                 {ID_TYPES.map((idType) => (
-                  <div key={idType.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-accent/50">
+                  <div key={idType.id} className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-accent/30 transition-colors">
                     <Checkbox
                       id={idType.id}
                       checked={selectedIdTypes[idType.id] || false}
                       onCheckedChange={(checked) => handleIdTypeChange(idType.id, !!checked)}
                       disabled={isVerifying}
+                      className="mt-0.5"
                     />
                     <Label 
                       htmlFor={idType.id} 
-                      className="text-sm font-normal cursor-pointer flex-1"
+                      className="text-sm font-normal cursor-pointer flex-1 leading-relaxed"
                     >
                       {idType.label}
                     </Label>
@@ -126,8 +129,8 @@ export const IdVerificationDialog = ({
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Label htmlFor="personalNumber" className="text-base font-semibold">
+            <div className="space-y-4">
+              <Label htmlFor="personalNumber" className="text-base font-semibold text-foreground">
                 Personnummer från legitimation
               </Label>
               <Input
@@ -136,38 +139,38 @@ export const IdVerificationDialog = ({
                 value={personalNumber}
                 onChange={(e) => setPersonalNumber(e.target.value)}
                 disabled={isVerifying}
-                className="h-12 text-base font-mono"
+                className="h-11 text-base font-mono tracking-wide"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Ange det fullständiga personnumret som det står på legitimationen
               </p>
             </div>
           </div>
         ) : (
-          <div className="py-8">
-            <div className="text-center space-y-4">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+          <div className="px-6 py-8">
+            <div className="text-center space-y-6">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
-              <div>
-                <h3 className="font-semibold text-lg">Legitimation verifierad</h3>
-                <p className="text-muted-foreground">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-xl text-foreground">Legitimation verifierad</h3>
+                <p className="text-muted-foreground text-base">
                   {selectedIdLabel} har kontrollerats för {customerName}
                 </p>
               </div>
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 px-4 py-2 text-sm font-medium">
                 Personnummer: {personalNumber}
               </Badge>
             </div>
           </div>
         )}
 
-        <div className="flex justify-end gap-4 pt-4">
+        <div className="flex flex-col sm:flex-row justify-end gap-3 p-6 pt-4 border-t bg-muted/20">
           <Button
             variant="outline"
             onClick={handleCancel}
             disabled={isVerifying}
-            className="px-6 py-3"
+            className="order-1 sm:order-1"
           >
             Avbryt
           </Button>
@@ -178,7 +181,7 @@ export const IdVerificationDialog = ({
                 variant="outline"
                 onClick={() => onConfirm({ idType: 'deferred', personalNumber: 'pending' })}
                 disabled={isVerifying}
-                className="px-6 py-3 border-accent_coral/50 text-accent_coral hover:bg-accent_coral/10"
+                className="order-2 sm:order-2 border-accent_coral/50 text-accent_coral hover:bg-accent_coral/10 hover:border-accent_coral"
               >
                 Kunden legitimerar sig senare
               </Button>
@@ -186,7 +189,7 @@ export const IdVerificationDialog = ({
               <Button
                 onClick={handleCompleteVerification}
                 disabled={!canComplete || isVerifying}
-                className="px-6 py-3"
+                className="order-3 sm:order-3 bg-primary hover:bg-primary/90"
               >
                 {isVerifying ? (
                   <>
@@ -196,7 +199,7 @@ export const IdVerificationDialog = ({
                 ) : (
                   <>
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Bekräfta legitimation nu
+                    Bekräfta legitimation
                   </>
                 )}
               </Button>
@@ -204,7 +207,7 @@ export const IdVerificationDialog = ({
           ) : (
             <Button
               onClick={() => onOpenChange(false)}
-              className="px-6 py-3"
+              className="order-2 sm:order-2 bg-primary hover:bg-primary/90"
             >
               Gå till formulär
             </Button>

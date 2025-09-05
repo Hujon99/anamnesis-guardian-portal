@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, Car, FileText, Stethoscope, ChevronDown, CheckCircle, Contact } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrganizationForms } from "@/hooks/useOrganizationForms";
+import { EXAMINATION_TYPE_OPTIONS } from "@/types/examinationType";
 
 interface ExaminationTypeFilterProps {
   examinationTypeFilter: string | null;
@@ -35,14 +36,23 @@ export function ExaminationTypeFilter({ examinationTypeFilter, onExaminationType
     // Always include "Alla typer" as first option
     const allOption = { value: "all", label: "Alla typer", icon: FileText };
     
-    // Create options from actual forms
-    const formOptions = organizationForms.map(form => ({
-      value: form.examination_type,
-      label: form.title,
-      icon: getIconComponent(form.icon)
-    }));
+    // Get unique examination types from forms
+    const uniqueTypes = Array.from(new Set(organizationForms.map(form => form.examination_type)));
     
-    return [allOption, ...formOptions];
+    // Create options from examination types, using EXAMINATION_TYPE_OPTIONS for labels
+    const typeOptions = uniqueTypes.map(type => {
+      const typeOption = EXAMINATION_TYPE_OPTIONS.find(opt => 
+        opt.type.toLowerCase() === type.toLowerCase()
+      );
+      
+      return {
+        value: type,
+        label: typeOption?.label || type, // fallback to type if no match
+        icon: getIconComponent(typeOption?.icon || 'FileText')
+      };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+    
+    return [allOption, ...typeOptions];
   }, [organizationForms]);
   
   const selectedOption = examinationTypeOptions.find(option => option.value === (examinationTypeFilter || "all"));

@@ -3,28 +3,47 @@
  * Allows filtering of entries based on examination type (Synundersökning, Körkortsundersökning, etc.).
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Car, FileText, Stethoscope, ChevronDown, CheckCircle } from "lucide-react";
+import { Eye, Car, FileText, Stethoscope, ChevronDown, CheckCircle, Contact } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useOrganizationForms } from "@/hooks/useOrganizationForms";
 
 interface ExaminationTypeFilterProps {
   examinationTypeFilter: string | null;
   onExaminationTypeFilterChange: (value: string | null) => void;
 }
 
-const examinationTypeOptions = [
-  { value: "all", label: "Alla typer", icon: FileText },
-  { value: "synundersökning", label: "Synundersökning", icon: Eye },
-  { value: "körkortsundersökning", label: "Körkortsundersökning", icon: Car },
-  { value: "linsundersökning", label: "Linsundersökning", icon: Eye },
-  { value: "allmän", label: "Allmän", icon: Stethoscope },
-];
+const getIconComponent = (iconName: string) => {
+  switch (iconName) {
+    case 'Eye': return Eye;
+    case 'Car': return Car; 
+    case 'Contact': return Contact;
+    case 'FileText': return FileText;
+    case 'Stethoscope': return Stethoscope;
+    default: return FileText;
+  }
+};
 
 export function ExaminationTypeFilter({ examinationTypeFilter, onExaminationTypeFilterChange }: ExaminationTypeFilterProps) {
   const [open, setOpen] = useState(false);
+  const { data: organizationForms = [], isLoading } = useOrganizationForms();
+  
+  const examinationTypeOptions = useMemo(() => {
+    // Always include "Alla typer" as first option
+    const allOption = { value: "all", label: "Alla typer", icon: FileText };
+    
+    // Create options from actual forms
+    const formOptions = organizationForms.map(form => ({
+      value: form.examination_type,
+      label: form.title,
+      icon: getIconComponent(form.icon)
+    }));
+    
+    return [allOption, ...formOptions];
+  }, [organizationForms]);
   
   const selectedOption = examinationTypeOptions.find(option => option.value === (examinationTypeFilter || "all"));
   const isFiltered = examinationTypeFilter && examinationTypeFilter !== "all";

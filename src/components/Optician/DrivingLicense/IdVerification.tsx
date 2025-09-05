@@ -291,7 +291,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
         )}
 
         {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 justify-between mt-8 pt-4 border-t">
           {!isCompleted && (
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
@@ -326,7 +326,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
 
         {/* Help text for personal number */}
         {!isCompleted && personalNumber.length > 0 && personalNumber.length < 10 && (
-          <Alert>
+          <Alert className="mt-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Kontrollera att personnumret är korrekt ifyllt innan du bekräftar legitimationen.
@@ -335,7 +335,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
         )}
 
         {!isCompleted && !personalNumber.trim() && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mt-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Personnummer måste fyllas i för att kunna bekräfta legitimationen.
@@ -345,7 +345,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
 
         {/* Warning if not completed */}
         {!isCompleted && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mt-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Körkortsundersökningen kan inte slutföras utan legitimationskontroll, men du kan låta kunden legitimera sig senare.
@@ -355,7 +355,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
 
         {/* Show deferred verification notice */}
         {entry?.status === 'pending_id_verification' && (
-          <Alert className="border-yellow-200 bg-yellow-50">
+          <Alert className="border-yellow-200 bg-yellow-50 mt-4">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800">
               <div className="space-y-1">

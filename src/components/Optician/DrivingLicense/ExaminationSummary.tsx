@@ -49,7 +49,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   // Check if examination meets requirements
   const hasMeasurements = !!(examination?.visual_acuity_both_eyes || examination?.visual_acuity_right_eye || examination?.visual_acuity_left_eye);
   const visionPassed = hasMeasurements && !examination?.vision_below_limit;
-  const idVerified = examination?.id_verification_completed;
+  const idVerified = entry?.id_verification_completed;
   const canPass = visionPassed && idVerified;
   const handleComplete = async () => {
     if (!selectedOpticianId) {
@@ -273,13 +273,13 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
             Legitimationskontroll
           </h4>
           
-          {examination?.id_verification_completed ? <Alert>
+          {entry?.id_verification_completed ? <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-1">
                   <p>Legitimation verifierad</p>
                   <p className="text-xs text-muted-foreground">
-                    Typ: {examination?.id_type?.replace('_', ' ')} | Verifierad av: {examination?.verified_by}
+                    Typ: {entry?.id_type?.replace('_', ' ')} | Verifierad av: {entry?.verified_by}
                   </p>
                 </div>
               </AlertDescription>

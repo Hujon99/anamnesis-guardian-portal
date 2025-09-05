@@ -236,9 +236,9 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       // After a short delay to let the UI update, retry submission
       setTimeout(async () => {
         setFormPageState("SUBMITTING");
-        const success = await handleRetrySubmission();
+        const result = await handleRetrySubmission();
         
-        if (!success) {
+        if (!result?.success) {
           console.log(`[BaseFormPage/${instanceId.current}]: Retry submission failed`);
           setFormPageState("SUBMISSION_ERROR");
         } else {
@@ -365,7 +365,15 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       }
       
       // Default submitted view based on mode
-      return mode === 'optician' ? <OpticianSubmittedView /> : <SubmittedCard />;
+      return mode === 'optician' ? (
+        <OpticianSubmittedView 
+          patientName={firstName}
+          entryId={entryData?.id}
+          examinationType={entryData?.examination_type}
+        />
+      ) : (
+        <SubmittedCard />
+      );
     
     case "SUBMITTING":
       return (

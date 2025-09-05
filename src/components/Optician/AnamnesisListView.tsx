@@ -30,9 +30,15 @@ import { toast } from "@/components/ui/use-toast";
 
 interface AnamnesisListViewProps {
   showAdvancedFilters?: boolean;
+  autoOpenDrivingLicenseExam?: string | null;
+  onDrivingLicenseExamOpened?: () => void;
 }
 
-export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisListViewProps) {
+export function AnamnesisListView({ 
+  showAdvancedFilters = false,
+  autoOpenDrivingLicenseExam,
+  onDrivingLicenseExamOpened
+}: AnamnesisListViewProps) {
   const {
     filteredEntries,
     entries,
@@ -181,6 +187,31 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
     setDrivingLicenseEntry(entry);
     setIsDrivingLicenseOpen(true);
   };
+  
+  // Handle auto-opening driving license examination from navigation
+  useEffect(() => {
+    if (autoOpenDrivingLicenseExam && entries.length > 0) {
+      // Find the entry with the matching ID
+      const targetEntry = entries.find(entry => entry.id === autoOpenDrivingLicenseExam);
+      
+      if (targetEntry) {
+        console.log("[AnamnesisListView]: Auto-opening driving license examination for:", targetEntry.id);
+        handleDrivingLicenseExamination(targetEntry);
+        
+        // Notify parent that the examination has been opened
+        if (onDrivingLicenseExamOpened) {
+          onDrivingLicenseExamOpened();
+        }
+      } else {
+        console.warn("[AnamnesisListView]: Entry not found for auto-open:", autoOpenDrivingLicenseExam);
+        
+        // Clear the auto-open state even if entry wasn't found
+        if (onDrivingLicenseExamOpened) {
+          onDrivingLicenseExamOpened();
+        }
+      }
+    }
+  }, [autoOpenDrivingLicenseExam, entries, onDrivingLicenseExamOpened]);
 
   // Helper function to get expiration info
   function getEntryExpirationInfo(entry: AnamnesesEntry) {
@@ -366,6 +397,7 @@ export function AnamnesisListView({ showAdvancedFilters = false }: AnamnesisList
               onEntryDeleted={refetch}
               onEntryAssigned={handleEntryAssigned}
               onStoreAssigned={handleStoreAssigned}
+              onDrivingLicenseExamination={handleDrivingLicenseExamination}
             />
           </div>
         )}

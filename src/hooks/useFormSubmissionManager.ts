@@ -138,7 +138,7 @@ export function useFormSubmissionManager({
       mode === 'optician' // Add flag to indicate if it's an optician submission
     );
     
-    if (result) {
+    if (result?.success) {
       setLocalSubmitted(true);
     }
     
@@ -154,7 +154,7 @@ export function useFormSubmissionManager({
       const refreshSuccess = await handleJwtError();
       if (!refreshSuccess) {
         console.log("[useFormSubmissionManager]: Token refresh failed during retry");
-        return false;
+        return { success: false };
       }
     }
     

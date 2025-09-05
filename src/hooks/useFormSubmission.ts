@@ -47,14 +47,14 @@ export function useFormSubmission() {
     schema?: FormTemplate,
     formattedText?: string,
     isOptician?: boolean
-  ) => {
+  ): Promise<{ success: boolean; entryId?: string }> => {
     // Store submission data for retry
     lastSubmissionData = { token, values, schema, formattedText, isOptician };
     setSubmissionAttempts(prev => prev + 1);
     
     // If already submitted, just return success
     if (isSubmitted) {
-      return true;
+      return { success: true };
     }
 
     setIsSubmitting(true);
@@ -122,7 +122,8 @@ export function useFormSubmission() {
         description: "Tack för din ifyllda information"
       });
       
-      return true;
+      // Return success result with entryId
+      return { success: true, entryId: data?.entryId };
     } catch (e) {
       console.error("[useFormSubmission]: Catch block error:", e);
       
@@ -146,17 +147,17 @@ export function useFormSubmission() {
         });
       }
       
-      return false;
+      return { success: false };
     } finally {
       setIsSubmitting(false);
     }
   }, [supabase, isSubmitted, tokenManager]);
 
   // Retry submission with the last data
-  const retrySubmission = useCallback(async () => {
+  const retrySubmission = useCallback(async (): Promise<{ success: boolean; entryId?: string }> => {
     if (!lastSubmissionData) {
       console.error("[useFormSubmission]: No submission data for retry");
-      return false;
+      return { success: false };
     }
     
     const { token, values, schema, formattedText, isOptician } = lastSubmissionData;

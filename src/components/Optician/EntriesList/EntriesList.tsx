@@ -33,6 +33,7 @@ interface EntriesListProps {
   onEntryUpdated?: () => void;
   onEntryAssigned?: (entryId: string, opticianId: string | null) => Promise<void>;
   onStoreAssigned?: (entryId: string, storeId: string | null) => Promise<void>;
+  onDrivingLicenseExamination?: (entry: AnamnesesEntry) => void;
   showQuickAssign?: boolean;
   status?: string;
 }
@@ -44,6 +45,7 @@ export function EntriesList({
   onEntryUpdated,
   onEntryAssigned,
   onStoreAssigned,
+  onDrivingLicenseExamination,
   showQuickAssign = true,
   status = "pending" // Default status to handle the empty state
 }: EntriesListProps) {
@@ -251,7 +253,7 @@ export function EntriesList({
             onEntryUpdated={onEntryUpdated}
             onAssign={onEntryAssigned}
             onStoreAssign={handleStoreAssign}
-            onDrivingLicenseExamination={handleDrivingLicenseExamination}
+            onDrivingLicenseExamination={onDrivingLicenseExamination || handleDrivingLicenseExamination}
             showAssignmentIndicator={true}
             showQuickAssign={showQuickAssign && (isAdmin || true)}
             opticianName={entry.optician_id ? opticianMap.get(entry.optician_id) : null}

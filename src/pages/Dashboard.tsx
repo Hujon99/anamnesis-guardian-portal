@@ -15,7 +15,8 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEffect, useState } from "react";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { toast } from "@/components/ui/use-toast";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -47,6 +48,30 @@ const Dashboard = () => {
   const { user } = useUser();
   const { isReady, refreshClient, supabase } = useSupabaseClient();
   const [isUserOptician, setIsUserOptician] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Handle navigation from form submission to open driving license examination
+  const [autoOpenDrivingLicenseExam, setAutoOpenDrivingLicenseExam] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.openDrivingLicenseExam) {
+      const entryId = state.openDrivingLicenseExam;
+      console.log("[Dashboard]: Auto-opening driving license examination for entry:", entryId);
+      
+      setAutoOpenDrivingLicenseExam(entryId);
+      
+      // Show toast notification
+      toast({
+        title: "Öppnar körkortsundersökning",
+        description: "Formuläret har skickats in och undersökningen öppnas automatiskt.",
+      });
+      
+      // Clear the navigation state to prevent re-opening
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname]);
   
   // Check user roles
   const isAdmin = has({ role: "org:admin" });
@@ -123,7 +148,11 @@ const Dashboard = () => {
       <QueryErrorResetBoundary>
         {({ reset }) => (
           <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
-            <AnamnesisListView showAdvancedFilters={true} />
+            <AnamnesisListView 
+              showAdvancedFilters={true} 
+              autoOpenDrivingLicenseExam={autoOpenDrivingLicenseExam}
+              onDrivingLicenseExamOpened={() => setAutoOpenDrivingLicenseExam(null)}
+            />
           </ErrorBoundary>
         )}
       </QueryErrorResetBoundary>

@@ -4,18 +4,43 @@
  * It shows a confirmation message and provides navigation back to the dashboard.
  */
 
-import React from "react";
-import { CheckCircle } from "lucide-react";
+import React, { useState } from "react";
+import { CheckCircle, Car, ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { EXAMINATION_TYPES } from "@/types/examinationType";
 
 interface OpticianSubmittedCardProps {
   patientName?: string;
+  entryId?: string;
+  examinationType?: string;
 }
 
-const OpticianSubmittedCard: React.FC<OpticianSubmittedCardProps> = ({ patientName }) => {
+const OpticianSubmittedCard: React.FC<OpticianSubmittedCardProps> = ({ 
+  patientName, 
+  entryId, 
+  examinationType 
+}) => {
   const navigate = useNavigate();
+  const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Check if this is a driving license examination
+  const isDrivingLicenseExam = examinationType?.toLowerCase() === EXAMINATION_TYPES.KÖRKORTSUNDERSÖKNING;
+  
+  const handleNavigateToDrivingLicenseExam = () => {
+    if (!entryId) return;
+    
+    setIsNavigating(true);
+    
+    // Navigate to dashboard with entry ID in URL state to open driving license examination
+    navigate("/dashboard", {
+      state: { 
+        openDrivingLicenseExam: entryId,
+        fromSubmission: true
+      }
+    });
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -35,8 +60,24 @@ const OpticianSubmittedCard: React.FC<OpticianSubmittedCardProps> = ({ patientNa
             Du kommer automatiskt att omdirigeras till översikten.
           </p>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <Button onClick={() => navigate("/dashboard")} className="w-full">
+        <CardFooter className="flex flex-col gap-3">
+          {isDrivingLicenseExam && entryId && (
+            <Button 
+              onClick={handleNavigateToDrivingLicenseExam}
+              className="w-full bg-gradient-to-r from-primary to-accent-1 hover:from-primary/90 hover:to-accent-1/90"
+              disabled={isNavigating}
+            >
+              <Car className="h-4 w-4 mr-2" />
+              {isNavigating ? "Öppnar undersökning..." : "Lämna över till assistent/optiker"}
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          )}
+          
+          <Button 
+            onClick={() => navigate("/dashboard")} 
+            variant={isDrivingLicenseExam && entryId ? "outline" : "default"} 
+            className="w-full"
+          >
             Tillbaka till översikten
           </Button>
         </CardFooter>

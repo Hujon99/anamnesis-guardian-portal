@@ -87,25 +87,22 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, watchedValues, processSectionsWithDebounce]);
 
-  // Function to clear invalid field values and reset current question field
+  // Function to clear invalid field values but preserve valid answers
   const clearInvalidFieldValues = () => {
     const currentQuestionIds = allQuestions.map(q => 
       (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
     );
     
-    // Clear fields that don't correspond to any current questions
+    // Only clear fields that don't correspond to any current questions
+    // This preserves answers needed for follow-up question logic
     Object.keys(watchedValues).forEach(fieldKey => {
       if (!currentQuestionIds.includes(fieldKey)) {
         form.setValue(fieldKey, undefined, { shouldValidate: false, shouldDirty: false });
       }
     });
     
-    // Always reset the current question field to ensure no propagation
-    if (currentQuestion) {
-      const currentFieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-      console.log(`Clearing field ${currentFieldId} to prevent propagation`);
-      form.setValue(currentFieldId, undefined, { shouldValidate: false, shouldDirty: false });
-    }
+    // Don't clear the current question field - let TouchFriendlyFieldRenderer handle inappropriate values
+    // This allows follow-up questions to work properly
   };
 
   // Check if current question is answered

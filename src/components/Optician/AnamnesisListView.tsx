@@ -331,19 +331,23 @@ export function AnamnesisListView({
       </Card>
 
       {/* Filters Section */}
-      <AnamnesisFilters
-        statusFilter={filters.statusFilter}
-        onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
-        timeFilter={filters.timeFilter}
-        onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
-        showOnlyUnanswered={filters.showOnlyUnanswered}
-        onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
-        sortDescending={filters.sortDescending}
-        onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
-        showOnlyBookings={filters.showOnlyBookings}
-        onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
-        onResetFilters={resetFilters}
-      />
+        <AnamnesisFilters
+          statusFilter={filters.statusFilter}
+          onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
+          timeFilter={filters.timeFilter}
+          onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
+          showOnlyUnanswered={filters.showOnlyUnanswered}
+          onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
+          sortDescending={filters.sortDescending}
+          onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
+          showOnlyBookings={filters.showOnlyBookings}
+          onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
+          idVerificationFilter={filters.idVerificationFilter}
+          onIDVerificationFilterChange={(value) => updateFilter("idVerificationFilter", value)}
+          examinationTypeFilter={filters.examinationTypeFilter}
+          onExaminationTypeFilterChange={(value) => updateFilter("examinationTypeFilter", value)}
+          onResetFilters={resetFilters}
+        />
       
       {/* Advanced Filters Section */}
       {showAdvancedFilters && (

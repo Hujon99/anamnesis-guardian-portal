@@ -23,6 +23,8 @@ export interface AnamnesisFilters {
   showOnlyUnanswered: boolean;
   showOnlyBookings: boolean;
   sortDescending: boolean;
+  idVerificationFilter: string | null;
+  examinationTypeFilter: string | null;
 }
 
 export const useAnamnesisList = () => {
@@ -60,6 +62,8 @@ export const useAnamnesisList = () => {
     showOnlyUnanswered: false,
     showOnlyBookings: false,
     sortDescending: true,
+    idVerificationFilter: null,
+    examinationTypeFilter: null,
   });
 
   // Track realtime subscription
@@ -292,6 +296,8 @@ export const useAnamnesisList = () => {
       showOnlyUnanswered: false,
       showOnlyBookings: false,
       sortDescending: true,
+      idVerificationFilter: null,
+      examinationTypeFilter: null,
     });
   };
 
@@ -384,6 +390,33 @@ export const useAnamnesisList = () => {
     // Filter by booking status (magic link entries)
     if (filters.showOnlyBookings) {
       if (!entry.is_magic_link && !entry.booking_id) {
+        return false;
+      }
+    }
+
+    // Filter by ID verification status (only for driving license examinations)
+    if (filters.idVerificationFilter) {
+      const isDrivingLicense = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
+      
+      if (filters.idVerificationFilter === 'missing') {
+        // Show only driving license exams that are missing ID verification
+        if (!isDrivingLicense || entry.id_verification_completed) {
+          return false;
+        }
+      } else if (filters.idVerificationFilter === 'verified') {
+        // Show only driving license exams with completed ID verification
+        if (!isDrivingLicense || !entry.id_verification_completed) {
+          return false;
+        }
+      }
+    }
+
+    // Filter by examination type
+    if (filters.examinationTypeFilter) {
+      const entryType = entry.examination_type?.toLowerCase();
+      const filterType = filters.examinationTypeFilter.toLowerCase();
+      
+      if (entryType !== filterType) {
         return false;
       }
     }

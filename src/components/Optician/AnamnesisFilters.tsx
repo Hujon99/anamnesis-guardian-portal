@@ -11,6 +11,8 @@ import { UnifiedToggleFilter } from "./Filters/UnifiedToggleFilter";
 import { SortDirectionToggle } from "./Filters/SortDirectionToggle";
 import { BookingFilter } from "./Filters/BookingFilter";
 import { FilterGroup } from "./Filters/FilterGroup";
+import { IDVerificationFilter } from "./Filters/IDVerificationFilter";
+import { ExaminationTypeFilter } from "./Filters/ExaminationTypeFilter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FilterX, MessageSquareX, TicketIcon } from "lucide-react";
@@ -27,6 +29,10 @@ interface AnamnesisFiltersProps {
   onSortDirectionChange: (value: boolean) => void;
   showOnlyBookings: boolean;
   onBookingFilterChange: (value: boolean) => void;
+  idVerificationFilter: string | null;
+  onIDVerificationFilterChange: (value: string | null) => void;
+  examinationTypeFilter: string | null;
+  onExaminationTypeFilterChange: (value: string | null) => void;
   onResetFilters: () => void;
 }
 
@@ -41,6 +47,10 @@ export function AnamnesisFilters({
   onSortDirectionChange,
   showOnlyBookings,
   onBookingFilterChange,
+  idVerificationFilter,
+  onIDVerificationFilterChange,
+  examinationTypeFilter,
+  onExaminationTypeFilterChange,
   onResetFilters
 }: AnamnesisFiltersProps) {
   // Count active filters
@@ -48,7 +58,9 @@ export function AnamnesisFilters({
     statusFilter && statusFilter !== "all",
     timeFilter && timeFilter !== "all", 
     showOnlyUnanswered,
-    showOnlyBookings
+    showOnlyBookings,
+    idVerificationFilter && idVerificationFilter !== "all",
+    examinationTypeFilter && examinationTypeFilter !== "all"
   ].filter(Boolean).length;
 
   return (
@@ -87,6 +99,16 @@ export function AnamnesisFilters({
         <UnifiedTimeFilter 
           timeFilter={timeFilter} 
           onTimeFilterChange={onTimeFilterChange} 
+        />
+
+        <ExaminationTypeFilter
+          examinationTypeFilter={examinationTypeFilter}
+          onExaminationTypeFilterChange={onExaminationTypeFilterChange}
+        />
+
+        <IDVerificationFilter
+          idVerificationFilter={idVerificationFilter}
+          onIDVerificationFilterChange={onIDVerificationFilterChange}
         />
       </FilterGroup>
 

@@ -258,6 +258,10 @@ export function MyAnamnesisView() {
         onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
         showOnlyBookings={filters.showOnlyBookings}
         onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
+        idVerificationFilter={filters.idVerificationFilter}
+        onIDVerificationFilterChange={(value) => updateFilter("idVerificationFilter", value)}
+        examinationTypeFilter={filters.examinationTypeFilter}
+        onExaminationTypeFilterChange={(value) => updateFilter("examinationTypeFilter", value)}
         onResetFilters={resetFilters}
       />
 

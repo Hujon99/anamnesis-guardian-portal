@@ -237,17 +237,7 @@ export function MyAnamnesisView() {
     <div className="space-y-6">
       <ExaminationTypeStatsCards stats={stats} />
 
-      {enhancedTodayBookings.length > 0 && (
-        <TodayBookingsSection
-          todayBookings={enhancedTodayBookings}
-          onSelectEntry={setSelectedEntry}
-          onEntryDeleted={refetch}
-          onEntryAssigned={handleEntryAssigned}
-          onStoreAssigned={handleStoreAssigned}
-        />
-      )}
-      
-      {/* Search Section */}
+      {/* Search and Filters Section */}
       <Card className="p-6 bg-white rounded-2xl shadow-sm border border-muted/30">
         <SearchInput
           searchQuery={filters.searchQuery}
@@ -257,7 +247,6 @@ export function MyAnamnesisView() {
         />
       </Card>
 
-      {/* Filters Section */}
       <AnamnesisFilters
         statusFilter={filters.statusFilter}
         onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
@@ -271,6 +260,16 @@ export function MyAnamnesisView() {
         onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
         onResetFilters={resetFilters}
       />
+
+      {enhancedTodayBookings.length > 0 && (
+        <TodayBookingsSection
+          todayBookings={enhancedTodayBookings}
+          onSelectEntry={setSelectedEntry}
+          onEntryDeleted={refetch}
+          onEntryAssigned={handleEntryAssigned}
+          onStoreAssigned={handleStoreAssigned}
+        />
+      )}
       
       <div>
         <EntriesSummary

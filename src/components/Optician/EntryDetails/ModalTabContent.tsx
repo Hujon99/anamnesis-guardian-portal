@@ -13,6 +13,7 @@ import { OptimizedAnswersView } from "./OptimizedAnswers/OptimizedAnswersView";
 import { DrivingLicenseResults } from "./DrivingLicenseResults";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useDrivingLicenseStatus } from "@/hooks/useDrivingLicenseStatus";
+import { IdVerificationQuickUpdate } from "../IdVerificationQuickUpdate";
 
 interface ModalTabContentProps {
   patientIdentifier: string;
@@ -123,6 +124,18 @@ export function ModalTabContent({
       {showDrivingLicenseTab && (
         <TabsContent value="driving" className="mt-0">
           <div className="space-y-4">
+            {/* ID Verification Quick Update for entries needing verification */}
+            {(entry.status === 'pending_id_verification' || 
+              (entry.status === 'ready' && !entry.id_verification_completed)) && (
+              <div className="p-4 border rounded-lg bg-background">
+                <IdVerificationQuickUpdate
+                  entryId={entry.id}
+                  customerName={entry.first_name || entry.patient_identifier?.split(' (')[0] || 'Okänd kund'}
+                  onVerificationComplete={() => onEntryUpdate?.()}
+                />
+              </div>
+            )}
+            
             {isLoading ? (
               <div className="p-8 text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>

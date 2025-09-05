@@ -121,6 +121,8 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
             personal_number: personalNumber.trim() || null,
             verified_by: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown',
             verified_at: new Date().toISOString(),
+            // Update status from pending_id_verification to ready if it was deferred
+            ...(entry.status === 'pending_id_verification' ? { status: 'ready' } : {})
           };
           
           const { error } = await supabaseClient
@@ -144,9 +146,40 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
     }
   };
 
+  const handleDeferVerification = async () => {
+    try {
+      // Update anamnes_entries to mark that ID verification is deferred
+      if (entry?.id) {
+        const { useSupabaseClient } = await import('@/hooks/useSupabaseClient');
+        const { supabase: supabaseClient } = useSupabaseClient();
+        
+        if (supabaseClient) {
+          const { error } = await supabaseClient
+            .from('anamnes_entries')
+            .update({
+              status: 'pending_id_verification',
+              id_verification_completed: false
+            })
+            .eq('id', entry.id);
+            
+          if (error) {
+            console.error('[IdVerification] Failed to defer verification:', error);
+            throw error;
+          }
+        }
+      }
+      
+      // Continue to next step without verification
+      onNext();
+    } catch (error) {
+      console.error('[IdVerification] Error deferring verification:', error);
+    }
+  };
+
   const selectedIdType = idTypes.find(type => type.checked);
   const canVerify = selectedIdType && personalNumber.trim() && !isVerified;
   const isCompleted = entryIdVerified || examination?.id_verification_completed || isVerified;
+  const canProceed = isCompleted || entry?.status === 'pending_id_verification';
 
   return (
     <Card>
@@ -258,24 +291,36 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
         )}
 
         {/* Action buttons */}
-        <div className="flex justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 justify-between">
           {!isCompleted && (
-            <Button
-              onClick={handleCompleteVerification}
-              disabled={!canVerify || isSaving}
-              className="flex items-center gap-2"
-            >
-              <CheckCircle className="h-4 w-4" />
-              {isSaving ? "Verifierar..." : "Bekräfta legitimation"}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant="outline"
+                onClick={handleDeferVerification}
+                disabled={isSaving}
+                className="border-accent_coral/50 text-accent_coral hover:bg-accent_coral/10 hover:border-accent_coral"
+              >
+                Kunden legitimerar sig senare
+              </Button>
+              
+              <Button
+                onClick={handleCompleteVerification}
+                disabled={!canVerify || isSaving}
+                className="flex items-center gap-2"
+              >
+                <CheckCircle className="h-4 w-4" />
+                {isSaving ? "Verifierar..." : "Bekräfta legitimation nu"}
+              </Button>
+            </div>
           )}
           
           <Button
             onClick={onNext}
-            disabled={!isCompleted}
+            disabled={!canProceed}
             variant={isCompleted ? "default" : "outline"}
+            className={isCompleted ? "" : "w-full sm:w-auto"}
           >
-            {isCompleted ? "Nästa steg" : "Måste verifieras först"}
+            {isCompleted ? "Nästa steg" : canProceed ? "Fortsätt utan verifiering" : "Måste verifieras först"}
           </Button>
         </div>
 
@@ -303,7 +348,22 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Körkortsundersökningen kan inte slutföras utan legitimationskontroll.
+              Körkortsundersökningen kan inte slutföras utan legitimationskontroll, men du kan låta kunden legitimera sig senare.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Show deferred verification notice */}
+        {entry?.status === 'pending_id_verification' && (
+          <Alert className="border-yellow-200 bg-yellow-50">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              <div className="space-y-1">
+                <p className="font-medium">Legitimationskontroll väntar</p>
+                <p className="text-sm">
+                  Denna undersökning väntar på legitimationskontroll. Kunden kan legitimera sig nu eller fortsätta med undersökningen.
+                </p>
+              </div>
             </AlertDescription>
           </Alert>
         )}

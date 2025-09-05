@@ -291,9 +291,9 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
         )}
 
         {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between mt-8 pt-4 border-t">
-          {!isCompleted && (
-            <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t">
+          {!isCompleted ? (
+            <>
               <Button
                 variant="outline"
                 onClick={handleDeferVerification}
@@ -311,17 +311,15 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
                 <CheckCircle className="h-4 w-4" />
                 {isSaving ? "Verifierar..." : "Bekräfta legitimation nu"}
               </Button>
-            </div>
+            </>
+          ) : (
+            <Button
+              onClick={onNext}
+              className="flex items-center gap-2"
+            >
+              Nästa steg
+            </Button>
           )}
-          
-          <Button
-            onClick={onNext}
-            disabled={!canProceed}
-            variant={isCompleted ? "default" : "outline"}
-            className={isCompleted ? "" : "w-full sm:w-auto"}
-          >
-            {isCompleted ? "Nästa steg" : canProceed ? "Fortsätt utan verifiering" : "Måste verifieras först"}
-          </Button>
         </div>
 
         {/* Help text for personal number */}

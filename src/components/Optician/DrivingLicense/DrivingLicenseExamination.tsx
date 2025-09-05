@@ -89,15 +89,8 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
         if (existingExam) {
           console.log('[DrivingLicenseExamination] Found existing examination:', existingExam);
           setExamination(existingExam);
-          // Determine current step based on completion
-          // Check if ID verification is done in anamnes_entries first
-          if (!entry.id_verification_completed) {
-            setCurrentStep(1); // Start with ID verification
-          } else if (!existingExam.visual_acuity_both_eyes) {
-            setCurrentStep(3); // Visual acuity measurements
-          } else if (existingExam.examination_status !== 'completed') {
-            setCurrentStep(5); // Complete examination
-          }
+          // Always start at step 1 (ID verification) to show status clearly
+          setCurrentStep(1);
         } else {
           // Create new examination record
           console.log('[DrivingLicenseExamination] Creating new examination for entry:', entry.id);
@@ -126,12 +119,8 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
             setCurrentStep(2);
           } else {
             setExamination(created);
-            // Start with ID verification if not already done in anamnes_entries
-            if (!entry.id_verification_completed) {
-              setCurrentStep(1);
-            } else {
-              setCurrentStep(2);
-            }
+            // Always start at step 1 (ID verification) to show status clearly
+            setCurrentStep(1);
           }
         }
       } catch (error) {

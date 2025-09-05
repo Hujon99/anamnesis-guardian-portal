@@ -184,7 +184,7 @@ export const WarningsDisplay: React.FC<WarningsDisplayProps> = ({
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                Undersökningen kan fortsätta. Gå vidare till legitimationskontroll.
+                Undersökningen kan fortsätta. Gå vidare till sammanfattning.
               </AlertDescription>
             </Alert>
           )}
@@ -193,7 +193,7 @@ export const WarningsDisplay: React.FC<WarningsDisplayProps> = ({
         {/* Navigation */}
         <div className="flex justify-end">
           <Button onClick={onNext}>
-            Fortsätt till legitimation
+            Fortsätt till sammanfattning
           </Button>
         </div>
       </CardContent>

@@ -220,6 +220,7 @@ serve(async (req: Request) => {
       patient_identifier: entry.patient_identifier,
       created_by: entry.created_by,
       created_by_name: entry.created_by_name,
+      examination_type: entry.examination_type,
       // Magic link specific fields
       is_magic_link: entry.is_magic_link || false,
       booking_id: entry.booking_id,

@@ -20,6 +20,7 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useUser } from "@clerk/clerk-react";
 import { useOpticians } from "@/hooks/useOpticians";
 import { toast } from "@/hooks/use-toast";
+import { useUserResolver } from "@/utils/userDisplayUtils";
 
 type DrivingLicenseExamination = Database['public']['Tables']['driving_license_examinations']['Row'];
 
@@ -40,6 +41,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
   const { supabase } = useSupabaseClient();
   const { opticians = [] } = useOpticians();
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const { resolveUserDisplay } = useUserResolver();
   const getDecisionBadge = () => {
     if (examination.optician_decision === 'approved') {
       return (
@@ -265,7 +267,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                     <p className="font-medium">Legitimation verifierad</p>
                     <div className="text-sm space-y-1">
                       <p>Typ: <span className="font-medium">{getIdTypeInSwedish(entry.id_type)}</span></p>
-                      <p>Verifierad av: <span className="font-medium">{entry.verified_by}</span></p>
+                      <p>Verifierad av: <span className="font-medium">{resolveUserDisplay(entry.verified_by)}</span></p>
                       {entry.personal_number && (
                         <p>Personnummer: <span className="font-mono font-medium">{entry.personal_number}</span></p>
                       )}

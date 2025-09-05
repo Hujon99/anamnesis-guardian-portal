@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { IdCard, CheckCircle, AlertTriangle, User } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
+import { useUserResolver } from "@/utils/userDisplayUtils";
 
 interface IdVerificationProps {
   examination: any;
@@ -38,6 +39,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
   isSaving
 }) => {
   const { user } = useUser();
+  const { resolveUserDisplay } = useUserResolver();
   
   // Check if ID verification is already completed in anamnes_entries
   const entryIdVerified = entry?.id_verification_completed || false;
@@ -240,7 +242,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
               <div className="space-y-1">
                 <p className="font-medium">Legitimation verifierad</p>
                  <p className="text-sm">
-                   Verifierad av: {entry?.verified_by || examination?.verified_by || 'Unknown'}
+                   Verifierad av: {resolveUserDisplay(entry?.verified_by || examination?.verified_by)}
                  </p>
                  <p className="text-sm">
                    Personnummer: {entryPersonalNumber || examination?.personal_number || 'Ej angivet'}

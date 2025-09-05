@@ -20,6 +20,7 @@ import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { RecommendationEngine } from "./RecommendationEngine";
+import { useUserResolver } from "@/utils/userDisplayUtils";
 interface ExaminationSummaryProps {
   examination: any;
   entry: AnamnesesEntry;
@@ -45,6 +46,9 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   
   // Use supabase client for email notifications
   const { supabase } = useSupabaseClient();
+
+  // User resolver for displaying names
+  const { resolveUserDisplay } = useUserResolver();
 
   // Check if examination meets requirements
   const hasMeasurements = !!(examination?.visual_acuity_both_eyes || examination?.visual_acuity_right_eye || examination?.visual_acuity_left_eye);
@@ -279,7 +283,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                 <div className="space-y-1">
                   <p>Legitimation verifierad</p>
                   <p className="text-xs text-muted-foreground">
-                    Typ: {entry?.id_type?.replace('_', ' ')} | Verifierad av: {entry?.verified_by}
+                    Typ: {entry?.id_type?.replace('_', ' ')} | Verifierad av: {resolveUserDisplay(entry?.verified_by)}
                   </p>
                 </div>
               </AlertDescription>

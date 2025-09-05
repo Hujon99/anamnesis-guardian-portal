@@ -101,7 +101,7 @@ export const DirectFormButton: React.FC = () => {
           id_verification_completed: true,
           id_type: idType as any,
           personal_number: personalNumber,
-          verified_by: user.id,
+          verified_by: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown',
           verified_at: new Date().toISOString(),
         })
         .select("*")

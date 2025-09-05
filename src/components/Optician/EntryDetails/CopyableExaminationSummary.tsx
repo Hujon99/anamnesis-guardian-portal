@@ -13,6 +13,7 @@ import { Copy, FileText, Download, CheckCircle } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/hooks/use-toast";
+import { useUserResolver } from "@/utils/userDisplayUtils";
 
 type DrivingLicenseExamination = Database['public']['Tables']['driving_license_examinations']['Row'];
 
@@ -27,6 +28,7 @@ export const CopyableExaminationSummary: React.FC<CopyableExaminationSummaryProp
   entry,
   answers
 }) => {
+  const { resolveUserDisplay } = useUserResolver();
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
 
   const formatForTrafikverket = () => {
@@ -59,7 +61,7 @@ Vänster öga: ${examination.visual_acuity_with_correction_left || examination.v
 LEGITIMATIONSKONTROLL:
 Status: ${examination.id_verification_completed ? 'Verifierad' : 'Ej verifierad'}
 Typ: ${examination.id_type?.replace('_', ' ') || 'N/A'}
-Verifierad av: ${examination.verified_by || 'N/A'}${examination.personal_number ? `\nPersonnummer: ${examination.personal_number}` : ''}
+Verifierad av: ${resolveUserDisplay(examination.verified_by)}${examination.personal_number ? `\nPersonnummer: ${examination.personal_number}` : ''}
 
 ANAMNES:
 ${entry.ai_summary || 'Ingen sammanfattning tillgänglig'}

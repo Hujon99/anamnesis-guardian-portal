@@ -87,6 +87,20 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, watchedValues, processSectionsWithDebounce]);
 
+  // Function to clear invalid field values that don't belong to any current questions
+  const clearInvalidFieldValues = () => {
+    const currentQuestionIds = allQuestions.map(q => 
+      (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
+    );
+    
+    Object.keys(watchedValues).forEach(fieldKey => {
+      if (!currentQuestionIds.includes(fieldKey)) {
+        // Clear fields that don't correspond to any current questions
+        form.setValue(fieldKey, undefined, { shouldValidate: false, shouldDirty: false });
+      }
+    });
+  };
+
   // Check if current question is answered
   const isCurrentQuestionAnswered = () => {
     if (!currentQuestion) return false;
@@ -100,6 +114,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
+      // Clear any invalid field values before navigating
+      clearInvalidFieldValues();
+      
       setAnimationClass("slide-out-left");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev + 1);
@@ -111,6 +128,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
+      // Clear any invalid field values before navigating
+      clearInvalidFieldValues();
+      
       setAnimationClass("slide-out-right");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev - 1);

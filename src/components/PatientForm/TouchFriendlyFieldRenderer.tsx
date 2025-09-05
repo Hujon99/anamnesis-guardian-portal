@@ -53,17 +53,55 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
     return val;
   };
 
-  // Only extract values on mount for complex nested objects from saved data
+  // Validate that current field value is appropriate for this question
+  const validateFieldValue = React.useCallback((value: any) => {
+    if (!value || value === "") return true;
+    
+    // For radio/dropdown questions with options, ensure value is in valid options
+    if ((question.type === "radio" || question.type === "dropdown") && question.options) {
+      const validOptions = question.options.map(option => 
+        typeof option === 'string' ? option : option.value
+      );
+      return validOptions.includes(value);
+    }
+    
+    // For checkbox questions, ensure all values are valid options
+    if (question.type === "checkbox" && question.options && Array.isArray(value)) {
+      const validOptions = question.options.map(option => 
+        typeof option === 'string' ? option : option.value
+      );
+      return value.every(v => validOptions.includes(v));
+    }
+    
+    // For number fields, ensure value is numeric
+    if (question.type === "number") {
+      return !isNaN(Number(value));
+    }
+    
+    return true;
+  }, [question.type, question.options]);
+
+  // Extract and validate values on mount
   React.useEffect(() => {
     const currentValue = watch(fieldName);
+    
+    console.log(`[TouchFriendlyFieldRenderer] Field ${fieldName} initial value:`, currentValue);
     
     // Special handling for dynamic follow-up questions - clear value if it matches parent value
     if (isDynamicQuestion && (question as DynamicFollowupQuestion).parentValue) {
       const parentValue = (question as DynamicFollowupQuestion).parentValue;
       if (currentValue === parentValue) {
+        console.log(`[TouchFriendlyFieldRenderer] Clearing dynamic question ${fieldName} that matched parent value:`, parentValue);
         setValue(fieldName, "", { shouldValidate: false, shouldDirty: false });
         return;
       }
+    }
+    
+    // Validate current value for this question type
+    if (currentValue && !validateFieldValue(currentValue)) {
+      console.log(`[TouchFriendlyFieldRenderer] Clearing invalid value for field ${fieldName}:`, currentValue);
+      setValue(fieldName, "", { shouldValidate: false, shouldDirty: false });
+      return;
     }
     
     // Only extract if it's a complex object with nested structure (from saved data)
@@ -72,7 +110,13 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
         ('answer' in currentValue || ('value' in currentValue && Object.keys(currentValue).length > 1))) {
       const extractedValue = extractValue(currentValue);
       if (extractedValue !== currentValue && extractedValue !== undefined && extractedValue !== null) {
-        setValue(fieldName, extractedValue, { shouldValidate: false, shouldDirty: false });
+        // Validate extracted value too
+        if (validateFieldValue(extractedValue)) {
+          setValue(fieldName, extractedValue, { shouldValidate: false, shouldDirty: false });
+        } else {
+          console.log(`[TouchFriendlyFieldRenderer] Clearing invalid extracted value for field ${fieldName}:`, extractedValue);
+          setValue(fieldName, "", { shouldValidate: false, shouldDirty: false });
+        }
       }
     }
   }, []); // Only run on mount
@@ -143,12 +187,12 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    value={field.value || ""}
-                    className="space-y-3"
-                  >
+                 <FormControl>
+                   <RadioGroup
+                     onValueChange={field.onChange}
+                     value={validateFieldValue(field.value) ? field.value || "" : ""}
+                     className="space-y-3"
+                   >
                     {question.options?.map(option => {
                       const optionValue = getOptionValue(option);
                       const optionLabel = getOptionLabel(option);
@@ -273,11 +317,11 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  value={field.value || ""}
-                  name={fieldName}
-                >
+                 <Select 
+                   onValueChange={field.onChange} 
+                   value={validateFieldValue(field.value) ? field.value || "" : ""}
+                   name={fieldName}
+                 >
                   <FormControl>
                     <SelectTrigger className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20">
                       <SelectValue placeholder="Välj ett alternativ" />

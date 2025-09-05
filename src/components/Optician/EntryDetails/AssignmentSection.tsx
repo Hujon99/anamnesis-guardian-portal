@@ -35,11 +35,12 @@ export function AssignmentSection({
       </div>
       
       {/* ID Verification Quick Update for entries awaiting verification */}
-      {entry.status === 'pending_id_verification' && (
+      {(entry.status === 'pending_id_verification' || 
+        (entry.status === 'ready' && !entry.id_verification_completed && entry.examination_type === 'Körkortsundersökning')) && (
         <div className="space-y-4">
           <IdVerificationQuickUpdate
             entryId={entry.id}
-            customerName={entry.first_name || 'Okänd kund'}
+            customerName={entry.first_name || entry.patient_identifier?.split(' (')[0] || 'Okänd kund'}
             onVerificationComplete={() => onEntryUpdate?.()}
           />
           <Separator className="my-4" />

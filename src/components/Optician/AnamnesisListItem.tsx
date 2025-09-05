@@ -217,6 +217,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
         className={entry.isExpired ? "opacity-50" : ""}
         examinationType={entry.examination_type}
         isExaminationCompleted={isDrivingLicenseExam && isDrivingLicenseCompleted}
+        idVerificationCompleted={entry.id_verification_completed ?? true}
       >
         <div className="py-1 px-0">
           <div className="flex items-start justify-between">

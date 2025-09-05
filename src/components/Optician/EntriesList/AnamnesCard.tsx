@@ -10,12 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, Car, FileText } from "lucide-react";
 
 interface AnamnesCardProps {
-  status: "sent" | "pending" | "ready" | "reviewed" | "journaled" | "expiring";
+  status: "sent" | "pending" | "ready" | "reviewed" | "journaled" | "expiring" | "pending_id_verification";
   children: ReactNode;
   className?: string;
   onClick?: () => void;
   examinationType?: string;
   isExaminationCompleted?: boolean;
+  idVerificationCompleted?: boolean;
 }
 
 export const AnamnesCard = ({ 
@@ -24,7 +25,8 @@ export const AnamnesCard = ({
   className, 
   onClick,
   examinationType,
-  isExaminationCompleted
+  isExaminationCompleted,
+  idVerificationCompleted = true
 }: AnamnesCardProps) => {
   // Determine the accent color based on status
   const getAccentColor = () => {
@@ -35,6 +37,8 @@ export const AnamnesCard = ({
         return "bg-accent_coral";
       case "ready":
         return "bg-green-500";
+      case "pending_id_verification":
+        return "bg-amber-500";
       case "journaled":
         return "bg-accent_teal";
       case "reviewed": // Keep for backward compatibility
@@ -93,7 +97,7 @@ export const AnamnesCard = ({
       }}
     >
       {/* Examination type and completion badges - properly positioned */}
-      {(examinationType || isExaminationCompleted) && (
+      {(examinationType || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning')) && (
         <div className="flex justify-start gap-1 mb-1">
           {examinationType && (
             <Badge variant="outline" className="h-5 px-1.5 text-xs bg-white/80 backdrop-blur-sm">
@@ -104,6 +108,11 @@ export const AnamnesCard = ({
           {isExaminationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning' && (
             <Badge className="h-5 px-1.5 text-xs bg-green-100 text-green-800 border-green-200">
               Klar
+            </Badge>
+          )}
+          {!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning' && (
+            <Badge className="h-5 px-1.5 text-xs bg-amber-100 text-amber-800 border-amber-200">
+              ID saknas
             </Badge>
           )}
         </div>

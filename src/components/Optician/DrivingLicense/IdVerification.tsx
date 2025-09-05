@@ -147,32 +147,46 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
   };
 
   const handleDeferVerification = async () => {
+    console.log('[IdVerification] Defer verification clicked for entry:', entry?.id);
+    
     try {
       // Update anamnes_entries to mark that ID verification is deferred
       if (entry?.id) {
+        console.log('[IdVerification] Updating entry to pending_id_verification status');
         const { useSupabaseClient } = await import('@/hooks/useSupabaseClient');
         const { supabase: supabaseClient } = useSupabaseClient();
         
-        if (supabaseClient) {
-          const { error } = await supabaseClient
-            .from('anamnes_entries')
-            .update({
-              status: 'pending_id_verification',
-              id_verification_completed: false
-            })
-            .eq('id', entry.id);
-            
-          if (error) {
-            console.error('[IdVerification] Failed to defer verification:', error);
-            throw error;
-          }
+        if (!supabaseClient) {
+          console.error('[IdVerification] Supabase client not available');
+          throw new Error('Supabase client not available');
         }
+
+        const { error } = await supabaseClient
+          .from('anamnes_entries')
+          .update({
+            status: 'pending_id_verification',
+            id_verification_completed: false
+          })
+          .eq('id', entry.id);
+          
+        if (error) {
+          console.error('[IdVerification] Failed to defer verification:', error);
+          throw error;
+        }
+        
+        console.log('[IdVerification] Successfully updated entry status to pending_id_verification');
+      } else {
+        console.warn('[IdVerification] No entry ID available for deferring verification');
       }
       
+      console.log('[IdVerification] Calling onNext to continue to next step');
       // Continue to next step without verification
       onNext();
     } catch (error) {
       console.error('[IdVerification] Error deferring verification:', error);
+      // Still proceed to next step even if database update fails
+      console.log('[IdVerification] Proceeding to next step despite error');
+      onNext();
     }
   };
 

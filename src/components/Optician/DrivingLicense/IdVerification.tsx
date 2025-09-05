@@ -117,7 +117,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
             id_verification_completed: true,
             id_type: selectedIdType.id as "swedish_license" | "swedish_id" | "passport" | "guardian_certificate",
             personal_number: personalNumber.trim() || null,
-            verified_by: user?.id || user?.fullName || user?.firstName || 'Unknown',
+            verified_by: user?.fullName || user?.firstName || 'Unknown',
             verified_at: new Date().toISOString(),
           };
           

@@ -4,7 +4,7 @@
  * Updated with improved filter design and layout consistency.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisDetailModal } from "./AnamnesisDetailModal";
 import { AnamnesisFilters } from "./AnamnesisFilters";
@@ -13,6 +13,8 @@ import { LoadingState } from "./EntriesList/LoadingState";
 import { SearchInput } from "./EntriesList/SearchInput";
 import { EntriesSummary } from "./EntriesList/EntriesSummary";
 import { EntriesList } from "./EntriesList/EntriesList";
+import { TodayBookingsSection } from "./TodayBookingsSection";
+import { ExaminationTypeStatsCards } from "./ExaminationTypeStatsCards";
 import { useCurrentOpticianEntries } from "@/hooks/useCurrentOpticianEntries";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
@@ -20,7 +22,6 @@ import { Store } from "@/types/anamnesis";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/clerk-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { OpticianStatsCards } from "./OpticianStatsCards";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { toast } from "@/components/ui/use-toast";
 
@@ -28,6 +29,7 @@ export function MyAnamnesisView() {
   const {
     myFilteredEntries,
     myEntries,
+    todayBookings,
     filters,
     updateFilter,
     resetFilters,
@@ -65,10 +67,13 @@ export function MyAnamnesisView() {
   });
   
   // Create a map of store IDs to store names for quick lookup
-  const storeMap = new Map<string, string>();
-  stores.forEach(store => {
-    storeMap.set(store.id, store.name);
-  });
+  const storeMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    stores.forEach(store => {
+      map[store.id] = store.name;
+    });
+    return map;
+  }, [stores]);
 
   // Manual refresh handler
   const handleManualRefresh = () => {
@@ -176,19 +181,36 @@ export function MyAnamnesisView() {
   };
   
   // Enhance entries with store information
-  const enhancedEntries = myFilteredEntries.map(entry => {
-    // Get store name if available
-    const storeName = entry.store_id ? storeMap.get(entry.store_id) || null : null;
-    // Check if this is a booking without a store assigned
-    const isBookingWithoutStore = (entry.is_magic_link || entry.booking_id || entry.booking_date) && !entry.store_id;
-    
-    return {
-      ...entry,
-      ...getEntryExpirationInfo(entry),
-      storeName,
-      isBookingWithoutStore
-    };
-  });
+  const enhancedEntries = useMemo(() => {
+    return myFilteredEntries.map(entry => {
+      // Get store name if available
+      const storeName = entry.store_id ? storeMap[entry.store_id] || null : null;
+      // Check if this is a booking without a store assigned
+      const isBookingWithoutStore = (entry.is_magic_link || entry.booking_id || entry.booking_date) && !entry.store_id;
+      
+      return {
+        ...entry,
+        ...getEntryExpirationInfo(entry),
+        storeName,
+        isBookingWithoutStore
+      };
+    });
+  }, [myFilteredEntries, storeMap]);
+
+  // Enhance today's bookings with store information
+  const enhancedTodayBookings = useMemo(() => {
+    return todayBookings.map(entry => {
+      const storeName = entry.store_id ? storeMap[entry.store_id] || null : null;
+      const isBookingWithoutStore = (entry.is_magic_link || entry.booking_id || entry.booking_date) && !entry.store_id;
+      
+      return {
+        ...entry,
+        ...getEntryExpirationInfo(entry),
+        storeName,
+        isBookingWithoutStore
+      };
+    });
+  }, [todayBookings, storeMap]);
 
   if (!isOpticianIdLoaded) {
     return (
@@ -213,7 +235,17 @@ export function MyAnamnesisView() {
 
   return (
     <div className="space-y-6">
-      <OpticianStatsCards stats={stats} />
+      <ExaminationTypeStatsCards stats={stats} />
+
+      {enhancedTodayBookings.length > 0 && (
+        <TodayBookingsSection
+          todayBookings={enhancedTodayBookings}
+          onSelectEntry={setSelectedEntry}
+          onEntryDeleted={refetch}
+          onEntryAssigned={handleEntryAssigned}
+          onStoreAssigned={handleStoreAssigned}
+        />
+      )}
       
       {/* Search Section */}
       <Card className="p-6 bg-white rounded-2xl shadow-sm border border-muted/30">
@@ -250,7 +282,7 @@ export function MyAnamnesisView() {
         />
         
         <EntriesList
-          entries={enhancedEntries}
+          entries={enhancedEntries.filter(entry => !enhancedTodayBookings.some(tb => tb.id === entry.id))}
           onSelectEntry={setSelectedEntry}
           onEntryDeleted={refetch}
           onEntryUpdated={handleEntryUpdated}

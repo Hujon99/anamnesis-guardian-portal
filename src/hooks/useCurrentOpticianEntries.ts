@@ -30,14 +30,45 @@ export const useCurrentOpticianEntries = () => {
     return filteredEntries.filter(entry => entry.optician_id === user.id);
   }, [filteredEntries, user]);
   
-  // Stats for My Anamneses dashboard
+  // Calculate today's bookings
+  const todayBookings = useMemo(() => {
+    if (!myEntries) return [];
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    return myEntries.filter(entry => {
+      if (!entry.booking_date) return false;
+      const bookingDate = new Date(entry.booking_date);
+      return bookingDate >= today && bookingDate < tomorrow;
+    });
+  }, [myEntries]);
+  
+  // Stats for My Anamneses dashboard with examination types
   const stats = useMemo(() => {
     if (!myEntries.length) return {
       total: 0,
       pending: 0,
       ready: 0,
       reviewed: 0,
-      sent: 0
+      sent: 0,
+      examinations: {
+        synundersokning: 0,
+        korkortsundersokning: 0,
+        other: 0
+      }
+    };
+    
+    const examinations = {
+      synundersokning: myEntries.filter(entry => entry.examination_type === 'Synundersökning').length,
+      korkortsundersokning: myEntries.filter(entry => entry.examination_type === 'Körkortsundersökning').length,
+      other: myEntries.filter(entry => 
+        entry.examination_type && 
+        entry.examination_type !== 'Synundersökning' && 
+        entry.examination_type !== 'Körkortsundersökning'
+      ).length,
     };
     
     return {
@@ -48,7 +79,8 @@ export const useCurrentOpticianEntries = () => {
       reviewed: myEntries.filter(entry => 
         entry.status === 'journaled' || entry.status === 'reviewed'
       ).length,
-      sent: myEntries.filter(entry => entry.status === 'sent').length
+      sent: myEntries.filter(entry => entry.status === 'sent').length,
+      examinations,
     };
   }, [myEntries]);
   
@@ -64,6 +96,7 @@ export const useCurrentOpticianEntries = () => {
   return {
     myEntries,
     myFilteredEntries,
+    todayBookings,
     filters,
     updateFilter,
     resetFilters,

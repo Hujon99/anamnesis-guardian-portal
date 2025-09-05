@@ -87,18 +87,25 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, watchedValues, processSectionsWithDebounce]);
 
-  // Function to clear invalid field values that don't belong to any current questions
+  // Function to clear invalid field values and reset current question field
   const clearInvalidFieldValues = () => {
     const currentQuestionIds = allQuestions.map(q => 
       (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
     );
     
+    // Clear fields that don't correspond to any current questions
     Object.keys(watchedValues).forEach(fieldKey => {
       if (!currentQuestionIds.includes(fieldKey)) {
-        // Clear fields that don't correspond to any current questions
         form.setValue(fieldKey, undefined, { shouldValidate: false, shouldDirty: false });
       }
     });
+    
+    // Always reset the current question field to ensure no propagation
+    if (currentQuestion) {
+      const currentFieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+      console.log(`Clearing field ${currentFieldId} to prevent propagation`);
+      form.setValue(currentFieldId, undefined, { shouldValidate: false, shouldDirty: false });
+    }
   };
 
   // Check if current question is answered
@@ -114,28 +121,30 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
-      // Clear any invalid field values before navigating
-      clearInvalidFieldValues();
-      
       setAnimationClass("slide-out-left");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev + 1);
         setAnimationClass("slide-in-right");
-        setTimeout(() => setAnimationClass(""), 300);
+        setTimeout(() => {
+          setAnimationClass("");
+          // Clear field values after navigation is complete
+          clearInvalidFieldValues();
+        }, 100);
       }, 200);
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      // Clear any invalid field values before navigating
-      clearInvalidFieldValues();
-      
       setAnimationClass("slide-out-right");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev - 1);
         setAnimationClass("slide-in-left");
-        setTimeout(() => setAnimationClass(""), 300);
+        setTimeout(() => {
+          setAnimationClass("");
+          // Clear field values after navigation is complete
+          clearInvalidFieldValues();
+        }, 100);
       }, 200);
     }
   };

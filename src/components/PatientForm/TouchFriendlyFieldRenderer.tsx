@@ -81,45 +81,21 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
     return true;
   }, [question.type, question.options]);
 
-  // Extract and validate values on mount
+  // Extract and validate values on mount - aggressive clearing for single question layout
   React.useEffect(() => {
     const currentValue = watch(fieldName);
     
     console.log(`[TouchFriendlyFieldRenderer] Field ${fieldName} initial value:`, currentValue);
     
-    // Special handling for dynamic follow-up questions - clear value if it matches parent value
-    if (isDynamicQuestion && (question as DynamicFollowupQuestion).parentValue) {
-      const parentValue = (question as DynamicFollowupQuestion).parentValue;
-      if (currentValue === parentValue) {
-        console.log(`[TouchFriendlyFieldRenderer] Clearing dynamic question ${fieldName} that matched parent value:`, parentValue);
-        setValue(fieldName, "", { shouldValidate: false, shouldDirty: false });
-        return;
-      }
-    }
+    // AGGRESSIVE: Always clear the field on mount to prevent any propagation
+    console.log(`[TouchFriendlyFieldRenderer] Aggressively clearing field ${fieldName} to prevent propagation`);
     
-    // Validate current value for this question type
-    if (currentValue && !validateFieldValue(currentValue)) {
-      console.log(`[TouchFriendlyFieldRenderer] Clearing invalid value for field ${fieldName}:`, currentValue);
+    if (question.type === "checkbox") {
+      setValue(fieldName, [], { shouldValidate: false, shouldDirty: false });
+    } else {
       setValue(fieldName, "", { shouldValidate: false, shouldDirty: false });
-      return;
     }
-    
-    // Only extract if it's a complex object with nested structure (from saved data)
-    if (currentValue && typeof currentValue === 'object' && 
-        !Array.isArray(currentValue) && 
-        ('answer' in currentValue || ('value' in currentValue && Object.keys(currentValue).length > 1))) {
-      const extractedValue = extractValue(currentValue);
-      if (extractedValue !== currentValue && extractedValue !== undefined && extractedValue !== null) {
-        // Validate extracted value too
-        if (validateFieldValue(extractedValue)) {
-          setValue(fieldName, extractedValue, { shouldValidate: false, shouldDirty: false });
-        } else {
-          console.log(`[TouchFriendlyFieldRenderer] Clearing invalid extracted value for field ${fieldName}:`, extractedValue);
-          setValue(fieldName, "", { shouldValidate: false, shouldDirty: false });
-        }
-      }
-    }
-  }, []); // Only run on mount
+  }, [fieldName, setValue]); // Run whenever fieldName changes (new question)
   
   const getOptionValue = (option: FormQuestionOption): string => {
     return typeof option === 'string' ? option : option.value;
@@ -190,26 +166,27 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                  <FormControl>
                    <RadioGroup
                      onValueChange={field.onChange}
-                     value={validateFieldValue(field.value) ? field.value || "" : ""}
+                     value={field.value || ""}
                      className="space-y-3"
                    >
                     {question.options?.map(option => {
                       const optionValue = getOptionValue(option);
                       const optionLabel = getOptionLabel(option);
                       return (
-                        <FormItem key={optionValue} className="flex items-center space-x-4 space-y-0">
-                          <FormControl>
-                            <div className="relative">
-                              <RadioGroupItem 
-                                value={optionValue} 
-                                className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                              />
-                            </div>
-                          </FormControl>
-                          <FormLabel className="text-base font-medium leading-relaxed flex-1 cursor-pointer p-4 rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 transition-all">
+                        <label 
+                          key={optionValue}
+                          htmlFor={`${fieldName}-${optionValue}`}
+                          className="flex items-center space-x-4 p-4 rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-all group"
+                        >
+                          <RadioGroupItem 
+                            value={optionValue} 
+                            id={`${fieldName}-${optionValue}`}
+                            className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          />
+                          <span className="text-base font-medium leading-relaxed flex-1 select-none">
                             {optionLabel}
-                          </FormLabel>
-                        </FormItem>
+                          </span>
+                        </label>
                       );
                     })}
                   </RadioGroup>

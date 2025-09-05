@@ -80,30 +80,30 @@ export const DirectFormButton: React.FC = () => {
         expiresAt
       });
 
-      // Create entry in anamnes_entries with ID verification data
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .insert({
-          organization_id: organization.id,
-          form_id: form.id,
-          access_token: accessToken,
-          status: "sent",
-          is_magic_link: false,
-          created_by: user.id,
-          created_by_name: user.fullName || user.firstName || "Okänd optiker",
-          patient_identifier: patientIdentifier,
-          first_name: fullName,
-          expires_at: expiresAt.toISOString(),
-          booking_date: new Date().toISOString(), // Automatically set today's date
-          // Set initial answers as empty object
-          answers: {},
-          // ID verification data
-          id_verification_completed: true,
-          id_type: idType as any,
-          personal_number: personalNumber,
-          verified_by: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown',
-          verified_at: new Date().toISOString(),
-        })
+          // Create entry in anamnes_entries with ID verification data
+          const { data, error } = await supabase
+            .from("anamnes_entries")
+            .insert({
+              organization_id: organization.id,
+              form_id: form.id,
+              access_token: accessToken,
+              status: "ready", // Set as ready since ID verification is complete
+              is_magic_link: false,
+              created_by: user.id,
+              created_by_name: user.fullName || user.firstName || "Okänd optiker",
+              patient_identifier: patientIdentifier,
+              first_name: fullName,
+              expires_at: expiresAt.toISOString(),
+              booking_date: new Date().toISOString(), // Automatically set today's date
+              // Set initial answers as empty object
+              answers: {},
+              // ID verification data
+              id_verification_completed: true,
+              id_type: idType as any,
+              personal_number: personalNumber,
+              verified_by: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown',
+              verified_at: new Date().toISOString(),
+            })
         .select("*")
         .single();
 
@@ -199,17 +199,84 @@ export const DirectFormButton: React.FC = () => {
     setShowIdVerificationDialog(true);
   };
 
-  const handleIdVerificationConfirm = (idData: { idType: string; personalNumber: string }) => {
+  const handleIdVerificationConfirm = async (idData: { idType: string; personalNumber: string }) => {
     if (!selectedForm) return;
     
-    setIsCreating(true);
-    createDirectFormEntry.mutate({ 
-      form: selectedForm, 
-      firstName: customerName.firstName,
-      lastName: customerName.lastName,
-      idType: idData.idType,
-      personalNumber: idData.personalNumber
-    });
+    // Check if this is deferred ID verification
+    if (idData.idType === 'deferred') {
+      // Create entry with pending_id_verification status
+      setIsCreating(true);
+      
+      if (!organization?.id || !user?.id || !selectedForm) {
+        return;
+      }
+
+      try {
+        const accessToken = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+        const fullName = customerName.lastName ? `${customerName.firstName} ${customerName.lastName}` : customerName.firstName;
+        const patientIdentifier = `${fullName} (Direkt ifyllning i butik)`;
+
+        const { data, error } = await supabase
+          .from("anamnes_entries")
+          .insert({
+            organization_id: organization.id,
+            form_id: selectedForm.id,
+            access_token: accessToken,
+            status: "pending_id_verification",
+            is_magic_link: false,
+            created_by: user.id,
+            created_by_name: user.fullName || user.firstName || "Okänd optiker",
+            patient_identifier: patientIdentifier,
+            first_name: fullName,
+            expires_at: expiresAt.toISOString(),
+            booking_date: new Date().toISOString(),
+            answers: {},
+            id_verification_completed: false,
+          })
+          .select("*")
+          .single();
+
+        if (error) {
+          throw error;
+        }
+        
+        localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
+        localStorage.setItem(DIRECT_FORM_MODE_KEY, "optician");
+        navigate("/optician-form");
+        
+        toast({
+          title: "Formulär skapat!",
+          description: "Kunden kan legitimera sig senare. Formuläret är redo att fyllas i.",
+        });
+        
+        setShowTypeSelector(false);
+        setShowNameDialog(false);
+        setShowIdVerificationDialog(false);
+        setSelectedForm(null);
+        setCustomerName({ firstName: "", lastName: "" });
+        setIsCreating(false);
+      } catch (error: any) {
+        console.error("Failed to create form:", error);
+        setError(error.message);
+        setIsCreating(false);
+        toast({
+          title: "Kunde inte skapa formulär",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } else {
+      // Normal ID verification flow
+      setIsCreating(true);
+      createDirectFormEntry.mutate({ 
+        form: selectedForm, 
+        firstName: customerName.firstName,
+        lastName: customerName.lastName,
+        idType: idData.idType,
+        personalNumber: idData.personalNumber
+      });
+    }
   };
 
   // User sync check - remove this section since needsSync doesn't exist

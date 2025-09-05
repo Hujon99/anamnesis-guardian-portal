@@ -30,6 +30,8 @@ export const EntryStatusBadge = ({ status, isExpired, isRedacted }: EntryStatusB
       return <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">Skickad</Badge>;
     case "pending":
       return <Badge variant="warning" className="bg-accent_coral/10 text-accent_coral border-accent_coral/20 hover:bg-accent_coral/20">Väntar på granskning</Badge>;
+    case "pending_id_verification":
+      return <Badge variant="warning" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20 hover:bg-yellow-500/20">Väntar på legitimation</Badge>;
     case "ready":
       return <Badge variant="success" className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20">Klar för undersökning</Badge>;
     case "journaled":

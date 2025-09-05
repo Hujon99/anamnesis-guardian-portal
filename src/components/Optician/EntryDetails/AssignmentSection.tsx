@@ -7,6 +7,7 @@
 import { OpticianSelector } from './OpticianSelector';
 import { StoreSelector } from './StoreSelector';
 import { Separator } from '@/components/ui/separator';
+import { IdVerificationQuickUpdate } from '../IdVerificationQuickUpdate';
 import { AnamnesesEntry } from '@/types/anamnesis';
 
 interface AssignmentSectionProps {
@@ -14,13 +15,15 @@ interface AssignmentSectionProps {
   onAssignOptician: (opticianId: string | null) => Promise<void>;
   onAssignStore: (storeId: string | null) => Promise<void>;
   isPending: boolean;
+  onEntryUpdate?: () => void;
 }
 
 export function AssignmentSection({
   entry,
   onAssignOptician,
   onAssignStore,
-  isPending
+  isPending,
+  onEntryUpdate
 }: AssignmentSectionProps) {
   return (
     <div className="p-4 space-y-6">
@@ -30,6 +33,18 @@ export function AssignmentSection({
           Här kan du tilldela optiker och butik till denna anamnes.
         </p>
       </div>
+      
+      {/* ID Verification Quick Update for entries awaiting verification */}
+      {entry.status === 'pending_id_verification' && (
+        <div className="space-y-4">
+          <IdVerificationQuickUpdate
+            entryId={entry.id}
+            customerName={entry.first_name || 'Okänd kund'}
+            onVerificationComplete={() => onEntryUpdate?.()}
+          />
+          <Separator className="my-4" />
+        </div>
+      )}
       
       <div className="space-y-4">
         <OpticianSelector 

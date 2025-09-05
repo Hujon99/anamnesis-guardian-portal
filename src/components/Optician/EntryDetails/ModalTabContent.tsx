@@ -32,6 +32,7 @@ interface ModalTabContentProps {
   onSaveAiSummary: (summary: string) => Promise<void>;
   onAssignOptician: (opticianId: string | null) => Promise<void>;
   onAssignStore: (storeId: string | null) => Promise<void>;
+  onEntryUpdate?: () => void;
 }
 
 export function ModalTabContent({
@@ -51,7 +52,8 @@ export function ModalTabContent({
   entry,
   onSaveAiSummary,
   onAssignOptician,
-  onAssignStore
+  onAssignStore,
+  onEntryUpdate
 }: ModalTabContentProps) {
   
   // Check if this is a driving license examination
@@ -113,6 +115,7 @@ export function ModalTabContent({
             onAssignOptician={onAssignOptician}
             onAssignStore={onAssignStore}
             isPending={isPending}
+            onEntryUpdate={onEntryUpdate}
           />
         </div>
       </TabsContent>

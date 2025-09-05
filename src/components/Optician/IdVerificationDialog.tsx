@@ -173,23 +173,34 @@ export const IdVerificationDialog = ({
           </Button>
 
           {!isCompleted ? (
-            <Button
-              onClick={handleCompleteVerification}
-              disabled={!canComplete || isVerifying}
-              className="px-6 py-3"
-            >
-              {isVerifying ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Verifierar...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Bekräfta legitimation
-                </>
-              )}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => onConfirm({ idType: 'deferred', personalNumber: 'pending' })}
+                disabled={isVerifying}
+                className="px-6 py-3 border-accent_coral/50 text-accent_coral hover:bg-accent_coral/10"
+              >
+                Kunden legitimerar sig senare
+              </Button>
+              
+              <Button
+                onClick={handleCompleteVerification}
+                disabled={!canComplete || isVerifying}
+                className="px-6 py-3"
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Verifierar...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Bekräfta legitimation nu
+                  </>
+                )}
+              </Button>
+            </>
           ) : (
             <Button
               onClick={() => onOpenChange(false)}

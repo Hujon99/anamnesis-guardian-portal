@@ -101,6 +101,10 @@ export function AnamnesisDetailModal({
             onSaveAiSummary={handleSaveAiSummary}
             onAssignOptician={handleAssignOptician}
             onAssignStore={handleAssignStore}
+            onEntryUpdate={() => {
+              // Refresh the entry data by calling the parent's update handler
+              onEntryUpdated();
+            }}
           />
         </div>
         

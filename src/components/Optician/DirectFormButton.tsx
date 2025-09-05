@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExaminationTypeSelector } from "./ExaminationTypeSelector";
 import { CustomerNameDialog } from "./CustomerNameDialog";
+import { IdVerificationDialog } from "./IdVerificationDialog";
 import { DIRECT_FORM_TOKEN_KEY, DIRECT_FORM_MODE_KEY } from "@/utils/opticianFormTokenUtils";
 
 export const DirectFormButton: React.FC = () => {
@@ -25,7 +26,9 @@ export const DirectFormButton: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
+  const [showIdVerificationDialog, setShowIdVerificationDialog] = useState(false);
   const [selectedForm, setSelectedForm] = useState<OrganizationForm | null>(null);
+  const [customerName, setCustomerName] = useState({ firstName: "", lastName: "" });
   
   const navigate = useNavigate();
   const { organization } = useOrganization();
@@ -44,7 +47,19 @@ export const DirectFormButton: React.FC = () => {
 
   // Create form entry mutation
   const createDirectFormEntry = useMutation({
-    mutationFn: async ({ form, firstName, lastName }: { form: OrganizationForm, firstName: string, lastName: string }) => {
+    mutationFn: async ({ 
+      form, 
+      firstName, 
+      lastName, 
+      idType, 
+      personalNumber 
+    }: { 
+      form: OrganizationForm, 
+      firstName: string, 
+      lastName: string,
+      idType: string,
+      personalNumber: string 
+    }) => {
       if (!organization?.id || !user?.id || !form) {
         throw new Error("Saknar nödvändig information för att skapa formulär");
       }
@@ -65,7 +80,7 @@ export const DirectFormButton: React.FC = () => {
         expiresAt
       });
 
-      // Create entry in anamnes_entries
+      // Create entry in anamnes_entries with ID verification data
       const { data, error } = await supabase
         .from("anamnes_entries")
         .insert({
@@ -82,6 +97,12 @@ export const DirectFormButton: React.FC = () => {
           booking_date: new Date().toISOString(), // Automatically set today's date
           // Set initial answers as empty object
           answers: {},
+          // ID verification data
+          id_verification_completed: true,
+          id_type: idType as any,
+          personal_number: personalNumber,
+          verified_by: user.id,
+          verified_at: new Date().toISOString(),
         })
         .select("*")
         .single();
@@ -110,7 +131,9 @@ export const DirectFormButton: React.FC = () => {
       // Reset all dialog states
       setShowTypeSelector(false);
       setShowNameDialog(false);
+      setShowIdVerificationDialog(false);
       setSelectedForm(null);
+      setCustomerName({ firstName: "", lastName: "" });
       setIsCreating(false);
     },
     onError: (error: Error) => {
@@ -171,11 +194,21 @@ export const DirectFormButton: React.FC = () => {
   const handleNameConfirm = (firstName: string, lastName: string) => {
     if (!selectedForm) return;
     
+    setCustomerName({ firstName, lastName });
+    setShowNameDialog(false);
+    setShowIdVerificationDialog(true);
+  };
+
+  const handleIdVerificationConfirm = (idData: { idType: string; personalNumber: string }) => {
+    if (!selectedForm) return;
+    
     setIsCreating(true);
     createDirectFormEntry.mutate({ 
       form: selectedForm, 
-      firstName, 
-      lastName 
+      firstName: customerName.firstName,
+      lastName: customerName.lastName,
+      idType: idData.idType,
+      personalNumber: idData.personalNumber
     });
   };
 
@@ -255,8 +288,16 @@ export const DirectFormButton: React.FC = () => {
         open={showNameDialog}
         onOpenChange={setShowNameDialog}
         onConfirm={handleNameConfirm}
-        isCreating={isCreating}
+        isCreating={false}
         examinationType={selectedForm?.title || ""}
+      />
+      
+      <IdVerificationDialog
+        open={showIdVerificationDialog}
+        onOpenChange={setShowIdVerificationDialog}
+        onConfirm={handleIdVerificationConfirm}
+        isVerifying={isCreating}
+        customerName={customerName.lastName ? `${customerName.firstName} ${customerName.lastName}` : customerName.firstName}
       />
     </>
   );

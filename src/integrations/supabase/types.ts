@@ -31,17 +31,22 @@ export type Database = {
           form_id: string
           formatted_raw_data: string | null
           id: string
+          id_type: Database["public"]["Enums"]["id_verification_type"] | null
+          id_verification_completed: boolean | null
           internal_notes: string | null
           is_magic_link: boolean | null
           is_redacted: boolean
           optician_id: string | null
           organization_id: string
           patient_identifier: string | null
+          personal_number: string | null
           redacted_at: string | null
           sent_at: string | null
           status: string | null
           store_id: string | null
           updated_at: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           access_token?: string | null
@@ -59,17 +64,22 @@ export type Database = {
           form_id: string
           formatted_raw_data?: string | null
           id?: string
+          id_type?: Database["public"]["Enums"]["id_verification_type"] | null
+          id_verification_completed?: boolean | null
           internal_notes?: string | null
           is_magic_link?: boolean | null
           is_redacted?: boolean
           optician_id?: string | null
           organization_id: string
           patient_identifier?: string | null
+          personal_number?: string | null
           redacted_at?: string | null
           sent_at?: string | null
           status?: string | null
           store_id?: string | null
           updated_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           access_token?: string | null
@@ -87,17 +97,22 @@ export type Database = {
           form_id?: string
           formatted_raw_data?: string | null
           id?: string
+          id_type?: Database["public"]["Enums"]["id_verification_type"] | null
+          id_verification_completed?: boolean | null
           internal_notes?: string | null
           is_magic_link?: boolean | null
           is_redacted?: boolean
           optician_id?: string | null
           organization_id?: string
           patient_identifier?: string | null
+          personal_number?: string | null
           redacted_at?: string | null
           sent_at?: string | null
           status?: string | null
           store_id?: string | null
           updated_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {

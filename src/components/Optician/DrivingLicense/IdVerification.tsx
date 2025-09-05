@@ -17,6 +17,7 @@ import { useUser } from "@clerk/clerk-react";
 
 interface IdVerificationProps {
   examination: any;
+  entry: any;
   onSave: (updates: any) => Promise<void>;
   onNext: () => void;
   isSaving: boolean;
@@ -31,41 +32,47 @@ interface IdType {
 
 export const IdVerification: React.FC<IdVerificationProps> = ({
   examination,
+  entry,
   onSave,
   onNext,
   isSaving
 }) => {
   const { user } = useUser();
   
+  // Check if ID verification is already completed in anamnes_entries
+  const entryIdVerified = entry?.id_verification_completed || false;
+  const entryIdType = entry?.id_type;
+  const entryPersonalNumber = entry?.personal_number || '';
+  
   const [idTypes, setIdTypes] = useState<IdType[]>([
     {
       id: 'swedish_license',
       label: 'Svenskt körkort',
       description: 'Giltigt svenskt körkort med foto',
-      checked: examination?.id_type === 'swedish_license'
+      checked: (entryIdType || examination?.id_type) === 'swedish_license'
     },
     {
       id: 'swedish_id',
       label: 'Svenskt ID-kort',
       description: 'Nationellt ID-kort utfärdat av Skatteverket',
-      checked: examination?.id_type === 'swedish_id'
+      checked: (entryIdType || examination?.id_type) === 'swedish_id'
     },
     {
       id: 'passport',
       label: 'Pass',
       description: 'Giltigt pass (svenskt eller utländskt)',
-      checked: examination?.id_type === 'passport'
+      checked: (entryIdType || examination?.id_type) === 'passport'
     },
     {
       id: 'guardian_certificate',
       label: 'Identitetsintyg',
       description: 'För personer under 18 år - vårdnadshavare fylls i av personal',
-      checked: examination?.id_type === 'guardian_certificate'
+      checked: (entryIdType || examination?.id_type) === 'guardian_certificate'
     }
   ]);
 
-  const [isVerified, setIsVerified] = useState(examination?.id_verification_completed || false);
-  const [personalNumber, setPersonalNumber] = useState(examination?.personal_number || '');
+  const [isVerified, setIsVerified] = useState(entryIdVerified || examination?.id_verification_completed || false);
+  const [personalNumber, setPersonalNumber] = useState(entryPersonalNumber || examination?.personal_number || '');
 
   const handleIdTypeChange = (idTypeId: string, checked: boolean) => {
     setIdTypes(prev => prev.map(type => ({
@@ -83,22 +90,61 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
 
     console.log('[IdVerification] Saving with personal_number:', personalNumber.trim());
 
-    const updates = {
-      id_verification_completed: true,
-      id_type: selectedIdType.id,
-      verified_by: user?.fullName || user?.firstName || 'Unknown',
-      verified_at: new Date().toISOString(),
-      personal_number: personalNumber.trim() || null
-    };
+    // For driving license examinations, we need to save to both places:
+    // 1. Update the driving_license_examinations record
+    // 2. Update the anamnes_entries with ID verification data
+    
+    try {
+      // First save to the driving license examination record
+      const drivingLicenseUpdates = {
+        id_verification_completed: true,
+        id_type: selectedIdType.id,
+        verified_by: user?.fullName || user?.firstName || 'Unknown',
+        verified_at: new Date().toISOString(),
+        personal_number: personalNumber.trim() || null
+      };
 
-    console.log('[IdVerification] Updates object:', updates);
-    await onSave(updates);
-    setIsVerified(true);
+      console.log('[IdVerification] Updates object:', drivingLicenseUpdates);
+      await onSave(drivingLicenseUpdates);
+      
+      // Also save to anamnes_entries if we have access to update the entry
+      if (entry?.id) {
+        const { useSupabaseClient } = await import('@/hooks/useSupabaseClient');
+        const { supabase: supabaseClient } = useSupabaseClient();
+        
+        if (supabaseClient) {
+          const anamnesUpdates = {
+            id_verification_completed: true,
+            id_type: selectedIdType.id as "swedish_license" | "swedish_id" | "passport" | "guardian_certificate",
+            personal_number: personalNumber.trim() || null,
+            verified_by: user?.id || user?.fullName || user?.firstName || 'Unknown',
+            verified_at: new Date().toISOString(),
+          };
+          
+          const { error } = await supabaseClient
+            .from('anamnes_entries')
+            .update(anamnesUpdates)
+            .eq('id', entry.id);
+            
+          if (error) {
+            console.warn('[IdVerification] Failed to update anamnes_entries:', error);
+            // Don't throw error, as the driving license examination was saved successfully
+          } else {
+            console.log('[IdVerification] Successfully updated anamnes_entries');
+          }
+        }
+      }
+      
+      setIsVerified(true);
+    } catch (error) {
+      console.error('[IdVerification] Error during verification:', error);
+      throw error;
+    }
   };
 
   const selectedIdType = idTypes.find(type => type.checked);
   const canVerify = selectedIdType && personalNumber.trim() && !isVerified;
-  const isCompleted = examination?.id_verification_completed || isVerified;
+  const isCompleted = entryIdVerified || examination?.id_verification_completed || isVerified;
 
   return (
     <Card>
@@ -193,17 +239,17 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
             <AlertDescription>
               <div className="space-y-1">
                 <p className="font-medium">Legitimation verifierad</p>
-                <p className="text-sm">
-                  Verifierad av: {examination?.verified_by || 'Unknown'}
-                </p>
-                <p className="text-sm">
-                  Personnummer: {examination?.personal_number || 'Ej angivet'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {examination?.verified_at && 
-                    `Tid: ${new Date(examination.verified_at).toLocaleString('sv-SE')}`
-                  }
-                </p>
+                 <p className="text-sm">
+                   Verifierad av: {entry?.verified_by || examination?.verified_by || 'Unknown'}
+                 </p>
+                 <p className="text-sm">
+                   Personnummer: {entryPersonalNumber || examination?.personal_number || 'Ej angivet'}
+                 </p>
+                 <p className="text-sm text-muted-foreground">
+                   {(entry?.verified_at || examination?.verified_at) && 
+                     `Tid: ${new Date(entry?.verified_at || examination.verified_at).toLocaleString('sv-SE')}`
+                   }
+                 </p>
               </div>
             </AlertDescription>
           </Alert>
@@ -227,7 +273,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
             disabled={!isCompleted}
             variant={isCompleted ? "default" : "outline"}
           >
-            {isCompleted ? "Gå till slutförande" : "Måste verifieras först"}
+            {isCompleted ? "Nästa steg" : "Måste verifieras först"}
           </Button>
         </div>
 

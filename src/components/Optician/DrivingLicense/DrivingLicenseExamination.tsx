@@ -57,10 +57,10 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   const { supabase: db, isReady, error: dbError } = useSupabaseClient();
 
   const steps = [
-    { id: 1, title: "Formuläröversikt", icon: FileText },
-    { id: 2, title: "Visusmätningar", icon: Eye },
-    { id: 3, title: "Varningar", icon: AlertTriangle },
-    { id: 4, title: "Legitimation", icon: IdCard },
+    { id: 1, title: "Legitimation", icon: IdCard },
+    { id: 2, title: "Formuläröversikt", icon: FileText },
+    { id: 3, title: "Visusmätningar", icon: Eye },
+    { id: 4, title: "Varningar", icon: AlertTriangle },
     { id: 5, title: "Slutföra", icon: CheckCircle }
   ];
 
@@ -90,12 +90,13 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           console.log('[DrivingLicenseExamination] Found existing examination:', existingExam);
           setExamination(existingExam);
           // Determine current step based on completion
-          if (!existingExam.visual_acuity_both_eyes) {
-            setCurrentStep(2);
-          } else if (!existingExam.id_verification_completed) {
-            setCurrentStep(4);
+          // Check if ID verification is done in anamnes_entries first
+          if (!entry.id_verification_completed) {
+            setCurrentStep(1); // Start with ID verification
+          } else if (!existingExam.visual_acuity_both_eyes) {
+            setCurrentStep(3); // Visual acuity measurements
           } else if (existingExam.examination_status !== 'completed') {
-            setCurrentStep(5);
+            setCurrentStep(5); // Complete examination
           }
         } else {
           // Create new examination record
@@ -125,6 +126,12 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
             setCurrentStep(2);
           } else {
             setExamination(created);
+            // Start with ID verification if not already done in anamnes_entries
+            if (!entry.id_verification_completed) {
+              setCurrentStep(1);
+            } else {
+              setCurrentStep(2);
+            }
           }
         }
       } catch (error) {
@@ -348,36 +355,37 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           {currentStep === 1 && (
-            <FormAnswersDisplay 
-              entry={entry}
-              onNext={() => setCurrentStep(2)}
-            />
-          )}
-          
-          {currentStep === 2 && (
-            <VisualAcuityMeasurement
+            <IdVerification
               examination={effectiveExam}
               entry={entry}
               onSave={saveExamination}
-              onNext={() => setCurrentStep(3)}
+              onNext={() => setCurrentStep(2)}
               isSaving={isSaving}
+            />
+          )}
+
+          {currentStep === 2 && (
+            <FormAnswersDisplay 
+              entry={entry}
+              onNext={() => setCurrentStep(3)}
             />
           )}
           
           {currentStep === 3 && (
-            <WarningsDisplay
+            <VisualAcuityMeasurement
               examination={effectiveExam}
               entry={entry}
+              onSave={saveExamination}
               onNext={() => setCurrentStep(4)}
+              isSaving={isSaving}
             />
           )}
           
           {currentStep === 4 && (
-            <IdVerification
+            <WarningsDisplay
               examination={effectiveExam}
-              onSave={saveExamination}
+              entry={entry}
               onNext={() => setCurrentStep(5)}
-              isSaving={isSaving}
             />
           )}
           

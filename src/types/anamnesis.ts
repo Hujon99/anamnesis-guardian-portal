@@ -35,6 +35,12 @@ export type AnamnesesEntry = {
   optician_id?: string | null;
   // Form-related properties
   examination_type?: string | null;
+  // ID verification fields
+  id_verification_completed?: boolean;
+  id_type?: string | null;
+  personal_number?: string | null;
+  verified_by?: string | null;
+  verified_at?: string | null;
 };
 
 export type FormQuestionOption = string | {

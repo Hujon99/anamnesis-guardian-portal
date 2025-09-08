@@ -28,14 +28,14 @@ export const LegalConsentModal: React.FC<LegalConsentModalProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] bg-card border border-border shadow-elegant">
-        <DialogHeader className="pb-4 border-b border-border">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] bg-card border border-border shadow-elegant p-8">
+        <DialogHeader className="pb-6 border-b border-border">
           <DialogTitle className="text-xl font-semibold text-foreground pr-8">
             {title}
           </DialogTitle>
         </DialogHeader>
-        <div className="mt-4 flex-1 min-h-0">
-          <LegalDocumentViewer content={content} className="h-[65vh]" />
+        <div className="mt-6 flex-1 min-h-0">
+          <LegalDocumentViewer content={content} className="h-[60vh]" />
         </div>
       </DialogContent>
     </Dialog>

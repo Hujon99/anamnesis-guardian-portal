@@ -7,6 +7,7 @@
 
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface LegalDocumentViewerProps {
@@ -26,9 +27,10 @@ export const LegalDocumentViewer: React.FC<LegalDocumentViewerProps> = ({
         <h1 className="text-xl font-bold text-foreground mb-6 pb-2 border-b border-border">{title}</h1>
       )}
       <ScrollArea className="h-full w-full" type="always">
-        <div className="pr-6 pb-6">
+        <div className="pr-8 pb-8 pl-2">
           <div className="prose prose-sm max-w-none text-muted-foreground">
             <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
               components={{
               h1: ({ children }) => (
                 <h1 className="text-xl font-bold text-foreground mb-6 mt-8 first:mt-0">{children}</h1>

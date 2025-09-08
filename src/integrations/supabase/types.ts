@@ -22,6 +22,8 @@ export type Database = {
           auto_deletion_timestamp: string | null
           booking_date: string | null
           booking_id: string | null
+          consent_given: boolean | null
+          consent_timestamp: string | null
           created_at: string | null
           created_by: string | null
           created_by_name: string | null
@@ -40,10 +42,12 @@ export type Database = {
           organization_id: string
           patient_identifier: string | null
           personal_number: string | null
+          privacy_policy_version: string | null
           redacted_at: string | null
           sent_at: string | null
           status: string | null
           store_id: string | null
+          terms_version: string | null
           updated_at: string | null
           verified_at: string | null
           verified_by: string | null
@@ -55,6 +59,8 @@ export type Database = {
           auto_deletion_timestamp?: string | null
           booking_date?: string | null
           booking_id?: string | null
+          consent_given?: boolean | null
+          consent_timestamp?: string | null
           created_at?: string | null
           created_by?: string | null
           created_by_name?: string | null
@@ -73,10 +79,12 @@ export type Database = {
           organization_id: string
           patient_identifier?: string | null
           personal_number?: string | null
+          privacy_policy_version?: string | null
           redacted_at?: string | null
           sent_at?: string | null
           status?: string | null
           store_id?: string | null
+          terms_version?: string | null
           updated_at?: string | null
           verified_at?: string | null
           verified_by?: string | null
@@ -88,6 +96,8 @@ export type Database = {
           auto_deletion_timestamp?: string | null
           booking_date?: string | null
           booking_id?: string | null
+          consent_given?: boolean | null
+          consent_timestamp?: string | null
           created_at?: string | null
           created_by?: string | null
           created_by_name?: string | null
@@ -106,10 +116,12 @@ export type Database = {
           organization_id?: string
           patient_identifier?: string | null
           personal_number?: string | null
+          privacy_policy_version?: string | null
           redacted_at?: string | null
           sent_at?: string | null
           status?: string | null
           store_id?: string | null
+          terms_version?: string | null
           updated_at?: string | null
           verified_at?: string | null
           verified_by?: string | null

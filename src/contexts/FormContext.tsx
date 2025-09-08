@@ -16,6 +16,7 @@ import { useFormValidation } from "@/hooks/useFormValidation";
 import { useConditionalFields } from "@/hooks/useConditionalFields";
 import { useFormattedRawData } from "@/hooks/useFormattedRawData";
 import { toast } from "sonner";
+import { CURRENT_PRIVACY_POLICY_VERSION, CURRENT_TERMS_VERSION } from '@/legal';
 
 interface FormContextProviderProps {
   children: React.ReactNode;
@@ -47,6 +48,12 @@ interface FormContextValue {
   handleSubmit: () => (data: any) => Promise<void>;
   processSectionsWithDebounce?: (sections: any[], values: Record<string, any>) => void;
   visibleFieldIds?: string[];
+  
+  // Legal consent
+  consentGiven: boolean;
+  onConsentChange: (consent: boolean) => void;
+  showConsentStep: boolean;
+  setShowConsentStep: (show: boolean) => void;
 }
 
 const FormContext = createContext<FormContextValue | undefined>(undefined);
@@ -70,6 +77,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   
   // Add state to track completed steps
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [showConsentStep, setShowConsentStep] = useState(!isOpticianMode);
   
   // Setup conditional fields logic
   const { visibleSections, dynamicQuestions } = useConditionalFields(formTemplate, watchedFormValues, isOpticianMode);
@@ -185,6 +194,14 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       const formattedAnswers = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
       // console.log("[FormContext/handleFormSubmit]: Answers formatted successfully");
       
+      // Add consent metadata to submission data
+      const submissionData = {
+        ...data,
+        consent_given: consentGiven,
+        privacy_policy_version: CURRENT_PRIVACY_POLICY_VERSION,
+        terms_version: CURRENT_TERMS_VERSION
+      };
+      
       // Add circuit breaker
       const submissionTimeout = setTimeout(() => {
         console.warn("[FormContext/handleFormSubmit]: Submission is taking too long, may be stuck");
@@ -192,7 +209,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       
       try {
         // console.log("[FormContext/handleFormSubmit]: Calling onSubmit handler");
-        await onSubmit(data, formattedAnswers);
+        await onSubmit(submissionData, formattedAnswers);
         console.log("[FormContext/handleFormSubmit]: Form submitted successfully");
         clearTimeout(submissionTimeout);
       } catch (error) {
@@ -328,7 +345,13 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         canNavigateToStep,
         handleSubmit: () => handleFormSubmit(),
         processSectionsWithDebounce,
-        visibleFieldIds
+        visibleFieldIds,
+        
+        // Legal consent
+        consentGiven,
+        onConsentChange: setConsentGiven,
+        showConsentStep,
+        setShowConsentStep,
       }}
     >
       <FormProvider {...form}>{children}</FormProvider>

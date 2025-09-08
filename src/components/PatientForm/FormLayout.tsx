@@ -15,6 +15,7 @@ import FormHeader from "@/components/PatientForm/FormHeader";
 import FormNavigation from "@/components/PatientForm/FormNavigation";
 import FormStepContent from "@/components/PatientForm/FormStepContent";
 import { SingleQuestionLayout } from "@/components/PatientForm/SingleQuestionLayout";
+import { LegalConsentStep } from "@/components/Legal/LegalConsentStep";
 import { useFormContext } from "@/contexts/FormContext";
 import { toast } from "sonner";
 import { FieldError } from "react-hook-form";
@@ -40,7 +41,11 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     isSubmitting,
     handleSubmit,
     form,
-    visibleFieldIds
+    visibleFieldIds,
+    showConsentStep,
+    consentGiven,
+    onConsentChange,
+    setShowConsentStep
   } = useFormContext();
 
   // Detect if user is on mobile/iPad (screens smaller than 1024px)
@@ -205,6 +210,18 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
   // Use single question layout for mobile/iPad, traditional layout for desktop
   if (isMobileView) {
     return <SingleQuestionLayout createdByName={createdByName} />;
+  }
+
+  // Show consent step if needed
+  if (showConsentStep) {
+    return (
+      <LegalConsentStep
+        consentGiven={consentGiven}
+        onConsentChange={onConsentChange}
+        onContinue={() => setShowConsentStep(false)}
+        organizationName="din optiker"
+      />
+    );
   }
 
   return (

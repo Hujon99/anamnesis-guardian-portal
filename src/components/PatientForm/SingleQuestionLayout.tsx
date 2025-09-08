@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { TouchFriendlyFieldRenderer } from "./TouchFriendlyFieldRenderer";
 import { FormStepContent } from "./FormStepContent";
+import { LegalConsentStep } from "@/components/Legal/LegalConsentStep";
 import { useFormContext } from "@/contexts/FormContext";
 import { FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
 import { toast } from "sonner";
@@ -26,11 +27,27 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     isSubmitting,
     handleSubmit: contextHandleSubmit,
     form,
-    processSectionsWithDebounce
+    processSectionsWithDebounce,
+    showConsentStep,
+    consentGiven,
+    onConsentChange,
+    setShowConsentStep
   } = useFormContext();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
+
+  // Show consent step if needed
+  if (showConsentStep) {
+    return (
+      <LegalConsentStep
+        consentGiven={consentGiven}
+        onConsentChange={onConsentChange}
+        onContinue={() => setShowConsentStep(false)}
+        organizationName="din optiker"
+      />
+    );
+  }
 
   // Flatten all visible questions with section context
   const allQuestions = useMemo(() => {

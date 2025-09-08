@@ -18,33 +18,85 @@ export const LegalDocumentViewer: React.FC<LegalDocumentViewerProps> = ({
   title,
   className = ''
 }) => {
-  // Simple markdown-to-HTML conversion for basic formatting
+  // Enhanced markdown-to-HTML conversion with better formatting
   const formatContent = (markdown: string) => {
-    return markdown
-      // Headers
-      .replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold text-foreground mb-4 mt-6">$1</h2>')
-      .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold text-foreground mb-6">$1</h1>')
-      // Bold text
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
-      // Lists
-      .replace(/^- (.*$)/gm, '<li class="ml-4 mb-2">$1</li>')
-      .replace(/^⦁\s+(.*$)/gm, '<li class="ml-4 mb-2">$1</li>')
-      // Paragraphs
-      .replace(/^([^<#\-⦁\n][^\n]*$)/gm, '<p class="mb-4 text-muted-foreground leading-relaxed">$1</p>')
-      // Line breaks
-      .replace(/\n/g, '<br/>');
+    let html = markdown;
+    
+    // Split content into blocks to handle lists properly
+    const lines = html.split('\n');
+    let processedLines: string[] = [];
+    let inList = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+      
+      // Handle headers
+      if (trimmedLine.startsWith('## ')) {
+        if (inList) {
+          processedLines.push('</ul>');
+          inList = false;
+        }
+        processedLines.push(`<h2 class="text-lg font-semibold text-foreground mb-3 mt-6 first:mt-0">${trimmedLine.substring(3)}</h2>`);
+      } else if (trimmedLine.startsWith('# ')) {
+        if (inList) {
+          processedLines.push('</ul>');
+          inList = false;
+        }
+        processedLines.push(`<h1 class="text-xl font-bold text-foreground mb-4 mt-8 first:mt-0">${trimmedLine.substring(2)}</h1>`);
+      }
+      // Handle list items
+      else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('⦁ ')) {
+        if (!inList) {
+          processedLines.push('<ul class="mb-4 space-y-1">');
+          inList = true;
+        }
+        const listContent = trimmedLine.startsWith('- ') ? trimmedLine.substring(2) : trimmedLine.substring(2);
+        processedLines.push(`<li class="ml-6 text-sm text-muted-foreground leading-relaxed relative before:content-['•'] before:absolute before:-ml-4 before:text-primary">${listContent}</li>`);
+      }
+      // Handle empty lines
+      else if (trimmedLine === '') {
+        if (inList) {
+          processedLines.push('</ul>');
+          inList = false;
+        }
+        // Add spacing between sections
+        if (processedLines.length > 0 && !processedLines[processedLines.length - 1].includes('</ul>')) {
+          processedLines.push('<div class="mb-2"></div>');
+        }
+      }
+      // Handle regular paragraphs
+      else if (trimmedLine.length > 0) {
+        if (inList) {
+          processedLines.push('</ul>');
+          inList = false;
+        }
+        // Apply bold formatting
+        let formattedLine = trimmedLine.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
+        processedLines.push(`<p class="mb-3 text-sm text-muted-foreground leading-relaxed">${formattedLine}</p>`);
+      }
+    }
+    
+    // Close any remaining list
+    if (inList) {
+      processedLines.push('</ul>');
+    }
+    
+    return processedLines.join('');
   };
 
   return (
-    <div className={`legal-document-viewer ${className}`}>
+    <div className={`legal-document-viewer w-full ${className}`}>
       {title && (
-        <h1 className="text-2xl font-bold text-foreground mb-6">{title}</h1>
+        <h1 className="text-xl font-bold text-foreground mb-6 pb-2 border-b border-border">{title}</h1>
       )}
-      <ScrollArea className="h-full">
-        <div 
-          className="prose prose-sm max-w-none text-muted-foreground"
-          dangerouslySetInnerHTML={{ __html: formatContent(content) }}
-        />
+      <ScrollArea className="h-full w-full">
+        <div className="pr-4">
+          <div 
+            className="max-w-none text-muted-foreground space-y-1"
+            dangerouslySetInnerHTML={{ __html: formatContent(content) }}
+          />
+        </div>
       </ScrollArea>
     </div>
   );

@@ -25,8 +25,8 @@ export const LegalDocumentViewer: React.FC<LegalDocumentViewerProps> = ({
       {title && (
         <h1 className="text-xl font-bold text-foreground mb-6 pb-2 border-b border-border">{title}</h1>
       )}
-      <ScrollArea className="h-full w-full">
-        <div className="pr-4">
+      <ScrollArea className="h-full w-full" type="always">
+        <div className="pr-6 pb-4">
           <div className="prose prose-sm max-w-none text-muted-foreground">
             <ReactMarkdown
               components={{

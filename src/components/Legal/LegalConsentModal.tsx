@@ -34,8 +34,8 @@ export const LegalConsentModal: React.FC<LegalConsentModalProps> = ({
             {title}
           </DialogTitle>
         </DialogHeader>
-        <div className="mt-4 h-[65vh] overflow-hidden">
-          <LegalDocumentViewer content={content} />
+        <div className="mt-4 flex-1 min-h-0">
+          <LegalDocumentViewer content={content} className="h-[65vh]" />
         </div>
       </DialogContent>
     </Dialog>

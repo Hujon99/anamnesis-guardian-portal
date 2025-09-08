@@ -70,6 +70,14 @@ const ExaminationTypeSelectionPage = () => {
         return;
       }
 
+      // Check if consent has been given for this session
+      const sessionConsent = sessionStorage.getItem(`consent_given_${orgId}`);
+      if (sessionConsent !== 'true') {
+        // Redirect back to consent page if consent not given
+        navigate(`/consent?${searchParams.toString()}`);
+        return;
+      }
+
       try {
         // Fetch all forms for this organization
         const { data: forms, error: formsError } = await supabase

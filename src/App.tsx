@@ -21,6 +21,7 @@ import NotFound from "@/pages/NotFound";
 import PatientFormPage from "@/pages/PatientFormPage";
 import OpticianFormPage from "@/pages/OpticianFormPage";
 import LinkPage from "@/pages/LinkPage";
+import ConsentPage from "@/pages/ConsentPage";
 import CustomerInfoPage from "@/pages/CustomerInfoPage";
 import ExaminationTypeSelectionPage from "@/pages/ExaminationTypeSelectionPage";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
@@ -57,10 +58,11 @@ function App() {
           <Route path="/patient-form" element={<PatientFormPage />} />
           <Route path="/optician-form" element={<OpticianFormPage />} /> {/* Moved outside ProtectedRoute */}
           <Route path="/link" element={<LinkPage />} />
-            <Route path="/customer-info" element={<CustomerInfoPage />} />
-            <Route path="/examination-type" element={<ExaminationTypeSelectionPage />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-            <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+          <Route path="/consent" element={<ConsentPage />} />
+          <Route path="/customer-info" element={<CustomerInfoPage />} />
+          <Route path="/examination-type" element={<ExaminationTypeSelectionPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
           
           {/* Protected routes that require authentication */}
           <Route 

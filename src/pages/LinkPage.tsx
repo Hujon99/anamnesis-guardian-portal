@@ -38,9 +38,9 @@ const LinkPage = () => {
   // Handle both org_id and form_id based flows
   useEffect(() => {
     const validateAndRedirect = async () => {
-      // Handle org_id based flow (new examination type selection)
+      // Handle org_id based flow (redirect to consent page first)
       if (orgId && !formId) {
-        console.log("Organization ID provided, redirecting to examination type selection");
+        console.log("Organization ID provided, redirecting to consent page");
         const params = new URLSearchParams();
         params.set("org_id", orgId);
         
@@ -51,7 +51,7 @@ const LinkPage = () => {
         if (storeName) params.set("store_name", storeName);
         if (bookingDate) params.set("booking_date", bookingDate);
 
-        navigate(`/examination-type?${params.toString()}`);
+        navigate(`/consent?${params.toString()}`);
         return;
       }
 

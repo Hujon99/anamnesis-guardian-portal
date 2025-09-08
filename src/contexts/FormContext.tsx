@@ -77,8 +77,10 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   
   // Add state to track completed steps
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-  const [consentGiven, setConsentGiven] = useState(false);
-  const [showConsentStep, setShowConsentStep] = useState(!isOpticianMode);
+  
+  // Legal consent is now handled on ConsentPage, so always true in form
+  const [consentGiven] = useState(true);
+  const [showConsentStep] = useState(false);
   
   // Setup conditional fields logic
   const { visibleSections, dynamicQuestions } = useConditionalFields(formTemplate, watchedFormValues, isOpticianMode);
@@ -347,11 +349,11 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         processSectionsWithDebounce,
         visibleFieldIds,
         
-        // Legal consent
+        // Legal consent (now always true, handled on ConsentPage)
         consentGiven,
-        onConsentChange: setConsentGiven,
+        onConsentChange: () => {}, // No-op since consent handled elsewhere
         showConsentStep,
-        setShowConsentStep,
+        setShowConsentStep: () => {}, // No-op since consent handled elsewhere
       }}
     >
       <FormProvider {...form}>{children}</FormProvider>

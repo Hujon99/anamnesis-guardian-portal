@@ -212,17 +212,7 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     return <SingleQuestionLayout createdByName={createdByName} />;
   }
 
-  // Show consent step if needed
-  if (showConsentStep) {
-    return (
-      <LegalConsentStep
-        consentGiven={consentGiven}
-        onConsentChange={onConsentChange}
-        onContinue={() => setShowConsentStep(false)}
-        organizationName="din optiker"
-      />
-    );
-  }
+  // Consent is now handled on ConsentPage, no need to show here
 
   return (
     <>

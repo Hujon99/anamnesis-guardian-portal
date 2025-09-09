@@ -52,6 +52,11 @@ export type AnamnesesEntry = {
   gdpr_confirmed_by_name?: string | null;
   gdpr_info_type?: 'full' | 'short' | null;
   gdpr_notes?: string | null;
+  // Performance optimization: pre-loaded driving license status
+  driving_license_status?: {
+    isCompleted: boolean;
+    examination: any;
+  };
 };
 
 export type FormQuestionOption = string | {

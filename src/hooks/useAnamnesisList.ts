@@ -87,13 +87,21 @@ export const useAnamnesisList = () => {
       }
 
       try {
-        console.log(`Fetching all entries for org: ${organization.id}`);
+        console.log(`Fetching all entries with driving license status for org: ${organization.id}`);
         
+        // Fetch entries with driving license examination status in a single query
         const { data, error } = await supabase
           .from("anamnes_entries")
           .select(`
             *,
-            anamnes_forms(examination_type)
+            anamnes_forms(examination_type),
+            driving_license_examinations(
+              id,
+              examination_status,
+              passed_examination,
+              created_at,
+              updated_at
+            )
           `)
           .eq("organization_id", organization.id)
           .order("booking_date", { ascending: false, nullsFirst: false })
@@ -110,15 +118,28 @@ export const useAnamnesisList = () => {
           throw error;
         }
 
-        console.log(`Fetched ${data?.length || 0} entries`);
+        console.log(`Fetched ${data?.length || 0} entries with driving license data`);
         setInitialLoadComplete(true);
         
-        // Process the joined data to flatten examination_type
+        // Process the joined data to flatten examination_type and driving license status
         const processedEntries = data?.map((entry: any) => {
-          const { anamnes_forms, ...entryData } = entry;
+          const { anamnes_forms, driving_license_examinations, ...entryData } = entry;
+          
+          // Get the latest driving license examination if multiple exist
+          const latestExamination = Array.isArray(driving_license_examinations) && driving_license_examinations.length > 0
+            ? driving_license_examinations[driving_license_examinations.length - 1]
+            : driving_license_examinations;
+          
           return {
             ...entryData,
-            examination_type: anamnes_forms?.examination_type || null
+            examination_type: anamnes_forms?.examination_type || null,
+            driving_license_status: latestExamination ? {
+              isCompleted: latestExamination.examination_status === 'completed',
+              examination: latestExamination
+            } : {
+              isCompleted: false,
+              examination: null
+            }
           };
         }) || [];
         
@@ -141,17 +162,17 @@ export const useAnamnesisList = () => {
         throw fetchError;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 15 * 60 * 1000, // Increased to 15 minutes for better performance
+    gcTime: 30 * 60 * 1000, // Increased to 30 minutes
     enabled: !!organization?.id && isReady, // Only enable when Supabase client is ready
     retry: 1,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Reduced unnecessary refetches
     refetchOnReconnect: true, 
-    refetchOnMount: true,
+    refetchOnMount: "always",
   });
 
-  // Handle realtime updates
+  // Handle realtime updates for both anamnesis entries and driving license examinations
   const setupRealtimeSubscription = useCallback(() => {
     if (!organization?.id || !supabase || !isReady) return;
     
@@ -160,11 +181,12 @@ export const useAnamnesisList = () => {
       realtimeChannel.unsubscribe();
     }
     
-    console.log("Setting up realtime subscription for anamnes_entries");
+    console.log("Setting up enhanced realtime subscription for anamnes_entries and driving_license_examinations");
     
-    // Create new subscription
+    // Create new subscription for both tables
     const channel = supabase
-      .channel('anamnesis-changes')
+      .channel('anamnesis-and-driving-license-changes')
+      // Subscribe to anamnesis entries changes
       .on(
         'postgres_changes',
         {
@@ -174,14 +196,17 @@ export const useAnamnesisList = () => {
           filter: `organization_id=eq.${organization.id}`
         },
         (payload) => {
-          console.log("Realtime change detected:", payload);
+          console.log("Anamnesis entry realtime change:", payload);
           
           // Handle different event types
           if (payload.eventType === 'INSERT') {
             queryClient.setQueryData(
               ["anamnes-entries-all", organization.id],
               (oldData: AnamnesesEntry[] = []) => {
-                const newEntry = payload.new as AnamnesesEntry;
+                const newEntry = { 
+                  ...(payload.new as AnamnesesEntry),
+                  driving_license_status: { isCompleted: false, examination: null }
+                };
                 // Check if entry already exists to avoid duplicates
                 if (!oldData.some(entry => entry.id === newEntry.id)) {
                   return [newEntry, ...oldData];
@@ -235,13 +260,58 @@ export const useAnamnesisList = () => {
           }
         }
       )
+      // Subscribe to driving license examinations changes
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'driving_license_examinations',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        (payload) => {
+          console.log("Driving license examination realtime change:", payload);
+          
+          // Update the corresponding anamnesis entry with new driving license status
+          queryClient.setQueryData(
+            ["anamnes-entries-all", organization.id],
+            (oldData: AnamnesesEntry[] = []) => {
+              return oldData.map(entry => {
+                // Check if this examination belongs to this entry
+                const examinationEntryId = payload.eventType === 'DELETE' 
+                  ? payload.old.entry_id 
+                  : payload.new.entry_id;
+                
+                if (entry.id === examinationEntryId) {
+                  if (payload.eventType === 'DELETE') {
+                    // Examination deleted, reset status
+                    return {
+                      ...entry,
+                      driving_license_status: { isCompleted: false, examination: null }
+                    };
+                  } else {
+                    // Examination created or updated
+                    const examination = payload.new;
+                    const isCompleted = examination.examination_status === 'completed';
+                    return {
+                      ...entry,
+                      driving_license_status: { isCompleted, examination }
+                    };
+                  }
+                }
+                return entry;
+              });
+            }
+          );
+        }
+      )
       .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
+        console.log("Enhanced realtime subscription status:", status);
         
         if (status === 'SUBSCRIBED') {
-          console.log("Successfully subscribed to realtime updates");
+          console.log("Successfully subscribed to enhanced realtime updates");
         } else if (status === 'CHANNEL_ERROR') {
-          console.error("Error subscribing to realtime updates");
+          console.error("Error subscribing to enhanced realtime updates");
           // Try to reconnect after a delay if there's an error
           setTimeout(() => {
             setupRealtimeSubscription();
@@ -252,7 +322,7 @@ export const useAnamnesisList = () => {
     setRealtimeChannel(channel);
     
     return () => {
-      console.log("Cleaning up realtime subscription");
+      console.log("Cleaning up enhanced realtime subscription");
       channel.unsubscribe();
     };
   }, [organization?.id, supabase, queryClient, isReady]);

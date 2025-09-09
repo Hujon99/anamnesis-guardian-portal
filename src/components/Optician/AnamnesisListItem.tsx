@@ -33,7 +33,7 @@ import { EntryStatusIcon } from "./EntriesList/EntryStatusIcon";
 import { QuickAssignDropdown } from "./EntriesList/QuickAssignDropdown";
 import { QuickStoreAssignDropdown } from "./EntriesList/QuickStoreAssignDropdown";
 import { ReferenceNumberDisplay } from "./EntriesList/ReferenceNumberDisplay";
-import { useDrivingLicenseStatus } from "@/hooks/useDrivingLicenseStatus";
+// Removed individual useDrivingLicenseStatus import - now using pre-loaded data
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getPatientDisplayName } from "@/lib/utils";
@@ -50,6 +50,10 @@ interface AnamnesisListItemProps {
     storeName?: string | null;
     isBookingWithoutStore?: boolean;
     examination_type?: string;
+    driving_license_status?: {
+      isCompleted: boolean;
+      examination: any;
+    };
   };
   onClick?: () => void;
   onDelete?: () => void;
@@ -198,8 +202,8 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   // Check if this is a driving license examination
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
   
-  // Get driving license examination status
-  const { isCompleted: isDrivingLicenseCompleted } = useDrivingLicenseStatus(entry.id);
+  // Get driving license examination status from pre-loaded data (much faster)
+  const isDrivingLicenseCompleted = entry.driving_license_status?.isCompleted || false;
 
   const handleDrivingLicenseExamination = (e: React.MouseEvent) => {
     e.stopPropagation();

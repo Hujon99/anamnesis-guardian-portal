@@ -13,7 +13,7 @@ import { AssignmentSection } from "./AssignmentSection";
 import { OptimizedAnswersView } from "./OptimizedAnswers/OptimizedAnswersView";
 import { DrivingLicenseResults } from "./DrivingLicenseResults";
 import { AnamnesesEntry } from "@/types/anamnesis";
-import { useDrivingLicenseStatus } from "@/hooks/useDrivingLicenseStatus";
+// Removed useDrivingLicenseStatus - now using pre-loaded data for performance
 import { useGdprConfirmation } from "@/hooks/useGdprConfirmation";
 import { IdVerificationQuickUpdate } from "../IdVerificationQuickUpdate";
 
@@ -61,7 +61,10 @@ export function ModalTabContent({
   
   // Check if this is a driving license examination
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
-  const { isCompleted: isDrivingLicenseCompleted, examination, isLoading } = useDrivingLicenseStatus(entry.id);
+  // Use pre-loaded driving license status for better performance
+  const isDrivingLicenseCompleted = entry.driving_license_status?.isCompleted || false;
+  const examination = entry.driving_license_status?.examination || null;
+  const isLoading = false; // No loading since data is pre-loaded
   const showDrivingLicenseTab = isDrivingLicenseExam;
 
   // Fetch GDPR confirmation data

@@ -190,7 +190,7 @@ export function useStores() {
     queryKey: ['stores', organization?.id],
     queryFn: () => fetchStoresWithRetry(),
     enabled: !!organization?.id && isReady,
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    staleTime: 15 * 60 * 1000, // Consider data fresh for 15 minutes - improved performance
     gcTime: 30 * 60 * 1000,   // Keep cached data for 30 minutes
     retry: 2,                 // Retry failed queries twice
     retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000), // Exponential backoff

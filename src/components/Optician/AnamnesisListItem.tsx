@@ -222,7 +222,6 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
         examinationType={entry.examination_type}
         isExaminationCompleted={isDrivingLicenseExam && isDrivingLicenseCompleted}
         idVerificationCompleted={entry.id_verification_completed ?? true}
-        consentGiven={entry.consent_given}
       >
         <div className="py-1 px-0">
           <div className="flex items-start justify-between">

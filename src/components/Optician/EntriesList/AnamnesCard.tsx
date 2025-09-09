@@ -7,7 +7,7 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Car, FileText, Shield } from "lucide-react";
+import { Eye, Car, FileText } from "lucide-react";
 
 interface AnamnesCardProps {
   status: "sent" | "pending" | "ready" | "reviewed" | "journaled" | "expiring" | "pending_id_verification";
@@ -17,7 +17,6 @@ interface AnamnesCardProps {
   examinationType?: string;
   isExaminationCompleted?: boolean;
   idVerificationCompleted?: boolean;
-  consentGiven?: boolean;
 }
 
 export const AnamnesCard = ({ 
@@ -27,8 +26,7 @@ export const AnamnesCard = ({
   onClick,
   examinationType,
   isExaminationCompleted,
-  idVerificationCompleted = true,
-  consentGiven
+  idVerificationCompleted = true
 }: AnamnesCardProps) => {
   // Determine the accent color based on status
   const getAccentColor = () => {
@@ -98,8 +96,8 @@ export const AnamnesCard = ({
         }
       }}
     >
-      {/* Examination type, completion badges and consent indicator */}
-      {(examinationType || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning') || consentGiven) && (
+      {/* Examination type and completion badges */}
+      {(examinationType || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning')) && (
         <div className="flex justify-start gap-1 mb-1">
           {examinationType && (
             <Badge variant="outline" className="h-5 px-1.5 text-xs bg-white/80 backdrop-blur-sm">
@@ -115,12 +113,6 @@ export const AnamnesCard = ({
           {!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning' && (
             <Badge className="h-5 px-1.5 text-xs bg-amber-100 text-amber-800 border-amber-200">
               ID saknas
-            </Badge>
-          )}
-          {consentGiven && (
-            <Badge className="h-5 px-1.5 text-xs bg-accent_teal/10 text-accent_teal border-accent_teal/20">
-              <Shield className="h-3 w-3 mr-1" />
-              GDPR-samtycke
             </Badge>
           )}
         </div>

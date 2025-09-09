@@ -43,3 +43,6 @@ verify_jwt = false
 
 [functions.notify-optician-driving-license]
 verify_jwt = false
+
+[functions.cleanup-access-logs]
+verify_jwt = false

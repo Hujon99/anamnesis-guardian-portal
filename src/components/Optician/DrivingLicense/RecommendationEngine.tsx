@@ -48,16 +48,36 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
     
     // Check visual acuity - prioritize corrected vision if glasses/contacts are used
     const useCorrection = examination?.uses_glasses || examination?.uses_contact_lenses;
-    const primaryVisus = useCorrection 
+    
+    // Get visual acuity values for both eyes and individual eyes
+    const bothEyesVisus = useCorrection 
       ? (examination?.visual_acuity_with_correction_both || examination?.visual_acuity_both_eyes)
       : examination?.visual_acuity_both_eyes;
+      
+    const rightEyeVisus = useCorrection
+      ? (examination?.visual_acuity_with_correction_right || examination?.visual_acuity_right_eye)
+      : examination?.visual_acuity_right_eye;
+      
+    const leftEyeVisus = useCorrection
+      ? (examination?.visual_acuity_with_correction_left || examination?.visual_acuity_left_eye)
+      : examination?.visual_acuity_left_eye;
     
-    // Convert comma to dot for parsing (Swedish number format)
-    const visusValue = primaryVisus ? parseFloat(String(primaryVisus).replace(',', '.')) : null;
+    // Convert comma to dot for parsing (Swedish number format) and check each eye
+    const bothEyesValue = bothEyesVisus ? parseFloat(String(bothEyesVisus).replace(',', '.')) : null;
+    const rightEyeValue = rightEyeVisus ? parseFloat(String(rightEyeVisus).replace(',', '.')) : null;
+    const leftEyeValue = leftEyeVisus ? parseFloat(String(leftEyeVisus).replace(',', '.')) : null;
     
-    // Rule 1: Visual acuity < 1.0 → Vision examination
-    if (visusValue && visusValue < 1.0) {
-      reasons.push(`Visus ${visusValue.toString().replace('.', ',')} är under gränsvärdet 1,0`);
+    // Rule 1: Visual acuity < 1.0 in any eye → Vision examination
+    if (bothEyesValue && bothEyesValue < 1.0) {
+      reasons.push(`Visus båda ögon ${bothEyesValue.toString().replace('.', ',')} är under gränsvärdet 1,0`);
+    }
+    
+    if (rightEyeValue && rightEyeValue < 1.0) {
+      reasons.push(`Visus höger öga ${rightEyeValue.toString().replace('.', ',')} är under gränsvärdet 1,0`);
+    }
+    
+    if (leftEyeValue && leftEyeValue < 1.0) {
+      reasons.push(`Visus vänster öga ${leftEyeValue.toString().replace('.', ',')} är under gränsvärdet 1,0`);
     }
     
     // Rule 2: Double vision → Vision examination
@@ -215,11 +235,17 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
         {/* Technical details for optician */}
         <div className="text-xs text-muted-foreground space-y-1">
           <p><strong>Teknisk information:</strong></p>
-          <p>• Visusvärde: {examination?.visual_acuity_both_eyes || 'Ej mätt'}</p>
+          <p>• Visus båda ögon: {examination?.visual_acuity_both_eyes || 'Ej mätt'}</p>
+          <p>• Visus höger öga: {examination?.visual_acuity_right_eye || 'Ej mätt'}</p>
+          <p>• Visus vänster öga: {examination?.visual_acuity_left_eye || 'Ej mätt'}</p>
           {(examination?.uses_glasses || examination?.uses_contact_lenses) && (
-            <p>• Visus med korrektion: {examination?.visual_acuity_with_correction_both || 'Ej mätt'}</p>
+            <>
+              <p>• Visus båda ögon med korrektion: {examination?.visual_acuity_with_correction_both || 'Ej mätt'}</p>
+              <p>• Visus höger öga med korrektion: {examination?.visual_acuity_with_correction_right || 'Ej mätt'}</p>
+              <p>• Visus vänster öga med korrektion: {examination?.visual_acuity_with_correction_left || 'Ej mätt'}</p>
+            </>
           )}
-          <p>• Rekommendationsmotor version: 1.0</p>
+          <p>• Rekommendationsmotor version: 1.1</p>
         </div>
       </CardContent>
     </Card>

@@ -67,34 +67,34 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="space-y-3 pb-4">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <Shield className="h-5 w-5 text-primary" />
             GDPR-information för patienten
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             Informera patienten om hur personuppgifter behandlas för {examinationType.toLowerCase()}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-8 py-2">
           {/* Information text selection */}
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Label className="text-base font-medium flex items-center gap-2">
               <Info className="h-4 w-4" />
               Välj informationstext att läsa upp för patienten:
             </Label>
             
             <RadioGroup value={infoType} onValueChange={(value: 'full' | 'short') => setInfoType(value)}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
                     <RadioGroupItem value="full" id="full" />
                     <Label htmlFor="full" className="font-medium">Full text (rekommenderas)</Label>
                   </div>
-                  <Card className="ml-6">
-                    <CardContent className="pt-4">
+                  <Card className="ml-8 border-2 transition-colors" data-selected={infoType === 'full'}>
+                    <CardContent className="p-5">
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         "{fullText}"
                       </p>
@@ -102,13 +102,13 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
                   </Card>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
                     <RadioGroupItem value="short" id="short" />
                     <Label htmlFor="short" className="font-medium">Kort text (vid tidsbrist)</Label>
                   </div>
-                  <Card className="ml-6">
-                    <CardContent className="pt-4">
+                  <Card className="ml-8 border-2 transition-colors" data-selected={infoType === 'short'}>
+                    <CardContent className="p-5">
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         "{shortText}"
                       </p>
@@ -120,22 +120,22 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
           </div>
 
           {/* Confirmation checkbox */}
-          <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-start space-x-3">
+          <div className="p-6 bg-muted/50 rounded-lg border">
+            <div className="flex items-start space-x-4">
               <Checkbox
                 id="patient-informed"
                 checked={isConfirmed}
                 onCheckedChange={(checked) => setIsConfirmed(checked === true)}
-                className="mt-1"
+                className="mt-1 h-5 w-5"
               />
-              <div className="space-y-1">
+              <div className="space-y-2 flex-1">
                 <Label 
                   htmlFor="patient-informed" 
-                  className="text-sm font-medium leading-relaxed cursor-pointer"
+                  className="text-sm font-medium leading-relaxed cursor-pointer block"
                 >
                   Patienten har informerats muntligen om hur personuppgifter behandlas och har bekräftat detta.
                 </Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Denna bekräftelse är obligatorisk och kommer att loggas.
                 </p>
               </div>
@@ -143,7 +143,7 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
           </div>
 
           {/* Optional notes */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="notes" className="text-sm font-medium">
               Anteckningar (valfritt)
             </Label>
@@ -152,20 +152,21 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="T.ex. 'Informerat vid receptionen, patient bekräftade muntligen'"
-              className="min-h-[80px]"
+              className="min-h-[100px] resize-none"
               maxLength={500}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground text-right">
               {notes.length}/500 tecken
             </p>
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-3 pt-6 border-t">
           <Button
             variant="outline"
             onClick={handleCancel}
             disabled={isProcessing}
+            className="min-w-[100px]"
           >
             Avbryt
           </Button>
@@ -176,7 +177,7 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
           >
             {isProcessing ? (
               <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2" />
                 Fortsätter...
               </>
             ) : (

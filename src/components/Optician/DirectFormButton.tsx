@@ -12,7 +12,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useOrganization, useUser } from "@clerk/clerk-react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";

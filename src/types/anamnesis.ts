@@ -46,6 +46,12 @@ export type AnamnesesEntry = {
   consent_timestamp?: string | null;
   privacy_policy_version?: string | null;
   terms_version?: string | null;
+  // Unified GDPR fields
+  gdpr_method?: 'online_consent' | 'store_verbal' | null;
+  gdpr_confirmed_by?: string | null;
+  gdpr_confirmed_by_name?: string | null;
+  gdpr_info_type?: 'full' | 'short' | null;
+  gdpr_notes?: string | null;
 };
 
 export type FormQuestionOption = string | {

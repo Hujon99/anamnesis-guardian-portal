@@ -32,6 +32,11 @@ export type Database = {
           first_name: string | null
           form_id: string
           formatted_raw_data: string | null
+          gdpr_confirmed_by: string | null
+          gdpr_confirmed_by_name: string | null
+          gdpr_info_type: string | null
+          gdpr_method: string | null
+          gdpr_notes: string | null
           id: string
           id_type: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed: boolean | null
@@ -69,6 +74,11 @@ export type Database = {
           first_name?: string | null
           form_id: string
           formatted_raw_data?: string | null
+          gdpr_confirmed_by?: string | null
+          gdpr_confirmed_by_name?: string | null
+          gdpr_info_type?: string | null
+          gdpr_method?: string | null
+          gdpr_notes?: string | null
           id?: string
           id_type?: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed?: boolean | null
@@ -106,6 +116,11 @@ export type Database = {
           first_name?: string | null
           form_id?: string
           formatted_raw_data?: string | null
+          gdpr_confirmed_by?: string | null
+          gdpr_confirmed_by_name?: string | null
+          gdpr_info_type?: string | null
+          gdpr_method?: string | null
+          gdpr_notes?: string | null
           id?: string
           id_type?: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed?: boolean | null
@@ -503,50 +518,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      gdpr_store_confirmations: {
-        Row: {
-          confirmed_at: string
-          confirmed_by: string
-          confirmed_by_name: string
-          created_at: string
-          entry_id: string
-          id: string
-          info_type: string
-          notes: string | null
-          organization_id: string
-        }
-        Insert: {
-          confirmed_at?: string
-          confirmed_by: string
-          confirmed_by_name: string
-          created_at?: string
-          entry_id: string
-          id?: string
-          info_type: string
-          notes?: string | null
-          organization_id: string
-        }
-        Update: {
-          confirmed_at?: string
-          confirmed_by?: string
-          confirmed_by_name?: string
-          created_at?: string
-          entry_id?: string
-          id?: string
-          info_type?: string
-          notes?: string | null
-          organization_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gdpr_store_confirmations_entry_id_fkey"
-            columns: ["entry_id"]
-            isOneToOne: false
-            referencedRelation: "anamnes_entries"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       organization_settings: {
         Row: {

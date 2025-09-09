@@ -119,20 +119,22 @@ export const DirectFormButton: React.FC = () => {
 
       console.log("Successfully created entry:", data);
       
-      // Save GDPR confirmation to database
+      // Update entry with GDPR confirmation data
       const { error: gdprError } = await supabase
-        .from("gdpr_store_confirmations")
-        .insert({
-          entry_id: data.id,
-          organization_id: organization.id,
-          confirmed_by: user.id,
-          confirmed_by_name: user.fullName || user.firstName || "Okänd optiker",
-          info_type: gdprInfo.infoType,
-          notes: gdprInfo.notes || null
-        });
+        .from("anamnes_entries")
+        .update({
+          gdpr_method: 'store_verbal',
+          gdpr_confirmed_by: user.id,
+          gdpr_confirmed_by_name: user.fullName || user.firstName || "Okänd optiker",
+          gdpr_info_type: gdprInfo.infoType,
+          gdpr_notes: gdprInfo.notes || null,
+          consent_given: true,
+          consent_timestamp: new Date().toISOString()
+        })
+        .eq('id', data.id);
 
       if (gdprError) {
-        console.error("Error logging GDPR confirmation:", gdprError);
+        console.error("Error updating GDPR confirmation:", gdprError);
         // Don't fail the entire operation for this
       }
 
@@ -272,21 +274,23 @@ export const DirectFormButton: React.FC = () => {
           throw error;
         }
 
-        // Save GDPR confirmation for deferred ID verification cases too
+        // Update entry with GDPR confirmation for deferred ID verification cases too
         if (gdprData) {
           const { error: gdprError } = await supabase
-            .from("gdpr_store_confirmations")
-            .insert({
-              entry_id: data.id,
-              organization_id: organization.id,
-              confirmed_by: user.id,
-              confirmed_by_name: user.fullName || user.firstName || "Okänd optiker",
-              info_type: gdprData.infoType,
-              notes: gdprData.notes || null
-            });
+            .from("anamnes_entries")
+            .update({
+              gdpr_method: 'store_verbal',
+              gdpr_confirmed_by: user.id,
+              gdpr_confirmed_by_name: user.fullName || user.firstName || "Okänd optiker",
+              gdpr_info_type: gdprData.infoType,
+              gdpr_notes: gdprData.notes || null,
+              consent_given: true,
+              consent_timestamp: new Date().toISOString()
+            })
+            .eq('id', data.id);
 
           if (gdprError) {
-            console.error("Error logging GDPR confirmation:", gdprError);
+            console.error("Error updating GDPR confirmation:", gdprError);
           }
         }
         

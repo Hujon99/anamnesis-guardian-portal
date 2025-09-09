@@ -1,6 +1,6 @@
 /**
  * Hook for fetching GDPR confirmation data for anamnesis entries
- * Retrieves information about how patients were informed about data processing in store
+ * Retrieves information about how patients were informed about data processing
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -22,21 +22,32 @@ export const useGdprConfirmation = (entryId: string | null) => {
     queryFn: async (): Promise<GdprConfirmation | null> => {
       if (!entryId) return null;
 
+      // Fetch GDPR data from anamnes_entries
       const { data, error } = await supabase
-        .from("gdpr_store_confirmations")
-        .select("id, confirmed_by_name, confirmed_at, info_type, notes")
-        .eq("entry_id", entryId)
+        .from("anamnes_entries")
+        .select("id, gdpr_confirmed_by_name, consent_timestamp, gdpr_info_type, gdpr_notes, gdpr_method")
+        .eq("id", entryId)
         .single();
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // No rows returned - this is expected for entries without GDPR confirmation
           return null;
         }
         throw error;
       }
 
-      return data as GdprConfirmation;
+      // Only return confirmation data if it's a store verbal confirmation
+      if (data?.gdpr_method === 'store_verbal' && data?.gdpr_confirmed_by_name) {
+        return {
+          id: data.id,
+          confirmed_by_name: data.gdpr_confirmed_by_name,
+          confirmed_at: data.consent_timestamp || new Date().toISOString(),
+          info_type: data.gdpr_info_type || 'full',
+          notes: data.gdpr_notes
+        } as GdprConfirmation;
+      }
+
+      return null;
     },
     enabled: !!entryId,
   });

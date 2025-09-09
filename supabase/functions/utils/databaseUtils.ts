@@ -489,4 +489,4 @@ export async function runJournaledEntriesCleanup(supabase: SupabaseClient): Prom
   }
 }
 
-export { createSupabaseClient, runAutoDeletion, runStuckFormsCleanup, runPlaceholderCleanup, runJournaledMagicLinkCleanup, runJournaledEntriesCleanup, runAutoRedaction, logDeletionResult, logRedactionResult };
+

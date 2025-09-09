@@ -72,12 +72,11 @@ export function ModalTabContent({
   
   return (
     <Tabs defaultValue={showDrivingLicenseTab ? "driving" : "patient"} className="w-full">
-      <TabsList className={`grid w-full ${showDrivingLicenseTab ? 'grid-cols-4' : 'grid-cols-3'} mb-4`}>
+      <TabsList className={`grid w-full ${showDrivingLicenseTab ? 'grid-cols-3' : 'grid-cols-2'} mb-4`}>
         {showDrivingLicenseTab && (
           <TabsTrigger value="driving">Körkort</TabsTrigger>
         )}
         <TabsTrigger value="patient">Patient</TabsTrigger>
-        <TabsTrigger value="answers">Svar</TabsTrigger>
         <TabsTrigger value="assignment">Tilldelning</TabsTrigger>
       </TabsList>
       
@@ -111,16 +110,6 @@ export function ModalTabContent({
           saveFormattedRawData={saveFormattedRawData}
           isPending={isPending}
         />
-      </TabsContent>
-      
-      <TabsContent value="answers" className="mt-0">
-        <div className="p-4 border rounded-lg bg-background">
-          <EntryAnswers 
-            answers={answers} 
-            hasAnswers={hasAnswers} 
-            status={status}
-          />
-        </div>
       </TabsContent>
       
       <TabsContent value="assignment" className="mt-0">

@@ -504,6 +504,50 @@ export type Database = {
         }
         Relationships: []
       }
+      gdpr_store_confirmations: {
+        Row: {
+          confirmed_at: string
+          confirmed_by: string
+          confirmed_by_name: string
+          created_at: string
+          entry_id: string
+          id: string
+          info_type: string
+          notes: string | null
+          organization_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          confirmed_by: string
+          confirmed_by_name: string
+          created_at?: string
+          entry_id: string
+          id?: string
+          info_type: string
+          notes?: string | null
+          organization_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          confirmed_by?: string
+          confirmed_by_name?: string
+          created_at?: string
+          entry_id?: string
+          id?: string
+          info_type?: string
+          notes?: string | null
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gdpr_store_confirmations_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "anamnes_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_settings: {
         Row: {
           created_at: string | null

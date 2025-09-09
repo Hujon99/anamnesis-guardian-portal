@@ -17,6 +17,7 @@ import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExaminationTypeSelector } from "./ExaminationTypeSelector";
+import { GdprInformationDialog } from "./GdprInformationDialog";
 import { CustomerNameDialog } from "./CustomerNameDialog";
 import { IdVerificationDialog } from "./IdVerificationDialog";
 import { DIRECT_FORM_TOKEN_KEY, DIRECT_FORM_MODE_KEY } from "@/utils/opticianFormTokenUtils";
@@ -25,10 +26,12 @@ export const DirectFormButton: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [showGdprDialog, setShowGdprDialog] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [showIdVerificationDialog, setShowIdVerificationDialog] = useState(false);
   const [selectedForm, setSelectedForm] = useState<OrganizationForm | null>(null);
   const [customerName, setCustomerName] = useState({ firstName: "", lastName: "" });
+  const [gdprData, setGdprData] = useState<{ infoType: 'full' | 'short'; notes?: string } | null>(null);
   
   const navigate = useNavigate();
   const { organization } = useOrganization();
@@ -45,20 +48,22 @@ export const DirectFormButton: React.FC = () => {
   // User sync functionality
   const { syncUsers, isSyncing } = useSyncClerkUsers();
 
-  // Create form entry mutation
+  // Create form entry mutation - now includes GDPR logging
   const createDirectFormEntry = useMutation({
     mutationFn: async ({ 
       form, 
       firstName, 
       lastName, 
       idType, 
-      personalNumber 
+      personalNumber,
+      gdprInfo
     }: { 
       form: OrganizationForm, 
       firstName: string, 
       lastName: string,
       idType: string,
-      personalNumber: string 
+      personalNumber: string,
+      gdprInfo: { infoType: 'full' | 'short'; notes?: string }
     }) => {
       if (!organization?.id || !user?.id || !form) {
         throw new Error("Saknar nödvändig information för att skapa formulär");
@@ -113,6 +118,24 @@ export const DirectFormButton: React.FC = () => {
       }
 
       console.log("Successfully created entry:", data);
+      
+      // Save GDPR confirmation to database
+      const { error: gdprError } = await supabase
+        .from("gdpr_store_confirmations")
+        .insert({
+          entry_id: data.id,
+          organization_id: organization.id,
+          confirmed_by: user.id,
+          confirmed_by_name: user.fullName || user.firstName || "Okänd optiker",
+          info_type: gdprInfo.infoType,
+          notes: gdprInfo.notes || null
+        });
+
+      if (gdprError) {
+        console.error("Error logging GDPR confirmation:", gdprError);
+        // Don't fail the entire operation for this
+      }
+
       return { entry: data, token: accessToken };
     },
     onSuccess: ({ entry, token }) => {
@@ -130,10 +153,12 @@ export const DirectFormButton: React.FC = () => {
       
       // Reset all dialog states
       setShowTypeSelector(false);
+      setShowGdprDialog(false);
       setShowNameDialog(false);
       setShowIdVerificationDialog(false);
       setSelectedForm(null);
       setCustomerName({ firstName: "", lastName: "" });
+      setGdprData(null);
       setIsCreating(false);
     },
     onError: (error: Error) => {
@@ -175,10 +200,10 @@ export const DirectFormButton: React.FC = () => {
       return;
     }
     
-    // If only one form, select it and show name dialog
+    // If only one form, select it and show GDPR dialog
     if (forms.length === 1) {
       setSelectedForm(forms[0]);
-      setShowNameDialog(true);
+      setShowGdprDialog(true); // Show GDPR dialog instead of name dialog
     } else {
       // Show type selector for multiple forms
       setShowTypeSelector(true);
@@ -188,6 +213,12 @@ export const DirectFormButton: React.FC = () => {
   const handleFormTypeSelect = (form: OrganizationForm) => {
     setSelectedForm(form);
     setShowTypeSelector(false);
+    setShowGdprDialog(true); // Show GDPR dialog instead of name dialog
+  };
+
+  const handleGdprConfirm = (data: { infoType: 'full' | 'short'; notes?: string }) => {
+    setGdprData(data);
+    setShowGdprDialog(false);
     setShowNameDialog(true);
   };
 
@@ -240,6 +271,24 @@ export const DirectFormButton: React.FC = () => {
         if (error) {
           throw error;
         }
+
+        // Save GDPR confirmation for deferred ID verification cases too
+        if (gdprData) {
+          const { error: gdprError } = await supabase
+            .from("gdpr_store_confirmations")
+            .insert({
+              entry_id: data.id,
+              organization_id: organization.id,
+              confirmed_by: user.id,
+              confirmed_by_name: user.fullName || user.firstName || "Okänd optiker",
+              info_type: gdprData.infoType,
+              notes: gdprData.notes || null
+            });
+
+          if (gdprError) {
+            console.error("Error logging GDPR confirmation:", gdprError);
+          }
+        }
         
         localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
         localStorage.setItem(DIRECT_FORM_MODE_KEY, "optician");
@@ -251,10 +300,12 @@ export const DirectFormButton: React.FC = () => {
         });
         
         setShowTypeSelector(false);
+        setShowGdprDialog(false);
         setShowNameDialog(false);
         setShowIdVerificationDialog(false);
         setSelectedForm(null);
         setCustomerName({ firstName: "", lastName: "" });
+        setGdprData(null);
         setIsCreating(false);
       } catch (error: any) {
         console.error("Failed to create form:", error);
@@ -274,7 +325,8 @@ export const DirectFormButton: React.FC = () => {
         firstName: customerName.firstName,
         lastName: customerName.lastName,
         idType: idData.idType,
-        personalNumber: idData.personalNumber
+        personalNumber: idData.personalNumber,
+        gdprInfo: gdprData!
       });
     }
   };
@@ -349,6 +401,14 @@ export const DirectFormButton: React.FC = () => {
         onOpenChange={setShowTypeSelector}
         onSelect={handleFormTypeSelect}
         isCreating={isCreating}
+      />
+      
+      <GdprInformationDialog
+        open={showGdprDialog}
+        onOpenChange={setShowGdprDialog}
+        onConfirm={handleGdprConfirm}
+        isProcessing={isCreating}
+        examinationType={selectedForm?.title || ""}
       />
       
       <CustomerNameDialog

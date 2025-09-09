@@ -7,12 +7,14 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PatientInfo } from "./PatientInfo";
+import { GdprConfirmationDisplay } from "./GdprConfirmationDisplay";
 import { EntryAnswers } from "./EntryAnswers";
 import { AssignmentSection } from "./AssignmentSection";
 import { OptimizedAnswersView } from "./OptimizedAnswers/OptimizedAnswersView";
 import { DrivingLicenseResults } from "./DrivingLicenseResults";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { useDrivingLicenseStatus } from "@/hooks/useDrivingLicenseStatus";
+import { useGdprConfirmation } from "@/hooks/useGdprConfirmation";
 import { IdVerificationQuickUpdate } from "../IdVerificationQuickUpdate";
 
 interface ModalTabContentProps {
@@ -61,6 +63,9 @@ export function ModalTabContent({
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
   const { isCompleted: isDrivingLicenseCompleted, examination, isLoading } = useDrivingLicenseStatus(entry.id);
   const showDrivingLicenseTab = isDrivingLicenseExam;
+
+  // Fetch GDPR confirmation data
+  const { data: gdprConfirmation, isLoading: gdprLoading } = useGdprConfirmation(entry.id);
   
   return (
     <Tabs defaultValue={showDrivingLicenseTab ? "driving" : "patient"} className="w-full">
@@ -84,6 +89,12 @@ export function ModalTabContent({
             status={status}
           />
         </div>
+
+        {/* GDPR Confirmation Display */}
+        <GdprConfirmationDisplay 
+          confirmation={gdprConfirmation}
+          loading={gdprLoading}
+        />
         
         <OptimizedAnswersView
           answers={answers}

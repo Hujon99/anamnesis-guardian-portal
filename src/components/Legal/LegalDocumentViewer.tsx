@@ -45,15 +45,31 @@ export const LegalDocumentViewer: React.FC<LegalDocumentViewerProps> = ({
                 <p className="mb-4 text-sm text-muted-foreground leading-relaxed">{children}</p>
               ),
               ul: ({ children }) => (
-                <ul className="mb-6 space-y-2 list-none">{children}</ul>
-              ),
-              li: ({ children }) => (
-                <li className="ml-6 text-sm text-muted-foreground leading-relaxed relative before:content-['•'] before:absolute before:-ml-4 before:text-primary">
-                  {children}
-                </li>
+                <ul className="mb-6 space-y-2 list-none">
+                  {React.Children.map(children, (child) => 
+                    React.isValidElement(child) && child.type === 'li' 
+                      ? React.cloneElement(child as React.ReactElement, {
+                          className: "ml-6 text-sm text-muted-foreground leading-relaxed relative before:content-['•'] before:absolute before:-ml-4 before:text-primary"
+                        })
+                      : child
+                  )}
+                </ul>
               ),
               ol: ({ children }) => (
-                <ol className="mb-6 space-y-2 list-decimal list-inside">{children}</ol>
+                <ol className="mb-6 space-y-2 list-decimal list-inside">
+                  {React.Children.map(children, (child) => 
+                    React.isValidElement(child) && child.type === 'li' 
+                      ? React.cloneElement(child as React.ReactElement, {
+                          className: "ml-6 text-sm text-muted-foreground leading-relaxed"
+                        })
+                      : child
+                  )}
+                </ol>
+              ),
+              li: ({ children }) => (
+                <li className="text-sm text-muted-foreground leading-relaxed">
+                  {children}
+                </li>
               ),
               strong: ({ children }) => (
                 <strong className="font-semibold text-foreground">{children}</strong>

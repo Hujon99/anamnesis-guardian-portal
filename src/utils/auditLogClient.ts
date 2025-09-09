@@ -32,9 +32,15 @@ type LogAccessParams = {
  * Never throws; logs errors to console for diagnosis.
  */
 export const logAccess = async (
-  supabase: SupabaseClient,
+  supabase: SupabaseClient | null,
   { table, recordId = null, purpose = null, route = null }: LogAccessParams
 ) => {
+  // Guard against null supabase client
+  if (!supabase) {
+    console.warn("[audit] Supabase client is null, skipping access log");
+    return;
+  }
+
   // Resolve route from window if not provided (best effort)
   const effectiveRoute =
     route ?? (typeof window !== "undefined" ? window.location.pathname : null);

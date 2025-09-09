@@ -243,19 +243,41 @@ export class DataFormatter {
   ): Record<string, any> {
     const now = new Date().toISOString();
     
-    const updateData = {
+    const updateData: Record<string, any> = {
       answers: formData,
       formatted_raw_data: formattedRawData,
       status: status,
       updated_at: now
     };
     
+    // Persist GDPR consent and legal versions when provided
+    if (typeof formData['consent_given'] === 'boolean') {
+      updateData['consent_given'] = formData['consent_given'];
+      if (formData['consent_given']) {
+        updateData['consent_timestamp'] = now;
+      }
+    }
+    if (typeof formData['privacy_policy_version'] === 'string') {
+      updateData['privacy_policy_version'] = formData['privacy_policy_version'];
+    }
+    if (typeof formData['terms_version'] === 'string') {
+      updateData['terms_version'] = formData['terms_version'];
+    }
+
+    // Optionally persist context fields if present in submission payload
+    if (typeof formData['first_name'] === 'string' && formData['first_name'].length > 0) {
+      updateData['first_name'] = formData['first_name'];
+    }
+    if (typeof formData['store_id'] === 'string' && formData['store_id'].length > 0) {
+      updateData['store_id'] = formData['store_id'];
+    }
+    
     // Add sent_at if status is 'ready'
     if (status === 'ready') {
       updateData['sent_at'] = now;
     }
     
-    // Add examination_type if provided
+    // Add examination_type if provided (falls back to entry.anamnes_forms.examination_type)
     if (examinationType) {
       updateData['examination_type'] = examinationType;
     }

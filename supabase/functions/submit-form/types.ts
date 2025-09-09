@@ -66,6 +66,14 @@ export interface EntryUpdateData {
   updated_at: string;
   sent_at?: string;
   examination_type?: string;
+  // Added fields to persist GDPR consent and legal versions
+  consent_given?: boolean;
+  consent_timestamp?: string;
+  privacy_policy_version?: string;
+  terms_version?: string;
+  // Optional context fields
+  first_name?: string;
+  store_id?: string;
 }
 
 // Result types

@@ -44,6 +44,20 @@ const HomePage = () => {
               description="Automatisk radering av uppgifter efter 48 timmar" 
             />
           </div>
+          
+          <footer className="mt-20 pb-8 text-center">
+            <div className="flex justify-center space-x-6 text-sm text-gray-600">
+              <Link to="/privacy-policy" className="hover:text-primary transition-colors">
+                Integritetspolicy
+              </Link>
+              <Link to="/terms-of-service" className="hover:text-primary transition-colors">
+                Användarvillkor
+              </Link>
+            </div>
+            <div className="mt-4 text-xs text-gray-500">
+              &copy; {new Date().getFullYear()} Anamnesportalen
+            </div>
+          </footer>
         </div>
       </SignedOut>
     </>

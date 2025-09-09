@@ -157,8 +157,18 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4">
-        <div className="text-xs text-muted-foreground text-center">
-          &copy; {new Date().getFullYear()} Anamnesportalen
+        <div className="text-xs text-muted-foreground space-y-2">
+          <div className="flex justify-center space-x-4">
+            <Link to="/privacy-policy" className="hover:text-primary transition-colors">
+              Integritetspolicy
+            </Link>
+            <Link to="/terms-of-service" className="hover:text-primary transition-colors">
+              Användarvillkor
+            </Link>
+          </div>
+          <div className="text-center">
+            &copy; {new Date().getFullYear()} Anamnesportalen
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

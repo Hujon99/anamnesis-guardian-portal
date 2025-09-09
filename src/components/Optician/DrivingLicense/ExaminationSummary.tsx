@@ -53,7 +53,10 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   // Check if examination meets requirements
   const hasMeasurements = !!(examination?.visual_acuity_both_eyes || examination?.visual_acuity_right_eye || examination?.visual_acuity_left_eye);
   const visionPassed = hasMeasurements && !examination?.vision_below_limit;
-  const idVerified = entry?.id_verification_completed;
+  // Use either the entry record or the examination record (modal keeps a stale entry until parent refetches)
+  const idVerified = Boolean(entry?.id_verification_completed || examination?.id_verification_completed);
+  const idType = entry?.id_type || examination?.id_type;
+  const verifiedBy = entry?.verified_by || examination?.verified_by;
   const canPass = visionPassed && idVerified;
   const handleComplete = async () => {
     if (!selectedOpticianId) {
@@ -277,22 +280,26 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
             Legitimationskontroll
           </h4>
           
-          {entry?.id_verification_completed ? <Alert>
+          {idVerified ? (
+            <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-1">
                   <p>Legitimation verifierad</p>
                   <p className="text-xs text-muted-foreground">
-                    Typ: {entry?.id_type?.replace('_', ' ')} | Verifierad av: {resolveUserDisplay(entry?.verified_by)}
+                    Typ: {idType?.replace('_', ' ')} | Verifierad av: {resolveUserDisplay(verifiedBy)}
                   </p>
                 </div>
               </AlertDescription>
-            </Alert> : <Alert variant="destructive">
+            </Alert>
+          ) : (
+            <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 Legitimation ej verifierad
               </AlertDescription>
-            </Alert>}
+            </Alert>
+          )}
         </div>
 
         <Separator />

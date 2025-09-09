@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { IdCard, CheckCircle, AlertTriangle, User } from "lucide-react";
 import { useUser } from "@clerk/clerk-react";
 import { useUserResolver } from "@/utils/userDisplayUtils";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 interface IdVerificationProps {
   examination: any;
@@ -40,6 +41,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
 }) => {
   const { user } = useUser();
   const { resolveUserDisplay } = useUserResolver();
+  const { supabase } = useSupabaseClient();
   
   // Check if ID verification is already completed in anamnes_entries
   const entryIdVerified = entry?.id_verification_completed || false;
@@ -95,11 +97,7 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
     try {
       // For driving license examinations, we save to anamnes_entries first and then driving license table
       // This ensures consistent status across all views
-      if (entry?.id) {
-        const { useSupabaseClient } = await import('@/hooks/useSupabaseClient');
-        const { supabase: supabaseClient } = useSupabaseClient();
-        
-        if (supabaseClient) {
+      if (entry?.id && supabase) {
           const verifiedBy = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown';
           const verifiedAt = new Date().toISOString();
           
@@ -114,30 +112,29 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
             ...(entry.status === 'pending_id_verification' ? { status: 'ready' } : {})
           };
           
-          const { error: anamnesError } = await supabaseClient
-            .from('anamnes_entries')
-            .update(anamnesUpdates)
-            .eq('id', entry.id);
-            
-          if (anamnesError) {
-            console.error('[IdVerification] Failed to update anamnes_entries:', anamnesError);
-            throw new Error(`Kunde inte spara legitimationsdata: ${anamnesError.message}`);
-          }
+        const { error: anamnesError } = await supabase
+          .from('anamnes_entries')
+          .update(anamnesUpdates)
+          .eq('id', entry.id);
           
-          console.log('[IdVerification] Successfully updated anamnes_entries');
-          
-          // Also update the driving license examination record for examination-specific data
-          const drivingLicenseUpdates = {
-            id_verification_completed: true,
-            id_type: selectedIdType.id,
-            verified_by: verifiedBy,
-            verified_at: verifiedAt,
-            personal_number: personalNumber.trim() || null
-          };
-
-          console.log('[IdVerification] Updates object:', drivingLicenseUpdates);
-          await onSave(drivingLicenseUpdates);
+        if (anamnesError) {
+          console.error('[IdVerification] Failed to update anamnes_entries:', anamnesError);
+          throw new Error(`Kunde inte spara legitimationsdata: ${anamnesError.message}`);
         }
+        
+        console.log('[IdVerification] Successfully updated anamnes_entries');
+        
+        // Also update the driving license examination record for examination-specific data
+        const drivingLicenseUpdates = {
+          id_verification_completed: true,
+          id_type: selectedIdType.id,
+          verified_by: verifiedBy,
+          verified_at: verifiedAt,
+          personal_number: personalNumber.trim() || null
+        };
+
+        console.log('[IdVerification] Updates object:', drivingLicenseUpdates);
+        await onSave(drivingLicenseUpdates);
       }
       
       setIsVerified(true);
@@ -152,17 +149,10 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
     
     try {
       // Update anamnes_entries to mark that ID verification is deferred
-      if (entry?.id) {
+      if (entry?.id && supabase) {
         console.log('[IdVerification] Updating entry to pending_id_verification status');
-        const { useSupabaseClient } = await import('@/hooks/useSupabaseClient');
-        const { supabase: supabaseClient } = useSupabaseClient();
-        
-        if (!supabaseClient) {
-          console.error('[IdVerification] Supabase client not available');
-          throw new Error('Supabase client not available');
-        }
 
-        const { error } = await supabaseClient
+        const { error } = await supabase
           .from('anamnes_entries')
           .update({
             status: 'pending_id_verification',

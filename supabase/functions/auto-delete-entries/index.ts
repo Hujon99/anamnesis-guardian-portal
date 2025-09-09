@@ -29,10 +29,11 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create Supabase client - missing credentials');
     }
 
-    // Run auto redaction, stuck forms cleanup, placeholder cleanups, and journaled entries cleanup in parallel
-    console.log('Running auto redaction, stuck forms cleanup, and journaled entries cleanup...');
-    const [autoRedactionResult, stuckFormsResult, placeholderCleanupResult, journaledPlaceholderResult, journaledEntriesResult] = await Promise.all([
-      runAutoRedaction(supabase),
+    // Run auto redaction first to avoid race conditions, then run deletions in parallel
+    console.log('Running auto redaction first to avoid race conditions...');
+    const autoRedactionResult = await runAutoRedaction(supabase);
+    console.log('Auto redaction completed. Proceeding with cleanup steps...');
+    const [stuckFormsResult, placeholderCleanupResult, journaledPlaceholderResult, journaledEntriesResult] = await Promise.all([
       runStuckFormsCleanup(supabase),
       runPlaceholderCleanup(supabase),
       runJournaledMagicLinkCleanup(supabase),

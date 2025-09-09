@@ -430,7 +430,7 @@ export async function runJournaledEntriesCleanup(supabase: SupabaseClient): Prom
     const { data: entriesToDelete, error: fetchError } = await supabase
       .from('anamnes_entries')
       .select('id, organization_id, booking_date, status, is_redacted, is_magic_link')
-      .eq('is_magic_link', false)
+      .or('is_magic_link.is.null,is_magic_link.eq.false')
       .eq('is_redacted', true)
       .in('status', ['journaled', 'reviewed'])
       .not('booking_date', 'is', null)

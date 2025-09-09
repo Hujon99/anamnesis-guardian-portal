@@ -15,7 +15,7 @@ interface GdprConfirmation {
   id: string;
   confirmed_by_name: string;
   confirmed_at: string;
-  info_type: 'full' | 'short';
+  info_type: 'full' | 'short' | 'store_direct' | 'digital';
   notes?: string;
 }
 
@@ -65,7 +65,17 @@ export const GdprConfirmationDisplay: React.FC<GdprConfirmationDisplayProps> = (
     );
   }
 
-  const infoTypeLabel = confirmation.info_type === 'full' ? 'Full text' : 'Kort text';
+  const getInfoTypeLabel = (infoType: 'full' | 'short' | 'store_direct' | 'digital') => {
+    switch (infoType) {
+      case 'full': return 'Full text';
+      case 'short': return 'Kort text';
+      case 'store_direct': return 'Direkt i butik';
+      case 'digital': return 'Digital samtycke';
+      default: return 'Okänd';
+    }
+  };
+  
+  const infoTypeLabel = getInfoTypeLabel(confirmation.info_type);
   
   return (
     <Card>

@@ -41,6 +41,11 @@ export type AnamnesesEntry = {
   personal_number?: string | null;
   verified_by?: string | null;
   verified_at?: string | null;
+  // GDPR consent fields
+  consent_given?: boolean;
+  consent_timestamp?: string | null;
+  privacy_policy_version?: string | null;
+  terms_version?: string | null;
 };
 
 export type FormQuestionOption = string | {

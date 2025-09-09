@@ -34,7 +34,8 @@ import {
   Link, 
   Printer, 
   Send,
-  User 
+  User,
+  Shield
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { BookingInfoPanel } from "./BookingInfoPanel";
@@ -143,6 +144,19 @@ export function EntryHeader({
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span>Ansvarig optiker: {entry.created_by_name}</span>
+              </div>
+            )}
+            {entry.consent_given && (
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-accent_teal" />
+                <span className="text-accent_teal">
+                  GDPR-samtycke givet {entry.consent_timestamp && formatDate(entry.consent_timestamp)}
+                  {entry.privacy_policy_version && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      (Integritet: v{entry.privacy_policy_version}, Villkor: v{entry.terms_version})
+                    </span>
+                  )}
+                </span>
               </div>
             )}
           </CardDescription>

@@ -67,49 +67,49 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader className="space-y-3 pb-4">
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <Shield className="h-5 w-5 text-primary" />
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="space-y-4 pb-6">
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <Shield className="h-6 w-6 text-primary" />
             GDPR-information för patienten
           </DialogTitle>
-          <DialogDescription className="text-sm">
+          <DialogDescription className="text-base leading-relaxed">
             Informera patienten om hur personuppgifter behandlas för {examinationType.toLowerCase()}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-8 py-2">
+        <div className="space-y-10 py-4">
           {/* Information text selection */}
-          <div className="space-y-5">
-            <Label className="text-base font-medium flex items-center gap-2">
-              <Info className="h-4 w-4" />
+          <div className="space-y-6">
+            <Label className="text-lg font-semibold flex items-center gap-3">
+              <Info className="h-5 w-5 text-primary" />
               Välj informationstext att läsa upp för patienten:
             </Label>
             
             <RadioGroup value={infoType} onValueChange={(value: 'full' | 'short') => setInfoType(value)}>
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="full" id="full" />
-                    <Label htmlFor="full" className="font-medium">Full text (rekommenderas)</Label>
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <RadioGroupItem value="full" id="full" className="h-5 w-5" />
+                    <Label htmlFor="full" className="text-base font-medium">Full text (rekommenderas)</Label>
                   </div>
-                  <Card className="ml-8 border-2 transition-colors" data-selected={infoType === 'full'}>
-                    <CardContent className="p-5">
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                  <Card className="ml-10 border-2 transition-all duration-200 hover:border-primary/30" data-selected={infoType === 'full'}>
+                    <CardContent className="p-8">
+                      <p className="text-sm text-muted-foreground leading-loose">
                         "{fullText}"
                       </p>
                     </CardContent>
                   </Card>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="short" id="short" />
-                    <Label htmlFor="short" className="font-medium">Kort text (vid tidsbrist)</Label>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <RadioGroupItem value="short" id="short" className="h-5 w-5" />
+                    <Label htmlFor="short" className="text-base font-medium">Kort text (vid tidsbrist)</Label>
                   </div>
-                  <Card className="ml-8 border-2 transition-colors" data-selected={infoType === 'short'}>
-                    <CardContent className="p-5">
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                  <Card className="ml-10 border-2 transition-all duration-200 hover:border-primary/30" data-selected={infoType === 'short'}>
+                    <CardContent className="p-8">
+                      <p className="text-sm text-muted-foreground leading-loose">
                         "{shortText}"
                       </p>
                     </CardContent>
@@ -120,22 +120,22 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
           </div>
 
           {/* Confirmation checkbox */}
-          <div className="p-6 bg-muted/50 rounded-lg border">
-            <div className="flex items-start space-x-4">
+          <div className="p-8 bg-muted/30 rounded-xl border-2 border-muted">
+            <div className="flex items-start space-x-5">
               <Checkbox
                 id="patient-informed"
                 checked={isConfirmed}
                 onCheckedChange={(checked) => setIsConfirmed(checked === true)}
-                className="mt-1 h-5 w-5"
+                className="mt-1.5 h-6 w-6"
               />
-              <div className="space-y-2 flex-1">
+              <div className="space-y-3 flex-1">
                 <Label 
                   htmlFor="patient-informed" 
-                  className="text-sm font-medium leading-relaxed cursor-pointer block"
+                  className="text-base font-medium leading-relaxed cursor-pointer block"
                 >
                   Patienten har informerats muntligen om hur personuppgifter behandlas och har bekräftat detta.
                 </Label>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   Denna bekräftelse är obligatorisk och kommer att loggas.
                 </p>
               </div>
@@ -143,8 +143,8 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
           </div>
 
           {/* Optional notes */}
-          <div className="space-y-3">
-            <Label htmlFor="notes" className="text-sm font-medium">
+          <div className="space-y-4">
+            <Label htmlFor="notes" className="text-base font-medium">
               Anteckningar (valfritt)
             </Label>
             <Textarea
@@ -152,28 +152,30 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="T.ex. 'Informerat vid receptionen, patient bekräftade muntligen'"
-              className="min-h-[100px] resize-none"
+              className="min-h-[120px] resize-none text-base leading-relaxed p-4"
               maxLength={500}
             />
-            <p className="text-xs text-muted-foreground text-right">
+            <p className="text-sm text-muted-foreground text-right">
               {notes.length}/500 tecken
             </p>
           </div>
         </div>
 
-        <DialogFooter className="gap-3 pt-6 border-t">
+        <DialogFooter className="gap-4 pt-8 border-t-2">
           <Button
             variant="outline"
             onClick={handleCancel}
             disabled={isProcessing}
-            className="min-w-[100px]"
+            className="min-w-[120px] h-11"
+            size="lg"
           >
             Avbryt
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={!isConfirmed || isProcessing}
-            className="min-w-[120px]"
+            className="min-w-[140px] h-11"
+            size="lg"
           >
             {isProcessing ? (
               <>

@@ -60,7 +60,7 @@ export const LegalDocumentViewer: React.FC<LegalDocumentViewerProps> = ({
                   {React.Children.map(children, (child) => 
                     React.isValidElement(child) && child.type === 'li' 
                       ? React.cloneElement(child as React.ReactElement, {
-                          className: "ml-6 text-sm text-muted-foreground leading-relaxed"
+                          className: "text-sm text-muted-foreground leading-relaxed"
                         })
                       : child
                   )}

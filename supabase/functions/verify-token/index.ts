@@ -229,8 +229,56 @@ serve(async (req: Request) => {
       booking_date: entry.booking_date
     };
     
-    // Log performance
+    // Log performance and anonymized access
     const duration = Date.now() - startTime;
+
+    // Helper functions scoped to this request
+    const getClientIp = (headers: Headers) => {
+      const xff = headers.get('x-forwarded-for') || '';
+      const xri = headers.get('x-real-ip') || '';
+      const raw = xff.split(',')[0].trim() || xri || '';
+      return raw;
+    };
+    const anonymizeIP = (ip: string) => {
+      if (!ip) return 'unknown';
+      if (ip.includes('.')) {
+        const parts = ip.split('.');
+        if (parts.length === 4) {
+          parts[3] = '0';
+          return parts.join('.');
+        }
+      }
+      if (ip.includes(':')) {
+        const parts = ip.split(':');
+        const keep = parts.slice(0, 4).join(':');
+        return `${keep}::`;
+      }
+      return 'unknown';
+    };
+
+    const clientIp = getClientIp(req.headers);
+    const anonymizedIp = anonymizeIP(clientIp);
+    const userAgent = req.headers.get('user-agent') || null;
+
+    try {
+      await supabase.from('audit_data_access').insert([
+        {
+          user_id: 'anonymous',
+          organization_id: entry.organization_id,
+          table_name: 'anamnes_entries',
+          record_id: String(entry.id),
+          action_type: 'token_verify',
+          purpose: 'public_form',
+          route: 'edge:verify-token',
+          ip_address_anonymized: anonymizedIp,
+          user_agent: userAgent,
+        },
+      ]);
+      console.log(`[verify-token/${requestId}]: Logged anonymized access for entry ${entry.id}`);
+    } catch (logErr) {
+      console.warn(`[verify-token/${requestId}]: Failed to log anonymized access`, logErr);
+    }
+
     console.log(`[verify-token/${requestId}]: Token verification successful in ${duration}ms`);
     
     // Return success with form template and entry data

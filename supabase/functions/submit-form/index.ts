@@ -162,6 +162,56 @@ serve(async (req: Request) => {
 
     logger.info(`Form submission completed successfully for entry: ${entry.id}`);
 
+    // Capture anonymized client info and log access
+    const getClientIp = (headers: Headers) => {
+      const xff = headers.get('x-forwarded-for') || '';
+      const xri = headers.get('x-real-ip') || '';
+      const raw = xff.split(',')[0].trim() || xri || '';
+      return raw;
+    };
+    const anonymizeIP = (ip: string) => {
+      if (!ip) return 'unknown';
+      if (ip.includes('.')) {
+        const parts = ip.split('.');
+        if (parts.length === 4) {
+          parts[3] = '0';
+          return parts.join('.');
+        }
+      }
+      if (ip.includes(':')) {
+        const parts = ip.split(':');
+        const keep = parts.slice(0, 4).join(':');
+        return `${keep}::`;
+      }
+      return 'unknown';
+    };
+
+    try {
+      const clientIp = getClientIp(req.headers);
+      const anonymizedIp = anonymizeIP(clientIp);
+      const userAgent = req.headers.get('user-agent') || null;
+      const { error: accessLogError } = await supabase.from('audit_data_access').insert([
+        {
+          user_id: 'anonymous',
+          organization_id: entry.organization_id,
+          table_name: 'anamnes_entries',
+          record_id: String(entry.id),
+          action_type: 'submit',
+          purpose: 'form_submission',
+          route: 'edge:submit-form',
+          ip_address_anonymized: anonymizedIp,
+          user_agent: userAgent,
+        },
+      ]);
+      if (accessLogError) {
+        logger.warn('Failed to insert anonymized access log', accessLogError);
+      } else {
+        logger.info('Anonymized access log inserted');
+      }
+    } catch (logErr) {
+      logger.warn('Error while logging anonymized access', logErr);
+    }
+
     // After successful submission with formatted data, trigger AI summary generation
     try {
       logger.info("Triggering AI summary generation with formatted data");

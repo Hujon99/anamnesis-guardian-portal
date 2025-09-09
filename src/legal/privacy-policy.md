@@ -41,6 +41,8 @@ Optikern är skyldig att dokumentera relevant information om din hälsa inför o
 
 * Tekniska loggar (Tidsstämplar)
 
+* Tekniska loggar (anonymiserad IP och user-agent vid tokenverifiering och inlämning av offentliga formulär)
+
 ---
 
 ## **4 Lagringsperioder**

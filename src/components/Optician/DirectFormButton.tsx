@@ -92,7 +92,7 @@ export const DirectFormButton: React.FC = () => {
               organization_id: organization.id,
               form_id: form.id,
               access_token: accessToken,
-              status: "ready", // Set as ready since ID verification is complete
+              status: "sent", // Set as sent - will become ready when form is actually submitted
               is_magic_link: false,
               created_by: user.id,
               created_by_name: user.fullName || user.firstName || "Okänd optiker",
@@ -256,7 +256,7 @@ export const DirectFormButton: React.FC = () => {
             organization_id: organization.id,
             form_id: selectedForm.id,
             access_token: accessToken,
-            status: "pending_id_verification",
+            status: "sent", // Set as sent - will become ready when form is actually submitted
             is_magic_link: false,
             created_by: user.id,
             created_by_name: user.fullName || user.firstName || "Okänd optiker",

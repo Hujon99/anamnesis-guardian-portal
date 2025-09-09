@@ -200,37 +200,76 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
             <h4 className="font-medium flex items-center gap-2">
               <Eye className="h-4 w-4" />
               Visusmätningar
-              {correctionType && (
-                <Badge variant="secondary" className="text-xs">
-                  Med {correctionType}
-                </Badge>
-              )}
             </h4>
-            <div className="grid grid-cols-1 gap-2 text-sm">
-              <p>
-                Båda ögon: <span className="font-mono">
-                  {correctionType ? 
-                    examination.visual_acuity_with_correction_both || examination.visual_acuity_both_eyes || 'Ej mätt' : 
-                    examination.visual_acuity_both_eyes || 'Ej mätt'
-                  }
-                </span>
-              </p>
-              <p>
-                Höger öga: <span className="font-mono">
-                  {correctionType ? 
-                    examination.visual_acuity_with_correction_right || examination.visual_acuity_right_eye || 'Ej mätt' : 
-                    examination.visual_acuity_right_eye || 'Ej mätt'
-                  }
-                </span>
-              </p>
-              <p>
-                Vänster öga: <span className="font-mono">
-                  {correctionType ? 
-                    examination.visual_acuity_with_correction_left || examination.visual_acuity_left_eye || 'Ej mätt' : 
-                    examination.visual_acuity_left_eye || 'Ej mätt'
-                  }
-                </span>
-              </p>
+            <div className="grid grid-cols-1 gap-4 text-sm">
+              {correctionType ? (
+                <>
+                  {/* With correction values */}
+                  <div className="space-y-1">
+                    <h5 className="font-medium text-sm flex items-center gap-2">
+                      Med korrektion
+                      <Badge variant="secondary" className="text-xs">
+                        {correctionType}
+                      </Badge>
+                    </h5>
+                    <p>
+                      Båda ögon: <span className="font-mono">
+                        {examination.visual_acuity_with_correction_both || 'Ej mätt'}
+                      </span>
+                    </p>
+                    <p>
+                      Höger öga: <span className="font-mono">
+                        {examination.visual_acuity_with_correction_right || 'Ej mätt'}
+                      </span>
+                    </p>
+                    <p>
+                      Vänster öga: <span className="font-mono">
+                        {examination.visual_acuity_with_correction_left || 'Ej mätt'}
+                      </span>
+                    </p>
+                  </div>
+                  
+                  {/* Without correction values */}
+                  <div className="space-y-1">
+                    <h5 className="font-medium text-sm">Utan korrektion</h5>
+                    <p>
+                      Båda ögon: <span className="font-mono">
+                        {examination.visual_acuity_both_eyes || 'Ej mätt'}
+                      </span>
+                    </p>
+                    <p>
+                      Höger öga: <span className="font-mono">
+                        {examination.visual_acuity_right_eye || 'Ej mätt'}
+                      </span>
+                    </p>
+                    <p>
+                      Vänster öga: <span className="font-mono">
+                        {examination.visual_acuity_left_eye || 'Ej mätt'}
+                      </span>
+                    </p>
+                  </div>
+                </>
+              ) : (
+                /* Without correction only */
+                <div className="space-y-1">
+                  <h5 className="font-medium text-sm">Utan korrektion</h5>
+                  <p>
+                    Båda ögon: <span className="font-mono">
+                      {examination.visual_acuity_both_eyes || 'Ej mätt'}
+                    </span>
+                  </p>
+                  <p>
+                    Höger öga: <span className="font-mono">
+                      {examination.visual_acuity_right_eye || 'Ej mätt'}
+                    </span>
+                  </p>
+                  <p>
+                    Vänster öga: <span className="font-mono">
+                      {examination.visual_acuity_left_eye || 'Ej mätt'}
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
             
             {examination.vision_below_limit ? (

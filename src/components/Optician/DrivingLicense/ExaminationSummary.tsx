@@ -169,42 +169,68 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
           <h4 className="font-medium flex items-center gap-2">
             <Eye className="h-4 w-4" />
             Visusmätningar
-            {(examination?.uses_glasses || examination?.uses_contact_lenses) && (
-              <Badge variant="secondary" className="text-xs">
-                Med korrektion
-              </Badge>
-            )}
           </h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="space-y-1">
-              <p>Båda ögon: <span className="font-mono">
-                {(() => {
-                  const withCorrection = examination?.visual_acuity_with_correction_both;
-                  const withoutCorrection = examination?.visual_acuity_both_eyes;
-                  const useCorrection = examination?.uses_glasses || examination?.uses_contact_lenses;
-                  const value = useCorrection ? (withCorrection || withoutCorrection) : withoutCorrection;
-                  return value ? String(value).replace('.', ',') : 'Ej mätt';
-                })()}
-              </span></p>
-              <p>Höger öga: <span className="font-mono">
-                {(() => {
-                  const withCorrection = examination?.visual_acuity_with_correction_right;
-                  const withoutCorrection = examination?.visual_acuity_right_eye;
-                  const useCorrection = examination?.uses_glasses || examination?.uses_contact_lenses;
-                  const value = useCorrection ? (withCorrection || withoutCorrection) : withoutCorrection;
-                  return value ? String(value).replace('.', ',') : 'Ej mätt';
-                })()}
-              </span></p>
-              <p>Vänster öga: <span className="font-mono">
-                {(() => {
-                  const withCorrection = examination?.visual_acuity_with_correction_left;
-                  const withoutCorrection = examination?.visual_acuity_left_eye;
-                  const useCorrection = examination?.uses_glasses || examination?.uses_contact_lenses;
-                  const value = useCorrection ? (withCorrection || withoutCorrection) : withoutCorrection;
-                  return value ? String(value).replace('.', ',') : 'Ej mätt';
-                })()}
-              </span></p>
-            </div>
+          <div className="grid grid-cols-1 gap-4 text-sm">
+            {(examination?.uses_glasses || examination?.uses_contact_lenses) ? (
+              <>
+                {/* With correction values */}
+                <div className="space-y-1">
+                  <h5 className="font-medium text-sm flex items-center gap-2">
+                    Med korrektion
+                    <Badge variant="secondary" className="text-xs">
+                      {examination?.uses_glasses && examination?.uses_contact_lenses ? 'Glasögon + linser' : 
+                       examination?.uses_glasses ? 'Glasögon' : 'Linser'}
+                    </Badge>
+                  </h5>
+                  <p>Båda ögon: <span className="font-mono">
+                    {examination?.visual_acuity_with_correction_both ? 
+                      String(examination.visual_acuity_with_correction_both).replace('.', ',') : 'Ej mätt'}
+                  </span></p>
+                  <p>Höger öga: <span className="font-mono">
+                    {examination?.visual_acuity_with_correction_right ? 
+                      String(examination.visual_acuity_with_correction_right).replace('.', ',') : 'Ej mätt'}
+                  </span></p>
+                  <p>Vänster öga: <span className="font-mono">
+                    {examination?.visual_acuity_with_correction_left ? 
+                      String(examination.visual_acuity_with_correction_left).replace('.', ',') : 'Ej mätt'}
+                  </span></p>
+                </div>
+                
+                {/* Without correction values */}
+                <div className="space-y-1">
+                  <h5 className="font-medium text-sm">Utan korrektion</h5>
+                  <p>Båda ögon: <span className="font-mono">
+                    {examination?.visual_acuity_both_eyes ? 
+                      String(examination.visual_acuity_both_eyes).replace('.', ',') : 'Ej mätt'}
+                  </span></p>
+                  <p>Höger öga: <span className="font-mono">
+                    {examination?.visual_acuity_right_eye ? 
+                      String(examination.visual_acuity_right_eye).replace('.', ',') : 'Ej mätt'}
+                  </span></p>
+                  <p>Vänster öga: <span className="font-mono">
+                    {examination?.visual_acuity_left_eye ? 
+                      String(examination.visual_acuity_left_eye).replace('.', ',') : 'Ej mätt'}
+                  </span></p>
+                </div>
+              </>
+            ) : (
+              /* Without correction only */
+              <div className="space-y-1">
+                <h5 className="font-medium text-sm">Utan korrektion</h5>
+                <p>Båda ögon: <span className="font-mono">
+                  {examination?.visual_acuity_both_eyes ? 
+                    String(examination.visual_acuity_both_eyes).replace('.', ',') : 'Ej mätt'}
+                </span></p>
+                <p>Höger öga: <span className="font-mono">
+                  {examination?.visual_acuity_right_eye ? 
+                    String(examination.visual_acuity_right_eye).replace('.', ',') : 'Ej mätt'}
+                </span></p>
+                <p>Vänster öga: <span className="font-mono">
+                  {examination?.visual_acuity_left_eye ? 
+                    String(examination.visual_acuity_left_eye).replace('.', ',') : 'Ej mätt'}
+                </span></p>
+              </div>
+            )}
           </div>
           
           {examination?.vision_below_limit ? (

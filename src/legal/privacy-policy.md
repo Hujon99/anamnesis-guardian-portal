@@ -39,9 +39,7 @@ Optikern är skyldig att dokumentera relevant information om din hälsa inför o
 
 * Hälsouppgifter (symtom, anamnesfrågor)
 
-* Tekniska loggar (Tidsstämplar)
-
-* Tekniska loggar (anonymiserad IP och user-agent vid tokenverifiering och inlämning av offentliga formulär)
+* Tekniska loggar (Tidsstämplar, anonymiserad IP och user-agent vid tokenverifiering och inlämning av offentliga formulär)
 
 ---
 
@@ -132,5 +130,5 @@ Binokel AB kan uppdatera denna policy för att spegla förändringar i tekniken 
 
 ---
 
-*Senast uppdaterad: 2025-09-08*
+*Senast uppdaterad: 2025-09-09*
 

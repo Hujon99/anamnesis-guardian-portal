@@ -91,51 +91,52 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
     }
 
     console.log('[IdVerification] Saving with personal_number:', personalNumber.trim());
-
-    // For driving license examinations, we need to save to both places:
-    // 1. Update the driving_license_examinations record
-    // 2. Update the anamnes_entries with ID verification data
     
     try {
-      // First save to the driving license examination record
-      const drivingLicenseUpdates = {
-        id_verification_completed: true,
-        id_type: selectedIdType.id,
-        verified_by: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown',
-        verified_at: new Date().toISOString(),
-        personal_number: personalNumber.trim() || null
-      };
-
-      console.log('[IdVerification] Updates object:', drivingLicenseUpdates);
-      await onSave(drivingLicenseUpdates);
-      
-      // Also save to anamnes_entries if we have access to update the entry
+      // For driving license examinations, we save to anamnes_entries first and then driving license table
+      // This ensures consistent status across all views
       if (entry?.id) {
         const { useSupabaseClient } = await import('@/hooks/useSupabaseClient');
         const { supabase: supabaseClient } = useSupabaseClient();
         
         if (supabaseClient) {
+          const verifiedBy = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown';
+          const verifiedAt = new Date().toISOString();
+          
+          // Save to anamnes_entries (primary source of truth for status/badges)
           const anamnesUpdates = {
             id_verification_completed: true,
             id_type: selectedIdType.id as "swedish_license" | "swedish_id" | "passport" | "guardian_certificate",
             personal_number: personalNumber.trim() || null,
-            verified_by: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown',
-            verified_at: new Date().toISOString(),
+            verified_by: verifiedBy,
+            verified_at: verifiedAt,
             // Update status from pending_id_verification to ready if it was deferred
             ...(entry.status === 'pending_id_verification' ? { status: 'ready' } : {})
           };
           
-          const { error } = await supabaseClient
+          const { error: anamnesError } = await supabaseClient
             .from('anamnes_entries')
             .update(anamnesUpdates)
             .eq('id', entry.id);
             
-          if (error) {
-            console.warn('[IdVerification] Failed to update anamnes_entries:', error);
-            // Don't throw error, as the driving license examination was saved successfully
-          } else {
-            console.log('[IdVerification] Successfully updated anamnes_entries');
+          if (anamnesError) {
+            console.error('[IdVerification] Failed to update anamnes_entries:', anamnesError);
+            throw new Error(`Kunde inte spara legitimationsdata: ${anamnesError.message}`);
           }
+          
+          console.log('[IdVerification] Successfully updated anamnes_entries');
+          
+          // Also update the driving license examination record for examination-specific data
+          const drivingLicenseUpdates = {
+            id_verification_completed: true,
+            id_type: selectedIdType.id,
+            verified_by: verifiedBy,
+            verified_at: verifiedAt,
+            personal_number: personalNumber.trim() || null
+          };
+
+          console.log('[IdVerification] Updates object:', drivingLicenseUpdates);
+          await onSave(drivingLicenseUpdates);
         }
       }
       

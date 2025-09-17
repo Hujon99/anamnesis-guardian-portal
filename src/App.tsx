@@ -51,8 +51,8 @@ function App() {
       <TooltipProvider>
         <Routes>
           {/* Public routes */}
-          <Route path="/sign-in/*" element={<SignInPage />} />
-          <Route path="/sign-up/*" element={<SignUpPage />} />
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/sign-up" element={<SignUpPage />} />
           
           {/* Form pages - accessed via token, no auth required */}
           <Route path="/patient-form" element={<PatientFormPage />} />

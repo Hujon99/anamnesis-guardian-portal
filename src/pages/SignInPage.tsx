@@ -11,8 +11,7 @@ const SignInPage = () => {
         </div>
         
         <SignIn 
-          path="/sign-in"
-          routing="path"
+          routing="hash"
           signUpUrl="/sign-up"
           appearance={{
             elements: {

@@ -155,6 +155,64 @@ export const useEntryMutations = (entryId: string, onSuccess?: () => void) => {
           queryKey: ["anamnes-entries"]
         });
         
+        // Check if this is a driving license examination and send email notification
+        if (opticianId) {
+          try {
+            console.log(`Checking if entry ${entryId} is a driving license examination...`);
+            
+            // Get entry details to check examination type
+            const { data: entryDetails, error: entryError } = await supabase
+              .from("anamnes_entries")
+              .select("examination_type")
+              .eq("id", entryId)
+              .single();
+            
+            if (entryError) {
+              console.error("Error fetching entry details for email check:", entryError);
+            } else if (entryDetails?.examination_type === 'driving_license') {
+              console.log(`Entry is a driving license examination, sending email notification...`);
+              
+              // Send email notification - don't let email errors break the main flow
+              try {
+                const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+                  'notify-optician-driving-license',
+                  {
+                    body: {
+                      entryId: entryId,
+                      appUrl: window.location.origin
+                    }
+                  }
+                );
+                
+                if (emailError) {
+                  console.error("Email notification failed:", emailError);
+                  // Show a non-blocking warning toast
+                  toast({
+                    title: "Varning",
+                    description: "Optiker tilldelad men e-postnotifiering misslyckades",
+                    variant: "default",
+                  });
+                } else {
+                  console.log("Email notification sent successfully:", emailResult);
+                }
+              } catch (emailException) {
+                console.error("Email notification exception:", emailException);
+                // Show a non-blocking warning toast
+                toast({
+                  title: "Varning", 
+                  description: "Optiker tilldelad men e-postnotifiering misslyckades",
+                  variant: "default",
+                });
+              }
+            } else {
+              console.log(`Entry examination_type: ${entryDetails?.examination_type} - no email notification needed`);
+            }
+          } catch (emailCheckError) {
+            console.error("Error checking entry type for email notification:", emailCheckError);
+            // Don't show toast for this error as it's not critical
+          }
+        }
+
         // Show success message
         toast({
           title: "Optiker tilldelad",

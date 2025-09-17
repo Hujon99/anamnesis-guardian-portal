@@ -29,13 +29,15 @@ interface DrivingLicenseResultsProps {
   entry: AnamnesesEntry;
   answers: Record<string, any>;
   onDecisionUpdate?: () => void;
+  onStatusUpdate?: (status: string) => Promise<void>;
 }
 
 export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
   examination,
   entry,
   answers,
-  onDecisionUpdate
+  onDecisionUpdate,
+  onStatusUpdate
 }) => {
   const { user } = useUser();
   const { supabase } = useSupabaseClient();
@@ -379,6 +381,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
             examination={examination}
             entry={entry}
             answers={answers}
+            onStatusUpdate={onStatusUpdate}
           />
         </div>
       )}

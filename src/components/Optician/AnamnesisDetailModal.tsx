@@ -105,6 +105,7 @@ export function AnamnesisDetailModal({
               // Refresh the entry data by calling the parent's update handler
               onEntryUpdated();
             }}
+            onStatusUpdate={handleStatusUpdate}
           />
         </div>
         

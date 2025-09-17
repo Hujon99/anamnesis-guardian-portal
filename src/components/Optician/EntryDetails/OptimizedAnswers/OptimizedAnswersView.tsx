@@ -27,6 +27,8 @@ interface OptimizedAnswersViewProps {
   setFormattedRawData: (data: string) => void;
   saveFormattedRawData: () => void;
   isPending: boolean;
+  onStatusUpdate?: (status: string) => Promise<void>;
+  examinationType?: string;
 }
 
 export const OptimizedAnswersView = ({
@@ -39,7 +41,9 @@ export const OptimizedAnswersView = ({
   formattedRawData: initialFormattedRawData,
   setFormattedRawData,
   saveFormattedRawData,
-  isPending
+  isPending,
+  onStatusUpdate,
+  examinationType
 }: OptimizedAnswersViewProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +77,9 @@ export const OptimizedAnswersView = ({
   } = useSummaryGenerator({
     formattedRawData: initialFormattedRawData,
     onSaveSummary,
-    entryId // Pass entryId for audit logging
+    entryId, // Pass entryId for audit logging
+    onStatusUpdate,
+    examinationType
   });
 
   // Use the raw data manager hook

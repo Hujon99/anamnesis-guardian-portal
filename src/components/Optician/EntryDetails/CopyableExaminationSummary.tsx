@@ -21,12 +21,14 @@ interface CopyableExaminationSummaryProps {
   examination: DrivingLicenseExamination;
   entry: AnamnesesEntry;
   answers: Record<string, any>;
+  onStatusUpdate?: (status: string) => void;
 }
 
 export const CopyableExaminationSummary: React.FC<CopyableExaminationSummaryProps> = ({
   examination,
   entry,
-  answers
+  answers,
+  onStatusUpdate
 }) => {
   const { resolveUserDisplay } = useUserResolver();
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
@@ -106,6 +108,16 @@ ${examination.optician_notes ? `Anteckningar: ${examination.optician_notes}` : '
         title: "Kopierat!",
         description: `${format} har kopierats till urklipp.`
       });
+      
+      // For driving license examinations, mark as journaled when summary is copied
+      if (onStatusUpdate && entry.status !== 'journaled') {
+        try {
+          await onStatusUpdate('journaled');
+          console.log(`Entry marked as journaled after copying ${format}`);
+        } catch (error) {
+          console.error('Failed to update status to journaled:', error);
+        }
+      }
       
       // Reset copied state after 2 seconds
       setTimeout(() => setCopiedFormat(null), 2000);

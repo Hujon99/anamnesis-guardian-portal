@@ -36,6 +36,7 @@ interface ModalTabContentProps {
   onAssignOptician: (opticianId: string | null) => Promise<void>;
   onAssignStore: (storeId: string | null) => Promise<void>;
   onEntryUpdate?: () => void;
+  onStatusUpdate?: (status: string) => Promise<void>;
 }
 
 export function ModalTabContent({
@@ -56,7 +57,8 @@ export function ModalTabContent({
   onSaveAiSummary,
   onAssignOptician,
   onAssignStore,
-  onEntryUpdate
+  onEntryUpdate,
+  onStatusUpdate
 }: ModalTabContentProps) {
   
   // Check if this is a driving license examination
@@ -109,6 +111,8 @@ export function ModalTabContent({
           setFormattedRawData={setFormattedRawData}
           saveFormattedRawData={saveFormattedRawData}
           isPending={isPending}
+          onStatusUpdate={onStatusUpdate}
+          examinationType={entry.examination_type}
         />
       </TabsContent>
       
@@ -153,6 +157,7 @@ export function ModalTabContent({
                   // Trigger a refresh if needed
                   window.location.reload();
                 }}
+                onStatusUpdate={onStatusUpdate}
               />
             ) : (
               <div className="p-8 text-center">

@@ -13,12 +13,16 @@ interface SummaryGeneratorProps {
   formattedRawData: string;
   onSaveSummary: (summary: string) => void;
   entryId?: string; // Add entryId for audit logging
+  onStatusUpdate?: (status: string) => void;
+  examinationType?: string;
 }
 
 export const useSummaryGenerator = ({
   formattedRawData,
   onSaveSummary,
-  entryId
+  entryId,
+  onStatusUpdate,
+  examinationType
 }: SummaryGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -75,7 +79,7 @@ export const useSummaryGenerator = ({
     }
   };
 
-  const copySummaryToClipboard = (summary: string) => {
+  const copySummaryToClipboard = async (summary: string) => {
     if (summary) {
       navigator.clipboard.writeText(summary);
       setIsCopied(true);
@@ -83,6 +87,16 @@ export const useSummaryGenerator = ({
         title: "Kopierad!",
         description: "AI-sammanfattningen har kopierats till urklipp",
       });
+      
+      // For visual examinations (not driving license), mark as journaled when AI summary is copied
+      if (onStatusUpdate && examinationType?.toLowerCase() !== 'körkortsundersökning') {
+        try {
+          await onStatusUpdate('journaled');
+          console.log('Entry marked as journaled after copying AI summary');
+        } catch (error) {
+          console.error('Failed to update status to journaled:', error);
+        }
+      }
       
       setTimeout(() => {
         setIsCopied(false);

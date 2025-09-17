@@ -46,3 +46,6 @@ verify_jwt = false
 
 [functions.cleanup-access-logs]
 verify_jwt = false
+
+[functions.repair-missing-summaries]
+verify_jwt = false

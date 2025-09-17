@@ -212,23 +212,47 @@ serve(async (req: Request) => {
       logger.warn('Error while logging anonymized access', logErr);
     }
 
-    // After successful submission with formatted data, trigger AI summary generation
-    try {
-      logger.info("Triggering AI summary generation with formatted data");
-      const { error: summaryError } = await supabase.functions.invoke('generate-summary', {
-        body: { entryId: entry.id }
-      });
+    // After successful submission with formatted data, trigger AI summary generation with retry
+    const triggerAISummaryWithRetry = async (retryCount = 0) => {
+      const maxRetries = 2;
       
-      if (summaryError) {
-        logger.error(`Failed to generate AI summary: ${summaryError.message}`);
-        // Don't fail the submission if summary generation fails
-      } else {
-        logger.info(`AI summary generation triggered successfully`);
+      try {
+        logger.info(`Triggering AI summary generation (attempt ${retryCount + 1}/${maxRetries + 1})`);
+        
+        const summaryResponse = await supabase.functions.invoke('generate-summary', {
+          body: { entryId: entry.id }
+        });
+        
+        if (summaryResponse.error) {
+          throw new Error(`Edge function error: ${summaryResponse.error.message}`);
+        }
+        
+        if (summaryResponse.data?.error) {
+          throw new Error(`Generate summary error: ${summaryResponse.data.error}`);
+        }
+        
+        logger.info("AI summary generation completed successfully");
+        return true;
+        
+      } catch (summaryError) {
+        logger.error(`AI summary generation attempt ${retryCount + 1} failed:`, summaryError);
+        
+        if (retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+          logger.info(`Retrying AI summary generation in ${delay}ms...`);
+          
+          setTimeout(async () => {
+            await triggerAISummaryWithRetry(retryCount + 1);
+          }, delay);
+        } else {
+          logger.error(`All AI summary generation attempts failed. Entry ${entry.id} will need manual AI summary generation.`);
+        }
+        return false;
       }
-    } catch (summaryError) {
-      logger.error(`Error triggering AI summary generation:`, summaryError);
-      // Don't fail the submission if summary generation fails
-    }
+    };
+    
+    // Don't await this - let it run in background so submission response is fast
+    triggerAISummaryWithRetry();
 
     return new Response(
       JSON.stringify({

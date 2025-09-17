@@ -28,10 +28,10 @@ serve(async (req: Request) => {
     const baseEndpoint = Deno.env.get("AZURE_OPENAI_BASE_ENDPOINT");
     const deploymentName = Deno.env.get("AZURE_OPENAI_DEPLOYMENT_NAME");
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     
-    // Create a Supabase client for database operations
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    // Create a Supabase client with service role key to bypass RLS
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
       global: { headers: { 'X-Edge-Function': 'generate-summary' } }
     });
@@ -56,43 +56,80 @@ serve(async (req: Request) => {
     
     // If entryId is provided, fetch the entry from the database
     if (entryId && !promptText) {
-      console.log(`Fetching entry with ID: ${entryId} to generate summary`);
+      console.log(`[generate-summary] Fetching entry with ID: ${entryId} to generate summary`);
       
-      // Fetch the entry data from the database
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .select("id, formatted_raw_data")
-        .eq("id", entryId)
-        .single();
-      
-      if (error) {
-        console.error(`Error fetching entry: ${error.message}`);
+      try {
+        // Fetch the entry data from the database using service role
+        const { data, error } = await supabase
+          .from("anamnes_entries")
+          .select("id, formatted_raw_data, ai_summary")
+          .eq("id", entryId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error(`[generate-summary] Database error fetching entry: ${error.message}`, error);
+          return new Response(
+            JSON.stringify({ error: `Database error: ${error.message}` }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+        
+        if (!data) {
+          console.error(`[generate-summary] Entry not found: ${entryId}`);
+          return new Response(
+            JSON.stringify({ error: "Entry not found" }),
+            { 
+              status: 404,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+        
+        // Check if AI summary already exists and is recent
+        if (data.ai_summary && data.ai_summary.trim().length > 50) {
+          console.log(`[generate-summary] AI summary already exists for entry: ${entryId}, skipping generation`);
+          return new Response(
+            JSON.stringify({ 
+              summary: data.ai_summary,
+              message: "AI summary already exists"
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+        
+        if (!data.formatted_raw_data || data.formatted_raw_data.trim().length === 0) {
+          console.error(`[generate-summary] Entry ${entryId} has no formatted_raw_data`);
+          return new Response(
+            JSON.stringify({ error: "Entry has no formatted data to summarize" }),
+            { 
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+        
+        entry = data;
+        textForSummary = data.formatted_raw_data;
+        console.log(`[generate-summary] Using formatted_raw_data from entry: ${entryId}`);
+        console.log(`[generate-summary] Text length: ${textForSummary.length}`);
+        console.log(`[generate-summary] First 100 characters: ${textForSummary.substring(0, 100)}`);
+        
+      } catch (dbError) {
+        console.error(`[generate-summary] Unexpected database error:`, dbError);
         return new Response(
-          JSON.stringify({ error: `Failed to fetch entry: ${error.message}` }),
+          JSON.stringify({ error: "Database connection error" }),
           { 
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         );
       }
-      
-      if (!data || !data.formatted_raw_data) {
-        console.error("Entry not found or has no formatted_raw_data");
-        return new Response(
-          JSON.stringify({ error: "Entry not found or has no formatted data" }),
-          { 
-            status: 404,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-      
-      entry = data;
-      textForSummary = data.formatted_raw_data;
-      console.log(`Using formatted_raw_data from entry: ${entryId}`);
-      console.log(`Text length: ${textForSummary.length}`);
-      console.log(`First 100 characters: ${textForSummary.substring(0, 100)}`);
-    } 
+    }
     // If promptText is provided directly, use that
     else if (promptText) {
       textForSummary = promptText;
@@ -152,68 +189,148 @@ Viktiga instruktioner:
     const requestUrl = `${baseEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`;
     console.log(`Using Azure OpenAI endpoint: ${baseEndpoint}`);
     
-    // 4. Make the fetch call
-    console.log("Calling Azure OpenAI API...");
-    const response = await fetch(requestUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": apiKey
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: textForSummary
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.3
-      })
-    });
+    // 4. Make the fetch call with timeout
+    console.log("[generate-summary] Calling Azure OpenAI API...");
     
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`Azure OpenAI API error: ${response.status} ${response.statusText}`, errorData);
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to generate summary", 
-          details: `Status: ${response.status} ${response.statusText}` 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    try {
+      const response = await fetch(requestUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": apiKey
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt
+            },
+            {
+              role: "user", 
+              content: textForSummary
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.3
         }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error(`[generate-summary] Azure OpenAI API error: ${response.status} ${response.statusText}`, errorData);
+        return new Response(
+          JSON.stringify({ 
+            error: "Failed to generate summary", 
+            details: `Status: ${response.status} ${response.statusText}`,
+            responseBody: errorData
+          }),
+          { 
+            status: response.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error(`[generate-summary] Azure OpenAI API timeout after 30 seconds`);
+        return new Response(
+          JSON.stringify({ error: "Request timeout - Azure OpenAI took too long to respond" }),
+          { 
+            status: 408,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      console.error(`[generate-summary] Network error calling Azure OpenAI:`, fetchError);
+      return new Response(
+        JSON.stringify({ error: "Network error calling Azure OpenAI" }),
         { 
-          status: response.status,
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
     
     // Process the response
-    console.log("Processing Azure OpenAI response...");
-    const data = await response.json();
+    console.log("[generate-summary] Processing Azure OpenAI response...");
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error(`[generate-summary] Failed to parse Azure OpenAI response as JSON:`, jsonError);
+      return new Response(
+        JSON.stringify({ error: "Invalid response format from Azure OpenAI" }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
     const summary = data.choices?.[0]?.message?.content || "Kunde inte generera sammanfattning.";
     
-    console.log("Summary generated successfully");
-    console.log("Summary length:", summary.length);
-    console.log("First 100 characters of summary:", summary.substring(0, 100));
+    if (!summary || summary.trim().length === 0) {
+      console.error(`[generate-summary] Empty summary generated`);
+      return new Response(
+        JSON.stringify({ error: "Empty summary generated by AI" }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    console.log("[generate-summary] Summary generated successfully");
+    console.log(`[generate-summary] Summary length: ${summary.length}`);
+    console.log(`[generate-summary] First 100 characters of summary: ${summary.substring(0, 100)}`);
     
     // If this was called with an entryId, save the summary to the database
     if (entry) {
-      console.log(`Saving summary to database for entry: ${entry.id}`);
+      console.log(`[generate-summary] Saving summary to database for entry: ${entry.id}`);
       
-      const { error: updateError } = await supabase
-        .from("anamnes_entries")
-        .update({ ai_summary: summary })
-        .eq("id", entry.id);
-      
-      if (updateError) {
-        console.error(`Error saving summary to database: ${updateError.message}`);
-        // We'll still return the summary even if saving failed
-      } else {
-        console.log("Summary saved successfully to database");
+      try {
+        const { error: updateError } = await supabase
+          .from("anamnes_entries")
+          .update({ 
+            ai_summary: summary,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", entry.id);
+        
+        if (updateError) {
+          console.error(`[generate-summary] Error saving summary to database: ${updateError.message}`, updateError);
+          // We'll still return the summary even if saving failed
+          return new Response(
+            JSON.stringify({ 
+              summary,
+              warning: "Summary generated but failed to save to database"
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        } else {
+          console.log("[generate-summary] Summary saved successfully to database");
+        }
+      } catch (saveError) {
+        console.error(`[generate-summary] Unexpected error saving summary:`, saveError);
+        return new Response(
+          JSON.stringify({ 
+            summary,
+            warning: "Summary generated but database save failed"
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
     }
     

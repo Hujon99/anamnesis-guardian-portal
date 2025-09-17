@@ -48,11 +48,12 @@ serve(async (req: Request) => {
     // Parse request body
     console.log("Parsing request body...");
     const requestBody = await req.json();
-    const { promptText, entryId } = requestBody;
+    const { promptText, entryId, examinationType } = requestBody;
     
     // Variable to hold the text that will be sent to Azure OpenAI
     let textForSummary: string;
     let entry = null;
+    let examinationTypeForPrompt: string;
     
     // If entryId is provided, fetch the entry from the database
     if (entryId && !promptText) {
@@ -62,7 +63,7 @@ serve(async (req: Request) => {
         // Fetch the entry data from the database using service role
         const { data, error } = await supabase
           .from("anamnes_entries")
-          .select("id, formatted_raw_data, ai_summary")
+          .select("id, formatted_raw_data, ai_summary, examination_type")
           .eq("id", entryId)
           .maybeSingle();
         
@@ -115,7 +116,9 @@ serve(async (req: Request) => {
         
         entry = data;
         textForSummary = data.formatted_raw_data;
+        examinationTypeForPrompt = data.examination_type || 'allmän';
         console.log(`[generate-summary] Using formatted_raw_data from entry: ${entryId}`);
+        console.log(`[generate-summary] Examination type: ${examinationTypeForPrompt}`);
         console.log(`[generate-summary] Text length: ${textForSummary.length}`);
         console.log(`[generate-summary] First 100 characters: ${textForSummary.substring(0, 100)}`);
         
@@ -133,9 +136,11 @@ serve(async (req: Request) => {
     // If promptText is provided directly, use that
     else if (promptText) {
       textForSummary = promptText;
+      examinationTypeForPrompt = examinationType || 'allmän';
       console.log(`Using provided promptText with length: ${promptText.length}`);
+      console.log(`Examination type: ${examinationTypeForPrompt}`);
       console.log(`First 100 characters: ${promptText.substring(0, 100)}`);
-    } 
+    }
     // No valid input provided
     else {
       console.error("No prompt text or entry ID provided");
@@ -148,35 +153,66 @@ serve(async (req: Request) => {
       );
     }
     
-    // Define system prompt
-    const systemPrompt = `Du är en AI-assistent specialiserad på att hjälpa optiker. Din roll är att agera som en erfaren klinisk assistent som tolkar och sammanfattar patienters anamnesdata.
+    // Create examination type-specific system prompt
+    function createSystemPrompt(examinationType: string): string {
+      const baseInstructions = `Du är en AI-assistent specialiserad på att hjälpa optiker. Din roll är att agera som en erfaren klinisk assistent som tolkar och sammanfattar patienters anamnesdata.
 
 Du kommer att få indata i form av en textlista som innehåller frågor ställda till en patient och patientens svar på dessa frågor, extraherade från ett anamnesformulär.
 
-Baserat endast på den information som finns i denna textlista, ska du generera en västrukturerad, koncis och professionell anamnessammanfattning på svenska.
+Baserat endast på den information som finns i denna textlista, ska du generera en välstrukturerad, koncis och professionell anamnessammanfattning på svenska.
 
 Använd ett objektivt och kliniskt språk med korrekta facktermer där det är relevant.
 
-Strukturera sammanfattningen tydligt, förslagsvis under följande rubriker (anpassa efter den information som finns tillgänglig i texten):
-  - Anledning till besök: (Varför patienten söker vård)
-  - Aktuella symtom/besvär: (Synproblem, huvudvärk, dubbelseende, torra ögon etc.)
-  - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar, intresserad av linser)
-  - Ärftlighet: (Ögonsjukdomar i släkten)
-  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier)
-  - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)
-
-
-OBS! OM det är ett kortare formulär med frågor bara för körkort behöver du inte ha alla rubriker ovan.
-OM allt är NORMALT (Nej på alla frågor) - Säg att allt är normalt och att licens kan ges, samt vilken typ av licens de vill ha. Skippa då alla rubriker, och ha bara en KORT anamnes.
-OM något är AVVIKANDE (Ja + förklarande svar/text), inkludera fråga och svar och säg att resten var normalt! Skippa även här alla rubriker.
-OBS OBS OBS! Detta är ENDAST för körkortsformulär, inte för de övriga.
-
 Viktiga instruktioner:
-  1. Inkludera endast information som uttryckligen finns i den angivna fråge- och svarslistan. Gör inga egna antaganden,   tolkningar eller tillägg.
+  1. Inkludera endast information som uttryckligen finns i den angivna fråge- och svarslistan. Gör inga egna antaganden, tolkningar eller tillägg.
   2. Var koncis och fokusera på det kliniskt relevanta.
   3. Tänk på att om något INTE står i anamnesen tolkas det som att man INTE har frågat om det.
   4. Använd tydliga rubriker (utan emojis) för enkel läsbarhet.
-  5. Formattera EJ som markdown, utan tänk txt`;
+  5. Formattera EJ som markdown, utan tänk txt.`;
+
+      if (examinationType === 'körkortsundersökning') {
+        return `${baseInstructions}
+
+KÖRKORTSUNDERSÖKNING - SPECIALINSTRUKTIONER:
+Detta är en körkortsundersökning. Använd kortformat:
+
+OM allt är NORMALT (Nej på alla frågor):
+- Skriv: "Allt är normalt och licens kan ges för körkortstillstånd grupp I (A, AM, B, BE)." eller motsvarande baserat på önskad körkortskategori.
+- Använd INTE några rubriker.
+- Håll det MYCKET kort.
+
+OM något är AVVIKANDE (Ja-svar med förklarande text):
+- Inkludera fråga och svar för avvikande fynd.
+- Avsluta med att resten var normalt.
+- Använd INTE rubriker för körkortsundersökningar.
+- Håll det kort och fokuserat.`;
+      }
+
+      if (examinationType === 'linsundersökning') {
+        return `${baseInstructions}
+
+LINSUNDERSÖKNING - Fokusera på följande områden:
+  - Anledning till besök: (Nya linser, problem med nuvarande linser, intresse för linser)
+  - Aktuella besvär: (Irritation, torrhet, diskomfort, synproblem med linser)
+  - Linshistorik: (Tidigare linsanvändning, typ av linser, daglig/månads/årslins)
+  - Ögonhälsa: (Torra ögon, allergier, infektioner relaterade till linsanvändning)
+  - Livsstil: (Aktiviteter, arbetstid, skärmtid som påverkar linsanvändning)`;
+      }
+
+      // Default för synundersökning och allmän undersökning
+      return `${baseInstructions}
+
+Strukturera sammanfattningen under följande rubriker (anpassa efter den information som finns tillgänglig):
+  - Anledning till besök: (Varför patienten söker vård)
+  - Aktuella symtom/besvär: (Synproblem, huvudvärk, dubbelseende, torra ögon etc.)
+  - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar)
+  - Ärftlighet: (Ögonsjukdomar i släkten)
+  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier)
+  - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)`;
+    }
+
+    const systemPrompt = createSystemPrompt(examinationTypeForPrompt);
+    console.log(`[generate-summary] Using prompt for examination type: ${examinationTypeForPrompt}`);
 
     // Log request parameters for better debugging
     console.log("Request parameters:");

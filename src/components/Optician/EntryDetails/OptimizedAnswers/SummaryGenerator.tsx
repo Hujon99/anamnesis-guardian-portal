@@ -53,7 +53,8 @@ export const useSummaryGenerator = ({
       
       const { data, error } = await supabase.functions.invoke('generate-summary', {
         body: {
-          promptText: formattedRawData
+          promptText: formattedRawData,
+          examinationType: examinationType
         }
       });
       

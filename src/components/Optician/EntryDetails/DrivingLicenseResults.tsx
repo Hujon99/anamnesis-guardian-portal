@@ -4,7 +4,7 @@
  * results including visual acuity measurements, ID verification, and final decision.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,23 +43,29 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
   const { supabase } = useSupabaseClient();
   const { opticians = [] } = useOpticians();
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [localExamination, setLocalExamination] = useState(examination);
   const { resolveUserDisplay } = useUserResolver();
+
+  // Update local state when examination prop changes
+  useEffect(() => {
+    setLocalExamination(examination);
+  }, [examination]);
   const getDecisionBadge = () => {
-    if (examination.optician_decision === 'approved') {
+    if (localExamination.optician_decision === 'approved') {
       return (
         <Badge className="bg-green-100 text-green-800 border-green-200">
           <CheckCircle className="h-3 w-3 mr-1" />
           Godkänd
         </Badge>
       );
-    } else if (examination.optician_decision === 'requires_booking') {
+    } else if (localExamination.optician_decision === 'requires_booking') {
       return (
         <Badge className="bg-amber-100 text-amber-800 border-amber-200">
           <Calendar className="h-3 w-3 mr-1" />
           Bokning krävs
         </Badge>
       );
-    } else if (examination.optician_decision === 'not_approved') {
+    } else if (localExamination.optician_decision === 'not_approved') {
       return (
         <Badge variant="destructive">
           <XCircle className="h-3 w-3 mr-1" />
@@ -77,11 +83,11 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
   };
 
   const getCorrectionType = () => {
-    if (examination.uses_glasses && examination.uses_contact_lenses) {
+    if (localExamination.uses_glasses && localExamination.uses_contact_lenses) {
       return "glasögon och linser";
-    } else if (examination.uses_glasses) {
+    } else if (localExamination.uses_glasses) {
       return "glasögon";
-    } else if (examination.uses_contact_lenses) {
+    } else if (localExamination.uses_contact_lenses) {
       return "linser";
     }
     return null;
@@ -127,6 +133,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
         description: "Sammanfattningen har skapats och sparats."
       });
 
+      // Don't trigger reload, just notify parent for potential state updates
       onDecisionUpdate?.();
     } catch (error: any) {
       console.error('Error generating AI summary:', error);
@@ -157,7 +164,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
             <div className="text-sm space-y-1">
               <p>Namn: {entry.first_name}</p>
               <p>Datum: {entry.booking_date ? new Date(entry.booking_date).toLocaleDateString('sv-SE') : 'Idag'}</p>
-              <p>Slutförd: {new Date(examination.updated_at).toLocaleString('sv-SE')}</p>
+              <p>Slutförd: {new Date(localExamination.updated_at).toLocaleString('sv-SE')}</p>
             </div>
           </div>
 
@@ -216,17 +223,17 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                     </h5>
                     <p>
                       Båda ögon: <span className="font-mono">
-                        {examination.visual_acuity_with_correction_both || 'Ej mätt'}
+                        {localExamination.visual_acuity_with_correction_both || 'Ej mätt'}
                       </span>
                     </p>
                     <p>
                       Höger öga: <span className="font-mono">
-                        {examination.visual_acuity_with_correction_right || 'Ej mätt'}
+                        {localExamination.visual_acuity_with_correction_right || 'Ej mätt'}
                       </span>
                     </p>
                     <p>
                       Vänster öga: <span className="font-mono">
-                        {examination.visual_acuity_with_correction_left || 'Ej mätt'}
+                        {localExamination.visual_acuity_with_correction_left || 'Ej mätt'}
                       </span>
                     </p>
                   </div>
@@ -236,17 +243,17 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                     <h5 className="font-medium text-sm">Utan korrektion</h5>
                     <p>
                       Båda ögon: <span className="font-mono">
-                        {examination.visual_acuity_both_eyes || 'Ej mätt'}
+                        {localExamination.visual_acuity_both_eyes || 'Ej mätt'}
                       </span>
                     </p>
                     <p>
                       Höger öga: <span className="font-mono">
-                        {examination.visual_acuity_right_eye || 'Ej mätt'}
+                        {localExamination.visual_acuity_right_eye || 'Ej mätt'}
                       </span>
                     </p>
                     <p>
                       Vänster öga: <span className="font-mono">
-                        {examination.visual_acuity_left_eye || 'Ej mätt'}
+                        {localExamination.visual_acuity_left_eye || 'Ej mätt'}
                       </span>
                     </p>
                   </div>
@@ -257,24 +264,24 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                   <h5 className="font-medium text-sm">Utan korrektion</h5>
                   <p>
                     Båda ögon: <span className="font-mono">
-                      {examination.visual_acuity_both_eyes || 'Ej mätt'}
+                      {localExamination.visual_acuity_both_eyes || 'Ej mätt'}
                     </span>
                   </p>
                   <p>
                     Höger öga: <span className="font-mono">
-                      {examination.visual_acuity_right_eye || 'Ej mätt'}
+                      {localExamination.visual_acuity_right_eye || 'Ej mätt'}
                     </span>
                   </p>
                   <p>
                     Vänster öga: <span className="font-mono">
-                      {examination.visual_acuity_left_eye || 'Ej mätt'}
+                      {localExamination.visual_acuity_left_eye || 'Ej mätt'}
                     </span>
                   </p>
                 </div>
               )}
             </div>
             
-            {examination.vision_below_limit ? (
+            {localExamination.vision_below_limit ? (
               <Alert variant="destructive">
                 <XCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -330,13 +337,13 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
           </div>
 
           {/* Notes */}
-          {examination.notes && (
+          {localExamination.notes && (
             <>
               <Separator />
               <div className="space-y-2">
                 <h4 className="font-medium">Anteckningar</h4>
                 <p className="text-sm bg-muted p-3 rounded-md">
-                  {examination.notes}
+                  {localExamination.notes}
                 </p>
               </div>
             </>
@@ -347,7 +354,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
             <Clock className="h-4 w-4" />
             <AlertDescription>
               <div className="flex items-center justify-between">
-                <span>Undersökning slutförd {new Date(examination.updated_at).toLocaleString('sv-SE')}</span>
+                <span>Undersökning slutförd {new Date(localExamination.updated_at).toLocaleString('sv-SE')}</span>
                 {getDecisionBadge()}
               </div>
             </AlertDescription>
@@ -358,7 +365,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
       {/* Recommendation Engine */}
       <div className="mt-6">
         <RecommendationEngine 
-          examination={examination}
+          examination={localExamination}
           entry={entry}
         />
       </div>
@@ -366,19 +373,26 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
       {/* Optician Decision */}
       <div className="mt-6">
         <DrivingLicenseOpticianDecision
-          examination={examination}
+          examination={localExamination}
           entry={entry}
           currentUserId={user?.id || ''}
-          onDecisionMade={onDecisionUpdate}
+          onDecisionMade={(updatedExamination) => {
+            // Update local state immediately to show decision without reload
+            if (updatedExamination) {
+              setLocalExamination(updatedExamination);
+            }
+            // Still call parent callback for any additional updates
+            onDecisionUpdate?.();
+          }}
           getUserName={getUserName}
         />
       </div>
 
-      {/* Export Section */}
-      {examination.optician_decision && (
+      {/* Export Section - Show immediately after decision */}
+      {localExamination.optician_decision && (
         <div className="mt-6">
           <CopyableExaminationSummary
-            examination={examination}
+            examination={localExamination}
             entry={entry}
             answers={answers}
             onStatusUpdate={onStatusUpdate}

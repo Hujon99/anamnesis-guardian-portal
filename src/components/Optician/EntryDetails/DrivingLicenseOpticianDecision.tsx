@@ -24,7 +24,7 @@ interface DrivingLicenseOpticianDecisionProps {
   examination: DrivingLicenseExamination;
   entry: AnamnesesEntry;
   currentUserId: string;
-  onDecisionMade?: () => void;
+  onDecisionMade?: (updatedExamination?: DrivingLicenseExamination) => void;
   getUserName?: (userId: string | null) => string;
 }
 
@@ -52,7 +52,7 @@ export const DrivingLicenseOpticianDecision: React.FC<DrivingLicenseOpticianDeci
     
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('driving_license_examinations')
         .update({
           optician_decision: decision,
@@ -60,7 +60,9 @@ export const DrivingLicenseOpticianDecision: React.FC<DrivingLicenseOpticianDeci
           optician_notes: notes.trim() || null,
           decided_by: currentUserId
         })
-        .eq('id', examination.id);
+        .eq('id', examination.id)
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -69,7 +71,8 @@ export const DrivingLicenseOpticianDecision: React.FC<DrivingLicenseOpticianDeci
         description: "Ditt beslut har sparats för körkortsundersökningen."
       });
 
-      onDecisionMade?.();
+      // Pass back the updated examination data to update local state
+      onDecisionMade?.(data);
     } catch (error: any) {
       console.error('Error saving decision:', error);
       toast({

@@ -154,8 +154,8 @@ export function ModalTabContent({
                 entry={entry}
                 answers={answers}
                 onDecisionUpdate={() => {
-                  // Trigger a refresh if needed
-                  window.location.reload();
+                  // Update entry data without reloading page
+                  onEntryUpdate?.();
                 }}
                 onStatusUpdate={onStatusUpdate}
               />

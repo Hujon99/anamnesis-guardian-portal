@@ -17,6 +17,8 @@ import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
+// Import debug utility for testing (remove after testing)
+import { debugSummaryRepair } from "@/utils/debugSummaryRepair";
 
 // Error fallback component for the Dashboard
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {

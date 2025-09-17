@@ -311,8 +311,6 @@ export function EntriesList({
           isOpen={isDetailModalOpen}
           onOpenChange={setIsDetailModalOpen}
           onEntryUpdated={() => {
-            setSelectedEntry(null);
-            setIsDetailModalOpen(false);
             if (onEntryUpdated) onEntryUpdated();
           }}
         />

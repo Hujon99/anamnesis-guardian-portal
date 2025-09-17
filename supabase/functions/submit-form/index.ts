@@ -213,14 +213,17 @@ serve(async (req: Request) => {
     }
 
     // After successful submission with formatted data, trigger AI summary generation with retry
-    const triggerAISummaryWithRetry = async (retryCount = 0) => {
+    const triggerAISummaryWithRetry = async (retryCount = 0): Promise<boolean> => {
       const maxRetries = 2;
       
       try {
         logger.info(`Triggering AI summary generation (attempt ${retryCount + 1}/${maxRetries + 1})`);
         
         const summaryResponse = await supabase.functions.invoke('generate-summary', {
-          body: { entryId: entry.id }
+          body: { 
+            entryId: entry.id,
+            examinationType: entry.anamnes_forms?.examination_type 
+          }
         });
         
         if (summaryResponse.error) {
@@ -241,18 +244,28 @@ serve(async (req: Request) => {
           const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
           logger.info(`Retrying AI summary generation in ${delay}ms...`);
           
-          setTimeout(async () => {
-            await triggerAISummaryWithRetry(retryCount + 1);
-          }, delay);
+          // Use Promise.resolve to avoid setTimeout issues in edge functions
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return await triggerAISummaryWithRetry(retryCount + 1);
         } else {
           logger.error(`All AI summary generation attempts failed. Entry ${entry.id} will need manual AI summary generation.`);
+          return false;
         }
-        return false;
       }
     };
     
-    // Don't await this - let it run in background so submission response is fast
-    triggerAISummaryWithRetry();
+    // Use EdgeRuntime.waitUntil() to ensure the background task completes
+    const backgroundTask = triggerAISummaryWithRetry();
+    
+    // Ensure the edge function waits for the background task
+    try {
+      // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+      EdgeRuntime.waitUntil(backgroundTask);
+    } catch (waitUntilError) {
+      // Fallback: await directly if waitUntil is not available
+      logger.warn("EdgeRuntime.waitUntil not available, falling back to direct await");
+      await backgroundTask;
+    }
 
     return new Response(
       JSON.stringify({

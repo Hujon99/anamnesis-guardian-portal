@@ -219,8 +219,6 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       const n = parseLocaleFloat(v as any);
       return Number.isNaN(n) ? null : n;
     };
-
-    console.log('[VisualAcuityMeasurement] Raw measurements before conversion:', measurements);
     
     const updates = {
       // Only include DB columns explicitly to avoid enum/type issues (no UI-only fields)
@@ -247,16 +245,6 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       // Append license category info into notes without overwriting any existing notes saved earlier
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
     };
-    
-    console.log('[VisualAcuityMeasurement] Converted updates:', updates);
-    console.log('[VisualAcuityMeasurement] Specific values:', {
-      both_eyes_raw: measurements.visual_acuity_both_eyes,
-      both_eyes_converted: updates.visual_acuity_both_eyes,
-      right_eye_raw: measurements.visual_acuity_right_eye, 
-      right_eye_converted: updates.visual_acuity_right_eye,
-      left_eye_raw: measurements.visual_acuity_left_eye,
-      left_eye_converted: updates.visual_acuity_left_eye
-    });
 
     try {
       await onSave(updates);

@@ -50,18 +50,6 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
   // Update local state when examination prop changes
   useEffect(() => {
     setLocalExamination(examination);
-    
-    // Debug logging to see what values we're receiving in DrivingLicenseResults
-    console.log('[DrivingLicenseResults] Debug - examination visual acuity values:', {
-      both_eyes: examination?.visual_acuity_both_eyes,
-      both_eyes_type: typeof examination?.visual_acuity_both_eyes,
-      right_eye: examination?.visual_acuity_right_eye,
-      right_eye_type: typeof examination?.visual_acuity_right_eye,
-      left_eye: examination?.visual_acuity_left_eye,
-      left_eye_type: typeof examination?.visual_acuity_left_eye,
-      with_correction_both: examination?.visual_acuity_with_correction_both,
-      with_correction_both_type: typeof examination?.visual_acuity_with_correction_both
-    });
   }, [examination]);
   const getDecisionBadge = () => {
     if (localExamination.optician_decision === 'approved') {

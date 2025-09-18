@@ -59,6 +59,18 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   const idType = entry?.id_type || examination?.id_type;
   const verifiedBy = entry?.verified_by || examination?.verified_by;
   const canPass = visionPassed && idVerified;
+  
+  // Debug logging to see what values we're receiving
+  console.log('[ExaminationSummary] Debug - examination visual acuity values:', {
+    both_eyes: examination?.visual_acuity_both_eyes,
+    both_eyes_type: typeof examination?.visual_acuity_both_eyes,
+    right_eye: examination?.visual_acuity_right_eye,
+    right_eye_type: typeof examination?.visual_acuity_right_eye,
+    left_eye: examination?.visual_acuity_left_eye,
+    left_eye_type: typeof examination?.visual_acuity_left_eye,
+    with_correction_both: examination?.visual_acuity_with_correction_both,
+    with_correction_both_type: typeof examination?.visual_acuity_with_correction_both
+  });
   const handleComplete = async () => {
     if (!selectedOpticianId) {
       toast({

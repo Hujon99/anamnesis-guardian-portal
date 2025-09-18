@@ -94,6 +94,8 @@ export function formatVisualAcuityValue(value: number | null | undefined): strin
  * @returns Formatted string preserving original precision with comma as decimal separator
  */
 export function formatVisualAcuityDisplay(value: number | string | null | undefined): string {
+  console.log('[formatVisualAcuityDisplay] Input:', { value, type: typeof value });
+  
   if (value === null || value === undefined) {
     return 'Ej mätt';
   }
@@ -105,17 +107,41 @@ export function formatVisualAcuityDisplay(value: number | string | null | undefi
   
   // Convert to string to preserve exact precision
   const stringValue = String(value);
+  console.log('[formatVisualAcuityDisplay] String value:', stringValue);
   
   // If it's already a string with comma, return as is
   if (stringValue.includes(',')) {
+    console.log('[formatVisualAcuityDisplay] Has comma, returning as is:', stringValue);
     return stringValue;
   }
   
   // If it's a string with dot, replace with comma
   if (stringValue.includes('.')) {
-    return stringValue.replace('.', ',');
+    const result = stringValue.replace('.', ',');
+    console.log('[formatVisualAcuityDisplay] Has dot, replaced with comma:', result);
+    return result;
+  }
+  
+  // Handle JavaScript floating point precision issues
+  // Check if this looks like a common precision error
+  const numValue = typeof value === 'number' ? value : parseFloat(stringValue);
+  if (!isNaN(numValue)) {
+    // Round to 2 decimal places to avoid floating point precision issues
+    // But only if it's very close to a "nice" number
+    const rounded = Math.round(numValue * 100) / 100;
+    const diff = Math.abs(numValue - rounded);
+    
+    console.log('[formatVisualAcuityDisplay] Floating point check:', { numValue, rounded, diff });
+    
+    // If the difference is very small (floating point error), use the rounded version
+    if (diff < 0.001) {
+      const result = rounded.toString().replace('.', ',');
+      console.log('[formatVisualAcuityDisplay] Used rounded value:', result);
+      return result;
+    }
   }
   
   // If it's a whole number, return as is
+  console.log('[formatVisualAcuityDisplay] Returning string as is:', stringValue);
   return stringValue;
 }

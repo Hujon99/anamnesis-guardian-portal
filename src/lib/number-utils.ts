@@ -85,3 +85,37 @@ export function formatVisualAcuityValue(value: number | null | undefined): strin
   // Format with one decimal place and use comma as separator
   return value.toFixed(1).replace('.', ',');
 }
+
+/**
+ * Formats a visual acuity value for display, preserving exact precision
+ * This function is specifically designed to show exact values as entered by users
+ * without any rounding or precision loss that might occur with number formatting
+ * @param value - The value to format (number, string, or null/undefined)
+ * @returns Formatted string preserving original precision with comma as decimal separator
+ */
+export function formatVisualAcuityDisplay(value: number | string | null | undefined): string {
+  if (value === null || value === undefined) {
+    return 'Ej mätt';
+  }
+  
+  // Handle empty string
+  if (value === '' || value === 0) {
+    return 'Ej mätt';
+  }
+  
+  // Convert to string to preserve exact precision
+  const stringValue = String(value);
+  
+  // If it's already a string with comma, return as is
+  if (stringValue.includes(',')) {
+    return stringValue;
+  }
+  
+  // If it's a string with dot, replace with comma
+  if (stringValue.includes('.')) {
+    return stringValue.replace('.', ',');
+  }
+  
+  // If it's a whole number, return as is
+  return stringValue;
+}

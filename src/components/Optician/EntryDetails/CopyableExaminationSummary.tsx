@@ -14,6 +14,7 @@ import { Database } from "@/integrations/supabase/types";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/hooks/use-toast";
 import { useUserResolver } from "@/utils/userDisplayUtils";
+import { formatVisualAcuityDisplay } from "@/lib/number-utils";
 
 type DrivingLicenseExamination = Database['public']['Tables']['driving_license_examinations']['Row'];
 
@@ -56,9 +57,9 @@ Beslutsdatum: ${examination.optician_decision_date ? new Date(examination.optici
 
 VISUSMÄTNINGAR:
 Korrektion: ${correctionType}
-Båda ögon: ${examination.visual_acuity_with_correction_both || examination.visual_acuity_both_eyes || 'Ej mätt'}
-Höger öga: ${examination.visual_acuity_with_correction_right || examination.visual_acuity_right_eye || 'Ej mätt'}
-Vänster öga: ${examination.visual_acuity_with_correction_left || examination.visual_acuity_left_eye || 'Ej mätt'}
+Båda ögon: ${formatVisualAcuityDisplay(examination.visual_acuity_with_correction_both || examination.visual_acuity_both_eyes)}
+Höger öga: ${formatVisualAcuityDisplay(examination.visual_acuity_with_correction_right || examination.visual_acuity_right_eye)}
+Vänster öga: ${formatVisualAcuityDisplay(examination.visual_acuity_with_correction_left || examination.visual_acuity_left_eye)}
 
 LEGITIMATIONSKONTROLL:
 Status: ${examination.id_verification_completed ? 'Verifierad' : 'Ej verifierad'}
@@ -90,7 +91,7 @@ Datum: ${date}`;
     return `KÖRKORTSUNDERSÖKNING ${date}
 
 Patient: ${entry.first_name || 'N/A'}${examination.personal_number ? `\nPersonnummer: ${examination.personal_number}` : ''}
-Visus med ${correctionType}: ${examination.visual_acuity_with_correction_both || examination.visual_acuity_both_eyes || 'N/A'}
+Visus med ${correctionType}: ${formatVisualAcuityDisplay(examination.visual_acuity_with_correction_both || examination.visual_acuity_both_eyes)}
 ID verifierad: ${examination.id_verification_completed ? 'Ja' : 'Nej'}
 Beslut: ${decision}
 

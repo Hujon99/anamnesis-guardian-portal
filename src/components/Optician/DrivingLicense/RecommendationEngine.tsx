@@ -23,6 +23,7 @@ import {
   Activity
 } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
+import { formatVisualAcuityDisplay } from "@/lib/number-utils";
 
 interface RecommendationEngineProps {
   examination: any;
@@ -69,15 +70,15 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
     
     // Rule 1: Visual acuity < 1.0 in any eye → Vision examination
     if (bothEyesValue && bothEyesValue < 1.0) {
-      reasons.push(`Visus båda ögon ${bothEyesValue.toString().replace('.', ',')} är under gränsvärdet 1,0`);
+      reasons.push(`Visus båda ögon ${formatVisualAcuityDisplay(bothEyesValue)} är under gränsvärdet 1,0`);
     }
     
     if (rightEyeValue && rightEyeValue < 1.0) {
-      reasons.push(`Visus höger öga ${rightEyeValue.toString().replace('.', ',')} är under gränsvärdet 1,0`);
+      reasons.push(`Visus höger öga ${formatVisualAcuityDisplay(rightEyeValue)} är under gränsvärdet 1,0`);
     }
     
     if (leftEyeValue && leftEyeValue < 1.0) {
-      reasons.push(`Visus vänster öga ${leftEyeValue.toString().replace('.', ',')} är under gränsvärdet 1,0`);
+      reasons.push(`Visus vänster öga ${formatVisualAcuityDisplay(leftEyeValue)} är under gränsvärdet 1,0`);
     }
     
     // Rule 2: Double vision → Vision examination
@@ -235,14 +236,14 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
         {/* Technical details for optician */}
         <div className="text-xs text-muted-foreground space-y-1">
           <p><strong>Teknisk information:</strong></p>
-          <p>• Visus båda ögon: {examination?.visual_acuity_both_eyes || 'Ej mätt'}</p>
-          <p>• Visus höger öga: {examination?.visual_acuity_right_eye || 'Ej mätt'}</p>
-          <p>• Visus vänster öga: {examination?.visual_acuity_left_eye || 'Ej mätt'}</p>
+          <p>• Visus båda ögon: {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)}</p>
+          <p>• Visus höger öga: {formatVisualAcuityDisplay(examination?.visual_acuity_right_eye)}</p>
+          <p>• Visus vänster öga: {formatVisualAcuityDisplay(examination?.visual_acuity_left_eye)}</p>
           {(examination?.uses_glasses || examination?.uses_contact_lenses) && (
             <>
-              <p>• Visus båda ögon med korrektion: {examination?.visual_acuity_with_correction_both || 'Ej mätt'}</p>
-              <p>• Visus höger öga med korrektion: {examination?.visual_acuity_with_correction_right || 'Ej mätt'}</p>
-              <p>• Visus vänster öga med korrektion: {examination?.visual_acuity_with_correction_left || 'Ej mätt'}</p>
+              <p>• Visus båda ögon med korrektion: {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_both)}</p>
+              <p>• Visus höger öga med korrektion: {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_right)}</p>
+              <p>• Visus vänster öga med korrektion: {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_left)}</p>
             </>
           )}
           <p>• Rekommendationsmotor version: 1.1</p>

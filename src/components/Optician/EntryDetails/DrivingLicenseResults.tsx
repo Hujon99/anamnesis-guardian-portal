@@ -21,6 +21,7 @@ import { useUser } from "@clerk/clerk-react";
 import { useOpticians } from "@/hooks/useOpticians";
 import { toast } from "@/hooks/use-toast";
 import { useUserResolver } from "@/utils/userDisplayUtils";
+import { formatVisualAcuityDisplay } from "@/lib/number-utils";
 
 type DrivingLicenseExamination = Database['public']['Tables']['driving_license_examinations']['Row'];
 
@@ -223,17 +224,17 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                     </h5>
                     <p>
                       Båda ögon: <span className="font-mono">
-                        {localExamination.visual_acuity_with_correction_both || 'Ej mätt'}
+                        {formatVisualAcuityDisplay(localExamination.visual_acuity_with_correction_both)}
                       </span>
                     </p>
                     <p>
                       Höger öga: <span className="font-mono">
-                        {localExamination.visual_acuity_with_correction_right || 'Ej mätt'}
+                        {formatVisualAcuityDisplay(localExamination.visual_acuity_with_correction_right)}
                       </span>
                     </p>
                     <p>
                       Vänster öga: <span className="font-mono">
-                        {localExamination.visual_acuity_with_correction_left || 'Ej mätt'}
+                        {formatVisualAcuityDisplay(localExamination.visual_acuity_with_correction_left)}
                       </span>
                     </p>
                   </div>
@@ -243,17 +244,17 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                     <h5 className="font-medium text-sm">Utan korrektion</h5>
                     <p>
                       Båda ögon: <span className="font-mono">
-                        {localExamination.visual_acuity_both_eyes || 'Ej mätt'}
+                        {formatVisualAcuityDisplay(localExamination.visual_acuity_both_eyes)}
                       </span>
                     </p>
                     <p>
                       Höger öga: <span className="font-mono">
-                        {localExamination.visual_acuity_right_eye || 'Ej mätt'}
+                        {formatVisualAcuityDisplay(localExamination.visual_acuity_right_eye)}
                       </span>
                     </p>
                     <p>
                       Vänster öga: <span className="font-mono">
-                        {localExamination.visual_acuity_left_eye || 'Ej mätt'}
+                        {formatVisualAcuityDisplay(localExamination.visual_acuity_left_eye)}
                       </span>
                     </p>
                   </div>
@@ -264,17 +265,17 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                   <h5 className="font-medium text-sm">Utan korrektion</h5>
                   <p>
                     Båda ögon: <span className="font-mono">
-                      {localExamination.visual_acuity_both_eyes || 'Ej mätt'}
+                      {formatVisualAcuityDisplay(localExamination.visual_acuity_both_eyes)}
                     </span>
                   </p>
                   <p>
                     Höger öga: <span className="font-mono">
-                      {localExamination.visual_acuity_right_eye || 'Ej mätt'}
+                      {formatVisualAcuityDisplay(localExamination.visual_acuity_right_eye)}
                     </span>
                   </p>
                   <p>
                     Vänster öga: <span className="font-mono">
-                      {localExamination.visual_acuity_left_eye || 'Ej mätt'}
+                      {formatVisualAcuityDisplay(localExamination.visual_acuity_left_eye)}
                     </span>
                   </p>
                 </div>

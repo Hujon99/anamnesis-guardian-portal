@@ -21,6 +21,7 @@ import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { RecommendationEngine } from "./RecommendationEngine";
 import { useUserResolver } from "@/utils/userDisplayUtils";
+import { formatVisualAcuityDisplay } from "@/lib/number-utils";
 interface ExaminationSummaryProps {
   examination: any;
   entry: AnamnesesEntry;
@@ -183,16 +184,13 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                     </Badge>
                   </h5>
                   <p>Båda ögon: <span className="font-mono">
-                    {examination?.visual_acuity_with_correction_both ? 
-                      String(examination.visual_acuity_with_correction_both).replace('.', ',') : 'Ej mätt'}
+                    {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_both)}
                   </span></p>
                   <p>Höger öga: <span className="font-mono">
-                    {examination?.visual_acuity_with_correction_right ? 
-                      String(examination.visual_acuity_with_correction_right).replace('.', ',') : 'Ej mätt'}
+                    {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_right)}
                   </span></p>
                   <p>Vänster öga: <span className="font-mono">
-                    {examination?.visual_acuity_with_correction_left ? 
-                      String(examination.visual_acuity_with_correction_left).replace('.', ',') : 'Ej mätt'}
+                    {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_left)}
                   </span></p>
                 </div>
                 
@@ -200,16 +198,13 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                 <div className="space-y-1">
                   <h5 className="font-medium text-sm">Utan korrektion</h5>
                   <p>Båda ögon: <span className="font-mono">
-                    {examination?.visual_acuity_both_eyes ? 
-                      String(examination.visual_acuity_both_eyes).replace('.', ',') : 'Ej mätt'}
+                    {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)}
                   </span></p>
                   <p>Höger öga: <span className="font-mono">
-                    {examination?.visual_acuity_right_eye ? 
-                      String(examination.visual_acuity_right_eye).replace('.', ',') : 'Ej mätt'}
+                    {formatVisualAcuityDisplay(examination?.visual_acuity_right_eye)}
                   </span></p>
                   <p>Vänster öga: <span className="font-mono">
-                    {examination?.visual_acuity_left_eye ? 
-                      String(examination.visual_acuity_left_eye).replace('.', ',') : 'Ej mätt'}
+                    {formatVisualAcuityDisplay(examination?.visual_acuity_left_eye)}
                   </span></p>
                 </div>
               </>
@@ -218,16 +213,13 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               <div className="space-y-1">
                 <h5 className="font-medium text-sm">Utan korrektion</h5>
                 <p>Båda ögon: <span className="font-mono">
-                  {examination?.visual_acuity_both_eyes ? 
-                    String(examination.visual_acuity_both_eyes).replace('.', ',') : 'Ej mätt'}
+                  {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)}
                 </span></p>
                 <p>Höger öga: <span className="font-mono">
-                  {examination?.visual_acuity_right_eye ? 
-                    String(examination.visual_acuity_right_eye).replace('.', ',') : 'Ej mätt'}
+                  {formatVisualAcuityDisplay(examination?.visual_acuity_right_eye)}
                 </span></p>
                 <p>Vänster öga: <span className="font-mono">
-                  {examination?.visual_acuity_left_eye ? 
-                    String(examination.visual_acuity_left_eye).replace('.', ',') : 'Ej mätt'}
+                  {formatVisualAcuityDisplay(examination?.visual_acuity_left_eye)}
                 </span></p>
               </div>
             )}

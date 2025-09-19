@@ -58,7 +58,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get entry and organization information  
     const { data: entryData, error: entryError } = await supabase
       .from('anamnes_entries')
-      .select('organization_id, first_name, examination_type, booking_date, optician_id')
+      .select('organization_id, first_name, examination_type, booking_date, optician_id, store_id')
       .eq('id', entryId)
       .single();
 
@@ -89,6 +89,22 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
+    }
+
+    // Get store information if store_id is present
+    let storeData = null;
+    if (entryData.store_id) {
+      const { data: fetchedStoreData, error: storeError } = await supabase
+        .from('stores')
+        .select('name, address')
+        .eq('id', entryData.store_id)
+        .single();
+
+      if (!storeError && fetchedStoreData) {
+        storeData = fetchedStoreData;
+      } else {
+        console.warn('Store fetch error:', storeError);
+      }
     }
 
     // Get optician email if not provided in request
@@ -154,6 +170,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p><strong>Namn:</strong> ${entryData.first_name || 'Okänd patient'}</p>
             <p><strong>Undersökningstyp:</strong> ${entryData.examination_type || 'Körkortsundersökning'}</p>
             <p><strong>Organisation:</strong> ${organizationName}</p>
+            ${storeData ? `<p><strong>Butik:</strong> ${storeData.name}${storeData.address ? ` (${storeData.address})` : ''}</p>` : ''}
           </div>
           
           <p>Logga in på plattformen för att se fullständiga resultat och hantera undersökningen.</p>

@@ -203,10 +203,13 @@ const AdminPanel = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
         
         <TabsContent value="forms" className="mt-0">
           <StoreFormManager />
         </TabsContent>
+        
+        <TabsContent value="organization" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle>Organisationsinställningar</CardTitle>

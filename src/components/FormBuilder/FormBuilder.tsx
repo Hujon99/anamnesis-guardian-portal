@@ -19,6 +19,7 @@ import { toast } from '@/hooks/use-toast';
 import { 
   Save, 
   Eye, 
+  EyeOff,
   Settings, 
   AlertTriangle, 
   CheckCircle, 
@@ -88,6 +89,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   const [activeTab, setActiveTab] = useState('sections');
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
   
   // History management for undo/redo
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -280,6 +282,19 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             
             <Separator orientation="vertical" className="h-6" />
             
+            {/* Preview toggle */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowPreview(!showPreview)}
+              className="gap-2"
+            >
+              {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPreview ? 'Dölj förhandsgranskning' : 'Visa förhandsgranskning'}
+            </Button>
+            
+            <Separator orientation="vertical" className="h-6" />
+            
             {/* Save */}
             <Button onClick={handleSave} disabled={!canSave} className="gap-2">
               <Save className="h-4 w-4" />
@@ -330,7 +345,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
       {/* Main content */}
       <div className="flex-1 flex">
         {/* Editor panel */}
-        <div className="w-1/2 border-r">
+        <div className={showPreview ? "w-1/2 border-r" : "w-full"}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-3 m-4 mb-0">
               <TabsTrigger value="sections">Sektioner</TabsTrigger>
@@ -385,14 +400,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             </TabsContent>
             
             <TabsContent value="logic" className="flex-1 m-0">
-              <ConditionalLogicEditor
-                schema={currentForm.schema}
-                onUpdate={updateSchema}
-              />
+              <div className="h-full overflow-auto">
+                <ConditionalLogicEditor
+                  schema={currentForm.schema}
+                  onUpdate={updateSchema}
+                />
+              </div>
             </TabsContent>
             
             <TabsContent value="settings" className="flex-1 m-0">
-              <ScrollArea className="h-full">
+              <div className="h-full overflow-auto">
                 <div className="p-4 space-y-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4">Formulärinställningar</h3>
@@ -450,26 +467,28 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                     </div>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
 
         {/* Preview panel */}
-        <div className="w-1/2">
-          <div className="h-full flex flex-col">
-            <div className="border-b p-4 bg-background">
-              <div className="flex items-center gap-2">
-                <Eye className="h-5 w-5 text-primary" />
-                <h3 className="font-medium">Förhandsvisning</h3>
+        {showPreview && (
+          <div className="w-1/2 border-l">
+            <div className="h-full flex flex-col">
+              <div className="border-b p-4 bg-background">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-primary" />
+                  <h3 className="font-medium">Förhandsvisning</h3>
+                </div>
+              </div>
+              
+              <div className="flex-1 overflow-auto">
+                <FormPreview schema={currentForm.schema} />
               </div>
             </div>
-            
-            <ScrollArea className="flex-1">
-              <FormPreview schema={currentForm.schema} />
-            </ScrollArea>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

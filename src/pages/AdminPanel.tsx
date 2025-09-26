@@ -1,65 +1,100 @@
 
 /**
  * This is the main administration panel for organization administrators.
- * It provides interfaces for managing users, synchronizing data with external services,
- * and configuring organization settings. Only users with admin role can access this page.
+ * It provides interfaces for managing stores and configuring organization settings.
+ * Only users with admin role can access this page.
  */
 
 import { useState } from "react";
 import { useUser, useOrganization } from "@clerk/clerk-react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
-import { User, Users, AlertTriangle, Settings } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { Building2, AlertTriangle, Settings, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { useStores } from "@/hooks/useStores";
 import { Tables } from "@/integrations/supabase/types";
-import { UserSyncButton } from "@/components/AdminPanel/UserSyncButton";
+import { StoreForm } from "@/components/AdminPanel/StoreForm";
+import { StoreCard } from "@/components/AdminPanel/StoreCard";
+import { ConfirmDeleteDialog } from "@/components/AdminPanel/ConfirmDeleteDialog";
 
-type OrgUser = Tables<"users"> & {
-  email?: string;
-  name?: string;
-};
+type Store = Tables<"stores">;
 
 const AdminPanel = () => {
   const { user } = useUser();
   const { organization } = useOrganization();
-  const [activeTab, setActiveTab] = useState("users");
-  const { supabase, isLoading: supabaseLoading, error: supabaseError } = useSupabaseClient();
+  const [activeTab, setActiveTab] = useState("stores");
+  const { error: supabaseError } = useSupabaseClient();
+  
+  // Store management state
+  const [showStoreForm, setShowStoreForm] = useState(false);
+  const [editingStore, setEditingStore] = useState<Store | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingStore, setDeletingStore] = useState<Store | null>(null);
+  const [isDeletingStore, setIsDeletingStore] = useState(false);
 
-  // Query to fetch organization users
-  const { data: orgUsers = [], isLoading } = useQuery({
-    queryKey: ["orgUsers"],
-    queryFn: async () => {
-      if (!organization?.id) return [];
+  // Fetch stores using the existing hook
+  const { 
+    stores = [], 
+    isLoading: storesLoading, 
+    error: storesError,
+    forceRefreshStores,
+    createStore,
+    updateStore
+  } = useStores();
+
+  const { supabase } = useSupabaseClient();
+
+  const handleCreateStore = () => {
+    setEditingStore(null);
+    setShowStoreForm(true);
+  };
+
+  const handleEditStore = (store: Store) => {
+    setEditingStore(store);
+    setShowStoreForm(true);
+  };
+
+  const handleDeleteStore = (store: Store) => {
+    setDeletingStore(store);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteStore = async () => {
+    if (!deletingStore || !supabase) return;
+    
+    setIsDeletingStore(true);
+    try {
+      const { error } = await supabase
+        .from('stores')
+        .delete()
+        .eq('id', deletingStore.id);
+
+      if (error) throw error;
       
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("organization_id", organization?.id);
-
-      if (error) {
-        console.error("Error fetching users:", error);
-        toast({
-          title: "Fel vid hämtning av användare",
-          description: error.message,
-          variant: "destructive",
-        });
-        return [];
-      }
-
-      // For this demo, we'll add mock user details
-      // In a real app, you'd fetch user details from Clerk's API
-      return data.map((user: OrgUser) => ({
-        ...user,
-        email: `user-${user.id.substring(0, 4)}@example.com`,
-        name: `User ${user.id.substring(0, 4)}`,
-      })) as OrgUser[];
-    },
-    enabled: !!user && !!organization && !supabaseLoading,
-  });
+      // Refresh the stores list
+      await forceRefreshStores();
+      
+      toast({
+        title: "Butik borttagen",
+        description: "Butiken har tagits bort framgångsrikt",
+      });
+      
+      setShowDeleteDialog(false);
+      setDeletingStore(null);
+    } catch (error) {
+      toast({
+        title: "Fel uppstod",
+        description: "Kunde inte ta bort butiken",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingStore(false);
+    }
+  };
 
   if (!organization) {
     return (
@@ -77,12 +112,15 @@ const AdminPanel = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold">Administration</h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Organisation: {organization?.name}
           </p>
         </div>
         
-        <UserSyncButton />
+        <Button onClick={handleCreateStore} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Lägg till butik
+        </Button>
       </div>
 
       {supabaseError && (
@@ -95,11 +133,11 @@ const AdminPanel = () => {
         </Alert>
       )}
 
-      <Tabs defaultValue="users" value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs defaultValue="stores" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Användare
+          <TabsTrigger value="stores" className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Butiker
           </TabsTrigger>
           <TabsTrigger value="organization" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
@@ -107,57 +145,54 @@ const AdminPanel = () => {
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="users" className="mt-0">
+        <TabsContent value="stores" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Organisationsanvändare
+                <Building2 className="h-5 w-5" />
+                Butiker
               </CardTitle>
               <CardDescription>
-                Hantera användare i din organisation
+                Hantera butiker i din organisation
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {supabaseLoading || isLoading ? (
+              {storesLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center space-x-4">
-                      <Skeleton className="h-12 w-12 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-[250px]" />
-                        <Skeleton className="h-4 w-[200px]" />
+                    <div key={i} className="border rounded-2xl p-6">
+                      <div className="flex items-center space-x-4">
+                        <Skeleton className="h-12 w-12 rounded-full" />
+                        <div className="space-y-2 flex-1">
+                          <Skeleton className="h-4 w-[250px]" />
+                          <Skeleton className="h-4 w-[200px]" />
+                          <Skeleton className="h-4 w-[150px]" />
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : orgUsers.length === 0 ? (
+              ) : storesError ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">Inga användare hittades</p>
+                  <p className="text-destructive">Fel vid hämtning av butiker</p>
+                </div>
+              ) : stores.length === 0 ? (
+                <div className="text-center py-8">
+                  <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-4">Inga butiker hittades</p>
+                  <Button onClick={handleCreateStore}>
+                    Skapa första butiken
+                  </Button>
                 </div>
               ) : (
-                <div className="divide-y">
-                  {orgUsers.map((user) => (
-                    <div key={user.id} className="py-4 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <User className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{user.name}</h3>
-                          <p className="text-sm text-gray-500">{user.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          user.role === "admin" 
-                            ? "bg-blue-100 text-blue-800" 
-                            : "bg-gray-100 text-gray-800"
-                        }`}>
-                          {user.role}
-                        </span>
-                      </div>
-                    </div>
+                <div className="space-y-4">
+                  {stores.map((store) => (
+                    <StoreCard
+                      key={store.id}
+                      store={store}
+                      onEdit={handleEditStore}
+                      onDelete={handleDeleteStore}
+                    />
                   ))}
                 </div>
               )}
@@ -181,6 +216,22 @@ const AdminPanel = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Store Form Dialog */}
+      <StoreForm
+        open={showStoreForm}
+        onOpenChange={setShowStoreForm}
+        store={editingStore}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        store={deletingStore}
+        onConfirm={confirmDeleteStore}
+        isDeleting={isDeletingStore}
+      />
     </div>
   );
 };

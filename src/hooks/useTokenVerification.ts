@@ -55,8 +55,12 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   const verificationStartedRef = useRef<boolean>(false);
   const lastVerifiedTokenRef = useRef<string | null>(null);
   
-  // Circuit breaker pattern
-  const MAX_RETRIES = 3;
+  // Safari detection and simplified circuit breaker
+  const isSafari = useRef<boolean>(
+    typeof window !== 'undefined' && 
+    /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+  );
+  const MAX_RETRIES = isSafari.current ? 2 : 3; // Safari: fewer retries
   const circuitBrokenRef = useRef(false);
   const requestInProgressRef = useRef(false);
   const lastErrorRef = useRef<string | null>(null);
@@ -67,7 +71,11 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   // Update stable token when token changes
   useEffect(() => {
     if (token !== stableTokenRef.current) {
-      console.log(`[useTokenVerification/${instanceIdRef.current}]: Token changed from ${stableTokenRef.current?.substring(0, 6) || 'null'} to ${token?.substring(0, 6) || 'null'}`);
+      if (isSafari.current) {
+        console.log(`[useTokenVerification/Safari/${instanceIdRef.current}]: Token changed from ${stableTokenRef.current?.substring(0, 6) || 'null'} to ${token?.substring(0, 6) || 'null'}`);
+      } else {
+        console.log(`[useTokenVerification/${instanceIdRef.current}]: Token changed from ${stableTokenRef.current?.substring(0, 6) || 'null'} to ${token?.substring(0, 6) || 'null'}`);
+      }
       stableTokenRef.current = token;
       
       // If we have a new token, we should reset the verification state
@@ -235,9 +243,10 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
       return;
     }
     
-    // Enforce cooldown between verification attempts
+    // Safari-specific cooldown adjustments
     const now = Date.now();
-    if (verificationStartedRef.current && (now - lastVerificationTimeRef.current) < verificationCooldownMs) {
+    const cooldownPeriod = isSafari.current ? verificationCooldownMs * 1.5 : verificationCooldownMs;
+    if (verificationStartedRef.current && (now - lastVerificationTimeRef.current) < cooldownPeriod) {
       return;
     }
     

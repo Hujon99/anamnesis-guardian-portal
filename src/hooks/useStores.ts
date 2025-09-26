@@ -24,6 +24,14 @@ export function useStores() {
   const loadingFromCacheRef = useRef<boolean>(false);
   const storeCacheInitializedRef = useRef<boolean>(false);
   
+  // Safari detection and request deduplication
+  const isSafari = useRef<boolean>(
+    typeof window !== 'undefined' && 
+    /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+  );
+  const activeRequestRef = useRef<Promise<any> | null>(null);
+  const requestIdRef = useRef<string>('');
+  
   // Initialize with empty array to prevent undefined
   const [localStoresBackup, setLocalStoresBackup] = useState<Store[]>([]);
   
@@ -73,10 +81,22 @@ export function useStores() {
       return localStoresBackup;
     }
     
-    const maxRetries = 2;
+    // Safari-specific request deduplication
+    const requestId = `${organization.id}-${Date.now()}`;
+    if (isSafari.current && activeRequestRef.current && requestIdRef.current === organization.id) {
+      console.log(`useStores: [Safari] Deduplicating request for org ${organization.id}`);
+      return activeRequestRef.current;
+    }
     
-    try {
-      console.log(`useStores: Fetching stores for organization ${organization.id}, attempt ${retryCount + 1}`);
+    const maxRetries = isSafari.current ? 1 : 2; // Reduce retries for Safari
+    
+    const fetchRequest = async () => {
+      try {
+        if (isSafari.current) {
+          console.log(`useStores: [Safari] Fetching stores for organization ${organization.id}, attempt ${retryCount + 1}`);
+        } else {
+          console.log(`useStores: Fetching stores for organization ${organization.id}, attempt ${retryCount + 1}`);
+        }
       
       const { data, error } = await supabase
         .from('stores')
@@ -176,6 +196,19 @@ export function useStores() {
       // Last resort - return empty array instead of undefined
       return [];
     }
+    };
+    
+    // Set active request for Safari deduplication
+    if (isSafari.current) {
+      requestIdRef.current = organization.id;
+      activeRequestRef.current = fetchRequest();
+      const result = await activeRequestRef.current;
+      activeRequestRef.current = null;
+      requestIdRef.current = '';
+      return result;
+    }
+    
+    return fetchRequest();
   }, [organization?.id, isReady, supabase, refreshClient, localStoresBackup]);
   
   // Query to fetch all stores for the organization with optimized settings
@@ -190,10 +223,10 @@ export function useStores() {
     queryKey: ['stores', organization?.id],
     queryFn: () => fetchStoresWithRetry(),
     enabled: !!organization?.id && isReady,
-    staleTime: 15 * 60 * 1000, // Consider data fresh for 15 minutes - improved performance
+    staleTime: isSafari.current ? 20 * 60 * 1000 : 15 * 60 * 1000, // Safari: longer stale time
     gcTime: 30 * 60 * 1000,   // Keep cached data for 30 minutes
-    retry: 2,                 // Retry failed queries twice
-    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000), // Exponential backoff
+    retry: isSafari.current ? 1 : 2, // Safari: reduce retries
+    retryDelay: attempt => Math.min(1000 * 2 ** attempt, isSafari.current ? 5000 : 10000), // Safari: shorter max delay
     initialData: localStoresBackup,
   });
 

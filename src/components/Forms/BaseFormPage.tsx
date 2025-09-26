@@ -14,6 +14,7 @@ import { useFormStateManager } from "@/hooks/useFormStateManager";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { SubmissionError } from "@/hooks/useFormSubmission";
 import { ErrorBoundary } from "react-error-boundary";
+import { isSafari, getSafariOptimizedConfig, logSafariDebug } from "@/utils/safariDetection";
 
 // Import status cards
 import LoadingCard from "@/components/PatientForm/StatusCards/LoadingCard";
@@ -94,6 +95,9 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   showBookingInfo = false,
   onError
 }) => {
+  // Safari detection and optimized config
+  const safariConfig = getSafariOptimizedConfig();
+  
   // Store current form values for auto-save and retry
   const [currentFormValues, setCurrentFormValues] = useState<Record<string, any> | null>(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
@@ -111,11 +115,14 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   
   // Track component mount for debugging purposes
   useEffect(() => {
-    console.log(`[BaseFormPage/${instanceId.current}]: Mounted with token: ${token ? token.substring(0, 6) + '...' : 'none'} and mode: ${mode}`);
+    logSafariDebug(
+      `[BaseFormPage/${instanceId.current}]: Mounted with token: ${token ? token.substring(0, 6) + '...' : 'none'} and mode: ${mode}`,
+      { safari: safariConfig.isSafari }
+    );
     return () => {
-      console.log(`[BaseFormPage/${instanceId.current}]: Unmounting`);
+      logSafariDebug(`[BaseFormPage/${instanceId.current}]: Unmounting`);
     };
-  }, [token, mode]);
+  }, [token, mode, safariConfig.isSafari]);
   
   // Use the effective token (either from props or ref)
   const effectiveToken = token || stableTokenRef.current;
@@ -163,7 +170,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     onSubmissionError: onError
   });
   
-  // Use form state manager
+  // Use form state manager with Safari-optimized delays
   const {
     formPageState,
     isFormDataReady,
@@ -178,7 +185,9 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     submissionError,
     isSubmitted,
     formTemplate,
-    isFullyLoaded
+    isFullyLoaded,
+    initialRenderDelayMs: safariConfig.initialRenderDelay,
+    transitionDelayMs: safariConfig.transitionDelay
   });
   
   // Setup auto-save functionality (patient mode only)
@@ -201,16 +210,17 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   
   // Enhanced retry handler with reset of all verification state
   const handleEnhancedRetry = useCallback(() => {
-    console.log(`[BaseFormPage/${instanceId.current}]: Enhanced retry initiated`);
+    logSafariDebug(`[BaseFormPage/${instanceId.current}]: Enhanced retry initiated`);
     
     // Increment retry attempt counter to force clean remounting
     setRetryAttempt(prev => prev + 1);
     
-    // After a small delay, trigger the verification retry
+    // Safari: shorter delay for retry
+    const retryDelay = safariConfig.isSafari ? 50 : 100;
     setTimeout(() => {
       handleVerificationRetry();
-    }, 100);
-  }, [handleVerificationRetry]);
+    }, retryDelay);
+  }, [handleVerificationRetry, safariConfig.isSafari]);
   
   // Handle form submission with form template
   const handleSubmitWithFormTemplate = useCallback(async (values: any, formattedAnswers?: any) => {
@@ -256,9 +266,9 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   const storeId = entryData?.store_id || null;
   const createdByName = entryData?.created_by_name || null;
   
-  // Log state transitions for debugging
+  // Log state transitions for debugging with Safari awareness
   useEffect(() => {
-    console.log(`[BaseFormPage/${instanceId.current}]: State transition to: ${formPageState}`);
+    logSafariDebug(`[BaseFormPage/${instanceId.current}]: State transition to: ${formPageState}`);
   }, [formPageState]);
   
   // Render different components based on form state
@@ -268,7 +278,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       return (
         <LoadingCard 
           onRetry={handleEnhancedRetry} 
-          minDisplayTime={2000}
+          minDisplayTime={safariConfig.isSafari ? 1500 : 2000}
           isFormDataReady={isFormDataReady} 
         />
       );
@@ -276,7 +286,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     case "TRANSITION":
       return (
         <LoadingCard 
-          minDisplayTime={300}
+          minDisplayTime={safariConfig.isSafari ? 200 : 300}
           isFormDataReady={true} 
         />
       );

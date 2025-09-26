@@ -52,34 +52,43 @@ export function useFormStateManager({
 }: FormStateManagerProps) {
   const [formPageState, setFormPageState] = useState<FormPageState>("INITIAL_LOADING");
   
-  // Transition timing refs
+  // Safari detection
+  const isSafari = useRef<boolean>(
+    typeof window !== 'undefined' && 
+    /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+  );
+  
+  // Simplified timing refs for Safari compatibility
   const initialRenderComplete = useRef(false);
   const transitionTimeoutRef = useRef<number | null>(null);
   const formDataReadyRef = useRef(false);
-  const forcedTransitionTimeoutRef = useRef<number | null>(null);
   const stateChangeTimeRef = useRef<number>(Date.now());
   
-  // Circuit breaker for stuck loading states
+  // Simplified circuit breaker for Safari
   const maxLoadingTimeRef = useRef<number | null>(null);
-  const maxLoadingTimeMs = 10000; // 10 seconds max loading time
+  const maxLoadingTimeMs = isSafari.current ? 8000 : 10000; // Safari: shorter timeout
   
-  // Debug logging for state changes
+  // Debug logging for state changes with Safari detection
   useEffect(() => {
-    console.log(`[useFormStateManager]: State changed to ${formPageState}`);
-    console.log(`[useFormStateManager]: Form data ready: ${formDataReadyRef.current}`);
+    if (isSafari.current) {
+      console.log(`[useFormStateManager/Safari]: State changed to ${formPageState}`);
+      console.log(`[useFormStateManager/Safari]: Form data ready: ${formDataReadyRef.current}`);
+    } else {
+      console.log(`[useFormStateManager]: State changed to ${formPageState}`);
+      console.log(`[useFormStateManager]: Form data ready: ${formDataReadyRef.current}`);
+    }
     
     // Track state changes with timestamps for debugging
     const timeSinceLastChange = Date.now() - stateChangeTimeRef.current;
-    console.log(`[useFormStateManager]: State changed to ${formPageState} after ${timeSinceLastChange}ms`);
+    console.log(`[useFormStateManager${isSafari.current ? '/Safari' : ''}]: State changed to ${formPageState} after ${timeSinceLastChange}ms`);
     stateChangeTimeRef.current = Date.now();
     
-    // Start the circuit breaker when entering loading states
+    // Simplified circuit breaker for Safari
     if (["INITIAL_LOADING", "LOADING_WITH_DATA", "TRANSITION"].includes(formPageState) && !maxLoadingTimeRef.current) {
-      console.log("[useFormStateManager]: Starting max loading time circuit breaker");
+      console.log(`[useFormStateManager${isSafari.current ? '/Safari' : ''}]: Starting circuit breaker`);
       maxLoadingTimeRef.current = window.setTimeout(() => {
-        console.log("[useFormStateManager]: Circuit breaker triggered - loading time exceeded");
+        console.log(`[useFormStateManager${isSafari.current ? '/Safari' : ''}]: Circuit breaker triggered`);
         if (["INITIAL_LOADING", "LOADING_WITH_DATA", "TRANSITION"].includes(formPageState)) {
-          console.log("[useFormStateManager]: Forcing FORM_READY state after timeout");
           setFormPageState("FORM_READY");
           initialRenderComplete.current = true;
         }
@@ -88,7 +97,6 @@ export function useFormStateManager({
     
     // Clear circuit breaker when leaving loading states
     if (!["INITIAL_LOADING", "LOADING_WITH_DATA", "TRANSITION"].includes(formPageState) && maxLoadingTimeRef.current) {
-      console.log("[useFormStateManager]: Clearing max loading time circuit breaker");
       clearTimeout(maxLoadingTimeRef.current);
       maxLoadingTimeRef.current = null;
     }
@@ -104,39 +112,25 @@ export function useFormStateManager({
         clearTimeout(maxLoadingTimeRef.current);
         maxLoadingTimeRef.current = null;
       }
-      
-      if (forcedTransitionTimeoutRef.current) {
-        clearTimeout(forcedTransitionTimeoutRef.current);
-        forcedTransitionTimeoutRef.current = null;
-      }
     };
   }, [formPageState]);
   
-  // Force transition if we have form template but not fully loaded
+  // Simplified transition logic for Safari compatibility
   useEffect(() => {
     if (formTemplate && formPageState === "INITIAL_LOADING" && !loading) {
-      console.log("[useFormStateManager]: Have formTemplate but not fully loaded, setting LOADING_WITH_DATA state");
-      setFormPageState("LOADING_WITH_DATA");
+      console.log(`[useFormStateManager${isSafari.current ? '/Safari' : ''}]: Have formTemplate, transitioning to FORM_READY`);
       formDataReadyRef.current = true;
       
-      // Set a backup timer to force transition
-      if (!forcedTransitionTimeoutRef.current) {
-        forcedTransitionTimeoutRef.current = window.setTimeout(() => {
-          console.log("[useFormStateManager]: Backup timer triggered, forcing TRANSITION state");
-          if (["INITIAL_LOADING", "LOADING_WITH_DATA"].includes(formPageState)) {
-            setFormPageState("TRANSITION");
-            
-            // Schedule final transition to FORM_READY
-            setTimeout(() => {
-              console.log("[useFormStateManager]: Final transition to FORM_READY");
-              setFormPageState("FORM_READY");
-              initialRenderComplete.current = true;
-            }, transitionDelayMs);
-          }
-        }, initialRenderDelayMs * 2.5);
+      if (isSafari.current) {
+        // Safari: Direct transition to avoid timing issues
+        setFormPageState("FORM_READY");
+        initialRenderComplete.current = true;
+      } else {
+        // Other browsers: Use transition state
+        setFormPageState("LOADING_WITH_DATA");
       }
     }
-  }, [formTemplate, formPageState, loading, initialRenderDelayMs, transitionDelayMs]);
+  }, [formTemplate, formPageState, loading]);
   
   // Update state based on props
   useEffect(() => {
@@ -176,41 +170,38 @@ export function useFormStateManager({
       return;
     }
     
-    // If form template is loaded, mark data as ready
+    // Simplified form template handling for Safari
     if (formTemplate) {
-      console.log("[useFormStateManager]: Form template loaded, marking data as ready");
+      console.log(`[useFormStateManager${isSafari.current ? '/Safari' : ''}]: Form template loaded, marking data as ready`);
       formDataReadyRef.current = true;
       
-      // If initial loading, move to loading with data first
-      if (formPageState === "INITIAL_LOADING") {
+      // Safari: Direct transition to FORM_READY to avoid timing issues
+      if (isSafari.current && formPageState === "INITIAL_LOADING") {
+        setFormPageState("FORM_READY");
+        initialRenderComplete.current = true;
+      } else if (!isSafari.current && formPageState === "INITIAL_LOADING") {
+        // Other browsers: Use transition state
         setFormPageState("LOADING_WITH_DATA");
         
         // Schedule transition to avoid flashing
         transitionTimeoutRef.current = window.setTimeout(() => {
-          console.log("[useFormStateManager]: Scheduling transition phase");
-          setFormPageState("TRANSITION");
-          
-          // Schedule final transition to FORM_READY
-          setTimeout(() => {
-            console.log("[useFormStateManager]: Final transition to FORM_READY");
-            setFormPageState("FORM_READY");
-            initialRenderComplete.current = true;
-          }, transitionDelayMs);
+          setFormPageState("FORM_READY");
+          initialRenderComplete.current = true;
         }, initialRenderDelayMs);
       }
     }
     
-    // If fully loaded with form data, transition to ready
+    // Handle fully loaded state
     if (isFullyLoaded && formTemplate && !initialRenderComplete.current) {
-      console.log("[useFormStateManager]: Form fully loaded, preparing transition sequence");
+      console.log(`[useFormStateManager${isSafari.current ? '/Safari' : ''}]: Form fully loaded`);
       
-      if (["INITIAL_LOADING", "LOADING_WITH_DATA"].includes(formPageState)) {
-        console.log("[useFormStateManager]: Starting transition phase");
-        setFormPageState("TRANSITION");
-        
-        // Schedule final transition after delay
+      if (isSafari.current) {
+        // Safari: Direct transition
+        setFormPageState("FORM_READY");
+        initialRenderComplete.current = true;
+      } else if (["INITIAL_LOADING", "LOADING_WITH_DATA"].includes(formPageState)) {
+        // Other browsers: Transition with delay
         transitionTimeoutRef.current = window.setTimeout(() => {
-          console.log("[useFormStateManager]: Transition complete, setting FORM_READY state");
           setFormPageState("FORM_READY");
           initialRenderComplete.current = true;
         }, transitionDelayMs);

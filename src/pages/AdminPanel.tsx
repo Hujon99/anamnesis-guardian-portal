@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useUser, useOrganization } from "@clerk/clerk-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Building2, AlertTriangle, Settings, Plus } from "lucide-react";
+import { Building2, AlertTriangle, Settings, Plus, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -143,6 +143,10 @@ const AdminPanel = () => {
           <TabsTrigger value="forms" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Formulär per butik
+          </TabsTrigger>
+          <TabsTrigger value="form-builder" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Formulär Builder
           </TabsTrigger>
           <TabsTrigger value="organization" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />

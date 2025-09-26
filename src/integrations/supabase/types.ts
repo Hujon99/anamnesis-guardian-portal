@@ -168,33 +168,51 @@ export type Database = {
       anamnes_forms: {
         Row: {
           created_at: string | null
+          created_from_template_id: string | null
           examination_type:
             | Database["public"]["Enums"]["Synundersökning"]
             | null
           id: string
+          is_active: boolean | null
+          is_template: boolean | null
+          last_modified_by: string | null
           organization_id: string | null
           schema: Json
+          template_category: string | null
           title: string
+          version: number | null
         }
         Insert: {
           created_at?: string | null
+          created_from_template_id?: string | null
           examination_type?:
             | Database["public"]["Enums"]["Synundersökning"]
             | null
           id?: string
+          is_active?: boolean | null
+          is_template?: boolean | null
+          last_modified_by?: string | null
           organization_id?: string | null
           schema: Json
+          template_category?: string | null
           title: string
+          version?: number | null
         }
         Update: {
           created_at?: string | null
+          created_from_template_id?: string | null
           examination_type?:
             | Database["public"]["Enums"]["Synundersökning"]
             | null
           id?: string
+          is_active?: boolean | null
+          is_template?: boolean | null
+          last_modified_by?: string | null
           organization_id?: string | null
           schema?: Json
+          template_category?: string | null
           title?: string
+          version?: number | null
         }
         Relationships: []
       }

@@ -563,6 +563,51 @@ export type Database = {
         }
         Relationships: []
       }
+      store_forms: {
+        Row: {
+          created_at: string
+          form_id: string
+          id: string
+          is_active: boolean
+          organization_id: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          form_id: string
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          form_id?: string
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_forms_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "anamnes_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_forms_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           address: string | null

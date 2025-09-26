@@ -17,9 +17,10 @@ import { Button } from "@/components/ui/button";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useStores } from "@/hooks/useStores";
 import { Tables } from "@/integrations/supabase/types";
-import { StoreForm } from "@/components/AdminPanel/StoreForm";
 import { StoreCard } from "@/components/AdminPanel/StoreCard";
+import { StoreForm } from "@/components/AdminPanel/StoreForm";
 import { ConfirmDeleteDialog } from "@/components/AdminPanel/ConfirmDeleteDialog";
+import StoreFormManager from "@/components/AdminPanel/StoreFormManager";
 
 type Store = Tables<"stores">;
 
@@ -139,6 +140,10 @@ const AdminPanel = () => {
             <Building2 className="h-4 w-4" />
             Butiker
           </TabsTrigger>
+          <TabsTrigger value="forms" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Formulär per butik
+          </TabsTrigger>
           <TabsTrigger value="organization" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Organisationsinställningar
@@ -198,9 +203,10 @@ const AdminPanel = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
         
-        <TabsContent value="organization" className="mt-0">
+        <TabsContent value="forms" className="mt-0">
+          <StoreFormManager />
+        </TabsContent>
           <Card>
             <CardHeader>
               <CardTitle>Organisationsinställningar</CardTitle>

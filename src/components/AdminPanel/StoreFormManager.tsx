@@ -15,6 +15,7 @@ import { Loader2, Store, FileText, Settings } from 'lucide-react';
 import { useStores } from '@/hooks/useStores';
 import { useOrganizationForms } from '@/hooks/useOrganizationForms';
 import { useStoreFormAssignments } from '@/hooks/useStoreFormAssignments';
+import FormEditor from './FormEditor';
 
 interface StoreFormCardProps {
   store: any;
@@ -123,7 +124,7 @@ const StoreFormCard: React.FC<StoreFormCardProps> = ({
 const StoreFormManager: React.FC = () => {
   const { organization } = useOrganization();
   const { stores, isLoading: isLoadingStores } = useStores();
-  const { data: forms = [], isLoading: isLoadingForms } = useOrganizationForms();
+  const { data: forms = [], isLoading: isLoadingForms, refetch: refetchForms } = useOrganizationForms();
   const { 
     assignments, 
     isLoading: isLoadingAssignments, 
@@ -186,6 +187,9 @@ const StoreFormManager: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Form Editor Section */}
+      <FormEditor forms={forms} onFormUpdated={refetchForms} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {stores.map((store) => (

@@ -21,6 +21,7 @@ import { StoreCard } from "@/components/AdminPanel/StoreCard";
 import { StoreForm } from "@/components/AdminPanel/StoreForm";
 import { ConfirmDeleteDialog } from "@/components/AdminPanel/ConfirmDeleteDialog";
 import StoreFormManager from "@/components/AdminPanel/StoreFormManager";
+import { FormManagementGrid } from "@/components/FormBuilder/FormManagementGrid";
 
 type Store = Tables<"stores">;
 
@@ -211,6 +212,10 @@ const AdminPanel = () => {
         
         <TabsContent value="forms" className="mt-0">
           <StoreFormManager />
+        </TabsContent>
+        
+        <TabsContent value="form-builder" className="mt-0">
+          <FormManagementGrid />
         </TabsContent>
         
         <TabsContent value="organization" className="mt-0">

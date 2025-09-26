@@ -93,14 +93,14 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
     
     allQuestions.forEach(question => {
       const fullQuestion = schema.sections?.[question.sectionIndex]?.questions[question.questionIndex];
-      if (fullQuestion?.show_if) {
-        rules.push({
-          questionId: question.id,
-          dependsOn: fullQuestion.show_if.question_id,
-          condition: 'equals',
-          value: fullQuestion.show_if.answer_value
-        });
-      }
+        if (fullQuestion?.show_if) {
+          rules.push({
+            questionId: question.id,
+            dependsOn: fullQuestion.show_if.question,
+            condition: 'equals',
+            value: fullQuestion.show_if.equals
+          });
+        }
     });
     
     return rules;
@@ -116,8 +116,8 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
             return {
               ...question,
               show_if: {
-                question_id: dependsOn,
-                answer_value: value
+                question: dependsOn,
+                equals: value
               }
             };
           } else {

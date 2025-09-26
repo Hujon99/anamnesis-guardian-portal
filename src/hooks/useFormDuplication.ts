@@ -79,15 +79,15 @@ export const useFormDuplication = () => {
       }
 
       // Clone the schema with new IDs
-      const clonedSchema = cloneFormSchema(template.schema);
+      const clonedSchema = cloneFormSchema(template.schema as unknown as FormTemplate);
 
       // Create the new form
       const { data: newForm, error: createError } = await supabase
         .from('anamnes_forms')
         .insert({
           title: duplicateData.newTitle,
-          examination_type: duplicateData.examinationType || template.examination_type,
-          schema: clonedSchema,
+          examination_type: (duplicateData.examinationType || template.examination_type) as any,
+          schema: clonedSchema as any,
           organization_id: organization.id,
           is_template: false,
           template_category: duplicateData.templateCategory,
@@ -145,8 +145,8 @@ export const useFormDuplication = () => {
         .from('anamnes_forms')
         .insert({
           title: data.newTitle,
-          examination_type: sourceForm.examination_type,
-          schema: cloneFormSchema(sourceForm.schema),
+          examination_type: sourceForm.examination_type as any,
+          schema: cloneFormSchema(sourceForm.schema as unknown as FormTemplate) as any,
           organization_id: organization.id,
           is_template: true,
           template_category: data.category,

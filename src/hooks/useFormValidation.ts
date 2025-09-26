@@ -1,316 +1,227 @@
-
 /**
- * This hook provides validation for anamnesis forms.
- * It generates a Zod schema based on the form template and validates form inputs against it.
- * It dynamically adapts validation rules based on form visibility conditions to prevent
- * validation of hidden fields.
- * Enhanced to properly handle required fields and prevent premature validation errors.
+ * Hook for validating form structure and schema.
+ * Ensures form data integrity before saving and provides
+ * validation feedback for the Form Builder interface.
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import { z } from 'zod';
-import { FormTemplate, FormSection, FormQuestion } from '@/types/anamnesis';
+import { FormTemplate, FormSection, FormQuestion } from "@/types/anamnesis";
 
-export function useFormValidation(
-  formTemplate: FormTemplate | null,
-  initialValues: Record<string, any> | null = null,
-  currentValues?: Record<string, any>,
-  visibleFieldIds?: string[]
-) {
-  // Track which fields have been touched to avoid premature validation
-  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
-  
-  // Create a Zod schema for validation based on the form template and visible fields
-  const validationSchema = useMemo(() => {
-    if (!formTemplate) {
-      return z.object({});
+export interface ValidationError {
+  type: 'error' | 'warning';
+  message: string;
+  location?: string;
+  field?: string;
+}
+
+export const useFormValidation = () => {
+  const validateQuestion = (question: FormQuestion, sectionIndex: number, questionIndex: number): ValidationError[] => {
+    const errors: ValidationError[] = [];
+    const location = `Sektion ${sectionIndex + 1}, Fråga ${questionIndex + 1}`;
+
+    // Required fields
+    if (!question.id?.trim()) {
+      errors.push({
+        type: 'error',
+        message: 'Fråge-ID krävs',
+        location,
+        field: 'id'
+      });
     }
 
-    // Start with an empty schema
-    const schemaFields: Record<string, z.ZodTypeAny> = {};
-
-    // Process each section and question to build the schema
-    formTemplate.sections.forEach((section: FormSection) => {
-      // Skip sections that have conditional logic that isn't met
-      if (section.show_if && currentValues) {
-        const { question, equals, contains } = section.show_if;
-        const value = currentValues[question];
-        
-        // Skip this section if its condition is not met
-        if (contains !== undefined) {
-          if (Array.isArray(value) && !value.includes(contains)) return;
-          if (!Array.isArray(value) && value !== contains) return;
-        } else if (equals !== undefined) {
-          if (Array.isArray(equals) && !equals.includes(value)) return;
-          if (!Array.isArray(equals) && value !== equals) return;
-        } else if (!value) {
-          return;
-        }
-      }
-      
-      section.questions.forEach((question: FormQuestion) => {
-        // Skip followup templates - they're not rendered directly
-        if (question.is_followup_template) return;
-        
-        // Skip questions that have conditional logic that isn't met
-        if (question.show_if && currentValues) {
-          const { question: dependentQuestion, equals, contains } = question.show_if;
-          const dependentValue = currentValues[dependentQuestion];
-          
-          // Skip this question if its condition is not met
-          if (contains !== undefined) {
-            if (Array.isArray(dependentValue) && !dependentValue.includes(contains)) return;
-            if (!Array.isArray(dependentValue) && dependentValue !== contains) return;
-          } else if (equals !== undefined) {
-            if (Array.isArray(equals) && !equals.includes(dependentValue)) return;
-            if (!Array.isArray(equals) && dependentValue !== equals) return;
-          } else if (!dependentValue) {
-            return;
-          }
-        }
-        
-        // If we have an explicit list of visible fields, only include those
-        const questionId = question.id;
-        if (visibleFieldIds && !visibleFieldIds.includes(questionId)) {
-          return;
-        }
-
-        // Create validation schema based on field type and requirements
-        let fieldSchema: z.ZodTypeAny = z.any();
-
-        // Add required validation if needed
-        if (question.required) {
-          // Handle different types of fields
-          switch (question.type) {
-            case 'text':
-              fieldSchema = z.string().min(1, { message: 'Detta fält är obligatoriskt' });
-              break;
-            case 'number':
-              fieldSchema = z.number({ 
-                required_error: 'Detta fält är obligatoriskt',
-                invalid_type_error: 'Måste vara ett nummer'
-              });
-              break;
-            case 'radio':
-            case 'select':
-            case 'dropdown':
-              fieldSchema = z.string().min(1, { message: 'Detta fält är obligatoriskt' });
-              break;
-            case 'checkbox':
-              fieldSchema = z.array(z.string()).min(1, { message: 'Välj minst ett alternativ' });
-              break;
-            default:
-              fieldSchema = z.string().min(1, { message: 'Detta fält är obligatoriskt' });
-          }
-        } else {
-          // Optional fields
-          switch (question.type) {
-            case 'text':
-              fieldSchema = z.string().optional();
-              break;
-            case 'number':
-              fieldSchema = z.number().optional();
-              break;
-            case 'radio':
-            case 'select':
-            case 'dropdown':
-              fieldSchema = z.string().optional();
-              break;
-            case 'checkbox':
-              fieldSchema = z.array(z.string()).optional();
-              break;
-            default:
-              fieldSchema = z.any();
-          }
-        }
-
-        // Add the field to the schema
-        schemaFields[questionId] = fieldSchema;
+    if (!question.label?.trim()) {
+      errors.push({
+        type: 'error',
+        message: 'Frågetext krävs',
+        location,
+        field: 'label'
       });
-    });
+    }
 
-    // Handle dynamic follow-up questions based on current values
-    if (currentValues) {
-      Object.keys(currentValues).forEach(key => {
-        // Look for keys that match the dynamic follow-up question pattern
-        if (key.includes('_for_')) {
-          // Only add validation if this dynamic field is actually visible
-          if (!visibleFieldIds || visibleFieldIds.includes(key)) {
-            // Extract the original question ID and parent answer
-            const [originalId, parentValue] = key.split('_for_');
-            
-            // Find the original template question to check if it's required
-            const isRequired = formTemplate.sections.some(section => {
-              return section.questions.some(q => 
-                q.id === originalId && 
-                q.is_followup_template && 
-                q.required
-              );
-            });
+    if (!question.type?.trim()) {
+      errors.push({
+        type: 'error',
+        message: 'Frågetyp krävs',
+        location,
+        field: 'type'
+      });
+    }
 
-            // Create appropriate schema for this dynamic field
-            if (isRequired) {
-              schemaFields[key] = z.string().min(1, { message: 'Detta fält är obligatoriskt' });
-            } else {
-              schemaFields[key] = z.string().optional();
+    // Type-specific validation
+    if (question.type === 'radio' || question.type === 'dropdown') {
+      if (!question.options || question.options.length === 0) {
+        errors.push({
+          type: 'error',
+          message: 'Alternativ krävs för radio/dropdown frågor',
+          location,
+          field: 'options'
+        });
+      } else {
+        question.options.forEach((option, optionIndex) => {
+          if (typeof option === 'string') {
+            if (!option.trim()) {
+              errors.push({
+                type: 'warning',
+                message: `Tom option ${optionIndex + 1}`,
+                location,
+                field: 'options'
+              });
+            }
+          } else if (typeof option === 'object') {
+            if (!option.value?.trim()) {
+              errors.push({
+                type: 'error',
+                message: `Option ${optionIndex + 1} saknar värde`,
+                location,
+                field: 'options'
+              });
             }
           }
-        }
-      });
-    }
-
-    return z.object(schemaFields);
-  }, [formTemplate, initialValues, currentValues, visibleFieldIds]);
-
-  // Generate default values based on the form template and any initial values
-  const defaultValues = useMemo(() => {
-    if (!formTemplate) return {};
-    
-    const defaults: Record<string, any> = {};
-    
-    // If we have initial values, use them
-    if (initialValues) {
-      return initialValues;
-    }
-    
-    // Otherwise, generate defaults based on question types
-    formTemplate.sections.forEach((section) => {
-      section.questions.forEach((question) => {
-        // Skip followup templates
-        if (question.is_followup_template) return;
-        
-        // Set appropriate default value based on question type
-        switch (question.type) {
-          case 'checkbox':
-            defaults[question.id] = [];
-            break;
-          case 'number':
-            defaults[question.id] = null; // Use null for numbers to avoid validation errors
-            break;
-          default:
-            defaults[question.id] = '';
-        }
-      });
-    });
-    
-    return defaults;
-  }, [formTemplate, initialValues]);
-
-  // Utility function to get fields to validate for specific sections
-  const getFieldsToValidate = (sections: any[]) => {
-    if (!sections) return [];
-    
-    return sections.flatMap((section: any) => {
-      if (!section.questions) return [];
-      return section.questions
-        .filter(q => !q.is_followup_template)
-        .map((q: any) => q.id || q.runtimeId);
-    });
-  };
-  
-  // Function to check if a field should be validated based on visibility
-  const shouldValidateField = (fieldId: string): boolean => {
-    if (!visibleFieldIds) return true;
-    return visibleFieldIds.includes(fieldId);
-  };
-  
-  // Function to get all required fields that are currently visible
-  const getRequiredVisibleFields = (): string[] => {
-    if (!formTemplate || !currentValues) return [];
-    
-    const requiredFields: string[] = [];
-    
-    formTemplate.sections.forEach(section => {
-      // Check section visibility
-      if (section.show_if && currentValues) {
-        const { question, equals, contains } = section.show_if;
-        const value = currentValues[question];
-        
-        if (contains !== undefined) {
-          if (Array.isArray(value) && !value.includes(contains)) return;
-          if (!Array.isArray(value) && value !== contains) return;
-        } else if (equals !== undefined) {
-          if (Array.isArray(equals) && !equals.includes(value)) return;
-          if (!Array.isArray(equals) && value !== equals) return;
-        } else if (!value) {
-          return;
-        }
+        });
       }
-      
-      section.questions.forEach(question => {
-        if (question.is_followup_template) return;
-        
-        // Check question visibility
-        if (question.show_if && currentValues) {
-          const { question: dependentQuestion, equals, contains } = question.show_if;
-          const dependentValue = currentValues[dependentQuestion];
-          
-          if (contains !== undefined) {
-            if (Array.isArray(dependentValue) && !dependentValue.includes(contains)) return;
-            if (!Array.isArray(dependentValue) && dependentValue !== contains) return;
-          } else if (equals !== undefined) {
-            if (Array.isArray(equals) && !equals.includes(dependentValue)) return;
-            if (!Array.isArray(equals) && dependentValue !== equals) return;
-          } else if (!dependentValue) {
-            return;
+    }
+
+    // Conditional logic validation
+    if (question.show_if) {
+      if (!question.show_if.question?.trim()) {
+        errors.push({
+          type: 'error',
+          message: 'Villkorlig logik saknar referens-fråga',
+          location,
+          field: 'show_if'
+        });
+      }
+      if (!question.show_if.equals) {
+        errors.push({
+          type: 'warning',
+          message: 'Villkorlig logik saknar svarsvärde',
+          location,
+          field: 'show_if'
+        });
+      }
+    }
+
+    return errors;
+  };
+
+  const validateSection = (section: FormSection, sectionIndex: number): ValidationError[] => {
+    const errors: ValidationError[] = [];
+    const location = `Sektion ${sectionIndex + 1}`;
+
+    // Section title
+    if (!section.section_title?.trim()) {
+      errors.push({
+        type: 'error',
+        message: 'Sektionsrubrik krävs',
+        location,
+        field: 'section_title'
+      });
+    }
+
+    // Questions
+    if (!section.questions || section.questions.length === 0) {
+      errors.push({
+        type: 'warning',
+        message: 'Sektion saknar frågor',
+        location,
+        field: 'questions'
+      });
+    } else {
+      section.questions.forEach((question, questionIndex) => {
+        errors.push(...validateQuestion(question, sectionIndex, questionIndex));
+      });
+    }
+
+    return errors;
+  };
+
+  const validateForm = (form: FormTemplate): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    // Form title
+    if (!form.title?.trim()) {
+      errors.push({
+        type: 'error',
+        message: 'Formulärtitel krävs',
+        field: 'title'
+      });
+    }
+
+    // Sections
+    if (!form.sections || form.sections.length === 0) {
+      errors.push({
+        type: 'error',
+        message: 'Formulär måste ha minst en sektion',
+        field: 'sections'
+      });
+    } else {
+      form.sections.forEach((section, sectionIndex) => {
+        errors.push(...validateSection(section, sectionIndex));
+      });
+    }
+
+    // Check for duplicate question IDs
+    const questionIds: string[] = [];
+    form.sections?.forEach((section, sectionIndex) => {
+      section.questions?.forEach((question, questionIndex) => {
+        if (question.id) {
+          if (questionIds.includes(question.id)) {
+            errors.push({
+              type: 'error',
+              message: `Duplicerat fråge-ID: ${question.id}`,
+              location: `Sektion ${sectionIndex + 1}, Fråga ${questionIndex + 1}`,
+              field: 'id'
+            });
+          } else {
+            questionIds.push(question.id);
           }
-        }
-        
-        // If question is required and visible, add to list
-        if (question.required && (!visibleFieldIds || visibleFieldIds.includes(question.id))) {
-          requiredFields.push(question.id);
         }
       });
     });
-    
-    // Add dynamic follow-up questions that are required
-    if (currentValues) {
-      Object.keys(currentValues).forEach(key => {
-        if (key.includes('_for_') && (!visibleFieldIds || visibleFieldIds.includes(key))) {
-          const [originalId] = key.split('_for_');
-          const isRequired = formTemplate.sections.some(section => {
-            return section.questions.some(q => 
-              q.id === originalId && 
-              q.is_followup_template && 
-              q.required
-            );
-          });
-          
-          if (isRequired) {
-            requiredFields.push(key);
-          }
-        }
+
+    return errors;
+  };
+
+  const validateFormMetadata = (title: string, examinationType: string): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    if (!title?.trim()) {
+      errors.push({
+        type: 'error',
+        message: 'Formulärtitel krävs',
+        field: 'title'
       });
     }
-    
-    return requiredFields;
-  };
-  
-  // Function to mark a field as touched
-  const markFieldAsTouched = (fieldId: string) => {
-    setTouchedFields(prev => new Set([...prev, fieldId]));
-  };
-  
-  // Function to check if a field has been touched
-  const isFieldTouched = (fieldId: string): boolean => {
-    return touchedFields.has(fieldId);
-  };
-  
-  // Log validation schema for debugging
-  useEffect(() => {
-    if (Object.keys(validationSchema.shape).length > 0) {
-      console.log(`[useFormValidation]: Created schema with ${Object.keys(validationSchema.shape).length} fields`);
+
+    if (!examinationType?.trim()) {
+      errors.push({
+        type: 'error',
+        message: 'Undersökningstyp krävs',
+        field: 'examination_type'
+      });
     }
-  }, [validationSchema]);
+
+    return errors;
+  };
+
+  const hasErrors = (errors: ValidationError[]): boolean => {
+    return errors.some(error => error.type === 'error');
+  };
+
+  const hasWarnings = (errors: ValidationError[]): boolean => {
+    return errors.some(error => error.type === 'warning');
+  };
+
+  const getErrorsByType = (errors: ValidationError[], type: 'error' | 'warning'): ValidationError[] => {
+    return errors.filter(error => error.type === type);
+  };
 
   return {
-    validationSchema,
-    defaultValues,
-    getFieldsToValidate,
-    shouldValidateField,
-    getRequiredVisibleFields,
-    markFieldAsTouched,
-    isFieldTouched,
-    touchedFields
+    validateForm,
+    validateSection,
+    validateQuestion,
+    validateFormMetadata,
+    hasErrors,
+    hasWarnings,
+    getErrorsByType
   };
-}
+};

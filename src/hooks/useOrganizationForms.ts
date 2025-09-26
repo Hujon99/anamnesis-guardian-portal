@@ -9,6 +9,7 @@ import { useSupabaseClient } from "./useSupabaseClient";
 import { useOrganization } from "@clerk/clerk-react";
 import { toast } from "@/components/ui/use-toast";
 import { ExaminationType, EXAMINATION_TYPE_OPTIONS } from "@/types/examinationType";
+import { FormTemplate } from "@/types/anamnesis";
 
 export interface OrganizationForm {
   id: string;
@@ -17,6 +18,7 @@ export interface OrganizationForm {
   organization_id: string | null;
   icon: string;
   description: string;
+  schema?: FormTemplate;
 }
 
 interface DatabaseForm {
@@ -25,6 +27,7 @@ interface DatabaseForm {
   examination_type: string;
   organization_id: string | null;
   created_at: string;
+  schema?: any;
 }
 
 export const useOrganizationForms = () => {
@@ -43,12 +46,12 @@ export const useOrganizationForms = () => {
         let allForms: DatabaseForm[] = [];
         
         if (organization?.id) {
-          // First, get organization-specific forms
-          const { data: orgForms, error: orgError } = await supabase
-            .from('anamnes_forms')
-            .select("id, title, examination_type, organization_id, created_at")
-            .eq('organization_id', organization.id)
-            .order('created_at', { ascending: false });
+        // Also include the full form data with schema
+        const { data: orgForms, error: orgError } = await supabase
+          .from('anamnes_forms')
+          .select("*")
+          .eq('organization_id', organization.id)
+          .order('created_at', { ascending: false });
             
           if (orgError) {
             console.error("[useOrganizationForms]: Error fetching org forms:", orgError);
@@ -62,7 +65,7 @@ export const useOrganizationForms = () => {
           if (orgExaminationTypes.length < EXAMINATION_TYPE_OPTIONS.length) {
             const { data: defaultForms, error: defaultError } = await supabase
               .from('anamnes_forms')
-              .select("id, title, examination_type, organization_id, created_at")
+              .select("*")
               .is('organization_id', null)
               .order('created_at', { ascending: false });
               
@@ -80,7 +83,7 @@ export const useOrganizationForms = () => {
           // No organization, just get default forms
           const { data: defaultForms, error: defaultError } = await supabase
             .from('anamnes_forms')
-            .select("id, title, examination_type, organization_id, created_at")
+            .select("*")
             .is('organization_id', null)
             .order('created_at', { ascending: false });
             
@@ -106,7 +109,8 @@ export const useOrganizationForms = () => {
             examination_type: form.examination_type,
             organization_id: form.organization_id,
             icon: typeOption.icon,
-            description: typeOption.description
+            description: typeOption.description,
+            schema: form.schema ? (form.schema as unknown as FormTemplate) : undefined
           };
         });
         

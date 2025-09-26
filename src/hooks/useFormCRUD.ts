@@ -43,8 +43,8 @@ export const useFormCRUD = () => {
         .from('anamnes_forms')
         .insert({
           title: formData.title,
-          examination_type: formData.examination_type,
-          schema: formData.schema,
+          examination_type: formData.examination_type as any,
+          schema: formData.schema as any,
           organization_id: organization.id,
           is_template: formData.is_template || false,
           template_category: formData.template_category,
@@ -87,13 +87,12 @@ export const useFormCRUD = () => {
       }
 
       const updateData: any = {
-        last_modified_by: user?.id,
-        version: supabase.raw('version + 1')
+        last_modified_by: user?.id
       };
 
       if (formData.title !== undefined) updateData.title = formData.title;
-      if (formData.examination_type !== undefined) updateData.examination_type = formData.examination_type;
-      if (formData.schema !== undefined) updateData.schema = formData.schema;
+      if (formData.examination_type !== undefined) updateData.examination_type = formData.examination_type as any;
+      if (formData.schema !== undefined) updateData.schema = formData.schema as any;
       if (formData.is_active !== undefined) updateData.is_active = formData.is_active;
 
       const { data, error } = await supabase

@@ -34,7 +34,7 @@ export const useFormTemplates = () => {
           return [];
         }
         
-        // Fetch all templates (both global and organization-specific)
+        // Fetch from the `anamnes_forms` table, including schema
         const { data: templates, error } = await supabase
           .from('anamnes_forms')
           .select("*")
@@ -48,7 +48,10 @@ export const useFormTemplates = () => {
           throw new Error("Kunde inte hämta formulärmallar: " + error.message);
         }
         
-        return templates || [];
+        return templates?.map(template => ({
+          ...template,
+          schema: template.schema as unknown as FormTemplate
+        })) || [];
         
       } catch (err: any) {
         console.error("[useFormTemplates]: Error:", err);

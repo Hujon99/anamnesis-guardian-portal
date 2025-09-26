@@ -64,12 +64,14 @@ export type FormQuestionOption = string | {
   triggers_followups: boolean;
 };
 
-export type FormQuestion = {
+export interface FormQuestion {
   id: string;
   label: string;
-  type: "text" | "radio" | "select" | "checkbox" | "dropdown" | "number";
+  type: 'text' | 'textarea' | 'radio' | 'select' | 'checkbox' | 'dropdown' | 'number' | 'date' | 'email' | 'tel' | 'url';
   options?: FormQuestionOption[];
   required?: boolean;
+  placeholder?: string;
+  help_text?: string;
   show_if?: {
     question: string;
     equals?: string | string[];
@@ -77,8 +79,8 @@ export type FormQuestion = {
   };
   is_followup_template?: boolean;
   followup_question_ids?: string[];
-  show_in_mode?: "optician" | "patient";
-};
+  show_in_mode?: 'patient' | 'optician';
+}
 
 export type FormSection = {
   section_title: string;

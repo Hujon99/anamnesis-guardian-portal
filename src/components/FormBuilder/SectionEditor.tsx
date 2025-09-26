@@ -78,7 +78,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
     const newQuestion: FormQuestion = {
       id: `question_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       label: `Ny ${type}-fråga`,
-      type: type,
+      type: type as any,
       options: type === 'radio' || type === 'dropdown' ? ['Alternativ 1', 'Alternativ 2'] : undefined
     };
 

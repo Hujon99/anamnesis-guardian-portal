@@ -109,7 +109,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   };
 
   const changeQuestionType = (newType: string) => {
-    const updatedQuestion = { ...question, type: newType };
+    const updatedQuestion = { ...question, type: newType as any };
     
     // Add default options for select/radio types
     if ((newType === 'radio' || newType === 'dropdown') && !updatedQuestion.options) {

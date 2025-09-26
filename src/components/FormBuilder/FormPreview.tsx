@@ -46,7 +46,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
 
     // Conditional logic
     if (question.show_if) {
-      const conditionMet = formData[question.show_if.question_id] === question.show_if.answer_value;
+      const conditionMet = formData[question.show_if.question] === question.show_if.equals;
       return conditionMet;
     }
 
@@ -95,7 +95,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         {question.show_if && (
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
-            Visas om "{question.show_if.question_id}" = "{question.show_if.answer_value}"
+            Visas om "{question.show_if.question}" = "{question.show_if.equals}"
           </div>
         )}
       </div>

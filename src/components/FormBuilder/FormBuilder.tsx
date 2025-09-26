@@ -369,6 +369,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                       key={`section-${index}`}
                       section={section}
                       sectionIndex={index}
+                      schema={currentForm.schema}
                       onUpdate={(updatedSection) => {
                         const updatedSections = [...currentForm.schema.sections];
                         updatedSections[index] = updatedSection;

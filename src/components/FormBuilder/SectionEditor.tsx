@@ -38,12 +38,14 @@ import {
   Move
 } from 'lucide-react';
 
-import { FormSection, FormQuestion } from '@/types/anamnesis';
+import { FormSection, FormQuestion, FormTemplate } from '@/types/anamnesis';
 import { QuestionEditor } from './QuestionEditor';
+import { generateUniqueQuestionId } from '@/utils/questionIdUtils';
 
 interface SectionEditorProps {
   section: FormSection;
   sectionIndex: number;
+  schema: FormTemplate;
   onUpdate: (section: FormSection) => void;
   onDelete: () => void;
 }
@@ -51,6 +53,7 @@ interface SectionEditorProps {
 export const SectionEditor: React.FC<SectionEditorProps> = ({
   section,
   sectionIndex,
+  schema,
   onUpdate,
   onDelete
 }) => {
@@ -75,9 +78,25 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   };
 
   const addQuestion = (type: string = 'text') => {
+    const questionTypeLabels: Record<string, string> = {
+      text: 'textfråga',
+      textarea: 'textområde', 
+      radio: 'radioknappar',
+      checkbox: 'kryssrutor',
+      dropdown: 'dropdown',
+      date: 'datum',
+      number: 'nummer',
+      email: 'epost',
+      tel: 'telefon',
+      url: 'url'
+    };
+    
+    const questionLabel = `Ny ${questionTypeLabels[type] || type}`;
+    const generatedId = generateUniqueQuestionId(questionLabel, schema);
+    
     const newQuestion: FormQuestion = {
-      id: `question_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      label: `Ny ${type}-fråga`,
+      id: generatedId,
+      label: questionLabel,
       type: type as any,
       options: type === 'radio' || type === 'dropdown' ? ['Alternativ 1', 'Alternativ 2'] : undefined
     };
@@ -231,6 +250,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                     question={question}
                     questionIndex={questionIndex}
                     sectionIndex={sectionIndex}
+                    schema={schema}
                     onUpdate={(updatedQuestion) => updateQuestion(questionIndex, updatedQuestion)}
                     onDelete={() => deleteQuestion(questionIndex)}
                     onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)}

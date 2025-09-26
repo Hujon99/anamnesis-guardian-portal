@@ -43,12 +43,14 @@ import {
   Settings
 } from 'lucide-react';
 
-import { FormQuestion } from '@/types/anamnesis';
+import { FormQuestion, FormTemplate } from '@/types/anamnesis';
+import { generateUniqueQuestionId, validateQuestionId, suggestAlternativeIds, isIdUnique } from '@/utils/questionIdUtils';
 
 interface QuestionEditorProps {
   question: FormQuestion;
   questionIndex: number;
   sectionIndex: number;
+  schema: FormTemplate;
   onUpdate: (question: FormQuestion) => void;
   onDelete: () => void;
   onMove: (fromIndex: number, toIndex: number) => void;
@@ -72,6 +74,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   question,
   questionIndex,
   sectionIndex,
+  schema,
   onUpdate,
   onDelete,
   onMove,
@@ -80,6 +83,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showIdSuggestions, setShowIdSuggestions] = useState(false);
 
   const updateField = (field: keyof FormQuestion, value: any) => {
     onUpdate({
@@ -87,6 +91,37 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
       [field]: value
     });
   };
+
+  const handleLabelChange = (newLabel: string) => {
+    updateField('label', newLabel);
+    
+    // Auto-generate ID if the current ID looks like a generated one or is empty
+    const currentId = question.id;
+    const isGeneratedId = /^(question_\d+_|ny_|q_|fraga_)/.test(currentId) || !currentId;
+    
+    if (isGeneratedId && newLabel.trim()) {
+      const suggestedId = generateUniqueQuestionId(newLabel, schema, question.id);
+      if (suggestedId !== currentId) {
+        updateField('id', suggestedId);
+      }
+    }
+  };
+
+  const handleIdChange = (newId: string) => {
+    updateField('id', newId);
+    setShowIdSuggestions(false);
+  };
+
+  const generateIdFromLabel = () => {
+    const newId = generateUniqueQuestionId(question.label, schema, question.id);
+    updateField('id', newId);
+    setShowIdSuggestions(false);
+  };
+
+  // Validation for current ID
+  const idValidation = validateQuestionId(question.id);
+  const isIdUniqueInForm = isIdUnique(question.id, schema, question.id);
+  const idSuggestions = showIdSuggestions ? suggestAlternativeIds(question.label, schema, question.id) : [];
 
   const updateOption = (optionIndex: number, value: string) => {
     if (!question.options) return;
@@ -144,7 +179,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
             <div className="flex-1 min-w-0">
               <Input
                 value={question.label}
-                onChange={(e) => updateField('label', e.target.value)}
+                onChange={(e) => handleLabelChange(e.target.value)}
                 className="font-medium border-none shadow-none p-0 h-auto text-base bg-transparent"
                 placeholder="Frågetext..."
               />
@@ -211,13 +246,71 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
               {/* Question ID */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor={`question-id-${questionIndex}`}>Fråge-ID</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`question-id-${questionIndex}`}>Fråge-ID</Label>
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={generateIdFromLabel}
+                        className="text-xs h-6 px-2"
+                      >
+                        Auto-generera
+                      </Button>
+                      {idSuggestions.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowIdSuggestions(!showIdSuggestions)}
+                          className="text-xs h-6 px-2"
+                        >
+                          Förslag
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   <Input
                     id={`question-id-${questionIndex}`}
                     value={question.id}
-                    onChange={(e) => updateField('id', e.target.value)}
+                    onChange={(e) => handleIdChange(e.target.value)}
                     placeholder="unik_id"
+                    className={
+                      !idValidation.isValid || !isIdUniqueInForm
+                        ? "border-destructive focus:ring-destructive"
+                        : "border-border"
+                    }
                   />
+                  {(!idValidation.isValid || !isIdUniqueInForm) && (
+                    <div className="text-sm text-destructive space-y-1">
+                      {idValidation.errors.map((error, idx) => (
+                        <div key={idx}>{error}</div>
+                      ))}
+                      {!isIdUniqueInForm && (
+                        <div>Detta ID används redan av en annan fråga</div>
+                      )}
+                    </div>
+                  )}
+                  {showIdSuggestions && idSuggestions.length > 0 && (
+                    <div className="border rounded p-2 bg-muted/50">
+                      <p className="text-xs text-muted-foreground mb-2">Föreslagna ID:n:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {idSuggestions.map((suggestion, idx) => (
+                          <Button
+                            key={idx}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleIdChange(suggestion)}
+                            className="text-xs h-6 px-2"
+                          >
+                            {suggestion}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2">

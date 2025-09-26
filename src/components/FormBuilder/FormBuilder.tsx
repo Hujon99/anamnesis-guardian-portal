@@ -343,18 +343,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex min-h-0">
         {/* Editor panel */}
         <div className={showPreview ? "w-1/2 border-r" : "w-full"}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-3 m-4 mb-0">
+            <TabsList className="grid w-full grid-cols-3 m-4 mb-0 flex-shrink-0">
               <TabsTrigger value="sections">Sektioner</TabsTrigger>
               <TabsTrigger value="logic">Villkorlig logik</TabsTrigger>
               <TabsTrigger value="settings">Inställningar</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="sections" className="flex-1 m-0">
-              <ScrollArea className="h-full">
+            <TabsContent value="sections" className="flex-1 m-0 min-h-0 flex flex-col">
+              <div className="flex-1 overflow-y-auto">
                 <div className="p-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium">Sektioner</h3>
@@ -396,11 +396,11 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                     </Card>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
             
-            <TabsContent value="logic" className="flex-1 m-0">
-              <div className="h-full overflow-auto">
+            <TabsContent value="logic" className="flex-1 m-0 min-h-0">
+              <div className="h-full overflow-y-auto">
                 <ConditionalLogicEditor
                   schema={currentForm.schema}
                   onUpdate={updateSchema}
@@ -408,8 +408,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
               </div>
             </TabsContent>
             
-            <TabsContent value="settings" className="flex-1 m-0">
-              <div className="h-full overflow-auto">
+            <TabsContent value="settings" className="flex-1 m-0 min-h-0">
+              <div className="h-full overflow-y-auto">
                 <div className="p-4 space-y-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4">Formulärinställningar</h3>

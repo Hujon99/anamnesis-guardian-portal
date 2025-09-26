@@ -127,86 +127,118 @@ export const StoreForm = ({ open, onOpenChange, store }: StoreFormProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="sm:max-w-[500px] p-0">
+        <DialogHeader className="px-8 pt-8 pb-4">
+          <DialogTitle className="text-xl font-semibold">
             {store ? "Redigera butik" : "Skapa ny butik"}
           </DialogTitle>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Namn *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Butiksnamn" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Adress</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Gatuadress" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefon</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Telefonnummer" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>E-post</FormLabel>
-                  <FormControl>
-                    <Input placeholder="E-postadress" type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Avbryt
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Sparar..." : store ? "Uppdatera" : "Skapa"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+        <div className="px-8 pb-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-foreground">
+                      Namn *
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Butiksnamn" 
+                        className="mt-2 h-11" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-foreground">
+                      Adress
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Gatuadress" 
+                        className="mt-2 h-11" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-foreground">
+                      Telefon
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Telefonnummer" 
+                        className="mt-2 h-11" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-foreground">
+                      E-post
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="E-postadress" 
+                        type="email" 
+                        className="mt-2 h-11" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="flex justify-end space-x-3 pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                  className="px-6"
+                >
+                  Avbryt
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="px-6"
+                >
+                  {isSubmitting ? "Sparar..." : store ? "Uppdatera" : "Skapa"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

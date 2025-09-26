@@ -65,7 +65,7 @@ export const useFormsByStore = (storeId?: string) => {
         }
 
         return (allForms || []).map(form => ({
-          schema: form.schema as FormTemplate,
+          schema: form.schema as unknown as FormTemplate,
           id: form.id,
           title: form.title,
           organization_id: form.organization_id,
@@ -86,7 +86,7 @@ export const useFormsByStore = (storeId?: string) => {
         }
 
         return (allForms || []).map(form => ({
-          schema: form.schema as FormTemplate,
+          schema: form.schema as unknown as FormTemplate,
           id: form.id,
           title: form.title,
           organization_id: form.organization_id,
@@ -98,7 +98,7 @@ export const useFormsByStore = (storeId?: string) => {
       return storeFormsData.map(item => {
         const form = item.anamnes_forms;
         return {
-          schema: form.schema as FormTemplate,
+          schema: form.schema as unknown as FormTemplate,
           id: form.id,
           title: form.title,
           organization_id: form.organization_id,

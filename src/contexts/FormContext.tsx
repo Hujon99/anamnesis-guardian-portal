@@ -97,18 +97,12 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     );
   }, [visibleSections]);
 
-  // Setup form validation based on the form template and only validate visible fields
-  const validation = useFormValidation(
-    formTemplate, 
-    initialValues,
-    watchedFormValues,
-    visibleFieldIds
-  );
+  // Setup form validation
+  const { validateForm } = useFormValidation();
   
-  // Create the form with React Hook Form - handle the case where defaultValues might not exist
+  // Create the form with React Hook Form
   const form = useForm({
-    resolver: zodResolver(validation.validationSchema as z.ZodType<any>),
-    defaultValues: validation.defaultValues || {}, // Safely handle defaultValues if it doesn't exist
+    defaultValues: initialValues || {},
     mode: "onTouched"
   });
 

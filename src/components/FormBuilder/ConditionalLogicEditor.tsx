@@ -221,7 +221,7 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
   return (
     <div className="h-full flex flex-col">
       <ScrollArea className="flex-1">
-        <div className="p-4 pt-2 space-y-6">
+        <div className="p-2 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium flex items-center gap-2">
@@ -258,9 +258,12 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
                       <div className="flex items-center gap-2 mb-1">
                         <Eye className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{question.label}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {question.id}
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Visas om "{dependsOnQuestion?.label}" {rule?.condition === 'contains' ? 'innehåller' : '='} "{rule?.value}"
+                        Visas om "{dependsOnQuestion?.label}" ({dependsOnQuestion?.id}) {rule?.condition === 'contains' ? 'innehåller' : '='} "{rule?.value}"
                       </p>
                     </div>
                     

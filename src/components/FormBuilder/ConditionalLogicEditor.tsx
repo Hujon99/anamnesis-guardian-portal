@@ -400,7 +400,12 @@ const NewRuleForm: React.FC<{
             <SelectContent>
               {questionsWithoutConditions.map(question => (
                 <SelectItem key={question.id} value={question.id}>
-                  {question.label}
+                  <div className="flex items-center gap-2">
+                    <span>{question.label}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {question.id}
+                    </Badge>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -420,7 +425,12 @@ const NewRuleForm: React.FC<{
             <SelectContent>
               {availableDependencies.map(question => (
                 <SelectItem key={question.id} value={question.id}>
-                  {question.label}
+                  <div className="flex items-center gap-2">
+                    <span>{question.label}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {question.id}
+                    </Badge>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>

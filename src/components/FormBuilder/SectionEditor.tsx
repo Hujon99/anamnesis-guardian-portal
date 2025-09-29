@@ -10,56 +10,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-
-import {
-  ChevronDown,
-  ChevronRight,
-  Plus,
-  MoreVertical,
-  Trash2,
-  Edit,
-  GripVertical,
-  Move
-} from 'lucide-react';
-
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { ChevronDown, ChevronRight, Plus, MoreVertical, Trash2, Edit, GripVertical, Move } from 'lucide-react';
 import { FormSection, FormQuestion, FormTemplate } from '@/types/anamnesis';
 import { QuestionEditor } from './QuestionEditor';
 import { generateUniqueQuestionId } from '@/utils/questionIdUtils';
-import { SectionConditionalLogic } from './SectionConditionalLogic';
-import { QuestionSuggestions } from './QuestionSuggestions';
-
 interface SectionEditorProps {
   section: FormSection;
   sectionIndex: number;
@@ -68,7 +26,6 @@ interface SectionEditorProps {
   onDelete: () => void;
   isFromDatabase?: boolean; // Flag to indicate if section was loaded from database
 }
-
 export const SectionEditor: React.FC<SectionEditorProps> = ({
   section,
   sectionIndex,
@@ -81,7 +38,6 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(section.section_title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
   const updateTitle = () => {
     if (editTitle.trim() && editTitle !== section.section_title) {
       onUpdate({
@@ -91,16 +47,14 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
     }
     setIsEditing(false);
   };
-
   const cancelEdit = () => {
     setEditTitle(section.section_title);
     setIsEditing(false);
   };
-
   const addQuestion = (type: string = 'text') => {
     const questionTypeLabels: Record<string, string> = {
       text: 'textfråga',
-      textarea: 'textområde', 
+      textarea: 'textområde',
       radio: 'radioknappar',
       checkbox: 'kryssrutor',
       dropdown: 'dropdown',
@@ -110,67 +64,54 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
       tel: 'telefon',
       url: 'url'
     };
-    
     const questionLabel = `Ny ${questionTypeLabels[type] || type}`;
     const generatedId = generateUniqueQuestionId(questionLabel, schema);
-    
     const newQuestion: FormQuestion = {
       id: generatedId,
       label: questionLabel,
       type: type as any,
       options: type === 'radio' || type === 'dropdown' ? ['Alternativ 1', 'Alternativ 2'] : undefined
     };
-
     onUpdate({
       ...section,
       questions: [...section.questions, newQuestion]
     });
   };
-
   const updateQuestion = (questionIndex: number, updatedQuestion: FormQuestion) => {
     const updatedQuestions = [...section.questions];
     updatedQuestions[questionIndex] = updatedQuestion;
-    
     onUpdate({
       ...section,
       questions: updatedQuestions
     });
   };
-
   const deleteQuestion = (questionIndex: number) => {
     const updatedQuestions = section.questions.filter((_, index) => index !== questionIndex);
-    
     onUpdate({
       ...section,
       questions: updatedQuestions
     });
   };
-
   const moveQuestion = (fromIndex: number, toIndex: number) => {
     const updatedQuestions = [...section.questions];
     const [moved] = updatedQuestions.splice(fromIndex, 1);
     updatedQuestions.splice(toIndex, 0, moved);
-    
     onUpdate({
       ...section,
       questions: updatedQuestions
     });
   };
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates
+  }));
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
+    const {
+      active,
+      over
+    } = event;
     if (over && active.id !== over.id) {
       const oldIndex = section.questions.findIndex(q => q.id === active.id);
       const newIndex = section.questions.findIndex(q => q.id === over.id);
-      
       if (oldIndex !== -1 && newIndex !== -1) {
         const updatedQuestions = arrayMove(section.questions, oldIndex, newIndex);
         onUpdate({
@@ -180,9 +121,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
       }
     }
   };
-
-  return (
-    <>
+  return <>
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -196,36 +135,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
 
             <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
 
-            <div className="flex-1">
-              {isEditing ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onBlur={updateTitle}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') updateTitle();
-                      if (e.key === 'Escape') cancelEdit();
-                    }}
-                    className="text-lg font-medium"
-                    autoFocus
-                  />
-                  <Button size="sm" onClick={updateTitle}>
-                    Spara
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={cancelEdit}>
-                    Avbryt
-                  </Button>
-                </div>
-              ) : (
-                <h3 
-                  className="text-lg font-medium cursor-pointer hover:text-primary"
-                  onClick={() => setIsEditing(true)}
-                >
-                  {section.section_title}
-                </h3>
-              )}
-            </div>
+            
 
             <div className="flex items-center gap-1">
               <span className="text-sm text-muted-foreground">
@@ -288,55 +198,13 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="space-y-4">
-                {/* Section Conditional Logic */}
-                <SectionConditionalLogic
-                  section={section}
-                  sectionIndex={sectionIndex}
-                  schema={schema}
-                  onUpdate={onUpdate}
-                />
-
-                <DndContext 
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext 
-                    items={section.questions.map(q => q.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {section.questions.map((question, questionIndex) => (
-                      <QuestionEditor
-                        key={question.id}
-                        question={question}
-                        questionIndex={questionIndex}
-                        sectionIndex={sectionIndex}
-                        schema={schema}
-                        onUpdate={(updatedQuestion) => updateQuestion(questionIndex, updatedQuestion)}
-                        onDelete={() => deleteQuestion(questionIndex)}
-                        onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)}
-                        totalQuestions={section.questions.length}
-                        isFromDatabase={isFromDatabase}
-                      />
-                    ))}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={section.questions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                    {section.questions.map((question, questionIndex) => <QuestionEditor key={question.id} question={question} questionIndex={questionIndex} sectionIndex={sectionIndex} schema={schema} onUpdate={updatedQuestion => updateQuestion(questionIndex, updatedQuestion)} onDelete={() => deleteQuestion(questionIndex)} onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)} totalQuestions={section.questions.length} isFromDatabase={isFromDatabase} />)}
                   </SortableContext>
                 </DndContext>
 
-                {/* Question Suggestions */}
-                <QuestionSuggestions
-                  currentSection={section}
-                  sectionIndex={sectionIndex}
-                  schema={schema}
-                  onAddQuestion={(question) => {
-                    onUpdate({
-                      ...section,
-                      questions: [...section.questions, question]
-                    });
-                  }}
-                />
-
-                {section.questions.length === 0 && (
-                  <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
+                {section.questions.length === 0 && <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
                     <p className="text-muted-foreground mb-4">Inga frågor i denna sektion</p>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -363,8 +231,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
-                )}
+                  </div>}
               </div>
             </CardContent>
           </CollapsibleContent>
@@ -383,15 +250,11 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={onDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Ta bort sektion
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
-  );
+    </>;
 };

@@ -137,10 +137,35 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
 
             
 
+            {isEditing ? (
+              <div className="flex items-center gap-2 flex-1">
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') updateTitle();
+                    if (e.key === 'Escape') cancelEdit();
+                  }}
+                  className="font-semibold"
+                  autoFocus
+                />
+                <Button onClick={updateTitle} size="sm" variant="outline">
+                  Spara
+                </Button>
+                <Button onClick={cancelEdit} size="sm" variant="ghost">
+                  Avbryt
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-1">
+                <h3 className="font-semibold text-lg">{section.section_title}</h3>
+                <span className="text-sm text-muted-foreground">
+                  {section.questions.length} frågor
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center gap-1">
-              <span className="text-sm text-muted-foreground">
-                {section.questions.length} frågor
-              </span>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

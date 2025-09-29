@@ -46,14 +46,54 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
 
     // Conditional logic
     if (question.show_if) {
-      // Handle both single values and arrays
-      const targetValue = question.show_if.equals;
       const actualValue = formData[question.show_if.question];
       
-      if (Array.isArray(targetValue)) {
-        return targetValue.includes(actualValue);
-      } else {
-        return actualValue === targetValue;
+      // Debug logging
+      console.log(`Checking conditional logic for ${question.id}:`, {
+        dependsOn: question.show_if.question,
+        actualValue,
+        expectedEquals: question.show_if.equals,
+        expectedContains: question.show_if.contains,
+        actualValueType: Array.isArray(actualValue) ? 'array' : typeof actualValue
+      });
+
+      // Handle 'contains' logic (for checkboxes and text search)
+      if (question.show_if.contains !== undefined) {
+        const targetValue = question.show_if.contains;
+        
+        if (Array.isArray(actualValue)) {
+          // Checkbox case: actualValue is array, check if it contains any target value
+          if (Array.isArray(targetValue)) {
+            return targetValue.some(val => actualValue.includes(val));
+          } else {
+            return actualValue.includes(targetValue);
+          }
+        } else if (typeof actualValue === 'string') {
+          // Text case: check if string contains substring
+          return actualValue.includes(String(targetValue));
+        }
+        return false;
+      }
+
+      // Handle 'equals' logic (exact match)
+      if (question.show_if.equals !== undefined) {
+        const targetValue = question.show_if.equals;
+        
+        if (Array.isArray(actualValue)) {
+          // Checkbox case: actualValue is array, check if it contains any target value
+          if (Array.isArray(targetValue)) {
+            return targetValue.some(val => actualValue.includes(val));
+          } else {
+            return actualValue.includes(targetValue);
+          }
+        } else {
+          // Radio/dropdown/input case: direct comparison
+          if (Array.isArray(targetValue)) {
+            return targetValue.includes(actualValue);
+          } else {
+            return actualValue === targetValue;
+          }
+        }
       }
     }
 
@@ -102,10 +142,18 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         {question.show_if && (
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
-            Visas om "{question.show_if.question}" {Array.isArray(question.show_if.equals) ? 'är något av' : '='} "{
-              Array.isArray(question.show_if.equals) 
-                ? question.show_if.equals.join(', ') 
-                : question.show_if.equals
+            Visas om "{question.show_if.question}" {
+              question.show_if.contains !== undefined 
+                ? (Array.isArray(question.show_if.contains) ? 'innehåller något av' : 'innehåller') 
+                : (Array.isArray(question.show_if.equals) ? 'är något av' : '=')
+            } "{
+              question.show_if.contains !== undefined
+                ? (Array.isArray(question.show_if.contains) 
+                    ? question.show_if.contains.join(', ') 
+                    : question.show_if.contains)
+                : (Array.isArray(question.show_if.equals) 
+                    ? question.show_if.equals.join(', ') 
+                    : question.show_if.equals)
             }"
           </div>
         )}

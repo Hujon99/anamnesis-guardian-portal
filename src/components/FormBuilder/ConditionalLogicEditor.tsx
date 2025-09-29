@@ -221,7 +221,7 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
   return (
     <div className="h-full flex flex-col">
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
+        <div className="p-4 pt-2 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium flex items-center gap-2">

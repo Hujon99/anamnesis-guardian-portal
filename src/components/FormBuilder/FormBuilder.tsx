@@ -428,12 +428,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             </TabsContent>
             
             <TabsContent value="logic" className="flex-1 m-0 min-h-0">
-              <div className="h-full overflow-y-auto">
-                <ConditionalLogicEditor
-                  schema={currentForm.schema}
-                  onUpdate={updateSchema}
-                />
-              </div>
+              <ConditionalLogicEditor
+                schema={currentForm.schema}
+                onUpdate={updateSchema}
+              />
             </TabsContent>
             
             <TabsContent value="settings" className="flex-1 m-0 min-h-0">

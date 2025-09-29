@@ -63,6 +63,7 @@ import {
 
 import { FormQuestion, FormTemplate } from '@/types/anamnesis';
 import { generateUniqueQuestionId, validateQuestionId, suggestAlternativeIds, isIdUnique } from '@/utils/questionIdUtils';
+import { InlineConditionalLogic } from './InlineConditionalLogic';
 
 interface QuestionEditorProps {
   question: FormQuestion;
@@ -438,6 +439,15 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   </DndContext>
                 </div>
               )}
+
+              {/* Inline Conditional Logic */}
+              <InlineConditionalLogic
+                question={question}
+                schema={schema}
+                sectionIndex={sectionIndex}
+                questionIndex={questionIndex}
+                onUpdate={onUpdate}
+              />
 
               {/* Advanced settings */}
               <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>

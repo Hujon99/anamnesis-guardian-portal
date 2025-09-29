@@ -57,6 +57,8 @@ import {
 import { FormSection, FormQuestion, FormTemplate } from '@/types/anamnesis';
 import { QuestionEditor } from './QuestionEditor';
 import { generateUniqueQuestionId } from '@/utils/questionIdUtils';
+import { SectionConditionalLogic } from './SectionConditionalLogic';
+import { QuestionSuggestions } from './QuestionSuggestions';
 
 interface SectionEditorProps {
   section: FormSection;
@@ -286,6 +288,14 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="space-y-4">
+                {/* Section Conditional Logic */}
+                <SectionConditionalLogic
+                  section={section}
+                  sectionIndex={sectionIndex}
+                  schema={schema}
+                  onUpdate={onUpdate}
+                />
+
                 <DndContext 
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -311,6 +321,19 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                     ))}
                   </SortableContext>
                 </DndContext>
+
+                {/* Question Suggestions */}
+                <QuestionSuggestions
+                  currentSection={section}
+                  sectionIndex={sectionIndex}
+                  schema={schema}
+                  onAddQuestion={(question) => {
+                    onUpdate({
+                      ...section,
+                      questions: [...section.questions, question]
+                    });
+                  }}
+                />
 
                 {section.questions.length === 0 && (
                   <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">

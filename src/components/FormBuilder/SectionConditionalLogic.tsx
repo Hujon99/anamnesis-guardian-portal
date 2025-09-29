@@ -175,13 +175,13 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
                 <SelectTrigger className="text-sm bg-background border-border/50 hover:border-border transition-colors">
                   <SelectValue placeholder="Välj fråga..." />
                 </SelectTrigger>
-                <SelectContent className="bg-background border-border/50">
+                <SelectContent className="bg-background border-border/50 min-w-[400px] max-w-[600px]">
                   {availableDependencies.map((dep) => (
                     <SelectItem key={dep.id} value={dep.id}>
-                      <div className="flex flex-col items-start gap-1.5 py-1">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate max-w-40 font-medium">{dep.label}</span>
-                          <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                      <div className="flex flex-col items-start gap-1.5 py-1 w-full">
+                        <div className="flex items-start gap-2 w-full">
+                          <span className="font-medium leading-tight">{dep.label}</span>
+                          <Badge variant="secondary" className="text-xs px-2 py-0.5 flex-shrink-0">
                             {dep.id}
                           </Badge>
                         </div>

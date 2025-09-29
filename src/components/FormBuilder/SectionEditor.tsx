@@ -35,7 +35,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   onDelete,
   isFromDatabase = false
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(section.section_title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

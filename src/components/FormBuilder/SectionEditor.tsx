@@ -28,6 +28,22 @@ import {
 } from '@/components/ui/alert-dialog';
 
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+
+import {
   ChevronDown,
   ChevronRight,
   Plus,
@@ -139,6 +155,30 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
     });
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = section.questions.findIndex(q => q.id === active.id);
+      const newIndex = section.questions.findIndex(q => q.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const updatedQuestions = arrayMove(section.questions, oldIndex, newIndex);
+        onUpdate({
+          ...section,
+          questions: updatedQuestions
+        });
+      }
+    }
+  };
+
   return (
     <>
       <Card>
@@ -246,20 +286,31 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="space-y-4">
-                {section.questions.map((question, questionIndex) => (
-                  <QuestionEditor
-                    key={`section-${sectionIndex}-question-${questionIndex}`}
-                    question={question}
-                    questionIndex={questionIndex}
-                    sectionIndex={sectionIndex}
-                    schema={schema}
-                    onUpdate={(updatedQuestion) => updateQuestion(questionIndex, updatedQuestion)}
-                    onDelete={() => deleteQuestion(questionIndex)}
-                    onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)}
-                    totalQuestions={section.questions.length}
-                    isFromDatabase={isFromDatabase}
-                  />
-                ))}
+                <DndContext 
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext 
+                    items={section.questions.map(q => q.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {section.questions.map((question, questionIndex) => (
+                      <QuestionEditor
+                        key={question.id}
+                        question={question}
+                        questionIndex={questionIndex}
+                        sectionIndex={sectionIndex}
+                        schema={schema}
+                        onUpdate={(updatedQuestion) => updateQuestion(questionIndex, updatedQuestion)}
+                        onDelete={() => deleteQuestion(questionIndex)}
+                        onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)}
+                        totalQuestions={section.questions.length}
+                        isFromDatabase={isFromDatabase}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
 
                 {section.questions.length === 0 && (
                   <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">

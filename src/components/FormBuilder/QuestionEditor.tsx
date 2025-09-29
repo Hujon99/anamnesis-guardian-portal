@@ -31,7 +31,18 @@ import {
 } from '@/components/ui/alert-dialog';
 
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
   useSortable,
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
 } from '@dnd-kit/sortable';
 import {
   CSS,
@@ -93,6 +104,12 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showIdSuggestions, setShowIdSuggestions] = useState(false);
+
+  // Sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor)
+  );
 
   const {
     attributes,
@@ -180,10 +197,21 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const moveOption = (fromIndex: number, toIndex: number) => {
     if (!question.options || fromIndex === toIndex) return;
     
-    const updatedOptions = [...question.options];
-    const [movedOption] = updatedOptions.splice(fromIndex, 1);
-    updatedOptions.splice(toIndex, 0, movedOption);
+    const updatedOptions = arrayMove(question.options, fromIndex, toIndex);
     updateField('options', updatedOptions);
+  };
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const activeIndex = question.options?.findIndex((_, index) => `option-${index}` === active.id) ?? -1;
+      const overIndex = question.options?.findIndex((_, index) => `option-${index}` === over?.id) ?? -1;
+      
+      if (activeIndex !== -1 && overIndex !== -1) {
+        moveOption(activeIndex, overIndex);
+      }
+    }
   };
 
   const changeQuestionType = (newType: string) => {
@@ -385,49 +413,29 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     </Button>
                   </div>
                   
-                  <div className="space-y-2">
-                    {question.options?.map((option, optionIndex) => (
-                      <div key={optionIndex} className="flex items-center gap-2">
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => moveOption(optionIndex, optionIndex - 1)}
-                            disabled={optionIndex === 0}
-                            className="h-4 w-6 p-0"
-                          >
-                            <ArrowUp className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => moveOption(optionIndex, optionIndex + 1)}
-                            disabled={optionIndex === (question.options?.length || 1) - 1}
-                            className="h-4 w-6 p-0"
-                          >
-                            <ArrowDown className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-move flex-shrink-0" />
-                        <Input
-                          value={typeof option === 'string' ? option : option.value || ''}
-                          onChange={(e) => updateOption(optionIndex, e.target.value)}
-                          placeholder={`Alternativ ${optionIndex + 1}`}
-                          className="flex-1"
-                        />
-                        {question.options && question.options.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeOption(optionIndex)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
+                  <DndContext 
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext 
+                      items={question.options?.map((_, index) => `option-${index}`) || []}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-2">
+                        {question.options?.map((option, optionIndex) => (
+                          <SortableOption
+                            key={`option-${optionIndex}`}
+                            option={option}
+                            optionIndex={optionIndex}
+                            totalOptions={question.options?.length || 0}
+                            onUpdate={(value) => updateOption(optionIndex, value)}
+                            onRemove={() => removeOption(optionIndex)}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
                 </div>
               )}
 
@@ -522,5 +530,68 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+};
+
+// Sortable Option Component
+interface SortableOptionProps {
+  option: string | { value: string; triggers_followups: boolean };
+  optionIndex: number;
+  totalOptions: number;
+  onUpdate: (value: string) => void;
+  onRemove: () => void;
+}
+
+const SortableOption: React.FC<SortableOptionProps> = ({
+  option,
+  optionIndex,
+  totalOptions,
+  onUpdate,
+  onRemove,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `option-${optionIndex}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none"
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      </div>
+      <Input
+        value={typeof option === 'string' ? option : option.value || ''}
+        onChange={(e) => onUpdate(e.target.value)}
+        placeholder={`Alternativ ${optionIndex + 1}`}
+        className="flex-1"
+      />
+      {totalOptions > 1 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRemove}
+          className="text-destructive hover:text-destructive"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
   );
 };

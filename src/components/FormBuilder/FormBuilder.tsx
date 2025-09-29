@@ -379,7 +379,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
               <TabsTrigger value="settings">Inställningar</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="sections" className="flex-1 m-0 min-h-0 flex flex-col">
+            <TabsContent value="sections" className="flex-1 m-0 min-h-0 flex flex-col data-[state=inactive]:hidden">
               <div className="flex-1 overflow-y-auto">
                 <div className="p-4 space-y-4">
                   <div className="flex items-center justify-between">
@@ -427,14 +427,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
               </div>
             </TabsContent>
             
-            <TabsContent value="logic" className="flex-1 m-0 min-h-0">
+            <TabsContent value="logic" className="flex-1 m-0 min-h-0 data-[state=inactive]:hidden">
               <ConditionalLogicEditor
                 schema={currentForm.schema}
                 onUpdate={updateSchema}
               />
             </TabsContent>
             
-            <TabsContent value="settings" className="flex-1 m-0 min-h-0">
+            <TabsContent value="settings" className="flex-1 m-0 min-h-0 data-[state=inactive]:hidden">
               <div className="h-full overflow-y-auto">
                 <div className="p-4 space-y-6">
                   <div>

@@ -54,7 +54,7 @@ import { SectionEditor } from './SectionEditor';
 import { SortableSectionEditor } from './SortableSectionEditor';
 import { FormPreview } from './FormPreview';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
-import { FormFlowVisualization } from './FormFlowVisualization';
+
 import { LivePreviewPanel } from './LivePreviewPanel';
 import { NaturalLanguageLogicBuilder } from './NaturalLanguageLogicBuilder';
 import { ContextualHelpSystem } from './ContextualHelpSystem';
@@ -431,7 +431,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-4 m-4 mb-0 flex-shrink-0">
               <TabsTrigger value="sections">Sektioner</TabsTrigger>
-              <TabsTrigger value="flow">Flödesvy</TabsTrigger>
+              
               <TabsTrigger value="logic">Villkorlig logik</TabsTrigger>
               <TabsTrigger value="settings">Inställningar</TabsTrigger>
             </TabsList>
@@ -503,16 +503,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
               </div>
             </TabsContent>
             
-            <TabsContent value="flow" className="flex-1 m-0 min-h-0 data-[state=inactive]:hidden">
-              <FormFlowVisualization
-                schema={currentForm.schema}
-                onEditSection={(sectionIndex) => {
-                  setActiveTab('sections');
-                  // Could scroll to specific section here
-                }}
-                onAddSection={addSection}
-              />
-            </TabsContent>
             
             <TabsContent value="logic" className="flex-1 m-0 min-h-0 data-[state=inactive]:hidden">
               <NaturalLanguageLogicBuilder

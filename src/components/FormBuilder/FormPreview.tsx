@@ -7,6 +7,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -360,7 +361,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
       </div>
 
       {/* Form sections */}
-      <div className="space-y-6">
+      <Accordion type="multiple" className="space-y-4">
         {schema.sections.map((section, sectionIndex) => {
           const visibleSectionQuestions = section.questions.filter(shouldShowQuestion);
           
@@ -369,33 +370,41 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
           }
 
           return (
-            <Card key={sectionIndex}>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {section.section_title}
-                </CardTitle>
-                {section.questions.length !== visibleSectionQuestions.length && (
-                  <p className="text-sm text-muted-foreground">
-                    {visibleSectionQuestions.length} av {section.questions.length} frågor visas
-                  </p>
-                )}
-              </CardHeader>
+            <AccordionItem 
+              key={sectionIndex} 
+              value={`section-${sectionIndex}`}
+              className="border rounded-lg"
+            >
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <div className="flex items-center justify-between w-full pr-4">
+                  <h3 className="text-lg font-medium text-left">
+                    {section.section_title}
+                  </h3>
+                  {section.questions.length !== visibleSectionQuestions.length && (
+                    <Badge variant="secondary" className="text-xs">
+                      {visibleSectionQuestions.length} av {section.questions.length} frågor
+                    </Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
               
-              <CardContent className="space-y-4">
-                {section.questions.map((question, questionIndex) => 
-                  renderQuestion(question, sectionIndex, questionIndex)
-                )}
-                
-                {section.questions.length === 0 && (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <p>Inga frågor i denna sektion</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-4">
+                  {section.questions.map((question, questionIndex) => 
+                    renderQuestion(question, sectionIndex, questionIndex)
+                  )}
+                  
+                  {section.questions.length === 0 && (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <p>Inga frågor i denna sektion</p>
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           );
         })}
-      </div>
+      </Accordion>
     </div>
   );
 };

@@ -95,11 +95,13 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const handleLabelChange = (newLabel: string) => {
     updateField('label', newLabel);
     
-    // Auto-generate ID if the current ID looks like a generated one or is empty
+    // Only auto-generate ID for truly new questions or obviously generated IDs
     const currentId = question.id;
-    const isGeneratedId = /^(question_\d+_|ny_|q_|fraga_)/.test(currentId) || !currentId;
+    const isEmpty = !currentId || currentId.trim() === '';
+    const isObviouslyGenerated = /^(question_\d+_[a-z0-9]+|ny_fraga_\d+|temp_\d+|q\d+)$/i.test(currentId);
     
-    if (isGeneratedId && newLabel.trim()) {
+    // Be more conservative - only auto-generate for empty or obviously generated IDs
+    if ((isEmpty || isObviouslyGenerated) && newLabel.trim()) {
       const suggestedId = generateUniqueQuestionId(newLabel, schema, question.id);
       if (suggestedId !== currentId) {
         updateField('id', suggestedId);

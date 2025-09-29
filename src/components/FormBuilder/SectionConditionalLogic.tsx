@@ -145,37 +145,43 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
   }
 
   return (
-    <div className="space-y-3 p-3 bg-accent/5 rounded-lg border border-accent/20">
+    <div className="space-y-4 p-4 bg-gradient-to-br from-accent/8 to-accent/3 rounded-xl border border-accent/20 shadow-sm">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-accent" />
-          <Label className="text-sm font-medium">Villkorlig sektion</Label>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-accent/10 rounded-lg">
+            <Layers className="h-4 w-4 text-accent" />
+          </div>
+          <div className="space-y-0.5">
+            <Label className="text-sm font-semibold text-foreground">Villkorlig sektion</Label>
+            <p className="text-xs text-muted-foreground">Visa sektion baserat på tidigare svar</p>
+          </div>
           <Switch
             checked={isEnabled}
             onCheckedChange={handleToggleConditional}
+            className="ml-auto"
           />
         </div>
       </div>
 
       {isEnabled && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Beroende på fråga</Label>
+        <div className="space-y-5 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-foreground">Beroende på fråga</Label>
               <Select
                 value={section.show_if?.question || ''}
                 onValueChange={handleDependencyChange}
               >
-                <SelectTrigger className="text-xs">
+                <SelectTrigger className="text-sm bg-background border-border/50 hover:border-border transition-colors">
                   <SelectValue placeholder="Välj fråga..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border-border/50">
                   {availableDependencies.map((dep) => (
                     <SelectItem key={dep.id} value={dep.id}>
-                      <div className="flex flex-col items-start gap-1">
+                      <div className="flex flex-col items-start gap-1.5 py-1">
                         <div className="flex items-center gap-2">
-                          <span className="truncate max-w-32">{dep.label}</span>
-                          <Badge variant="outline" className="text-xs">
+                          <span className="truncate max-w-40 font-medium">{dep.label}</span>
+                          <Badge variant="secondary" className="text-xs px-2 py-0.5">
                             {dep.id}
                           </Badge>
                         </div>
@@ -189,14 +195,14 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Värden (välj ett eller flera)</Label>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-foreground">Värden (välj ett eller flera)</Label>
               {selectedDependency?.options ? (
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">
-                    Markera alla värden som ska visa sektionen:
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/30">
+                    💡 Markera alla värden som ska visa sektionen
                   </div>
-                  <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                  <div className="grid grid-cols-1 gap-2.5 max-h-40 overflow-y-auto p-1">
                     {selectedDependency.options.map((option) => {
                       const optionValue = typeof option === 'string' ? option : option.value;
                       const optionLabel = typeof option === 'string' ? option : option.value;
@@ -208,22 +214,24 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
                       return (
                         <div
                           key={optionValue}
-                          className={`p-2 border rounded cursor-pointer transition-colors text-xs ${
+                          className={`group p-3 border rounded-lg cursor-pointer transition-all duration-200 text-sm hover:shadow-sm ${
                             isSelected 
-                              ? 'bg-accent border-accent text-accent-foreground' 
-                              : 'border-border hover:bg-muted'
+                              ? 'bg-accent/20 border-accent text-accent-foreground shadow-sm ring-1 ring-accent/30' 
+                              : 'border-border hover:bg-muted/50 hover:border-border'
                           }`}
                           onClick={() => handleValueChange(optionValue)}
                         >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 border rounded-sm flex items-center justify-center ${
-                              isSelected ? 'bg-accent border-accent' : 'border-border'
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 border-2 rounded transition-all duration-200 flex items-center justify-center ${
+                              isSelected 
+                                ? 'bg-accent border-accent shadow-sm' 
+                                : 'border-border group-hover:border-accent/50'
                             }`}>
                               {isSelected && (
                                 <div className="w-2 h-2 bg-accent-foreground rounded-sm"></div>
                               )}
                             </div>
-                            {optionLabel}
+                            <span className="font-medium">{optionLabel}</span>
                           </div>
                         </div>
                       );
@@ -246,21 +254,25 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
                     });
                   }}
                   placeholder="Ange värden separerade med komma..."
-                  className="text-xs"
+                  className="text-sm bg-background border-border/50 hover:border-border transition-colors"
                 />
               )}
             </div>
           </div>
 
-          {section.show_if?.question && section.show_if?.equals && (
-            <div className="animate-fade-in p-2 bg-accent/20 rounded border border-accent/30">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-3 w-3 text-accent" />
-                  <span className="text-xs font-medium text-accent">Regel:</span>
-                  <span className="text-xs text-muted-foreground">
-                    {generatePreviewText()}
-                  </span>
+          {section.show_if?.question && (
+            <div className="animate-fade-in p-4 bg-gradient-to-br from-accent/15 to-accent/5 rounded-xl border border-accent/30 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="p-1.5 bg-accent/20 rounded-lg mt-0.5">
+                    <Eye className="h-3.5 w-3.5 text-accent" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-sm font-semibold text-accent">Förhandsvisning:</span>
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {generatePreviewText()}
+                    </p>
+                  </div>
                 </div>
                 <Button
                   variant="ghost"

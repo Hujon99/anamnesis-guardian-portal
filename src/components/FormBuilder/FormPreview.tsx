@@ -40,14 +40,21 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
 
   const shouldShowQuestion = (question: FormQuestion): boolean => {
     // Mode filtering
-    if (mode !== 'both' && question.show_in_mode && question.show_in_mode !== mode) {
+    if (mode !== 'both' && question.show_in_mode && question.show_in_mode !== mode && question.show_in_mode !== 'all') {
       return false;
     }
 
     // Conditional logic
     if (question.show_if) {
-      const conditionMet = formData[question.show_if.question] === question.show_if.equals;
-      return conditionMet;
+      // Handle both single values and arrays
+      const targetValue = question.show_if.equals;
+      const actualValue = formData[question.show_if.question];
+      
+      if (Array.isArray(targetValue)) {
+        return targetValue.includes(actualValue);
+      } else {
+        return actualValue === targetValue;
+      }
     }
 
     return true;
@@ -79,9 +86,9 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
             </Badge>
           )}
           
-          {question.show_in_mode && mode === 'both' && (
+          {question.show_in_mode && question.show_in_mode !== 'all' && mode === 'both' && (
             <Badge variant="outline" className="text-xs">
-              {question.show_in_mode === 'patient' ? 'Patient' : 'Optiker'}
+              {question.show_in_mode === 'patient' ? '👤 Patient' : '🔧 Optiker'}
             </Badge>
           )}
         </div>
@@ -95,7 +102,11 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         {question.show_if && (
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
-            Visas om "{question.show_if.question}" = "{question.show_if.equals}"
+            Visas om "{question.show_if.question}" {Array.isArray(question.show_if.equals) ? 'är något av' : '='} "{
+              Array.isArray(question.show_if.equals) 
+                ? question.show_if.equals.join(', ') 
+                : question.show_if.equals
+            }"
           </div>
         )}
       </div>

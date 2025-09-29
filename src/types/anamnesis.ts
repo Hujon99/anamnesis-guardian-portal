@@ -79,7 +79,7 @@ export interface FormQuestion {
   };
   is_followup_template?: boolean;
   followup_question_ids?: string[];
-  show_in_mode?: 'patient' | 'optician';
+  show_in_mode?: 'patient' | 'optician' | 'all';
 }
 
 export type FormSection = {

@@ -60,6 +60,7 @@ import {
   ArrowDown,
   Settings
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 import { FormQuestion, FormTemplate } from '@/types/anamnesis';
 import { generateUniqueQuestionId, validateQuestionId, suggestAlternativeIds, isIdUnique } from '@/utils/questionIdUtils';
@@ -265,6 +266,12 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 className="font-medium border-none shadow-none p-0 h-auto text-base bg-transparent"
                 placeholder="Frågetext..."
               />
+              {/* Mode indicator badge */}
+              {question.show_in_mode && question.show_in_mode !== 'all' && (
+                <Badge variant="outline" className="text-xs mt-1">
+                  {question.show_in_mode === 'patient' ? '👤 Patient' : '🔧 Optiker'}
+                </Badge>
+              )}
             </div>
 
             <div className="flex items-center gap-1">
@@ -493,20 +500,49 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         />
                       </div>
 
-                      {/* Show in mode */}
-                      <div className="space-y-2">
-                        <Label>Visa i läge</Label>
+                      {/* Show in mode - prominent position with help text */}
+                      <div className="space-y-2 p-4 bg-accent/5 rounded-lg border border-accent/20">
+                        <div>
+                          <Label className="text-sm font-medium">Visa i läge</Label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Bestäm vem som ser denna fråga i formuläret
+                          </p>
+                        </div>
                         <Select
-                          value={question.show_in_mode || 'both'}
-                          onValueChange={(value) => updateField('show_in_mode', value === 'both' ? undefined : value)}
+                          value={question.show_in_mode || 'all'}
+                          onValueChange={(value) => updateField('show_in_mode', value === 'all' ? undefined : value)}
                         >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="both">Alla lägen</SelectItem>
-                            <SelectItem value="patient">Endast patient</SelectItem>
-                            <SelectItem value="optician">Endast optiker</SelectItem>
+                            <SelectItem value="all">
+                              <div className="flex items-center gap-2">
+                                <span>👥</span>
+                                <div>
+                                  <div className="font-medium">Alla lägen</div>
+                                  <div className="text-xs text-muted-foreground">Visas för både patient och optiker</div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="patient">
+                              <div className="flex items-center gap-2">
+                                <span>👤</span>
+                                <div>
+                                  <div className="font-medium">Endast patient</div>
+                                  <div className="text-xs text-muted-foreground">Patienten fyller i själv hemma</div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="optician">
+                              <div className="flex items-center gap-2">
+                                <span>🔧</span>
+                                <div>
+                                  <div className="font-medium">Endast optiker</div>
+                                  <div className="text-xs text-muted-foreground">Optikern fyller i under besöket</div>
+                                </div>
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

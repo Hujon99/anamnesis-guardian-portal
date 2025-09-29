@@ -172,7 +172,7 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
                 value={section.show_if?.question || ''}
                 onValueChange={handleDependencyChange}
               >
-                <SelectTrigger className="text-sm bg-background border-border/50 hover:border-border transition-colors">
+                <SelectTrigger className="text-sm bg-background border-border/50 hover:border-border transition-colors h-12 px-4">
                   <SelectValue placeholder="Välj fråga..." />
                 </SelectTrigger>
                 <SelectContent className="bg-background border-border/50 min-w-[400px] max-w-[600px]">

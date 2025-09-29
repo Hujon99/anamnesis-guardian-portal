@@ -89,7 +89,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   const [activeTab, setActiveTab] = useState('sections');
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
   
   // History management for undo/redo
   const [history, setHistory] = useState<HistoryEntry[]>([]);

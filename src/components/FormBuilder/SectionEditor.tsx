@@ -18,6 +18,7 @@ import { ChevronDown, ChevronRight, Plus, MoreVertical, Trash2, Edit, GripVertic
 import { FormSection, FormQuestion, FormTemplate } from '@/types/anamnesis';
 import { QuestionEditor } from './QuestionEditor';
 import { generateUniqueQuestionId } from '@/utils/questionIdUtils';
+import { SectionConditionalLogic } from './SectionConditionalLogic';
 interface SectionEditorProps {
   section: FormSection;
   sectionIndex: number;
@@ -223,6 +224,12 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="space-y-4">
+                <SectionConditionalLogic
+                  section={section}
+                  sectionIndex={sectionIndex}
+                  schema={schema}
+                  onUpdate={onUpdate}
+                />
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext items={section.questions.map(q => q.id)} strategy={verticalListSortingStrategy}>
                     {section.questions.map((question, questionIndex) => <QuestionEditor key={question.id} question={question} questionIndex={questionIndex} sectionIndex={sectionIndex} schema={schema} onUpdate={updatedQuestion => updateQuestion(questionIndex, updatedQuestion)} onDelete={() => deleteQuestion(questionIndex)} onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)} totalQuestions={section.questions.length} isFromDatabase={isFromDatabase} />)}

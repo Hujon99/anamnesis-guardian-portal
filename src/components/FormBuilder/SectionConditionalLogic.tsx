@@ -88,11 +88,24 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
   const handleValueChange = (value: string) => {
     if (!section.show_if) return;
     
+    const currentValues = Array.isArray(section.show_if.equals) 
+      ? section.show_if.equals 
+      : [section.show_if.equals].filter(Boolean);
+    
+    let newValues: string[];
+    if (currentValues.includes(value)) {
+      // Remove value if already selected
+      newValues = currentValues.filter(v => v !== value);
+    } else {
+      // Add value if not selected
+      newValues = [...currentValues, value];
+    }
+    
     onUpdate({
       ...section,
       show_if: {
         ...section.show_if,
-        equals: value
+        equals: newValues.length === 1 ? newValues[0] : newValues
       }
     });
   };
@@ -101,13 +114,21 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
     if (!section.show_if || !selectedDependency) return '';
     
     const dependencyLabel = selectedDependency.label;
-    const value = section.show_if.equals;
+    const values = Array.isArray(section.show_if.equals) 
+      ? section.show_if.equals 
+      : [section.show_if.equals].filter(Boolean);
     
-    if (!value) return `Hela sektionen visas när "${dependencyLabel}" besvaras`;
+    if (values.length === 0) return `Hela sektionen visas när "${dependencyLabel}" besvaras`;
+    
+    if (values.length === 1) {
+      return `Hela sektionen visas när "${dependencyLabel}" ${
+        section.show_if.contains ? 'innehåller' : 'är'
+      } "${values[0]}"`;
+    }
     
     return `Hela sektionen visas när "${dependencyLabel}" ${
       section.show_if.contains ? 'innehåller' : 'är'
-    } "${value}"`;
+    } något av: ${values.map(v => `"${v}"`).join(', ')}`;
   };
 
   if (availableDependencies.length === 0) {
@@ -169,32 +190,62 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Värde</Label>
+              <Label className="text-xs">Värden (välj ett eller flera)</Label>
               {selectedDependency?.options ? (
-                <Select
-                  value={section.show_if?.equals as string || ''}
-                  onValueChange={handleValueChange}
-                >
-                  <SelectTrigger className="text-xs">
-                    <SelectValue placeholder="Välj värde..." />
-                  </SelectTrigger>
-                  <SelectContent>
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">
+                    Markera alla värden som ska visa sektionen:
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
                     {selectedDependency.options.map((option) => {
                       const optionValue = typeof option === 'string' ? option : option.value;
                       const optionLabel = typeof option === 'string' ? option : option.value;
+                      const currentValues = Array.isArray(section.show_if?.equals) 
+                        ? section.show_if.equals 
+                        : [section.show_if?.equals].filter(Boolean);
+                      const isSelected = currentValues.includes(optionValue);
+                      
                       return (
-                        <SelectItem key={optionValue} value={optionValue}>
-                          {optionLabel}
-                        </SelectItem>
+                        <div
+                          key={optionValue}
+                          className={`p-2 border rounded cursor-pointer transition-colors text-xs ${
+                            isSelected 
+                              ? 'bg-accent border-accent text-accent-foreground' 
+                              : 'border-border hover:bg-muted'
+                          }`}
+                          onClick={() => handleValueChange(optionValue)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 border rounded-sm flex items-center justify-center ${
+                              isSelected ? 'bg-accent border-accent' : 'border-border'
+                            }`}>
+                              {isSelected && (
+                                <div className="w-2 h-2 bg-accent-foreground rounded-sm"></div>
+                              )}
+                            </div>
+                            {optionLabel}
+                          </div>
+                        </div>
                       );
                     })}
-                  </SelectContent>
-                </Select>
+                  </div>
+                </div>
               ) : (
                 <Input
-                  value={section.show_if?.equals as string || ''}
-                  onChange={(e) => handleValueChange(e.target.value)}
-                  placeholder="Ange värde..."
+                  value={Array.isArray(section.show_if?.equals) 
+                    ? section.show_if.equals.join(', ') 
+                    : section.show_if?.equals as string || ''}
+                  onChange={(e) => {
+                    const values = e.target.value.split(',').map(v => v.trim()).filter(Boolean);
+                    onUpdate({
+                      ...section,
+                      show_if: {
+                        ...section.show_if!,
+                        equals: values.length === 1 ? values[0] : values
+                      }
+                    });
+                  }}
+                  placeholder="Ange värden separerade med komma..."
                   className="text-xs"
                 />
               )}

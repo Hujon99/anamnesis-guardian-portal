@@ -32,6 +32,11 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
   const [isEnabled, setIsEnabled] = useState(!!question.show_if);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Update isEnabled when question.show_if changes
+  React.useEffect(() => {
+    setIsEnabled(!!question.show_if);
+  }, [question.show_if]);
+
   // Get all questions that appear before this one (can be used as dependencies)
   const availableDependencies = React.useMemo(() => {
     const deps: Array<{ id: string; label: string; type: string; options?: Array<string | { value: string; triggers_followups: boolean; }> }> = [];
@@ -58,7 +63,11 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
     return deps;
   }, [schema, sectionIndex, questionIndex, question.id]);
 
-  const selectedDependency = availableDependencies.find(dep => dep.id === question.show_if?.question);
+  const selectedDependency = React.useMemo(() => {
+    return availableDependencies.find(dep => dep.id === question.show_if?.question);
+  }, [availableDependencies, question.show_if?.question]);
+
+  
 
   const handleToggleConditional = (enabled: boolean) => {
     setIsEnabled(enabled);
@@ -87,7 +96,7 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
       show_if: {
         ...question.show_if,
         question: dependencyId,
-        equals: '' // Reset value when dependency changes
+        equals: question.show_if.equals || '' // Don't reset if there's already a value
       }
     });
   };
@@ -210,7 +219,7 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
             </div>
           </div>
 
-          {showPreview && (
+          {(question.show_if?.question && question.show_if?.equals) && (
             <div className="animate-fade-in p-2 bg-accent/20 rounded border border-accent/30">
               <div className="flex items-center gap-2">
                 <Eye className="h-3 w-3 text-accent" />

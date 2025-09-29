@@ -156,6 +156,15 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
     updateField('options', updatedOptions);
   };
 
+  const moveOption = (fromIndex: number, toIndex: number) => {
+    if (!question.options || fromIndex === toIndex) return;
+    
+    const updatedOptions = [...question.options];
+    const [movedOption] = updatedOptions.splice(fromIndex, 1);
+    updatedOptions.splice(toIndex, 0, movedOption);
+    updateField('options', updatedOptions);
+  };
+
   const changeQuestionType = (newType: string) => {
     const updatedQuestion = { ...question, type: newType as any };
     
@@ -348,16 +357,39 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   <div className="space-y-2">
                     {question.options?.map((option, optionIndex) => (
                       <div key={optionIndex} className="flex items-center gap-2">
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => moveOption(optionIndex, optionIndex - 1)}
+                            disabled={optionIndex === 0}
+                            className="h-4 w-6 p-0"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => moveOption(optionIndex, optionIndex + 1)}
+                            disabled={optionIndex === (question.options?.length || 1) - 1}
+                            className="h-4 w-6 p-0"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-move flex-shrink-0" />
                         <Input
                           value={typeof option === 'string' ? option : option.value || ''}
                           onChange={(e) => updateOption(optionIndex, e.target.value)}
                           placeholder={`Alternativ ${optionIndex + 1}`}
+                          className="flex-1"
                         />
                         {question.options && question.options.length > 1 && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => removeOption(optionIndex)}
+                            className="text-destructive hover:text-destructive"
                           >
                             <X className="h-4 w-4" />
                           </Button>

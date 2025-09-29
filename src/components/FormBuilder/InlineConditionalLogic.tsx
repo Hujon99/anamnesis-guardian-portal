@@ -159,15 +159,15 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
                 value={question.show_if?.question || ''}
                 onValueChange={handleDependencyChange}
               >
-                <SelectTrigger className="text-xs">
+                <SelectTrigger className="text-sm">
                   <SelectValue placeholder="Välj fråga..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border-border/50 min-w-[400px] max-w-[600px]">
                   {availableDependencies.map((dep) => (
                     <SelectItem key={dep.id} value={dep.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="truncate max-w-32">{dep.label}</span>
-                        <Badge variant="outline" className="text-xs">
+                      <div className="flex items-start gap-2 w-full py-1">
+                        <span className="font-medium leading-tight">{dep.label}</span>
+                        <Badge variant="secondary" className="text-xs px-2 py-0.5 flex-shrink-0">
                           {dep.id}
                         </Badge>
                       </div>

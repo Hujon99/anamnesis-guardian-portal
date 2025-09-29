@@ -118,7 +118,7 @@
   animation: fadeOut 0.2s ease-in forwards;
 }
 
-/* Ripple effect for buttons and interactive elements */
+/* Enhanced ripple effect for buttons and interactive elements */
 @keyframes ripple {
   0% {
     transform: scale(0);
@@ -130,6 +130,69 @@
   }
 }
 
+@keyframes pulseOnce {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(173, 216, 230, 0.7);
+  }
+  50% {
+    transform: scale(0.98);
+    box-shadow: 0 0 0 10px rgba(173, 216, 230, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(173, 216, 230, 0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(173, 216, 230, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(173, 216, 230, 0.8);
+  }
+}
+
 .ripple-container {
   position: relative;
   overflow: hidden;
@@ -138,13 +201,34 @@
 .ripple-effect {
   position: absolute;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(173, 216, 230, 0.6);
   width: 100px;
   height: 100px;
   margin-top: -50px;
   margin-left: -50px;
   animation: ripple 0.8s;
   opacity: 0;
+  pointer-events: none;
+}
+
+.animate-pulse-once {
+  animation: pulseOnce 0.6s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInFromLeft 0.5s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInFromRight 0.5s ease-out;
+}
+
+.animate-bounce-in {
+  animation: bounceIn 0.6s ease-out;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
 }
 
 /* Focus visible styling for better keyboard navigation */

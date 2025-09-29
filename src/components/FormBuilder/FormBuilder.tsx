@@ -38,6 +38,9 @@ import { SectionEditor } from './SectionEditor';
 import { FormPreview } from './FormPreview';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 import { FormFlowVisualization } from './FormFlowVisualization';
+import { LivePreviewPanel } from './LivePreviewPanel';
+import { NaturalLanguageLogicBuilder } from './NaturalLanguageLogicBuilder';
+import { ContextualHelpSystem } from './ContextualHelpSystem';
 
 interface FormBuilderProps {
   formId?: string;
@@ -441,9 +444,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             </TabsContent>
             
             <TabsContent value="logic" className="flex-1 m-0 min-h-0 data-[state=inactive]:hidden">
-              <ConditionalLogicEditor
+              <NaturalLanguageLogicBuilder
                 schema={currentForm.schema}
                 onUpdate={updateSchema}
+                activeQuestion={activeTab === 'sections' ? undefined : undefined}
               />
             </TabsContent>
             
@@ -529,6 +533,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
           </div>
         )}
       </div>
+
+      {/* Contextual Help System */}
+      <ContextualHelpSystem 
+        schema={currentForm.schema}
+        currentTab={activeTab}
+        onNavigate={(tab, sectionIndex, questionIndex) => {
+          setActiveTab(tab);
+          // Could add logic to navigate to specific section/question
+        }}
+      />
     </div>
   );
 };

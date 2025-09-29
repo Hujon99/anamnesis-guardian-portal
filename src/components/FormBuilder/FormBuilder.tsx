@@ -70,6 +70,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
 }) => {
   const [currentForm, setCurrentForm] = useState<FormState>(() => {
     if (initialForm) {
+      console.log('[FormBuilder] Initializing with form:', { 
+        title: initialForm.title, 
+        hasSchema: !!initialForm.schema 
+      });
+      
+      if (initialForm.schema) {
+        // Debug: Log question IDs from database
+        initialForm.schema.sections.forEach((section, sIdx) => {
+          section.questions.forEach((question, qIdx) => {
+            console.log(`[FormBuilder] Section ${sIdx}, Question ${qIdx}: ID="${question.id}", Label="${question.label}"`);
+          });
+        });
+      }
+      
       return {
         title: initialForm.title,
         examination_type: initialForm.examination_type,
@@ -94,6 +108,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   // History management for undo/redo
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Debug: Watch for changes to currentForm.schema
+  useEffect(() => {
+    if (currentForm.schema?.sections) {
+      console.log('[FormBuilder] Schema updated, checking question IDs:');
+      currentForm.schema.sections.forEach((section, sIdx) => {
+        section.questions.forEach((question, qIdx) => {
+          console.log(`[FormBuilder] Section ${sIdx}, Question ${qIdx}: ID="${question.id}", Label="${question.label}"`);
+        });
+      });
+    }
+  }, [currentForm.schema]);
 
   const { createForm, updateForm, isLoading } = useFormCRUD();
   const { validateForm, validateFormMetadata, hasErrors, hasWarnings } = useFormValidation();

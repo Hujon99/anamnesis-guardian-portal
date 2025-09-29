@@ -4,7 +4,7 @@
  * including type selection, options management, and conditional logic setup.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,6 +84,11 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showIdSuggestions, setShowIdSuggestions] = useState(false);
+
+  // Debug: Log question ID when component mounts or changes
+  useEffect(() => {
+    console.log(`[QuestionEditor] Rendering question with ID: "${question.id}", Label: "${question.label}"`);
+  }, [question.id, question.label]);
 
   const updateField = (field: keyof FormQuestion, value: any) => {
     onUpdate({

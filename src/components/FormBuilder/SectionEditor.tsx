@@ -94,8 +94,6 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
     const questionLabel = `Ny ${questionTypeLabels[type] || type}`;
     const generatedId = generateUniqueQuestionId(questionLabel, schema);
     
-    console.log(`[SectionEditor] Creating new question with ID: "${generatedId}" from label: "${questionLabel}"`);
-    
     const newQuestion: FormQuestion = {
       id: generatedId,
       label: questionLabel,
@@ -248,7 +246,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
               <div className="space-y-4">
                 {section.questions.map((question, questionIndex) => (
                   <QuestionEditor
-                    key={`${question.id}-${questionIndex}`}
+                    key={`section-${sectionIndex}-question-${questionIndex}`}
                     question={question}
                     questionIndex={questionIndex}
                     sectionIndex={sectionIndex}

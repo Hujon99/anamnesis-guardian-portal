@@ -55,6 +55,7 @@ interface QuestionEditorProps {
   onDelete: () => void;
   onMove: (fromIndex: number, toIndex: number) => void;
   totalQuestions: number;
+  isFromDatabase?: boolean; // Flag to indicate if question was loaded from database
 }
 
 const QUESTION_TYPES = [
@@ -78,7 +79,8 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onUpdate,
   onDelete,
   onMove,
-  totalQuestions
+  totalQuestions,
+  isFromDatabase = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -96,14 +98,21 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const handleLabelChange = (newLabel: string) => {
     updateField('label', newLabel);
     
-    // Only auto-generate ID if current ID is empty or looks like a UUID
-    const isCurrentIdUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(question.id);
-    const shouldAutoGenerateId = !question.id || isCurrentIdUUID;
+    // CRITICAL: Never auto-generate ID for questions loaded from database
+    if (isFromDatabase) {
+      console.log(`[QuestionEditor] Preserving database ID "${question.id}" for question from database`);
+      return;
+    }
     
-    if (shouldAutoGenerateId) {
+    // For new questions: only auto-generate ID if current ID is empty, UUID, or temp ID
+    const isCurrentIdUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(question.id);
+    const isTemporaryId = /^(ny_|temp_|question_\d+|fraga_\d+)/.test(question.id);
+    const shouldAutoGenerateId = !question.id || isCurrentIdUUID || isTemporaryId;
+    
+    if (shouldAutoGenerateId && newLabel.trim()) {
       const newId = generateUniqueQuestionId(newLabel, schema, question.id);
       if (newId !== question.id) {
-        console.log(`[QuestionEditor] Auto-generating ID from label change: "${question.id}" -> "${newId}"`);
+        console.log(`[QuestionEditor] Auto-generating ID for new question: "${question.id}" -> "${newId}"`);
         updateField('id', newId);
       }
     } else {

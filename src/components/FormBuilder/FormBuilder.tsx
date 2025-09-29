@@ -413,6 +413,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                         });
                         addToHistory(`Tog bort sektion ${index + 1}`);
                       }}
+                      isFromDatabase={!!initialForm?.id}
                     />
                   ))}
                   

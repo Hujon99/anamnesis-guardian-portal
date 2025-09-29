@@ -48,6 +48,7 @@ interface SectionEditorProps {
   schema: FormTemplate;
   onUpdate: (section: FormSection) => void;
   onDelete: () => void;
+  isFromDatabase?: boolean; // Flag to indicate if section was loaded from database
 }
 
 export const SectionEditor: React.FC<SectionEditorProps> = ({
@@ -55,7 +56,8 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   sectionIndex,
   schema,
   onUpdate,
-  onDelete
+  onDelete,
+  isFromDatabase = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -255,6 +257,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                     onDelete={() => deleteQuestion(questionIndex)}
                     onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)}
                     totalQuestions={section.questions.length}
+                    isFromDatabase={isFromDatabase}
                   />
                 ))}
 

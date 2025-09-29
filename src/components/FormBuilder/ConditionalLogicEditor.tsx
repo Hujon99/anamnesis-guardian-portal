@@ -93,21 +93,31 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
     
     allQuestions.forEach(question => {
       const fullQuestion = schema.sections?.[question.sectionIndex]?.questions[question.questionIndex];
-        if (fullQuestion?.show_if) {
+      if (fullQuestion?.show_if) {
+        // Handle both 'equals' and 'contains' conditions
+        if (fullQuestion.show_if.equals !== undefined) {
           rules.push({
             questionId: question.id,
             dependsOn: fullQuestion.show_if.question,
             condition: 'equals',
             value: fullQuestion.show_if.equals
           });
+        } else if (fullQuestion.show_if.contains !== undefined) {
+          rules.push({
+            questionId: question.id,
+            dependsOn: fullQuestion.show_if.question,
+            condition: 'contains',
+            value: fullQuestion.show_if.contains
+          });
         }
+      }
     });
     
     return rules;
   }, [allQuestions, schema.sections]);
 
   // Update a question's conditional logic
-  const updateQuestionCondition = (questionId: string, dependsOn?: string, value?: any) => {
+  const updateQuestionCondition = (questionId: string, dependsOn?: string, value?: any, condition: string = 'equals') => {
     const updatedSections = schema.sections?.map(section => ({
       ...section,
       questions: section.questions.map(question => {
@@ -117,7 +127,7 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
               ...question,
               show_if: {
                 question: dependsOn,
-                equals: value
+                ...(condition === 'contains' ? { contains: value } : { equals: value })
               }
             };
           } else {
@@ -137,8 +147,8 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
   };
 
   // Add new conditional rule
-  const addConditionalRule = (questionId: string, dependsOn: string, value: any) => {
-    updateQuestionCondition(questionId, dependsOn, value);
+  const addConditionalRule = (questionId: string, dependsOn: string, value: any, condition: string = 'equals') => {
+    updateQuestionCondition(questionId, dependsOn, value, condition);
   };
 
   // Remove conditional rule
@@ -209,8 +219,9 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
   );
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-4 space-y-6">
+    <div className="h-full flex flex-col">
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium flex items-center gap-2">
@@ -249,7 +260,7 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
                         <span className="font-medium">{question.label}</span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Visas om "{dependsOnQuestion?.label}" = "{rule?.value}"
+                        Visas om "{dependsOnQuestion?.label}" {rule?.condition === 'contains' ? 'innehåller' : '='} "{rule?.value}"
                       </p>
                     </div>
                     
@@ -298,7 +309,8 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
             />
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ScrollArea>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
@@ -323,14 +335,14 @@ export const ConditionalLogicEditor: React.FC<ConditionalLogicEditorProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </ScrollArea>
+    </div>
   );
 };
 
 // Sub-component for adding new rules
 const NewRuleForm: React.FC<{
   allQuestions: QuestionRef[];
-  onAddRule: (questionId: string, dependsOn: string, value: any) => void;
+  onAddRule: (questionId: string, dependsOn: string, value: any, condition?: string) => void;
   getAvailableDependencies: (questionId: string) => QuestionRef[];
   getPossibleValues: (questionId: string) => string[];
   checkCyclicalDependency: (questionId: string, dependsOn: string) => boolean;
@@ -344,6 +356,7 @@ const NewRuleForm: React.FC<{
   const [selectedQuestion, setSelectedQuestion] = useState('');
   const [selectedDependency, setSelectedDependency] = useState('');
   const [selectedValue, setSelectedValue] = useState('');
+  const [selectedCondition, setSelectedCondition] = useState('equals');
   const [error, setError] = useState('');
 
   const availableDependencies = selectedQuestion ? getAvailableDependencies(selectedQuestion) : [];
@@ -360,10 +373,11 @@ const NewRuleForm: React.FC<{
       return;
     }
 
-    onAddRule(selectedQuestion, selectedDependency, selectedValue);
+    onAddRule(selectedQuestion, selectedDependency, selectedValue, selectedCondition);
     setSelectedQuestion('');
     setSelectedDependency('');
     setSelectedValue('');
+    setSelectedCondition('equals');
     setError('');
   };
 
@@ -373,7 +387,7 @@ const NewRuleForm: React.FC<{
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="space-y-2">
           <Label>Fråga att visa/dölja</Label>
           <Select value={selectedQuestion} onValueChange={setSelectedQuestion}>
@@ -406,6 +420,19 @@ const NewRuleForm: React.FC<{
                   {question.label}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Villkor</Label>
+          <Select value={selectedCondition} onValueChange={setSelectedCondition}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="equals">Är lika med</SelectItem>
+              <SelectItem value="contains">Innehåller</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -480,7 +507,9 @@ const LogicFlow: React.FC<{
             className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
           >
             <Badge variant="outline">{dependency?.label}</Badge>
-            <span className="text-sm text-muted-foreground">=</span>
+            <span className="text-sm text-muted-foreground">
+              {rule.condition === 'contains' ? 'innehåller' : '='}
+            </span>
             <Badge variant="secondary">"{rule.value}"</Badge>
             <span className="text-sm text-muted-foreground">→</span>
             <Badge>Visa: {question?.label}</Badge>

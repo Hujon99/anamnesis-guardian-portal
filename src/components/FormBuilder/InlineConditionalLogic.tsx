@@ -104,11 +104,24 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
   const handleValueChange = (value: string) => {
     if (!question.show_if) return;
     
+    const currentValues = Array.isArray(question.show_if.equals) 
+      ? question.show_if.equals 
+      : [question.show_if.equals].filter(Boolean);
+    
+    let newValues: string[];
+    if (currentValues.includes(value)) {
+      // Remove value if already selected
+      newValues = currentValues.filter(v => v !== value);
+    } else {
+      // Add value if not selected
+      newValues = [...currentValues, value];
+    }
+    
     onUpdate({
       ...question,
       show_if: {
         ...question.show_if,
-        equals: value
+        equals: newValues.length === 1 ? newValues[0] : newValues
       }
     });
   };
@@ -117,13 +130,21 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
     if (!question.show_if || !selectedDependency) return '';
     
     const dependencyLabel = selectedDependency.label;
-    const value = question.show_if.equals;
+    const values = Array.isArray(question.show_if.equals) 
+      ? question.show_if.equals 
+      : [question.show_if.equals].filter(Boolean);
     
-    if (!value) return `Visas när "${dependencyLabel}" besvaras`;
+    if (values.length === 0) return `Visas när "${dependencyLabel}" besvaras`;
+    
+    if (values.length === 1) {
+      return `Visas när "${dependencyLabel}" ${
+        question.show_if.contains ? 'innehåller' : 'är'
+      } "${values[0]}"`;
+    }
     
     return `Visas när "${dependencyLabel}" ${
       question.show_if.contains ? 'innehåller' : 'är'
-    } "${value}"`;
+    } något av: ${values.map(v => `"${v}"`).join(', ')}`;
   };
 
   if (availableDependencies.length === 0) {
@@ -187,32 +208,64 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Värde</Label>
+              <Label className="text-xs">Värden (välj ett eller flera)</Label>
               {selectedDependency?.options ? (
-                <Select
-                  value={question.show_if?.equals as string || ''}
-                  onValueChange={handleValueChange}
-                >
-                  <SelectTrigger className="text-xs">
-                    <SelectValue placeholder="Välj värde..." />
-                  </SelectTrigger>
-                  <SelectContent>
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded border border-border/30">
+                    💡 Markera alla värden som ska visa frågan
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto p-1">
                     {selectedDependency.options.map((option) => {
                       const optionValue = typeof option === 'string' ? option : option.value;
                       const optionLabel = typeof option === 'string' ? option : option.value;
+                      const currentValues = Array.isArray(question.show_if?.equals) 
+                        ? question.show_if.equals 
+                        : [question.show_if?.equals].filter(Boolean);
+                      const isSelected = currentValues.includes(optionValue);
+                      
                       return (
-                        <SelectItem key={optionValue} value={optionValue}>
-                          {optionLabel}
-                        </SelectItem>
+                        <div
+                          key={optionValue}
+                          className={`group p-2.5 border rounded-lg cursor-pointer transition-all duration-200 text-sm hover:shadow-sm ${
+                            isSelected 
+                              ? 'bg-accent/20 border-accent text-accent-foreground shadow-sm ring-1 ring-accent/30' 
+                              : 'border-border hover:bg-muted/50 hover:border-border'
+                          }`}
+                          onClick={() => handleValueChange(optionValue)}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-3.5 h-3.5 border-2 rounded transition-all duration-200 flex items-center justify-center ${
+                              isSelected 
+                                ? 'bg-accent border-accent shadow-sm' 
+                                : 'border-border group-hover:border-accent/50'
+                            }`}>
+                              {isSelected && (
+                                <div className="w-1.5 h-1.5 bg-accent-foreground rounded-sm"></div>
+                              )}
+                            </div>
+                            <span className="font-medium">{optionLabel}</span>
+                          </div>
+                        </div>
                       );
                     })}
-                  </SelectContent>
-                </Select>
+                  </div>
+                </div>
               ) : (
                 <Input
-                  value={question.show_if?.equals as string || ''}
-                  onChange={(e) => handleValueChange(e.target.value)}
-                  placeholder="Ange värde..."
+                  value={Array.isArray(question.show_if?.equals) 
+                    ? question.show_if.equals.join(', ') 
+                    : question.show_if?.equals as string || ''}
+                  onChange={(e) => {
+                    const values = e.target.value.split(',').map(v => v.trim()).filter(Boolean);
+                    onUpdate({
+                      ...question,
+                      show_if: {
+                        ...question.show_if!,
+                        equals: values.length === 1 ? values[0] : values
+                      }
+                    });
+                  }}
+                  placeholder="Ange värden separerade med komma..."
                   className="text-xs"
                 />
               )}

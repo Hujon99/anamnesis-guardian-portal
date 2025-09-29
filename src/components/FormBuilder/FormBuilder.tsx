@@ -287,18 +287,24 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   // Handle section drag end
   const handleSectionDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    
+    console.log('[FormBuilder] Drag end:', { activeId: active.id, overId: over?.id });
 
     if (active.id !== over?.id) {
       const activeIndex = parseInt(active.id.toString().replace('section-', ''));
       const overIndex = parseInt(over?.id.toString().replace('section-', '') || '0');
       
-      if (activeIndex !== overIndex) {
+      console.log('[FormBuilder] Moving section:', { activeIndex, overIndex });
+      
+      if (activeIndex !== overIndex && !isNaN(activeIndex) && !isNaN(overIndex)) {
         const newSections = arrayMove(currentForm.schema.sections, activeIndex, overIndex);
         updateSchema({
           ...currentForm.schema,
           sections: newSections
         });
         addToHistory(`Flyttade sektion från position ${activeIndex + 1} till ${overIndex + 1}`);
+        
+        console.log('[FormBuilder] Section moved successfully');
       }
     }
   };
@@ -446,14 +452,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                       sensors={sensors}
                       collisionDetection={closestCenter}
                       onDragEnd={handleSectionDragEnd}
+                      onDragStart={() => console.log('[FormBuilder] Drag started')}
                     >
                       <SortableContext 
                         items={currentForm.schema.sections.map((_, index) => `section-${index}`)}
                         strategy={verticalListSortingStrategy}
                       >
-                        <div className="space-y-4 pl-8 relative">
+                        <div className="space-y-4 relative">
                           {/* Drop zone indicator */}
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-muted rounded opacity-20" />
+                          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-muted/30 rounded opacity-50" />
                           
                           {currentForm.schema.sections.map((section, index) => (
                             <SortableSectionEditor

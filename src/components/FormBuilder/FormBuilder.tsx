@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { 
   Save, 
@@ -124,6 +125,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   const [activeTab, setActiveTab] = useState('sections');
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   
   // History management for undo/redo
@@ -237,11 +239,39 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
       
       setHasUnsavedChanges(false);
       onSave?.(currentForm);
+      
+      // Show success toast
+      toast({
+        title: "Formulär sparat",
+        description: "Alla ändringar har sparats framgångsrikt.",
+        duration: 3000,
+      });
     } catch (error) {
       console.error('Save error:', error);
+      // Show error toast
+      toast({
+        title: "Fel vid sparning",
+        description: "Kunde inte spara formuläret. Försök igen.",
+        variant: "destructive",
+        duration: 5000,
+      });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Handle close with unsaved changes check
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+    } else {
+      onClose?.();
+    }
+  };
+
+  const confirmClose = () => {
+    setShowUnsavedDialog(false);
+    onClose?.();
   };
 
   // Keyboard shortcuts
@@ -384,7 +414,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             </Button>
             
             {onClose && (
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={handleClose}>
                 Stäng
               </Button>
             )}
@@ -604,6 +634,24 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
           // Could add logic to navigate to specific section/question
         }}
       />
+
+      {/* Unsaved changes confirmation dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Osparade ändringar</AlertDialogTitle>
+            <AlertDialogDescription>
+              Du har osparade ändringar i detta formulär. Om du stänger nu kommer dessa ändringar att gå förlorade.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Fortsätt redigera</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClose} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Stäng utan att spara
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

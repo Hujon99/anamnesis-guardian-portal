@@ -85,12 +85,31 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showIdSuggestions, setShowIdSuggestions] = useState(false);
 
-  // Debug: Log question ID when component mounts or changes
+  // Debug: Track ID changes
   useEffect(() => {
-    console.log(`[QuestionEditor] Rendering question with ID: "${question.id}", Label: "${question.label}"`);
+    console.log(`[QuestionEditor] Question mounted/updated - ID: "${question.id}", Label: "${question.label}"`);
+    
+    // Check if this looks like a UUID that replaced a meaningful ID
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(question.id);
+    if (isUUID) {
+      console.error(`[QuestionEditor] ⚠️  UUID detected as question ID: "${question.id}" for label: "${question.label}"`);
+      console.trace('Stack trace to find where UUID was set');
+    }
   }, [question.id, question.label]);
 
   const updateField = (field: keyof FormQuestion, value: any) => {
+    // Debug ID changes
+    if (field === 'id') {
+      console.log(`[QuestionEditor] ID being updated from "${question.id}" to "${value}" for question "${question.label}"`);
+      
+      // Check if we're setting a UUID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+      if (isUUID) {
+        console.error(`[QuestionEditor] ⚠️  Attempting to set UUID as question ID: "${value}"`);
+        console.trace('Stack trace to find where UUID is coming from');
+      }
+    }
+    
     onUpdate({
       ...question,
       [field]: value

@@ -94,6 +94,8 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
     const questionLabel = `Ny ${questionTypeLabels[type] || type}`;
     const generatedId = generateUniqueQuestionId(questionLabel, schema);
     
+    console.log(`[SectionEditor] Creating new question with ID: "${generatedId}" from label: "${questionLabel}"`);
+    
     const newQuestion: FormQuestion = {
       id: generatedId,
       label: questionLabel,

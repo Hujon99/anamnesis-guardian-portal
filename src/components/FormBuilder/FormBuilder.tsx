@@ -34,7 +34,24 @@ import { EXAMINATION_TYPE_OPTIONS } from '@/types/examinationType';
 import { useFormCRUD } from '@/hooks/useFormCRUD';
 import { useFormValidation } from '@/hooks/useFormValidation';
 
+// DndKit imports for section drag and drop
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+
 import { SectionEditor } from './SectionEditor';
+import { SortableSectionEditor } from './SortableSectionEditor';
 import { FormPreview } from './FormPreview';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 import { FormFlowVisualization } from './FormFlowVisualization';
@@ -112,6 +129,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   // History management for undo/redo
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Drag and drop sensors for sections
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
 
   // Debug: Watch for changes to currentForm.schema
   useEffect(() => {
@@ -257,6 +284,25 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
     addToHistory('Lade till sektion');
   }, [currentForm.schema, updateSchema, addToHistory]);
 
+  // Handle section drag end
+  const handleSectionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const activeIndex = parseInt(active.id.toString().replace('section-', ''));
+      const overIndex = parseInt(over?.id.toString().replace('section-', '') || '0');
+      
+      if (activeIndex !== overIndex) {
+        const newSections = arrayMove(currentForm.schema.sections, activeIndex, overIndex);
+        updateSchema({
+          ...currentForm.schema,
+          sections: newSections
+        });
+        addToHistory(`Flyttade sektion från position ${activeIndex + 1} till ${overIndex + 1}`);
+      }
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-surface-light">
       {/* Header */}
@@ -395,32 +441,50 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                     </Button>
                   </div>
                   
-                  {currentForm.schema.sections.map((section, index) => (
-                    <SectionEditor
-                      key={`section-${index}`}
-                      section={section}
-                      sectionIndex={index}
-                      schema={currentForm.schema}
-                      onUpdate={(updatedSection) => {
-                        const updatedSections = [...currentForm.schema.sections];
-                        updatedSections[index] = updatedSection;
-                        updateSchema({
-                          ...currentForm.schema,
-                          sections: updatedSections
-                        });
-                        addToHistory(`Uppdaterade sektion ${index + 1}`);
-                      }}
-                      onDelete={() => {
-                        const updatedSections = currentForm.schema.sections.filter((_, i) => i !== index);
-                        updateSchema({
-                          ...currentForm.schema,
-                          sections: updatedSections
-                        });
-                        addToHistory(`Tog bort sektion ${index + 1}`);
-                      }}
-                      isFromDatabase={!!initialForm?.id}
-                    />
-                  ))}
+                  {currentForm.schema.sections.length > 0 && (
+                    <DndContext 
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleSectionDragEnd}
+                    >
+                      <SortableContext 
+                        items={currentForm.schema.sections.map((_, index) => `section-${index}`)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-4 pl-8 relative">
+                          {/* Drop zone indicator */}
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-muted rounded opacity-20" />
+                          
+                          {currentForm.schema.sections.map((section, index) => (
+                            <SortableSectionEditor
+                              key={`section-${index}`}
+                              section={section}
+                              sectionIndex={index}
+                              schema={currentForm.schema}
+                              onUpdate={(updatedSection) => {
+                                const updatedSections = [...currentForm.schema.sections];
+                                updatedSections[index] = updatedSection;
+                                updateSchema({
+                                  ...currentForm.schema,
+                                  sections: updatedSections
+                                });
+                                addToHistory(`Uppdaterade sektion ${index + 1}`);
+                              }}
+                              onDelete={() => {
+                                const updatedSections = currentForm.schema.sections.filter((_, i) => i !== index);
+                                updateSchema({
+                                  ...currentForm.schema,
+                                  sections: updatedSections
+                                });
+                                addToHistory(`Tog bort sektion ${index + 1}`);
+                              }}
+                              isFromDatabase={!!initialForm?.id}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  )}
                   
                   {currentForm.schema.sections.length === 0 && (
                     <Card className="p-8 text-center">

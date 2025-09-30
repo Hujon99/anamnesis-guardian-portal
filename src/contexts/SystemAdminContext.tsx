@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface SystemAdminContextType {
   isSystemAdmin: boolean;
   isLoading: boolean;
+  systemOrgId: string | null;
 }
 
 const SystemAdminContext = createContext<SystemAdminContextType | undefined>(undefined);
@@ -41,7 +42,11 @@ export const SystemAdminProvider: React.FC<{ children: React.ReactNode }> = ({ c
   });
 
   return (
-    <SystemAdminContext.Provider value={{ isSystemAdmin: isSystemOrg || false, isLoading }}>
+    <SystemAdminContext.Provider value={{ 
+      isSystemAdmin: isSystemOrg || false, 
+      isLoading,
+      systemOrgId: isSystemOrg ? organization?.id || null : null
+    }}>
       {children}
     </SystemAdminContext.Provider>
   );

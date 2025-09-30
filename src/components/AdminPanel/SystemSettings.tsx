@@ -15,7 +15,7 @@ import { AIPromptsManager } from "./AIPromptsManager";
 import { useSystemAdmin } from "@/contexts/SystemAdminContext";
 
 export function SystemSettings() {
-  const { isSystemAdmin, isLoading } = useSystemAdmin();
+  const { isSystemAdmin, isLoading, systemOrgId } = useSystemAdmin();
 
   // Show loading state
   if (isLoading) {
@@ -65,7 +65,7 @@ export function SystemSettings() {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold mb-4">Globala AI-promptar</h3>
-              <AIPromptsManager organizationId="system" />
+              {systemOrgId && <AIPromptsManager organizationId={systemOrgId} />}
             </div>
 
             {/* Future: Add global form template management here */}

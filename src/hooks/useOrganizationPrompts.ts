@@ -75,11 +75,10 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
     queryFn: async () => {
       if (!organizationId) throw new Error('Organization ID required');
 
-      // First, fetch system defaults from the system organization
+      // First, fetch system defaults (marked with is_global_default)
       const { data: systemData, error: systemError } = await supabase
         .from('organization_settings')
         .select('ai_prompt_general, ai_prompt_driving_license, ai_prompt_lens_examination')
-        .eq('organization_id', 'system')
         .eq('is_global_default', true)
         .maybeSingle();
 
@@ -122,49 +121,40 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
     mutationFn: async (updates: Partial<OrganizationPrompts>) => {
       if (!organizationId) throw new Error('Organization ID required');
 
-      console.log('Updating prompts for org:', organizationId, 'with updates:', updates);
-
       // Check if settings exist
-      const { data: existing, error: checkError } = await supabase
+      const { data: existing } = await supabase
         .from('organization_settings')
-        .select('organization_id')
+        .select('organization_id, is_global_default')
         .eq('organization_id', organizationId)
         .maybeSingle();
 
-      if (checkError) {
-        console.error('Error checking existing settings:', checkError);
-        throw checkError;
-      }
+      // Check if this org is a system org
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('is_system_org')
+        .eq('id', organizationId)
+        .single();
 
-      console.log('Existing settings:', existing);
+      const isSystemOrg = orgData?.is_system_org || false;
 
       if (!existing) {
         // Insert new settings
-        console.log('Inserting new settings...');
-        const insertData = {
-          organization_id: organizationId,
-          is_global_default: organizationId === 'system',
-          ...updates
-        };
-        console.log('Insert data:', insertData);
-        
-        const { error, data } = await supabase
+        const { error } = await supabase
           .from('organization_settings')
-          .insert(insertData)
-          .select();
+          .insert({
+            organization_id: organizationId,
+            is_global_default: isSystemOrg,
+            ...updates
+          });
 
-        console.log('Insert result:', { data, error });
         if (error) throw error;
       } else {
         // Update existing settings
-        console.log('Updating existing settings...');
-        const { error, data } = await supabase
+        const { error } = await supabase
           .from('organization_settings')
           .update(updates)
-          .eq('organization_id', organizationId)
-          .select();
+          .eq('organization_id', organizationId);
 
-        console.log('Update result:', { data, error });
         if (error) throw error;
       }
     },
@@ -176,13 +166,6 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
       });
     },
     onError: (error: any) => {
-      console.error('Error updating prompts:', error);
-      console.error('Error details:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
       toast({
         title: 'Fel',
         description: `Kunde inte spara promptarna: ${error.message || 'Okänt fel'}`,

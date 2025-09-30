@@ -44,6 +44,14 @@ export const AIPromptsManager: React.FC<AIPromptsManagerProps> = ({ organization
   }, [prompts]);
 
   const handleSave = () => {
+    console.log('handleSave called with organizationId:', organizationId);
+    console.log('Current prompts from state:', {
+      general: generalPrompt?.substring(0, 50),
+      driving: drivingLicensePrompt?.substring(0, 50),
+      lens: lensExaminationPrompt?.substring(0, 50)
+    });
+    console.log('hasChanges:', hasChanges);
+    
     updatePrompts({
       ai_prompt_general: generalPrompt,
       ai_prompt_driving_license: drivingLicensePrompt,
@@ -73,6 +81,21 @@ export const AIPromptsManager: React.FC<AIPromptsManagerProps> = ({ organization
     drivingLicensePrompt !== prompts.ai_prompt_driving_license ||
     lensExaminationPrompt !== prompts.ai_prompt_lens_examination
   );
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('AIPromptsManager state:', {
+      organizationId,
+      hasChanges,
+      isUpdating,
+      promptsLoaded: !!prompts,
+      prompts: prompts ? {
+        general: prompts.ai_prompt_general?.substring(0, 50),
+        driving: prompts.ai_prompt_driving_license?.substring(0, 50),
+        lens: prompts.ai_prompt_lens_examination?.substring(0, 50)
+      } : null
+    });
+  }, [organizationId, hasChanges, isUpdating, prompts]);
 
   if (isLoading) {
     return (

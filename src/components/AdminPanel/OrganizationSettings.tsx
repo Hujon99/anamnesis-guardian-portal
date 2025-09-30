@@ -14,6 +14,7 @@ import { Loader2, Store, FileText, Settings2 } from 'lucide-react';
 import { useStores } from '@/hooks/useStores';
 import { useOrganizationForms } from '@/hooks/useOrganizationForms';
 import { useStoreFormAssignments } from '@/hooks/useStoreFormAssignments';
+import { AIPromptsManager } from './AIPromptsManager';
 
 interface StoreFormCardProps {
   store: any;
@@ -169,6 +170,8 @@ export const OrganizationSettings: React.FC = () => {
           </CardDescription>
         </CardHeader>
       </Card>
+
+      <AIPromptsManager organizationId={organization.id} />
 
       <div>
         <div className="mb-6">

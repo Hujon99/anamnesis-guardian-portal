@@ -539,18 +539,27 @@ export type Database = {
       }
       organization_settings: {
         Row: {
+          ai_prompt_driving_license: string | null
+          ai_prompt_general: string | null
+          ai_prompt_lens_examination: string | null
           created_at: string | null
           last_auto_deletion_run: string | null
           organization_id: string
           updated_at: string | null
         }
         Insert: {
+          ai_prompt_driving_license?: string | null
+          ai_prompt_general?: string | null
+          ai_prompt_lens_examination?: string | null
           created_at?: string | null
           last_auto_deletion_run?: string | null
           organization_id: string
           updated_at?: string | null
         }
         Update: {
+          ai_prompt_driving_license?: string | null
+          ai_prompt_general?: string | null
+          ai_prompt_lens_examination?: string | null
           created_at?: string | null
           last_auto_deletion_run?: string | null
           organization_id?: string

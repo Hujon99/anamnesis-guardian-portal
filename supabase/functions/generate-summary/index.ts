@@ -153,8 +153,9 @@ serve(async (req: Request) => {
       );
     }
     
-    // Create examination type-specific system prompt
-    function createSystemPrompt(examinationType: string): string {
+    // Fetch custom AI prompts from organization settings or use defaults
+    async function getSystemPrompt(organizationId: string, examinationType: string): Promise<string> {
+      // Default prompts as fallback
       const baseInstructions = `Du är en AI-assistent specialiserad på att hjälpa optiker. Din roll är att agera som en erfaren klinisk assistent som tolkar och sammanfattar patienters anamnesdata.
 
 Du kommer att få indata i form av en textlista som innehåller frågor ställda till en patient och patientens svar på dessa frågor, extraherade från ett anamnesformulär.
@@ -170,8 +171,18 @@ Viktiga instruktioner:
   4. Använd tydliga rubriker (utan emojis) för enkel läsbarhet.
   5. Formattera EJ som markdown, utan tänk txt.`;
 
-      if (examinationType === 'körkortsundersökning') {
-        return `${baseInstructions}
+      const defaultPrompts = {
+        general: `${baseInstructions}
+
+Strukturera sammanfattningen under följande rubriker (anpassa efter den information som finns tillgänglig):
+  - Anledning till besök: (Varför patienten söker vård)
+  - Aktuella symtom/besvär: (Synproblem, huvudvärk, dubbelseende, torra ögon etc.)
+  - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar)
+  - Ärftlighet: (Ögonsjukdomar i släkten)
+  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier)
+  - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)`,
+        
+        driving_license: `${baseInstructions}
 
 KÖRKORTSUNDERSÖKNING - SPECIALINSTRUKTIONER:
 Detta är en körkortsundersökning. Använd kortformat:
@@ -185,33 +196,113 @@ OM något är AVVIKANDE (Ja-svar med förklarande text):
 - Inkludera fråga och svar för avvikande fynd.
 - Avsluta med att resten var normalt.
 - Använd INTE rubriker för körkortsundersökningar.
-- Håll det kort och fokuserat.`;
-      }
-
-      if (examinationType === 'linsundersökning') {
-        return `${baseInstructions}
+- Håll det kort och fokuserat.`,
+        
+        lens_examination: `${baseInstructions}
 
 LINSUNDERSÖKNING - Fokusera på följande områden:
   - Anledning till besök: (Nya linser, problem med nuvarande linser, intresse för linser)
   - Aktuella besvär: (Irritation, torrhet, diskomfort, synproblem med linser)
   - Linshistorik: (Tidigare linsanvändning, typ av linser, daglig/månads/årslins)
   - Ögonhälsa: (Torra ögon, allergier, infektioner relaterade till linsanvändning)
-  - Livsstil: (Aktiviteter, arbetstid, skärmtid som påverkar linsanvändning)`;
+  - Livsstil: (Aktiviteter, arbetstid, skärmtid som påverkar linsanvändning)`
+      };
+
+      // If no organization ID, use defaults
+      if (!organizationId) {
+        console.log('[generate-summary] No organization ID, using default prompts');
+        switch (examinationType?.toLowerCase()) {
+          case 'körkortsundersökning':
+          case 'driving_license':
+            return defaultPrompts.driving_license;
+          case 'linsundersökning':
+          case 'lens_examination':
+            return defaultPrompts.lens_examination;
+          default:
+            return defaultPrompts.general;
+        }
       }
 
-      // Default för synundersökning och allmän undersökning
-      return `${baseInstructions}
+      try {
+        // Fetch custom prompts from organization settings
+        const { data: settings, error } = await supabase
+          .from('organization_settings')
+          .select('ai_prompt_general, ai_prompt_driving_license, ai_prompt_lens_examination')
+          .eq('organization_id', organizationId)
+          .maybeSingle();
 
-Strukturera sammanfattningen under följande rubriker (anpassa efter den information som finns tillgänglig):
-  - Anledning till besök: (Varför patienten söker vård)
-  - Aktuella symtom/besvär: (Synproblem, huvudvärk, dubbelseende, torra ögon etc.)
-  - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar)
-  - Ärftlighet: (Ögonsjukdomar i släkten)
-  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier)
-  - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)`;
+        if (error) {
+          console.log('[generate-summary] Error fetching custom prompts, using defaults:', error.message);
+          switch (examinationType?.toLowerCase()) {
+            case 'körkortsundersökning':
+            case 'driving_license':
+              return defaultPrompts.driving_license;
+            case 'linsundersökning':
+            case 'lens_examination':
+              return defaultPrompts.lens_examination;
+            default:
+              return defaultPrompts.general;
+          }
+        }
+
+        if (!settings) {
+          console.log('[generate-summary] No custom prompts found, using defaults');
+          switch (examinationType?.toLowerCase()) {
+            case 'körkortsundersökning':
+            case 'driving_license':
+              return defaultPrompts.driving_license;
+            case 'linsundersökning':
+            case 'lens_examination':
+              return defaultPrompts.lens_examination;
+            default:
+              return defaultPrompts.general;
+          }
+        }
+
+        // Return custom prompt based on examination type, fallback to default if empty
+        console.log('[generate-summary] Using custom prompts from organization settings');
+        switch (examinationType?.toLowerCase()) {
+          case 'körkortsundersökning':
+          case 'driving_license':
+            return settings.ai_prompt_driving_license || defaultPrompts.driving_license;
+          case 'linsundersökning':
+          case 'lens_examination':
+            return settings.ai_prompt_lens_examination || defaultPrompts.lens_examination;
+          default:
+            return settings.ai_prompt_general || defaultPrompts.general;
+        }
+      } catch (err) {
+        console.error('[generate-summary] Error fetching custom prompts:', err);
+        // Fallback to defaults on error
+        switch (examinationType?.toLowerCase()) {
+          case 'körkortsundersökning':
+          case 'driving_license':
+            return defaultPrompts.driving_license;
+          case 'linsundersökning':
+          case 'lens_examination':
+            return defaultPrompts.lens_examination;
+          default:
+            return defaultPrompts.general;
+        }
+      }
     }
 
-    const systemPrompt = createSystemPrompt(examinationTypeForPrompt);
+    // Get organization_id from the entry if we have entryId
+    let organizationId = '';
+    if (entry) {
+      // Fetch organization_id from the entry
+      const { data: entryWithOrg, error: orgError } = await supabase
+        .from("anamnes_entries")
+        .select("organization_id")
+        .eq("id", entry.id)
+        .single();
+      
+      if (!orgError && entryWithOrg) {
+        organizationId = entryWithOrg.organization_id;
+      }
+    }
+
+    const systemPrompt = await getSystemPrompt(organizationId, examinationTypeForPrompt);
     console.log(`[generate-summary] Using prompt for examination type: ${examinationTypeForPrompt}`);
 
     // Log request parameters for better debugging

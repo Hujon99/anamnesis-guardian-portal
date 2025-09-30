@@ -54,11 +54,7 @@ import {
 import { SectionEditor } from './SectionEditor';
 import { SortableSectionEditor } from './SortableSectionEditor';
 import { FormPreview } from './FormPreview';
-import { ConditionalLogicEditor } from './ConditionalLogicEditor';
-
 import { LivePreviewPanel } from './LivePreviewPanel';
-import { NaturalLanguageLogicBuilder } from './NaturalLanguageLogicBuilder';
-import { ContextualHelpSystem } from './ContextualHelpSystem';
 
 interface FormBuilderProps {
   formId?: string;
@@ -456,10 +452,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
         {/* Editor panel */}
         <div className={showPreview ? "w-1/2 border-r" : "w-full"}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-4 m-4 mb-0 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2 m-4 mb-0 flex-shrink-0">
               <TabsTrigger value="sections">Sektioner</TabsTrigger>
-              
-              <TabsTrigger value="logic">Villkorlig logik</TabsTrigger>
               <TabsTrigger value="settings">Inställningar</TabsTrigger>
             </TabsList>
             
@@ -537,15 +531,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                   )}
                 </div>
               </div>
-            </TabsContent>
-            
-            
-            <TabsContent value="logic" className="flex-1 m-0 min-h-0 data-[state=inactive]:hidden">
-              <NaturalLanguageLogicBuilder
-                schema={currentForm.schema}
-                onUpdate={updateSchema}
-                activeQuestion={activeTab === 'sections' ? undefined : undefined}
-              />
             </TabsContent>
             
             <TabsContent value="settings" className="flex-1 m-0 min-h-0 data-[state=inactive]:hidden">
@@ -630,16 +615,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
           </div>
         )}
       </div>
-
-      {/* Contextual Help System */}
-      <ContextualHelpSystem 
-        schema={currentForm.schema}
-        currentTab={activeTab}
-        onNavigate={(tab, sectionIndex, questionIndex) => {
-          setActiveTab(tab);
-          // Could add logic to navigate to specific section/question
-        }}
-      />
 
       {/* Unsaved changes confirmation dialog */}
       <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>

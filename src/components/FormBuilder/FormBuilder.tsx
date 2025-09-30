@@ -437,12 +437,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
               onValueChange={(value) => updateFormField('examination_type', value)}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Välj undersökningstyp" />
               </SelectTrigger>
               <SelectContent>
                 {EXAMINATION_TYPE_OPTIONS.map((option) => (
-                  <SelectItem key={option.type} value={option.type}>
-                    {option.type}
+                  <SelectItem key={option.type} value={option.label}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>

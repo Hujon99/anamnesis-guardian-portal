@@ -122,30 +122,49 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
     mutationFn: async (updates: Partial<OrganizationPrompts>) => {
       if (!organizationId) throw new Error('Organization ID required');
 
+      console.log('Updating prompts for org:', organizationId, 'with updates:', updates);
+
       // Check if settings exist
-      const { data: existing } = await supabase
+      const { data: existing, error: checkError } = await supabase
         .from('organization_settings')
         .select('organization_id')
         .eq('organization_id', organizationId)
         .maybeSingle();
 
+      if (checkError) {
+        console.error('Error checking existing settings:', checkError);
+        throw checkError;
+      }
+
+      console.log('Existing settings:', existing);
+
       if (!existing) {
         // Insert new settings
-        const { error } = await supabase
+        console.log('Inserting new settings...');
+        const insertData = {
+          organization_id: organizationId,
+          is_global_default: organizationId === 'system',
+          ...updates
+        };
+        console.log('Insert data:', insertData);
+        
+        const { error, data } = await supabase
           .from('organization_settings')
-          .insert({
-            organization_id: organizationId,
-            ...updates
-          });
+          .insert(insertData)
+          .select();
 
+        console.log('Insert result:', { data, error });
         if (error) throw error;
       } else {
         // Update existing settings
-        const { error } = await supabase
+        console.log('Updating existing settings...');
+        const { error, data } = await supabase
           .from('organization_settings')
           .update(updates)
-          .eq('organization_id', organizationId);
+          .eq('organization_id', organizationId)
+          .select();
 
+        console.log('Update result:', { data, error });
         if (error) throw error;
       }
     },
@@ -156,11 +175,17 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
         description: 'AI-promptarna har sparats'
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error updating prompts:', error);
+      console.error('Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       toast({
         title: 'Fel',
-        description: 'Kunde inte spara promptarna',
+        description: `Kunde inte spara promptarna: ${error.message || 'Okänt fel'}`,
         variant: 'destructive'
       });
     }

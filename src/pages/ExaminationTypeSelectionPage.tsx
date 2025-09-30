@@ -166,23 +166,47 @@ const ExaminationTypeSelectionPage = () => {
     }
   }, [storeforms, isLoadingStoreForms, storeId]);
 
-  const handleExaminationTypeSelect = (examinationType: ExaminationType) => {
-    // Build URL with all preserved parameters plus the selected form ID and examination type
-    const params = new URLSearchParams();
-    
-    // Add form_id and examination_type
-    params.set("form_id", examinationType.formId);
-    params.set("examination_type", examinationType.type);
-    
-    // Add preserved parameters EXCEPT booking_date (customer should choose their own date)
-    Object.entries(preservedParams).forEach(([key, value]) => {
-      if (value && key !== 'booking_date') {
-        params.set(key, value);
+  const handleExaminationTypeSelect = async (examinationType: ExaminationType) => {
+    try {
+      setIsLoading(true);
+      
+      // Call the edge function to generate token
+      const { data, error } = await supabase.functions.invoke('issue-form-token', {
+        body: {
+          bookingId: preservedParams.booking_id,
+          firstName: preservedParams.first_name,
+          storeId: preservedParams.store_id || null,
+          storeName: preservedParams.store_name || null,
+          bookingDate: preservedParams.booking_date,
+          formId: examinationType.formId
+        }
+      });
+      
+      if (error) {
+        console.error("Error generating form token:", error);
+        toast({
+          title: "Ett fel uppstod",
+          description: `Kunde inte skapa formulär: ${error.message}`,
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
       }
-    });
-
-    // Navigate to customer info page
-    navigate(`/customer-info?${params.toString()}`);
+      
+      console.log("ExaminationTypeSelectionPage: Token generated successfully, redirecting to patient form");
+      
+      // Redirect to patient form with token
+      navigate(`/patient-form?token=${data.accessToken}`);
+      
+    } catch (err: any) {
+      console.error("Error in handleExaminationTypeSelect:", err);
+      toast({
+        title: "Ett oväntat fel uppstod",
+        description: err.message || "Okänt fel",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
   };
 
   const handleBackToStores = () => {

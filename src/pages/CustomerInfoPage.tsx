@@ -40,7 +40,7 @@ const CustomerInfoPage = () => {
   const [formData, setFormData] = useState<{id: string, organization_id: string} | null>(null);
   
   const formId = searchParams.get("form_id");
-  const examinationType = searchParams.get("examination_type");
+  const orgId = searchParams.get("org_id");
   
   // Read additional URL parameters for pre-filling
   const urlBookingDate = searchParams.get("booking_date");
@@ -82,47 +82,23 @@ const CustomerInfoPage = () => {
     }
   }, [urlFirstName, urlStoreId, urlBookingDate, firstName, stores, bookingDate]);
   
-  // Validate form and fetch data
+  // Validate and fetch data
   useEffect(() => {
     const validateAndFetchData = async () => {
-      if (!formId) {
-        setError("Formulär-ID saknas i URL:en");
+      if (!orgId) {
+        setError("Organisation-ID saknas i URL:en");
         setIsLoading(false);
         return;
       }
       
       try {
-        console.log(`CustomerInfoPage: Validating form_id: ${formId}`);
+        console.log(`CustomerInfoPage: Fetching stores for organization: ${orgId}`);
         
-        // Validate form exists and get organization
-        const { data: form, error: formError } = await supabase
-          .from('anamnes_forms')
-          .select('id, organization_id')
-          .eq('id', formId)
-          .maybeSingle();
-        
-        if (formError) {
-          console.error("Error fetching form:", formError);
-          setError(`Ett fel uppstod vid validering av formuläret: ${formError.message}`);
-          setIsLoading(false);
-          return;
-        }
-        
-        if (!form) {
-          console.error("Form not found for id:", formId);
-          setError("Det angivna formuläret finns inte");
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log(`CustomerInfoPage: Form found for organization: ${form.organization_id}`);
-        setFormData(form);
-        
-        // Fetch stores using the new database function
-        console.log(`CustomerInfoPage: Fetching stores using get_stores_for_form function`);
-        const { data: storesData, error: storesError } = await supabase.rpc('get_stores_for_form', {
-          form_id: formId
-        });
+        // Fetch stores for the organization
+        const { data: storesData, error: storesError } = await supabase
+          .from('stores')
+          .select('id, name')
+          .eq('organization_id', orgId);
             
         if (storesError) {
           console.error("Error fetching stores:", storesError);
@@ -132,7 +108,6 @@ const CustomerInfoPage = () => {
         }
         
         console.log(`CustomerInfoPage: Found ${storesData?.length || 0} stores`);
-        console.log("Stores data:", storesData);
         setStores(storesData || []);
         
         setIsLoading(false);
@@ -145,7 +120,7 @@ const CustomerInfoPage = () => {
     };
     
     validateAndFetchData();
-  }, [formId]);
+  }, [orgId]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,44 +143,31 @@ const CustomerInfoPage = () => {
       const orderNumber = urlBookingId || generateOrderNumber();
       const selectedStore = stores.find(store => store.id === selectedStoreId);
       
-      console.log("CustomerInfoPage: Submitting form with data:", {
+      console.log("CustomerInfoPage: Navigating to examination type selection with data:", {
         orderNumber,
         firstName: firstName.trim(),
         selectedStoreId,
         selectedStoreName: selectedStore?.name,
         bookingDate: bookingDate.toISOString(),
-        formId,
-        wasPreFilled: {
-          firstName: !!urlFirstName,
-          storeId: !!urlStoreId,
-          bookingDate: !!urlBookingDate,
-          bookingId: !!urlBookingId
-        }
+        orgId
       });
       
-      // Call the edge function to generate token
-      const { data, error } = await supabase.functions.invoke('issue-form-token', {
-        body: {
-          bookingId: orderNumber,
-          firstName: firstName.trim(),
-          storeId: selectedStoreId || null,
-          storeName: selectedStore?.name || urlStoreName || null,
-          bookingDate: bookingDate.toISOString(),
-          formId: formId
-        }
-      });
+      // Build URL parameters for examination type selection
+      const params = new URLSearchParams();
+      params.set("org_id", orgId!);
+      params.set("first_name", firstName.trim());
+      params.set("booking_date", bookingDate.toISOString());
+      params.set("booking_id", orderNumber);
       
-      if (error) {
-        console.error("Error generating form token:", error);
-        setError(`Ett fel uppstod: ${error.message}`);
-        setIsSubmitting(false);
-        return;
+      if (selectedStoreId) {
+        params.set("store_id", selectedStoreId);
+        if (selectedStore?.name) {
+          params.set("store_name", selectedStore.name);
+        }
       }
       
-      console.log("CustomerInfoPage: Token generated successfully, redirecting to patient form");
-      
-      // Redirect to patient form with token
-      navigate(`/patient-form?token=${data.accessToken}`);
+      // Navigate to examination type selection
+      navigate(`/examination-type-selection?${params.toString()}`);
       
     } catch (err: any) {
       console.error("Error in handleSubmit:", err);
@@ -256,12 +218,7 @@ const CustomerInfoPage = () => {
         <CardHeader>
           <CardTitle>Dina uppgifter</CardTitle>
           <CardDescription>
-            Vänligen fyll i dina uppgifter för att fortsätta till hälsoformuläret.
-            {examinationType && (
-              <span className="block mt-2 text-sm font-medium text-accent-2">
-                Vald undersökning: {examinationType}
-              </span>
-            )}
+            Vänligen fyll i dina uppgifter för att välja undersökning.
             {(urlFirstName || urlBookingDate || urlStoreId) && (
               <span className="block mt-2 text-sm text-accent-1">
                 Vissa uppgifter är förifyllda från din bokningslänk.
@@ -376,7 +333,7 @@ const CustomerInfoPage = () => {
               className="w-full"
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSubmitting ? "Skapar formulär..." : "Fortsätt till hälsoformulär"}
+              {isSubmitting ? "Fortsätter..." : "Välj undersökning"}
             </Button>
           </CardFooter>
         </form>

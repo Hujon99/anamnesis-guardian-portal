@@ -27,9 +27,9 @@ const ConsentPage = () => {
     // Check if consent already given for this session
     const sessionConsent = sessionStorage.getItem(`consent_given_${orgId}`);
     if (sessionConsent === 'true') {
-      // Redirect directly to examination selection
+      // Redirect directly to customer info
       const currentParams = searchParams.toString();
-      navigate(`/examination-type-selection?${currentParams}`);
+      navigate(`/customer-info?${currentParams}`);
       return;
     }
 
@@ -80,9 +80,9 @@ const ConsentPage = () => {
     sessionStorage.setItem(`consent_given_${orgId}`, 'true');
     sessionStorage.setItem(`consent_timestamp_${orgId}`, new Date().toISOString());
 
-    // Navigate to examination type selection with all current params
+    // Navigate to customer info with all current params
     const currentParams = searchParams.toString();
-    navigate(`/examination-type-selection?${currentParams}`);
+    navigate(`/customer-info?${currentParams}`);
   };
 
   if (isLoading) {

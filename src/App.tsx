@@ -83,9 +83,7 @@ function App() {
             <Route 
               path="/my-anamneses" 
               element={
-                <ProtectedRoute requireRole={['admin', 'optician']}>
-                  <MyAnamnesisPage />
-                </ProtectedRoute>
+                <MyAnamnesisPage />
               } 
             />
             <Route path="/optician" element={<OpticianView />} />

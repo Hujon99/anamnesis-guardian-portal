@@ -13,6 +13,9 @@ import { useAnamnesisDetail } from "@/hooks/useAnamnesisDetail";
 import { ModalHeader } from "./EntryDetails/ModalHeader";
 import { ModalTabContent } from "./EntryDetails/ModalTabContent";
 import { ModalActions } from "./EntryDetails/ModalActions";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Lock } from "lucide-react";
 
 interface AnamnesisDetailModalProps {
   entry: AnamnesesEntry;
@@ -27,6 +30,11 @@ export function AnamnesisDetailModal({
   onOpenChange,
   onEntryUpdated
 }: AnamnesisDetailModalProps) {
+  const { isAdmin, isOptician, isMember } = useUserRole();
+  
+  // Only admin and optician can view anamnesis details
+  const canViewDetails = isAdmin || isOptician;
+  
   const {
     // State
     formattedRawData,
@@ -65,6 +73,25 @@ export function AnamnesisDetailModal({
     sendLinkMutation.isPending || 
     assignOpticianMutation.isPending || 
     assignStoreMutation.isPending;
+
+  // Show access denied message if user doesn't have permission
+  if (!canViewDetails) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <div className="p-6 text-center">
+            <Lock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Åtkomst nekad</h3>
+            <Alert>
+              <AlertDescription>
+                Endast optiker och administratörer kan öppna och se detaljer om anamneser.
+              </AlertDescription>
+            </Alert>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

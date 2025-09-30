@@ -2,6 +2,7 @@
 /**
  * My Anamnesis page that displays anamnesis entries assigned to the logged-in optician.
  * It provides a personalized view with statistics and filtered entries specific to the user.
+ * Only accessible by opticians and admins.
  */
 
 import { useUser, useAuth } from "@clerk/clerk-react";
@@ -16,6 +17,7 @@ import { MyAnamnesisView } from "@/components/Optician/MyAnamnesisView";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Error fallback component 
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -74,37 +76,39 @@ const MyAnamnesisPage = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Mina anamneser</h1>
-          <p className="text-muted-foreground mt-2">
-            {isAdmin 
-              ? "Hantering av alla anamneser med administratörsbehörighet" 
-              : "Hantering av anamneser tilldelade till dig"}
-          </p>
+    <ProtectedRoute requireRole={['admin', 'optician']}>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Mina anamneser</h1>
+            <p className="text-muted-foreground mt-2">
+              {isAdmin 
+                ? "Hantering av alla anamneser med administratörsbehörighet" 
+                : "Hantering av anamneser tilldelade till dig"}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" asChild className="flex items-center gap-2">
+              <Link to="/dashboard">
+                <LayoutDashboard className="h-4 w-4" />
+                <span>Till översikten</span>
+              </Link>
+            </Button>
+            <DirectFormButton />
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" asChild className="flex items-center gap-2">
-            <Link to="/dashboard">
-              <LayoutDashboard className="h-4 w-4" />
-              <span>Till översikten</span>
-            </Link>
-          </Button>
-          <DirectFormButton />
-        </div>
-      </div>
 
-      <QueryErrorResetBoundary>
-        {({ reset }) => (
-          <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
-            <AnamnesisProvider>
-              <MyAnamnesisView />
-            </AnamnesisProvider>
-          </ErrorBoundary>
-        )}
-      </QueryErrorResetBoundary>
-    </div>
+        <QueryErrorResetBoundary>
+          {({ reset }) => (
+            <ErrorBoundary FallbackComponent={ErrorFallback} onReset={reset}>
+              <AnamnesisProvider>
+                <MyAnamnesisView />
+              </AnamnesisProvider>
+            </ErrorBoundary>
+          )}
+        </QueryErrorResetBoundary>
+      </div>
+    </ProtectedRoute>
   );
 };
 

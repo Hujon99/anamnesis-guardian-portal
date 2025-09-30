@@ -29,61 +29,21 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
 import { FeedbackButton } from "@/components/Feedback/FeedbackButton";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export function AppSidebar() {
   const { has, userId } = useAuth();
   const { user } = useUser();
   const location = useLocation();
-  const { supabase, isReady } = useSupabaseClient();
+  const { role, isAdmin, isOptician } = useUserRole();
   
-  // Check if current user has optician role
-  const [isUserOptician, setIsUserOptician] = useState(false);
-  const [isCheckingRole, setIsCheckingRole] = useState(true);
+  // Check organization roles from Clerk
+  const isClerkAdmin = has({ role: "org:admin" });
   
-  // Check organization roles
-  const isAdmin = has({ role: "org:admin" });
-  const isMember = has({ role: "org:member" }) || isAdmin;
-
-  useEffect(() => {
-    const checkOpticianRole = async () => {
-      if (!userId || !isReady) return;
-      
-      try {
-        setIsCheckingRole(true);
-        const { data, error } = await supabase
-          .from('users')
-          .select('role')
-          .eq('clerk_user_id', userId)
-          .single();
-          
-        if (error) {
-          console.error("Error checking optician role:", error);
-          return;
-        }
-        
-        setIsUserOptician(data?.role === 'optician');
-        
-        // User is marked as optician but doesn't have the necessary Clerk role
-        if (data?.role === 'optician' && !isAdmin && !isMember) {
-          console.warn("User has optician role in database but not in Clerk");
-        }
-      } catch (error) {
-        console.error("Error checking optician role:", error);
-      } finally {
-        setIsCheckingRole(false);
-      }
-    };
-    
-    checkOpticianRole();
-  }, [userId, isReady, supabase, isAdmin, isMember]);
-
-  // Determine if user can access optician features (optician role OR admin)
-  const canAccessOpticianFeatures = isUserOptician || isAdmin;
+  // Determine if user can access optician features (optician or admin role)
+  const canAccessOpticianFeatures = isAdmin || isOptician;
 
   return (
     <Sidebar collapsible="icon">
@@ -134,7 +94,7 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
               
-              {isAdmin && (
+              {(isAdmin || isClerkAdmin) && (
                 <SidebarMenuItem>
                   <SidebarMenuButton 
                     asChild 

@@ -17,6 +17,8 @@ interface SortableSectionEditorProps {
   onUpdate: (section: FormSection) => void;
   onDelete: () => void;
   isFromDatabase?: boolean;
+  isNewlyAdded?: boolean;
+  newQuestionIndex?: number;
 }
 
 export const SortableSectionEditor: React.FC<SortableSectionEditorProps> = ({
@@ -25,7 +27,9 @@ export const SortableSectionEditor: React.FC<SortableSectionEditorProps> = ({
   schema,
   onUpdate,
   onDelete,
-  isFromDatabase = false
+  isFromDatabase = false,
+  isNewlyAdded = false,
+  newQuestionIndex
 }) => {
   const {
     attributes,
@@ -83,6 +87,8 @@ export const SortableSectionEditor: React.FC<SortableSectionEditorProps> = ({
             onUpdate={onUpdate}
             onDelete={onDelete}
             isFromDatabase={isFromDatabase}
+            isNewlyAdded={isNewlyAdded}
+            newQuestionIndex={newQuestionIndex}
           />
         </div>
       </div>

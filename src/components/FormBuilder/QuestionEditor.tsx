@@ -76,6 +76,7 @@ interface QuestionEditorProps {
   onMove: (fromIndex: number, toIndex: number) => void;
   totalQuestions: number;
   isFromDatabase?: boolean; // Flag to indicate if question was loaded from database
+  isNewlyAdded?: boolean; // Flag to indicate if question was just added
 }
 
 const QUESTION_TYPES = [
@@ -100,9 +101,10 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   onDelete,
   onMove,
   totalQuestions,
-  isFromDatabase = false
+  isFromDatabase = false,
+  isNewlyAdded = false
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(isNewlyAdded);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showIdSuggestions, setShowIdSuggestions] = useState(false);

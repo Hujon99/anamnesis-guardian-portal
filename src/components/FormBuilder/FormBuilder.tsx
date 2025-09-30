@@ -86,6 +86,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   onSave,
   onClose
 }) => {
+  const [newSectionIndex, setNewSectionIndex] = useState<number | undefined>();
+  const [newQuestionInfo, setNewQuestionInfo] = useState<{ sectionIndex: number; questionIndex: number } | undefined>();
+  
   const [currentForm, setCurrentForm] = useState<FormState>(() => {
     if (initialForm) {
       console.log('[FormBuilder] Initializing with form:', { 
@@ -299,12 +302,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
       questions: []
     };
     
+    const newIndex = currentForm.schema.sections.length;
+    setNewSectionIndex(newIndex);
+    
     updateSchema({
       ...currentForm.schema,
       sections: [...currentForm.schema.sections, newSection]
     });
     
     addToHistory('Lade till sektion');
+    
+    // Clear the flag after a short delay
+    setTimeout(() => setNewSectionIndex(undefined), 100);
   }, [currentForm.schema, updateSchema, addToHistory]);
 
   // Handle section drag end
@@ -492,6 +501,17 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                               onUpdate={(updatedSection) => {
                                 const updatedSections = [...currentForm.schema.sections];
                                 updatedSections[index] = updatedSection;
+                                
+                                // Track if a new question was added
+                                if (updatedSection.questions.length > section.questions.length) {
+                                  setNewQuestionInfo({
+                                    sectionIndex: index,
+                                    questionIndex: updatedSection.questions.length - 1
+                                  });
+                                  // Clear the flag after a short delay
+                                  setTimeout(() => setNewQuestionInfo(undefined), 100);
+                                }
+                                
                                 updateSchema({
                                   ...currentForm.schema,
                                   sections: updatedSections
@@ -507,6 +527,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                                 addToHistory(`Tog bort sektion ${index + 1}`);
                               }}
                               isFromDatabase={!!initialForm?.id}
+                              isNewlyAdded={index === newSectionIndex}
+                              newQuestionIndex={newQuestionInfo?.sectionIndex === index ? newQuestionInfo.questionIndex : undefined}
                             />
                           ))}
                         </div>

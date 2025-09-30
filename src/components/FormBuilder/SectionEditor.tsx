@@ -26,6 +26,8 @@ interface SectionEditorProps {
   onUpdate: (section: FormSection) => void;
   onDelete: () => void;
   isFromDatabase?: boolean; // Flag to indicate if section was loaded from database
+  isNewlyAdded?: boolean; // Flag to indicate if section was just added
+  newQuestionIndex?: number; // Index of newly added question to auto-expand
 }
 export const SectionEditor: React.FC<SectionEditorProps> = ({
   section,
@@ -33,9 +35,12 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   schema,
   onUpdate,
   onDelete,
-  isFromDatabase = false
+  isFromDatabase = false,
+  isNewlyAdded = false,
+  newQuestionIndex
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(isNewlyAdded);
+  const [lastQuestionType, setLastQuestionType] = useState<string>('text');
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(section.section_title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -52,7 +57,11 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
     setEditTitle(section.section_title);
     setIsEditing(false);
   };
-  const addQuestion = (type: string = 'text') => {
+  const addQuestion = (type?: string) => {
+    // Use last question type if no type specified, or default to 'text'
+    const questionType = type || lastQuestionType;
+    setLastQuestionType(questionType);
+    
     const questionTypeLabels: Record<string, string> = {
       text: 'textfråga',
       textarea: 'textområde',
@@ -65,13 +74,13 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
       tel: 'telefon',
       url: 'url'
     };
-    const questionLabel = `Ny ${questionTypeLabels[type] || type}`;
+    const questionLabel = `Ny ${questionTypeLabels[questionType] || questionType}`;
     const generatedId = generateUniqueQuestionId(questionLabel, schema);
     const newQuestion: FormQuestion = {
       id: generatedId,
       label: questionLabel,
-      type: type as any,
-      options: type === 'radio' || type === 'dropdown' ? ['Alternativ 1', 'Alternativ 2'] : undefined
+      type: questionType as any,
+      options: questionType === 'radio' || questionType === 'dropdown' || questionType === 'checkbox' ? ['Alternativ 1', 'Alternativ 2'] : undefined
     };
     onUpdate({
       ...section,
@@ -159,7 +168,12 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-2 flex-1">
-                <h3 className="font-semibold text-lg">{section.section_title}</h3>
+                <h3 
+                  className="font-semibold text-lg cursor-pointer hover:text-primary transition-colors" 
+                  onClick={() => setIsEditing(true)}
+                >
+                  {section.section_title}
+                </h3>
                 <span className="text-sm text-muted-foreground">
                   {section.questions.length} frågor
                 </span>
@@ -232,7 +246,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 />
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext items={section.questions.map(q => q.id)} strategy={verticalListSortingStrategy}>
-                    {section.questions.map((question, questionIndex) => <QuestionEditor key={question.id} question={question} questionIndex={questionIndex} sectionIndex={sectionIndex} schema={schema} onUpdate={updatedQuestion => updateQuestion(questionIndex, updatedQuestion)} onDelete={() => deleteQuestion(questionIndex)} onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)} totalQuestions={section.questions.length} isFromDatabase={isFromDatabase} />)}
+                    {section.questions.map((question, questionIndex) => <QuestionEditor key={question.id} question={question} questionIndex={questionIndex} sectionIndex={sectionIndex} schema={schema} onUpdate={updatedQuestion => updateQuestion(questionIndex, updatedQuestion)} onDelete={() => deleteQuestion(questionIndex)} onMove={(fromIndex, toIndex) => moveQuestion(fromIndex, toIndex)} totalQuestions={section.questions.length} isFromDatabase={isFromDatabase} isNewlyAdded={questionIndex === newQuestionIndex} />)}
                   </SortableContext>
                 </DndContext>
 

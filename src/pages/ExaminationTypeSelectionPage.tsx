@@ -167,11 +167,16 @@ const ExaminationTypeSelectionPage = () => {
 
       console.log("[ExaminationTypeSelectionPage]: Setting examination types:", types);
       setExaminationTypes(types);
+      setError(null); // Clear any previous errors
       setIsLoading(false);
     } else if (storeId && !isLoadingStoreForms && storeforms.length === 0) {
       console.error("[ExaminationTypeSelectionPage]: No forms found for store");
       setError("Inga formulär hittades för denna butik. Kontrollera att butiken har aktiva formulär tilldelade.");
       setIsLoading(false);
+    } else if (storeId && isLoadingStoreForms) {
+      // Still loading, keep loading state
+      setIsLoading(true);
+      setError(null); // Clear any previous errors while loading
     }
   }, [storeforms, isLoadingStoreForms, storeId]);
 

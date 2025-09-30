@@ -27,7 +27,6 @@ import CustomerInfoPage from "@/pages/CustomerInfoPage";
 import ExaminationTypeSelectionPage from "@/pages/ExaminationTypeSelectionPage";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import TermsOfServicePage from "@/pages/TermsOfServicePage";
-import SystemAdminLoginPage from "@/pages/SystemAdminLoginPage";
 
 // Components
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -57,7 +56,6 @@ function App() {
             {/* Public routes */}
             <Route path="/sign-in" element={<SignInPage />} />
             <Route path="/sign-up" element={<SignUpPage />} />
-            <Route path="/system-admin" element={<SystemAdminLoginPage />} />
             
             {/* Form pages - accessed via token, no auth required */}
             <Route path="/patient-form" element={<PatientFormPage />} />

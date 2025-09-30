@@ -584,14 +584,17 @@ export type Database = {
       organizations: {
         Row: {
           id: string
+          is_system_org: boolean | null
           name: string
         }
         Insert: {
           id: string
+          is_system_org?: boolean | null
           name: string
         }
         Update: {
           id?: string
+          is_system_org?: boolean | null
           name?: string
         }
         Relationships: []

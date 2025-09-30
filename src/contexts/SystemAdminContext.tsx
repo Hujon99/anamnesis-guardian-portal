@@ -1,62 +1,47 @@
 /**
- * Context for managing system administrator authentication.
- * This provides a separate authentication layer outside of Clerk
- * for accessing global system settings and templates.
+ * Context for checking if the current user belongs to the system admin organization.
+ * System admins can manage global settings and templates that apply to all organizations.
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
+import { useOrganization } from '@clerk/clerk-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SystemAdminContextType {
   isSystemAdmin: boolean;
-  login: (token: string) => Promise<boolean>;
-  logout: () => void;
+  isLoading: boolean;
 }
 
 const SystemAdminContext = createContext<SystemAdminContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'system_admin_auth';
-
 export const SystemAdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
+  const { organization } = useOrganization();
 
-  useEffect(() => {
-    // Check if user is already authenticated as system admin
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setIsSystemAdmin(true);
-    }
-  }, []);
-
-  const login = async (token: string): Promise<boolean> => {
-    try {
-      // Verify token with backend
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL || "https://jawtwwwelxaaprzsqfyp.supabase.co"}/functions/v1/verify-system-admin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      if (response.ok) {
-        localStorage.setItem(STORAGE_KEY, 'true');
-        setIsSystemAdmin(true);
-        return true;
+  // Check if the current organization is marked as a system org
+  const { data: isSystemOrg, isLoading } = useQuery({
+    queryKey: ['is-system-org', organization?.id],
+    queryFn: async () => {
+      if (!organization?.id) return false;
+      
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('is_system_org')
+        .eq('id', organization.id)
+        .single();
+      
+      if (error) {
+        console.error('Error checking system org status:', error);
+        return false;
       }
-      return false;
-    } catch (error) {
-      console.error('System admin login error:', error);
-      return false;
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setIsSystemAdmin(false);
-  };
+      
+      return data?.is_system_org || false;
+    },
+    enabled: !!organization?.id,
+  });
 
   return (
-    <SystemAdminContext.Provider value={{ isSystemAdmin, login, logout }}>
+    <SystemAdminContext.Provider value={{ isSystemAdmin: isSystemOrg || false, isLoading }}>
       {children}
     </SystemAdminContext.Provider>
   );

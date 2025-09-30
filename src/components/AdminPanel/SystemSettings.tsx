@@ -10,15 +10,21 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Settings, LogOut } from "lucide-react";
+import { AlertCircle, Settings } from "lucide-react";
 import { AIPromptsManager } from "./AIPromptsManager";
 import { useSystemAdmin } from "@/contexts/SystemAdminContext";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 
 export function SystemSettings() {
-  const { isSystemAdmin, logout } = useSystemAdmin();
-  const navigate = useNavigate();
+  const { isSystemAdmin, isLoading } = useSystemAdmin();
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted-foreground">Laddar...</div>
+      </div>
+    );
+  }
 
   // Only allow access to system admins
   if (!isSystemAdmin) {
@@ -27,25 +33,14 @@ export function SystemSettings() {
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
           Du har inte behörighet att komma åt systeminställningar.
-          Endast systemadministratörer kan hantera globala inställningar.
+          Endast medlemmar i systemadministratörsorganisationen kan hantera globala inställningar.
         </AlertDescription>
       </Alert>
     );
   }
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex justify-end mb-4">
-        <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2">
-          <LogOut className="h-4 w-4" />
-          Logga ut från systemadmin
-        </Button>
-      </div>
       
       <Card>
         <CardHeader>

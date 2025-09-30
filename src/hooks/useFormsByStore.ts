@@ -2,6 +2,8 @@
  * Hook for fetching forms available in a specific store.
  * Used by patient flow to show only forms that are actively assigned to the selected store.
  * Returns empty array if no active form assignments exist for the store.
+ * 
+ * Uses an edge function as a fallback to bypass potential RLS issues with anon users.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -30,66 +32,34 @@ export const useFormsByStore = (storeId?: string) => {
       }
 
       try {
-        // Strategy 1: Get active store form assignments
-        console.log("[useFormsByStore]: Fetching store_forms for storeId:", storeId);
-        const { data: storeFormsData, error: storeFormsError } = await supabase
-          .from('store_forms')
-          .select('form_id, is_active')
-          .eq('store_id', storeId)
-          .eq('is_active', true);
-
-        console.log("[useFormsByStore]: store_forms query result:", {
-          data: storeFormsData,
-          error: storeFormsError,
-          count: storeFormsData?.length || 0
+        // Use edge function for reliable data access
+        console.log("[useFormsByStore]: Calling get-store-forms edge function");
+        
+        const { data, error } = await supabase.functions.invoke('get-store-forms', {
+          body: { storeId }
         });
 
-        if (storeFormsError) {
-          console.error("[useFormsByStore]: Error fetching store forms:", storeFormsError);
-          throw new Error("Kunde inte hämta formulär: " + storeFormsError.message);
+        if (error) {
+          console.error("[useFormsByStore]: Edge function error:", error);
+          throw new Error(`Kunde inte hämta formulär: ${error.message}`);
         }
 
-        // If no active assignments exist for this store, return empty array
-        if (!storeFormsData || storeFormsData.length === 0) {
-          console.log("[useFormsByStore]: No active form assignments found for this store");
+        if (!data) {
+          console.log("[useFormsByStore]: No data returned from edge function");
           return [];
         }
 
-        // Strategy 2: Fetch the actual form data separately
-        const formIds = storeFormsData.map(sf => sf.form_id);
-        console.log("[useFormsByStore]: Fetching forms for formIds:", formIds);
+        console.log("[useFormsByStore]: Edge function returned", data.length, "forms");
 
-        const { data: formsData, error: formsError } = await supabase
-          .from('anamnes_forms')
-          .select('id, title, examination_type, organization_id, schema')
-          .in('id', formIds);
-
-        console.log("[useFormsByStore]: anamnes_forms query result:", {
-          data: formsData,
-          error: formsError,
-          count: formsData?.length || 0
-        });
-
-        if (formsError) {
-          console.error("[useFormsByStore]: Error fetching forms:", formsError);
-          throw new Error("Kunde inte hämta formulärdata: " + formsError.message);
-        }
-
-        if (!formsData || formsData.length === 0) {
-          console.warn("[useFormsByStore]: Forms exist in store_forms but couldn't fetch form details");
-          return [];
-        }
-
-        // Return assigned forms
-        const result = formsData.map(form => ({
-          schema: form.schema as unknown as FormTemplate,
+        // Transform data to expected format
+        const result: FormTemplateWithMeta[] = data.map((form: any) => ({
+          schema: form.schema as FormTemplate,
           id: form.id,
           title: form.title,
           organization_id: form.organization_id,
           examination_type: form.examination_type,
         }));
 
-        console.log("[useFormsByStore]: Returning", result.length, "forms");
         return result;
 
       } catch (error) {
@@ -97,9 +67,10 @@ export const useFormsByStore = (storeId?: string) => {
         throw error;
       }
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // Shorter cache time for critical data
+    gcTime: 5 * 60 * 1000,
     enabled: !!supabase && !!storeId,
-    retry: 2,
+    retry: 3, // More retries for critical functionality
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
   });
 };

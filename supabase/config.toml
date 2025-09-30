@@ -49,3 +49,6 @@ verify_jwt = false
 
 [functions.repair-missing-summaries]
 verify_jwt = false
+
+[functions.get-store-forms]
+verify_jwt = false

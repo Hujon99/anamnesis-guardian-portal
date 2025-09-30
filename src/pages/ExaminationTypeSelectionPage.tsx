@@ -170,7 +170,7 @@ const ExaminationTypeSelectionPage = () => {
       setIsLoading(false);
     } else if (storeId && !isLoadingStoreForms && storeforms.length === 0) {
       console.error("[ExaminationTypeSelectionPage]: No forms found for store");
-      setError("Inga formulär hittades för denna butik");
+      setError("Inga formulär hittades för denna butik. Kontrollera att butiken har aktiva formulär tilldelade.");
       setIsLoading(false);
     }
   }, [storeforms, isLoadingStoreForms, storeId]);

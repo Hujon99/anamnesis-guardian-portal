@@ -21,6 +21,7 @@ import { StoreCard } from "@/components/AdminPanel/StoreCard";
 import { StoreForm } from "@/components/AdminPanel/StoreForm";
 import { ConfirmDeleteDialog } from "@/components/AdminPanel/ConfirmDeleteDialog";
 import { OrganizationSettings } from "@/components/AdminPanel/OrganizationSettings";
+import { SystemSettings } from "@/components/AdminPanel/SystemSettings";
 import { FormManagementGrid } from "@/components/FormBuilder/FormManagementGrid";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -151,6 +152,12 @@ const AdminPanel = () => {
             <Settings className="h-4 w-4" />
             Inställningar
           </TabsTrigger>
+          {organization?.id === 'system' && (
+            <TabsTrigger value="system" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              System
+            </TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="stores" className="mt-0">
@@ -215,6 +222,12 @@ const AdminPanel = () => {
         <TabsContent value="settings" className="mt-0">
           <OrganizationSettings />
         </TabsContent>
+        
+        {organization?.id === 'system' && (
+          <TabsContent value="system" className="mt-0">
+            <SystemSettings />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Store Form Dialog */}

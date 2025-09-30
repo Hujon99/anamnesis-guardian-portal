@@ -75,6 +75,22 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
     queryFn: async () => {
       if (!organizationId) throw new Error('Organization ID required');
 
+      // First, fetch system defaults from the system organization
+      const { data: systemData, error: systemError } = await supabase
+        .from('organization_settings')
+        .select('ai_prompt_general, ai_prompt_driving_license, ai_prompt_lens_examination')
+        .eq('organization_id', 'system')
+        .eq('is_global_default', true)
+        .maybeSingle();
+
+      // Use system defaults if available, otherwise use hardcoded defaults
+      const systemPrompts = systemData ? {
+        general: systemData.ai_prompt_general || DEFAULT_PROMPTS.general,
+        driving_license: systemData.ai_prompt_driving_license || DEFAULT_PROMPTS.driving_license,
+        lens_examination: systemData.ai_prompt_lens_examination || DEFAULT_PROMPTS.lens_examination
+      } : DEFAULT_PROMPTS;
+
+      // Try to fetch organization-specific prompts
       const { data, error } = await supabase
         .from('organization_settings')
         .select('ai_prompt_general, ai_prompt_driving_license, ai_prompt_lens_examination')
@@ -83,19 +99,20 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
 
       if (error) throw error;
 
-      // Return defaults if no settings exist
+      // If no organization-specific settings, return system defaults
       if (!data) {
         return {
-          ai_prompt_general: DEFAULT_PROMPTS.general,
-          ai_prompt_driving_license: DEFAULT_PROMPTS.driving_license,
-          ai_prompt_lens_examination: DEFAULT_PROMPTS.lens_examination
+          ai_prompt_general: systemPrompts.general,
+          ai_prompt_driving_license: systemPrompts.driving_license,
+          ai_prompt_lens_examination: systemPrompts.lens_examination
         };
       }
 
+      // Return org prompts with fallback to system defaults
       return {
-        ai_prompt_general: data.ai_prompt_general || DEFAULT_PROMPTS.general,
-        ai_prompt_driving_license: data.ai_prompt_driving_license || DEFAULT_PROMPTS.driving_license,
-        ai_prompt_lens_examination: data.ai_prompt_lens_examination || DEFAULT_PROMPTS.lens_examination
+        ai_prompt_general: data.ai_prompt_general || systemPrompts.general,
+        ai_prompt_driving_license: data.ai_prompt_driving_license || systemPrompts.driving_license,
+        ai_prompt_lens_examination: data.ai_prompt_lens_examination || systemPrompts.lens_examination
       };
     },
     enabled: !!organizationId

@@ -174,6 +174,7 @@ export type Database = {
             | null
           id: string
           is_active: boolean | null
+          is_global_template: boolean | null
           is_template: boolean | null
           last_modified_by: string | null
           organization_id: string | null
@@ -190,6 +191,7 @@ export type Database = {
             | null
           id?: string
           is_active?: boolean | null
+          is_global_template?: boolean | null
           is_template?: boolean | null
           last_modified_by?: string | null
           organization_id?: string | null
@@ -206,6 +208,7 @@ export type Database = {
             | null
           id?: string
           is_active?: boolean | null
+          is_global_template?: boolean | null
           is_template?: boolean | null
           last_modified_by?: string | null
           organization_id?: string | null
@@ -543,6 +546,7 @@ export type Database = {
           ai_prompt_general: string | null
           ai_prompt_lens_examination: string | null
           created_at: string | null
+          is_global_default: boolean | null
           last_auto_deletion_run: string | null
           organization_id: string
           updated_at: string | null
@@ -552,6 +556,7 @@ export type Database = {
           ai_prompt_general?: string | null
           ai_prompt_lens_examination?: string | null
           created_at?: string | null
+          is_global_default?: boolean | null
           last_auto_deletion_run?: string | null
           organization_id: string
           updated_at?: string | null
@@ -561,6 +566,7 @@ export type Database = {
           ai_prompt_general?: string | null
           ai_prompt_lens_examination?: string | null
           created_at?: string | null
+          is_global_default?: boolean | null
           last_auto_deletion_run?: string | null
           organization_id?: string
           updated_at?: string | null

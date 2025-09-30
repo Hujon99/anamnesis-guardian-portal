@@ -1,8 +1,8 @@
 
 /**
- * This is the main administration panel for organization administrators.
- * It provides interfaces for managing stores and configuring organization settings.
- * Only users with admin role can access this page.
+ * Administrationspanel för organisationsadministratörer.
+ * Innehåller gränssnitt för hantering av butiker, formulär och organisationsinställningar.
+ * Endast användare med administratörsroll har tillgång till denna sida.
  */
 
 import { useState } from "react";
@@ -20,7 +20,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { StoreCard } from "@/components/AdminPanel/StoreCard";
 import { StoreForm } from "@/components/AdminPanel/StoreForm";
 import { ConfirmDeleteDialog } from "@/components/AdminPanel/ConfirmDeleteDialog";
-import StoreFormManager from "@/components/AdminPanel/StoreFormManager";
+import { OrganizationSettings } from "@/components/AdminPanel/OrganizationSettings";
 import { FormManagementGrid } from "@/components/FormBuilder/FormManagementGrid";
 
 type Store = Tables<"stores">;
@@ -142,16 +142,12 @@ const AdminPanel = () => {
             Butiker
           </TabsTrigger>
           <TabsTrigger value="forms" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Formulär per butik
-          </TabsTrigger>
-          <TabsTrigger value="form-builder" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Formulär Builder
+            Formulär
           </TabsTrigger>
-          <TabsTrigger value="organization" className="flex items-center gap-2">
+          <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            Organisationsinställningar
+            Inställningar
           </TabsTrigger>
         </TabsList>
         
@@ -211,27 +207,11 @@ const AdminPanel = () => {
         </TabsContent>
         
         <TabsContent value="forms" className="mt-0">
-          <StoreFormManager />
-        </TabsContent>
-        
-        <TabsContent value="form-builder" className="mt-0">
           <FormManagementGrid />
         </TabsContent>
         
-        <TabsContent value="organization" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle>Organisationsinställningar</CardTitle>
-              <CardDescription>
-                Hantera inställningar för {organization?.name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-500">
-                Organisationsinställningar kommer snart...
-              </p>
-            </CardContent>
-          </Card>
+        <TabsContent value="settings" className="mt-0">
+          <OrganizationSettings />
         </TabsContent>
       </Tabs>
 

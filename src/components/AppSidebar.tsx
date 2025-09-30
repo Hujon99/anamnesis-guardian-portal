@@ -27,6 +27,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEffect, useState } from "react";
@@ -85,10 +86,13 @@ export function AppSidebar() {
   const canAccessOpticianFeatures = isUserOptician || isAdmin;
 
   return (
-    <Sidebar>
-      <SidebarHeader className="py-4">
-        <div className="flex items-center justify-center px-2">
-          <h2 className="text-xl font-bold text-primary">Anamnesportalen</h2>
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b border-border">
+        <div className="flex items-center justify-between px-3 py-3">
+          <h2 className="text-lg font-bold text-primary group-data-[collapsible=icon]:hidden">
+            Anamnesportalen
+          </h2>
+          <SidebarTrigger className="-mr-1" />
         </div>
       </SidebarHeader>
       <SidebarContent>

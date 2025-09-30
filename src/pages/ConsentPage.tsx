@@ -29,7 +29,7 @@ const ConsentPage = () => {
     if (sessionConsent === 'true') {
       // Redirect directly to examination selection
       const currentParams = searchParams.toString();
-      navigate(`/examination-type?${currentParams}`);
+      navigate(`/examination-type-selection?${currentParams}`);
       return;
     }
 
@@ -82,7 +82,7 @@ const ConsentPage = () => {
 
     // Navigate to examination type selection with all current params
     const currentParams = searchParams.toString();
-    navigate(`/examination-type?${currentParams}`);
+    navigate(`/examination-type-selection?${currentParams}`);
   };
 
   if (isLoading) {

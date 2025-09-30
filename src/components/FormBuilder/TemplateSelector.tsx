@@ -71,9 +71,9 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Search and filters */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -84,7 +84,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
               />
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant={selectedCategory === null ? "default" : "outline"}
                 size="sm"
@@ -107,29 +107,29 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Templates list */}
-            <div>
-              <h3 className="font-medium mb-3">Tillgängliga mallar ({filteredTemplates.length})</h3>
-              <ScrollArea className="h-96">
+            <div className="space-y-4">
+              <h3 className="font-medium text-sm text-muted-foreground">Tillgängliga mallar ({filteredTemplates.length})</h3>
+              <ScrollArea className="h-[450px] pr-4">
                 <div className="space-y-3">
                   {filteredTemplates.map((template) => (
                     <Card 
                       key={template.id}
-                      className={`cursor-pointer transition-colors ${
+                      className={`cursor-pointer transition-all hover:shadow-md ${
                         selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
                       }`}
                       onClick={() => setSelectedTemplate(template)}
                     >
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between">
-                          <CardTitle className="text-sm">{template.title}</CardTitle>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-sm font-semibold leading-tight">{template.title}</CardTitle>
                           {template.organization_id ? (
-                            <Badge variant="secondary">Organistion</Badge>
+                            <Badge variant="secondary" className="shrink-0">Organisation</Badge>
                           ) : (
-                            <Badge variant="outline">Global</Badge>
+                            <Badge variant="outline" className="shrink-0">Global</Badge>
                           )}
                         </div>
                       </CardHeader>
-                      <CardContent className="pt-0">
+                      <CardContent className="pt-0 pb-4">
                         <div className="space-y-2">
                           <p className="text-xs text-muted-foreground">
                             {template.examination_type}
@@ -141,7 +141,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                             ) || 0} frågor
                           </p>
                           {template.template_category && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs mt-1">
                               {template.template_category}
                             </Badge>
                           )}
@@ -154,48 +154,45 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
             </div>
 
             {/* Template details and duplication */}
-            <div>
+            <div className="space-y-4">
               {selectedTemplate ? (
-                <div className="space-y-4">
-                  <h3 className="font-medium">Mall detaljer</h3>
+                <>
+                  <h3 className="font-medium text-sm text-muted-foreground">Mall detaljer</h3>
                   <Card>
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
+                    <CardContent className="pt-6 pb-6">
+                      <div className="space-y-6">
                         <div>
-                          <h4 className="font-medium">{selectedTemplate.title}</h4>
+                          <h4 className="font-semibold text-base mb-1">{selectedTemplate.title}</h4>
                           <p className="text-sm text-muted-foreground">
                             {selectedTemplate.examination_type}
                           </p>
                         </div>
 
-                        <div>
+                        <div className="space-y-2">
                           <label className="text-sm font-medium">Titel för nytt formulär:</label>
                           <Input
                             value={newFormTitle}
                             onChange={(e) => setNewFormTitle(e.target.value)}
                             placeholder="Ange titel..."
-                            className="mt-1"
                           />
                         </div>
 
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={handleDuplicate}
-                            disabled={!newFormTitle.trim() || isDuplicating}
-                            className="flex-1 gap-2"
-                          >
-                            <Copy className="h-4 w-4" />
-                            {isDuplicating ? 'Duplicerar...' : 'Duplicera mall'}
-                          </Button>
-                        </div>
+                        <Button
+                          onClick={handleDuplicate}
+                          disabled={!newFormTitle.trim() || isDuplicating}
+                          className="w-full gap-2"
+                        >
+                          <Copy className="h-4 w-4" />
+                          {isDuplicating ? 'Duplicerar...' : 'Duplicera mall'}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
-                </div>
+                </>
               ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4" />
-                  <p>Välj en mall för att se detaljer</p>
+                <div className="flex flex-col items-center justify-center h-[450px] text-muted-foreground">
+                  <FileText className="h-16 w-16 mb-4 opacity-20" />
+                  <p className="text-sm">Välj en mall för att se detaljer</p>
                 </div>
               )}
             </div>

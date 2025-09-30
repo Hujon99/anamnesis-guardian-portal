@@ -114,20 +114,8 @@ export const useOrganizationForms = () => {
           };
         });
         
-        // Remove duplicates by examination_type (prefer org-specific over default)
-        const uniqueForms = organizationForms.reduce((acc, form) => {
-          const existing = acc.find(f => f.examination_type === form.examination_type);
-          if (!existing) {
-            acc.push(form);
-          } else if (form.organization_id && !existing.organization_id) {
-            // Replace default with org-specific
-            const index = acc.indexOf(existing);
-            acc[index] = form;
-          }
-          return acc;
-        }, [] as OrganizationForm[]);
-        
-        return uniqueForms.sort((a, b) => a.title.localeCompare(b.title));
+        // Sort by title to keep consistent ordering
+        return organizationForms.sort((a, b) => a.title.localeCompare(b.title));
         
       } catch (err: any) {
         console.error("[useOrganizationForms]: Error:", err);

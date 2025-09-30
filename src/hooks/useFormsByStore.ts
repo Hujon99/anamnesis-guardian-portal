@@ -1,7 +1,7 @@
 /**
  * Hook for fetching forms available in a specific store.
- * Used by patient flow to show only forms that are active for the selected store.
- * Also provides fallback to all organization forms if no specific assignments exist.
+ * Used by patient flow to show only forms that are actively assigned to the selected store.
+ * Returns empty array if no active form assignments exist for the store.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -54,44 +54,14 @@ export const useFormsByStore = (storeId?: string) => {
 
       if (storeFormsError) {
         console.error("[useFormsByStore]: Error fetching store forms:", storeFormsError);
-        // Fallback: return all forms for the organization
-        const { data: allForms, error: allFormsError } = await supabase
-          .from('anamnes_forms')
-          .select('*')
-          .eq('organization_id', store.organization_id);
-
-        if (allFormsError) {
-          throw new Error("Kunde inte hämta formulär: " + allFormsError.message);
-        }
-
-        return (allForms || []).map(form => ({
-          schema: form.schema as unknown as FormTemplate,
-          id: form.id,
-          title: form.title,
-          organization_id: form.organization_id,
-          examination_type: form.examination_type,
-        }));
+        throw new Error("Kunde inte hämta formulär: " + storeFormsError.message);
       }
 
-      // If no specific assignments exist, fall back to all organization forms
+      // If no active assignments exist for this store, return empty array
+      // Don't fall back to all org forms - only show explicitly assigned forms
       if (!storeFormsData || storeFormsData.length === 0) {
-        console.log("[useFormsByStore]: No assignments found, using all org forms");
-        const { data: allForms, error: allFormsError } = await supabase
-          .from('anamnes_forms')
-          .select('*')
-          .eq('organization_id', store.organization_id);
-
-        if (allFormsError) {
-          throw new Error("Kunde inte hämta formulär: " + allFormsError.message);
-        }
-
-        return (allForms || []).map(form => ({
-          schema: form.schema as unknown as FormTemplate,
-          id: form.id,
-          title: form.title,
-          organization_id: form.organization_id,
-          examination_type: form.examination_type,
-        }));
+        console.log("[useFormsByStore]: No active form assignments found for this store");
+        return [];
       }
 
       // Return assigned forms

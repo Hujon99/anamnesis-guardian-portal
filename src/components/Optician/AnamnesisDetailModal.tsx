@@ -30,7 +30,7 @@ export function AnamnesisDetailModal({
   onOpenChange,
   onEntryUpdated
 }: AnamnesisDetailModalProps) {
-  const { isAdmin, isOptician, isMember } = useUserRole();
+  const { isAdmin, isOptician, isLoading: isLoadingRole } = useUserRole();
   
   // Only admin and optician can view anamnesis details
   const canViewDetails = isAdmin || isOptician;
@@ -73,6 +73,11 @@ export function AnamnesisDetailModal({
     sendLinkMutation.isPending || 
     assignOpticianMutation.isPending || 
     assignStoreMutation.isPending;
+
+  // Show loading state while checking permissions
+  if (isLoadingRole) {
+    return null; // Don't show anything while loading
+  }
 
   // Show access denied message if user doesn't have permission
   if (!canViewDetails) {

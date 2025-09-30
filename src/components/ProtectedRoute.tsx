@@ -7,99 +7,68 @@
 import { useAuth, useOrganization, RedirectToSignIn } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useUserRole, UserRole } from "@/hooks/useUserRole";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requireRole?: string | string[]; // Modified to accept array of roles
-  requireOpticianRole?: boolean; // Added for optician-specific pages
+  requireRole?: UserRole | UserRole[]; // Roles required from Supabase
+  requireClerkRole?: string | string[]; // Clerk organization roles (legacy support)
 }
 
-const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requireRole, requireClerkRole }: ProtectedRouteProps) => {
   const auth = useAuth();
   const { isLoaded: isAuthLoaded, userId } = auth;
   const { isLoaded: isOrgLoaded, organization } = useOrganization();
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-  const { supabase, isReady } = useSupabaseClient();
-  const [isOpticianRoleChecked, setIsOpticianRoleChecked] = useState(!requireOpticianRole);
-  const [isUserOptician, setIsUserOptician] = useState(false);
+  const [isClerkAuthorized, setIsClerkAuthorized] = useState<boolean | null>(null);
+  const { role: userRole, isLoading: isRoleLoading, isAdmin } = useUserRole();
 
-  // Check if user is Admin through Clerk roles
-  const isAdmin = auth.has && auth.has({ role: "org:admin" });
-
-  // Check Clerk roles
+  // Check Clerk roles (legacy support)
   useEffect(() => {
     if (isAuthLoaded && isOrgLoaded) {
-      // Check if user is logged in
       if (!userId) {
-        setIsAuthorized(false);
+        setIsClerkAuthorized(false);
         return;
       }
 
-      // If no specific role is required, just check user authentication
-      if (!requireRole && !requireOpticianRole) {
-        setIsAuthorized(true);
+      if (!requireClerkRole) {
+        setIsClerkAuthorized(true);
         return;
       }
 
-      // Check if user has any of the required roles
-      if (requireRole && organization && auth.has) {
-        // Handle both string and array of strings
-        if (Array.isArray(requireRole)) {
-          const hasAnyRole = requireRole.some(role => auth.has({ role }));
-          setIsAuthorized(hasAnyRole);
+      if (requireClerkRole && organization && auth.has) {
+        if (Array.isArray(requireClerkRole)) {
+          const hasAnyRole = requireClerkRole.some(role => auth.has({ role }));
+          setIsClerkAuthorized(hasAnyRole);
         } else {
-          const hasRole = auth.has({ role: requireRole });
-          setIsAuthorized(hasRole);
+          const hasRole = auth.has({ role: requireClerkRole });
+          setIsClerkAuthorized(hasRole);
         }
-      } else if (requireRole) {
-        setIsAuthorized(false);
+      } else if (requireClerkRole) {
+        setIsClerkAuthorized(false);
       } else {
-        setIsAuthorized(true);
+        setIsClerkAuthorized(true);
       }
     }
-  }, [isAuthLoaded, isOrgLoaded, userId, organization, requireRole, auth]);
+  }, [isAuthLoaded, isOrgLoaded, userId, organization, requireClerkRole, auth]);
 
-  // Check Supabase optician role if needed
-  useEffect(() => {
-    const checkOpticianRole = async () => {
-      if (!userId || !isReady || !requireOpticianRole) return;
+  // Check Supabase role authorization
+  const hasSupabaseRole = () => {
+    if (!requireRole || !userRole) return true;
 
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('role')
-          .eq('clerk_user_id', userId)
-          .single();
-          
-        if (error) {
-          console.error("Error fetching user role:", error);
-          setIsUserOptician(false);
-        } else {
-          setIsUserOptician(data?.role === 'optician');
-        }
-      } catch (error) {
-        console.error("Error checking optician role:", error);
-        setIsUserOptician(false);
-      } finally {
-        setIsOpticianRoleChecked(true);
-      }
-    };
-    
-    if (requireOpticianRole && userId && isReady) {
-      checkOpticianRole();
+    if (Array.isArray(requireRole)) {
+      return requireRole.includes(userRole);
     }
-  }, [userId, isReady, supabase, requireOpticianRole]);
 
-  // Admins can bypass optician role requirement
-  const isFinallyAuthorized = isAuthorized && (
-    !requireOpticianRole || isUserOptician || isAdmin
-  );
+    return userRole === requireRole;
+  };
+
+  const isSupabaseAuthorized = !requireRole || hasSupabaseRole();
+  const isFinallyAuthorized = isClerkAuthorized && isSupabaseAuthorized;
 
   // Show loading state
-  if (!isAuthLoaded || !isOrgLoaded || isAuthorized === null || !isOpticianRoleChecked) {
+  if (!isAuthLoaded || !isOrgLoaded || isClerkAuthorized === null || (requireRole && isRoleLoading)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -115,13 +84,27 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
 
   // If not authorized due to missing role
   if (userId && !isFinallyAuthorized) {
+    const getRoleMessage = () => {
+      if (requireRole) {
+        const roles = Array.isArray(requireRole) ? requireRole : [requireRole];
+        const roleNames = roles.map(r => {
+          switch (r) {
+            case 'admin': return 'administratör';
+            case 'optician': return 'optiker';
+            case 'member': return 'medlem';
+            default: return r;
+          }
+        });
+        return `Du måste vara ${roleNames.join(' eller ')} för att komma åt denna sida.`;
+      }
+      return "Du har inte tillräckliga behörigheter för att komma åt denna sida.";
+    };
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h2 className="text-2xl font-bold mb-4">Behörighet saknas</h2>
         <p className="text-gray-600 mb-6 text-center">
-          {requireOpticianRole && !isUserOptician && !isAdmin
-            ? "Du har inte optikerbehörighet för denna sida."
-            : "Du har inte tillräckliga behörigheter för att komma åt denna sida."}
+          {getRoleMessage()}
         </p>
         <a 
           href="/dashboard" 
@@ -134,7 +117,7 @@ const ProtectedRoute = ({ children, requireRole, requireOpticianRole }: Protecte
   }
 
   // If no organization, show a message
-  if (isFinallyAuthorized && !organization && requireRole) {
+  if (isFinallyAuthorized && !organization && (requireRole || requireClerkRole)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h2 className="text-2xl font-bold mb-4">Organisation krävs</h2>

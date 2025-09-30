@@ -22,6 +22,7 @@ import { StoreForm } from "@/components/AdminPanel/StoreForm";
 import { ConfirmDeleteDialog } from "@/components/AdminPanel/ConfirmDeleteDialog";
 import { OrganizationSettings } from "@/components/AdminPanel/OrganizationSettings";
 import { FormManagementGrid } from "@/components/FormBuilder/FormManagementGrid";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 type Store = Tables<"stores">;
 
@@ -110,7 +111,8 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <ProtectedRoute requireRole="admin">
+      <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold">Administration</h1>
@@ -230,7 +232,8 @@ const AdminPanel = () => {
         onConfirm={confirmDeleteStore}
         isDeleting={isDeletingStore}
       />
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 };
 

@@ -38,11 +38,26 @@ export const useSyncClerkUsers = () => {
   
   // Function to determine the role based on Clerk memberships
   const determineRole = (member: any) => {
-    // Check if the member has organization admin role
-    const isAdmin = member.role === 'admin';
+    // Map Clerk organization roles to our Supabase roles
+    // Clerk roles: 'org:admin', 'org:optician', 'org:member'
+    // Our roles: 'admin', 'optician', 'member'
+    const clerkRole = member.role;
     
-    // Default role is 'optician' for now - this could be expanded with more roles
-    return isAdmin ? 'admin' : 'optician';
+    // Direct mapping from Clerk roles
+    switch (clerkRole) {
+      case 'org:admin':
+      case 'admin':
+        return 'admin';
+      case 'org:optician':
+      case 'optician':
+        return 'optician';
+      case 'org:member':
+      case 'member':
+        return 'member';
+      default:
+        // Default to member role if unknown
+        return 'member';
+    }
   };
   
   // Main sync function

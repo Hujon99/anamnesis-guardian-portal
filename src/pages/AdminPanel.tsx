@@ -24,12 +24,14 @@ import { OrganizationSettings } from "@/components/AdminPanel/OrganizationSettin
 import { SystemSettings } from "@/components/AdminPanel/SystemSettings";
 import { FormManagementGrid } from "@/components/FormBuilder/FormManagementGrid";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useSystemAdmin } from "@/contexts/SystemAdminContext";
 
 type Store = Tables<"stores">;
 
 const AdminPanel = () => {
   const { user } = useUser();
   const { organization } = useOrganization();
+  const { isSystemAdmin } = useSystemAdmin();
   const [activeTab, setActiveTab] = useState("stores");
   const { error: supabaseError } = useSupabaseClient();
   
@@ -152,7 +154,7 @@ const AdminPanel = () => {
             <Settings className="h-4 w-4" />
             Inställningar
           </TabsTrigger>
-          {organization?.id === 'system' && (
+          {isSystemAdmin && (
             <TabsTrigger value="system" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               System
@@ -223,7 +225,7 @@ const AdminPanel = () => {
           <OrganizationSettings />
         </TabsContent>
         
-        {organization?.id === 'system' && (
+        {isSystemAdmin && (
           <TabsContent value="system" className="mt-0">
             <SystemSettings />
           </TabsContent>

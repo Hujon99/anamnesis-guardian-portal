@@ -52,3 +52,6 @@ verify_jwt = false
 
 [functions.get-store-forms]
 verify_jwt = false
+
+[functions.verify-system-admin]
+verify_jwt = false

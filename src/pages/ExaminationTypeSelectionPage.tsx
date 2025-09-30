@@ -287,24 +287,14 @@ const ExaminationTypeSelectionPage = () => {
   return (
     <div className="min-h-screen bg-surface-light">
       <div className="container max-w-4xl mx-auto p-4 pt-8">
-        {storeId && (
+        {storeId && storeName && (
           <div className="mb-6">
-            <Button 
-              variant="ghost" 
-              onClick={handleBackToStores}
-              className="mb-4 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Tillbaka till butiker
-            </Button>
-            {storeName && (
-              <Card className="p-4 bg-accent/10">
-                <div className="flex items-center gap-2">
-                  <Store className="h-5 w-5 text-primary" />
-                  <span className="font-medium">Vald butik: {storeName}</span>
-                </div>
-              </Card>
-            )}
+            <Card className="p-4 bg-accent/10">
+              <div className="flex items-center gap-2">
+                <Store className="h-5 w-5 text-primary" />
+                <span className="font-medium">Vald butik: {storeName}</span>
+              </div>
+            </Card>
           </div>
         )}
 

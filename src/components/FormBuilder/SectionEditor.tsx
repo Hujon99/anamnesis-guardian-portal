@@ -236,6 +236,42 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                   </SortableContext>
                 </DndContext>
 
+                {section.questions.length > 0 && (
+                  <div className="flex justify-center pt-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          Lägg till fråga
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => addQuestion('text')}>
+                          Textfråga
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                          Textområde
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                          Radioknappar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                          Kryssrutor
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                          Dropdown
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => addQuestion('date')}>
+                          Datum
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => addQuestion('number')}>
+                          Nummer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+
                 {section.questions.length === 0 && <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
                     <p className="text-muted-foreground mb-4">Inga frågor i denna sektion</p>
                     <DropdownMenu>

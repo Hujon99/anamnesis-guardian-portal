@@ -526,6 +526,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                       <Button onClick={addSection}>Lägg till första sektionen</Button>
                     </Card>
                   )}
+
+                  {currentForm.schema.sections.length > 0 && (
+                    <div className="flex justify-center pt-6 pb-4">
+                      <Button onClick={addSection} variant="outline" className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Lägg till sektion
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>

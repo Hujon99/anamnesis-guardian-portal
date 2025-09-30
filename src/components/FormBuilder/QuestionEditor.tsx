@@ -184,9 +184,20 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
     updateField('options', updatedOptions);
   };
 
-  const addOption = () => {
+  const [newOptionValue, setNewOptionValue] = useState('');
+
+  const addOption = (value?: string) => {
     const currentOptions = question.options || [];
-    updateField('options', [...currentOptions, `Alternativ ${currentOptions.length + 1}`]);
+    const optionText = value || `Alternativ ${currentOptions.length + 1}`;
+    updateField('options', [...currentOptions, optionText]);
+    setNewOptionValue('');
+  };
+
+  const handleNewOptionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && newOptionValue.trim()) {
+      e.preventDefault();
+      addOption(newOptionValue.trim());
+    }
   };
 
   const removeOption = (optionIndex: number) => {
@@ -413,13 +424,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
               {/* Options for radio/dropdown/checkbox */}
               {requiresOptions && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Alternativ</Label>
-                    <Button size="sm" onClick={addOption} className="gap-2">
-                      <Plus className="h-3 w-3" />
-                      Lägg till alternativ
-                    </Button>
-                  </div>
+                  <Label>Alternativ</Label>
                   
                   <DndContext 
                     sensors={sensors}
@@ -441,6 +446,28 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                             onRemove={() => removeOption(optionIndex)}
                           />
                         ))}
+                        
+                        {/* Google Forms style: empty input field for adding new option */}
+                        <div className="flex items-center gap-2 pl-6">
+                          <div className="w-4 h-4 flex items-center justify-center">
+                            {question.type === 'radio' && (
+                              <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/30" />
+                            )}
+                            {question.type === 'checkbox' && (
+                              <div className="w-3 h-3 border-2 border-muted-foreground/30 rounded-sm" />
+                            )}
+                            {question.type === 'dropdown' && (
+                              <span className="text-muted-foreground/30 text-xs">{(question.options?.length || 0) + 1}</span>
+                            )}
+                          </div>
+                          <Input
+                            value={newOptionValue}
+                            onChange={(e) => setNewOptionValue(e.target.value)}
+                            onKeyDown={handleNewOptionKeyDown}
+                            placeholder="Lägg till alternativ..."
+                            className="flex-1 border-none border-b border-border rounded-none px-2 shadow-none focus-visible:ring-0 focus-visible:border-primary"
+                          />
+                        </div>
                       </div>
                     </SortableContext>
                   </DndContext>

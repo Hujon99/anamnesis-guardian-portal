@@ -149,6 +149,13 @@ const ExaminationTypeSelectionPage = () => {
 
   // Update examination types when store forms are loaded
   useEffect(() => {
+    console.log("[ExaminationTypeSelectionPage]: Store forms effect:", {
+      storeId,
+      isLoadingStoreForms,
+      storeFormsCount: storeforms.length,
+      storeForms: storeforms
+    });
+
     if (storeId && storeforms.length > 0) {
       const types: ExaminationType[] = storeforms.map(form => ({
         type: form.examination_type || 'allmän',
@@ -158,9 +165,11 @@ const ExaminationTypeSelectionPage = () => {
         description: getExaminationDescription(form.examination_type || 'allmän'),
       }));
 
+      console.log("[ExaminationTypeSelectionPage]: Setting examination types:", types);
       setExaminationTypes(types);
       setIsLoading(false);
     } else if (storeId && !isLoadingStoreForms && storeforms.length === 0) {
+      console.error("[ExaminationTypeSelectionPage]: No forms found for store");
       setError("Inga formulär hittades för denna butik");
       setIsLoading(false);
     }

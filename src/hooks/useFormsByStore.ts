@@ -22,59 +22,80 @@ export const useFormsByStore = (storeId?: string) => {
   return useQuery({
     queryKey: ["forms-by-store", storeId],
     queryFn: async (): Promise<FormTemplateWithMeta[]> => {
-      if (!supabase || !storeId) return [];
-
-      // First, get the store's organization_id
-      const { data: store, error: storeError } = await supabase
-        .from('stores')
-        .select('organization_id')
-        .eq('id', storeId)
-        .single();
-
-      if (storeError || !store) {
-        console.error("[useFormsByStore]: Error fetching store:", storeError);
+      console.log("[useFormsByStore]: Starting query for storeId:", storeId);
+      
+      if (!supabase || !storeId) {
+        console.log("[useFormsByStore]: Missing supabase or storeId");
         return [];
       }
 
-      // Get active forms for this store
-      const { data: storeFormsData, error: storeFormsError } = await supabase
-        .from('store_forms')
-        .select(`
-          form_id,
-          anamnes_forms!inner(
-            id,
-            title,
-            examination_type,
-            organization_id,
-            schema
-          )
-        `)
-        .eq('store_id', storeId)
-        .eq('is_active', true);
+      try {
+        // Strategy 1: Get active store form assignments
+        console.log("[useFormsByStore]: Fetching store_forms for storeId:", storeId);
+        const { data: storeFormsData, error: storeFormsError } = await supabase
+          .from('store_forms')
+          .select('form_id, is_active')
+          .eq('store_id', storeId)
+          .eq('is_active', true);
 
-      if (storeFormsError) {
-        console.error("[useFormsByStore]: Error fetching store forms:", storeFormsError);
-        throw new Error("Kunde inte hämta formulär: " + storeFormsError.message);
-      }
+        console.log("[useFormsByStore]: store_forms query result:", {
+          data: storeFormsData,
+          error: storeFormsError,
+          count: storeFormsData?.length || 0
+        });
 
-      // If no active assignments exist for this store, return empty array
-      // Don't fall back to all org forms - only show explicitly assigned forms
-      if (!storeFormsData || storeFormsData.length === 0) {
-        console.log("[useFormsByStore]: No active form assignments found for this store");
-        return [];
-      }
+        if (storeFormsError) {
+          console.error("[useFormsByStore]: Error fetching store forms:", storeFormsError);
+          throw new Error("Kunde inte hämta formulär: " + storeFormsError.message);
+        }
 
-      // Return assigned forms
-      return storeFormsData.map(item => {
-        const form = item.anamnes_forms;
-        return {
+        // If no active assignments exist for this store, return empty array
+        if (!storeFormsData || storeFormsData.length === 0) {
+          console.log("[useFormsByStore]: No active form assignments found for this store");
+          return [];
+        }
+
+        // Strategy 2: Fetch the actual form data separately
+        const formIds = storeFormsData.map(sf => sf.form_id);
+        console.log("[useFormsByStore]: Fetching forms for formIds:", formIds);
+
+        const { data: formsData, error: formsError } = await supabase
+          .from('anamnes_forms')
+          .select('id, title, examination_type, organization_id, schema')
+          .in('id', formIds);
+
+        console.log("[useFormsByStore]: anamnes_forms query result:", {
+          data: formsData,
+          error: formsError,
+          count: formsData?.length || 0
+        });
+
+        if (formsError) {
+          console.error("[useFormsByStore]: Error fetching forms:", formsError);
+          throw new Error("Kunde inte hämta formulärdata: " + formsError.message);
+        }
+
+        if (!formsData || formsData.length === 0) {
+          console.warn("[useFormsByStore]: Forms exist in store_forms but couldn't fetch form details");
+          return [];
+        }
+
+        // Return assigned forms
+        const result = formsData.map(form => ({
           schema: form.schema as unknown as FormTemplate,
           id: form.id,
           title: form.title,
           organization_id: form.organization_id,
           examination_type: form.examination_type,
-        };
-      });
+        }));
+
+        console.log("[useFormsByStore]: Returning", result.length, "forms");
+        return result;
+
+      } catch (error) {
+        console.error("[useFormsByStore]: Unexpected error:", error);
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,

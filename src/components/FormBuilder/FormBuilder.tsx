@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   Save, 
   Eye, 
@@ -241,18 +241,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
       onSave?.(currentForm);
       
       // Show success toast
-      toast({
-        title: "Formulär sparat",
+      toast.success("Formulär sparat", {
         description: "Alla ändringar har sparats framgångsrikt.",
         duration: 3000,
       });
     } catch (error) {
       console.error('Save error:', error);
       // Show error toast
-      toast({
-        title: "Fel vid sparning",
+      toast.error("Fel vid sparning", {
         description: "Kunde inte spara formuläret. Försök igen.",
-        variant: "destructive",
         duration: 5000,
       });
     } finally {

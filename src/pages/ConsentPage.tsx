@@ -22,10 +22,12 @@ const ConsentPage = () => {
   const [organizationName, setOrganizationName] = useState<string>('');
 
   const orgId = searchParams.get("org_id");
+  const formId = searchParams.get("form_id");
 
   useEffect(() => {
-    // Check if consent already given for this session
-    const sessionConsent = sessionStorage.getItem(`consent_given_${orgId}`);
+    // Check if consent already given for this session (use orgId or formId as key)
+    const consentKey = orgId || formId;
+    const sessionConsent = sessionStorage.getItem(`consent_given_${consentKey}`);
     if (sessionConsent === 'true') {
       // Redirect directly to customer info
       const currentParams = searchParams.toString();
@@ -34,8 +36,49 @@ const ConsentPage = () => {
     }
 
     const validateOrganization = async () => {
-      if (!orgId) {
-        setError("Organisation ID saknas i länken");
+      // Handle form_id based flow
+      if (formId && !orgId) {
+        try {
+          const { data: form, error: formError } = await supabase
+            .from('anamnes_forms')
+            .select('id, organization_id, title')
+            .eq('id', formId)
+            .maybeSingle();
+
+          if (formError) {
+            console.error("Error fetching form:", formError);
+            setError("Ett fel uppstod vid validering av formuläret");
+            setIsLoading(false);
+            return;
+          }
+
+          if (!form) {
+            setError("Det angivna formuläret finns inte");
+            setIsLoading(false);
+            return;
+          }
+
+          // Fetch organization name
+          const { data: org, error: orgError } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', form.organization_id)
+            .maybeSingle();
+
+          setOrganizationName(org?.name || 'Organisationen');
+          setIsLoading(false);
+          return;
+        } catch (err: any) {
+          console.error("Error:", err);
+          setError("Ett oväntat fel uppstod");
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Handle org_id based flow
+      if (!orgId && !formId) {
+        setError("Organisation ID eller formulär ID saknas i länken");
         setIsLoading(false);
         return;
       }
@@ -76,9 +119,10 @@ const ConsentPage = () => {
   const handleConsentContinue = () => {
     if (!consentGiven) return;
 
-    // Store consent in sessionStorage for this organization
-    sessionStorage.setItem(`consent_given_${orgId}`, 'true');
-    sessionStorage.setItem(`consent_timestamp_${orgId}`, new Date().toISOString());
+    // Store consent in sessionStorage for this organization or form
+    const consentKey = orgId || formId;
+    sessionStorage.setItem(`consent_given_${consentKey}`, 'true');
+    sessionStorage.setItem(`consent_timestamp_${consentKey}`, new Date().toISOString());
 
     // Navigate to customer info with all current params
     const currentParams = searchParams.toString();

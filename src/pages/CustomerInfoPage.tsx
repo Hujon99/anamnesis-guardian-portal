@@ -41,6 +41,7 @@ const CustomerInfoPage = () => {
   
   const formId = searchParams.get("form_id");
   const orgId = searchParams.get("org_id");
+  const effectiveOrgId = orgId || formData?.organization_id;
   
   // Read additional URL parameters for pre-filling
   const urlBookingDate = searchParams.get("booking_date");
@@ -85,8 +86,60 @@ const CustomerInfoPage = () => {
   // Validate and fetch data
   useEffect(() => {
     const validateAndFetchData = async () => {
+      // Handle form_id based flow
+      if (formId && !orgId) {
+        try {
+          console.log(`CustomerInfoPage: Fetching form and organization: ${formId}`);
+          
+          const { data: form, error: formError } = await supabase
+            .from('anamnes_forms')
+            .select('id, organization_id')
+            .eq('id', formId)
+            .maybeSingle();
+          
+          if (formError) {
+            console.error("Error fetching form:", formError);
+            setError(`Ett fel uppstod vid hämtning av formulär: ${formError.message}`);
+            setIsLoading(false);
+            return;
+          }
+          
+          if (!form) {
+            setError("Det angivna formuläret finns inte");
+            setIsLoading(false);
+            return;
+          }
+          
+          setFormData(form);
+          
+          // Fetch stores for the form's organization
+          const { data: storesData, error: storesError } = await supabase
+            .from('stores')
+            .select('id, name')
+            .eq('organization_id', form.organization_id);
+          
+          if (storesError) {
+            console.error("Error fetching stores:", storesError);
+            setError(`Ett fel uppstod vid hämtning av butiker: ${storesError.message}`);
+            setIsLoading(false);
+            return;
+          }
+          
+          console.log(`CustomerInfoPage: Found ${storesData?.length || 0} stores`);
+          setStores(storesData || []);
+          setIsLoading(false);
+          return;
+        } catch (err) {
+          console.error("Error in form validation:", err);
+          setError("Ett oväntat fel uppstod vid validering");
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Handle org_id based flow
       if (!orgId) {
-        setError("Organisation-ID saknas i URL:en");
+        setError("Organisation-ID eller formulär-ID saknas i URL:en");
         setIsLoading(false);
         return;
       }
@@ -120,7 +173,7 @@ const CustomerInfoPage = () => {
     };
     
     validateAndFetchData();
-  }, [orgId]);
+  }, [orgId, formId]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,7 +207,19 @@ const CustomerInfoPage = () => {
       
       // Build URL parameters for examination type selection
       const params = new URLSearchParams();
-      params.set("org_id", orgId!);
+      
+      // Use orgId if available, otherwise use the one from form data
+      if (orgId) {
+        params.set("org_id", orgId);
+      } else if (effectiveOrgId) {
+        params.set("org_id", effectiveOrgId);
+      }
+      
+      // Include form_id if present
+      if (formId) {
+        params.set("form_id", formId);
+      }
+      
       params.set("first_name", firstName.trim());
       params.set("booking_date", bookingDate.toISOString());
       params.set("booking_id", orderNumber);

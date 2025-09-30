@@ -86,10 +86,10 @@ const LinkPage = () => {
           
           setValidFormId(true);
           
-          // Updated logic: redirect to customer info page if missing essential booking details
+          // Updated logic: redirect to consent page first if missing essential booking details
           // Only proceed directly to form if we have booking_id AND first_name (minimum required)
           if (!bookingId || !firstName) {
-            console.log("Missing essential booking details, redirecting to customer info page");
+            console.log("Missing essential booking details, redirecting to consent page");
             
             // Build URL with all available parameters
             const params = new URLSearchParams();
@@ -101,7 +101,7 @@ const LinkPage = () => {
             if (firstName) params.set('first_name', firstName);
             if (bookingId) params.set('booking_id', bookingId);
             
-            navigate(`/customer-info?${params.toString()}`);
+            navigate(`/consent?${params.toString()}`);
             return;
           }
           

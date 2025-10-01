@@ -29,6 +29,7 @@ import { OpticianFormErrorFallback } from "@/components/OpticianForm/OpticianFor
 import { OpticianFormTokenError } from "@/components/OpticianForm/OpticianFormTokenError";
 import { OpticianFormLoading } from "@/components/OpticianForm/OpticianFormLoadingStates";
 import { useOpticianFormAuth } from "@/hooks/useOpticianFormAuth";
+import OpticianFormHeader from "@/components/Optician/OpticianFormHeader";
 
 const OpticianFormPage = () => {
   const [searchParams] = useSearchParams();
@@ -221,21 +222,26 @@ const OpticianFormPage = () => {
   // Wrap in ErrorBoundary for better error handling and use FormLayout with clean layout (no sidebar/breadcrumbs)
   return (
     <FormLayout cleanLayout={true}>
-      <ErrorBoundary
-        FallbackComponent={OpticianFormErrorFallback}
-        onReset={() => {
-          // Reset error boundary and reload the page
-          window.location.reload();
-        }}
-      >
-        <BaseFormPage 
-          token={effectiveToken}
-          mode={formMode}
-          hideAutoSave={true}
-          hideCopyLink={true}
-          onError={handleSubmissionError}
-        />
-      </ErrorBoundary>
+      <div className="min-h-screen bg-background py-8 px-4 sm:px-6">
+        <div className="max-w-2xl mx-auto">
+          <OpticianFormHeader />
+          <ErrorBoundary
+            FallbackComponent={OpticianFormErrorFallback}
+            onReset={() => {
+              // Reset error boundary and reload the page
+              window.location.reload();
+            }}
+          >
+            <BaseFormPage 
+              token={effectiveToken}
+              mode={formMode}
+              hideAutoSave={true}
+              hideCopyLink={true}
+              onError={handleSubmissionError}
+            />
+          </ErrorBoundary>
+        </div>
+      </div>
     </FormLayout>
   );
 };

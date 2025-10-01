@@ -14,9 +14,10 @@ import Navbar from "./Navbar";
 
 interface FormLayoutProps {
   children: React.ReactNode;
+  cleanLayout?: boolean;
 }
 
-const FormLayout = ({ children }: FormLayoutProps) => {
+const FormLayout = ({ children, cleanLayout = false }: FormLayoutProps) => {
   const { isLoaded, userId } = useAuth();
 
   // Show loading state while Clerk is initializing
@@ -24,8 +25,8 @@ const FormLayout = ({ children }: FormLayoutProps) => {
     return <div className="flex items-center justify-center min-h-screen">Laddar...</div>;
   }
 
-  // If user is authenticated (optician), show sidebar layout
-  if (userId) {
+  // If user is authenticated (optician), show sidebar layout (unless cleanLayout is requested)
+  if (userId && !cleanLayout) {
     return (
       <SidebarProvider>
         <div className="flex w-full min-h-screen">

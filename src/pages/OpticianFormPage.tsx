@@ -218,9 +218,9 @@ const OpticianFormPage = () => {
   
   console.log(`[OpticianFormPage/${instanceIdRef.current}]: Rendering form. mode: ${formMode}, token: ${effectiveToken?.substring(0, 6) || "missing"}...`);
   
-  // Wrap in ErrorBoundary for better error handling and use FormLayout for sidebar
+  // Wrap in ErrorBoundary for better error handling and use FormLayout with clean layout (no sidebar/breadcrumbs)
   return (
-    <FormLayout>
+    <FormLayout cleanLayout={true}>
       <ErrorBoundary
         FallbackComponent={OpticianFormErrorFallback}
         onReset={() => {

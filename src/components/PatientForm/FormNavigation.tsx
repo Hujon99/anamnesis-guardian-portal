@@ -55,8 +55,8 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
   };
   
   return (
-    <div className="flex justify-between w-full gap-2">
-      <div className="flex-1">
+    <div className="flex flex-col md:flex-row md:justify-start justify-between w-full gap-2">
+      <div className="flex-1 md:flex-initial">
         {!isFirstStep && (
           <Button 
             type="button" 
@@ -73,7 +73,7 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
         )}
       </div>
       
-      <div className="flex-1 flex justify-end">
+      <div className="flex-1 md:flex-initial flex justify-end md:justify-start">
         {isLastStep ? (
           <Button 
             id="submit-button"

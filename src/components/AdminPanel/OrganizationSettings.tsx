@@ -15,6 +15,7 @@ import { useStores } from '@/hooks/useStores';
 import { useOrganizationForms } from '@/hooks/useOrganizationForms';
 import { useStoreFormAssignments } from '@/hooks/useStoreFormAssignments';
 import { AIPromptsManager } from './AIPromptsManager';
+import { OrganizationLinkCard } from './OrganizationLinkCard';
 
 interface StoreFormCardProps {
   store: any;
@@ -159,17 +160,7 @@ export const OrganizationSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-primary" />
-            Organisationsinställningar
-          </CardTitle>
-          <CardDescription>
-            Hantera inställningar för {organization.name}
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <OrganizationLinkCard />
 
       <AIPromptsManager organizationId={organization.id} />
 

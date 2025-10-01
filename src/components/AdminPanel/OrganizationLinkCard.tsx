@@ -17,7 +17,7 @@ export const OrganizationLinkCard: React.FC = () => {
 
   if (!organization) return null;
 
-  const organizationLink = `${window.location.origin}/link?org_id=${organization.id}`;
+  const organizationLink = `https://anamnes.binokeloptik.se/link?org_id=${organization.id}`;
 
   const handleCopyLink = async () => {
     try {

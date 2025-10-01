@@ -137,26 +137,35 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
 
       const isSystemOrg = orgData?.is_system_org || false;
 
-      if (!existing) {
-        // Insert new settings
-        const { error } = await supabase
-          .from('organization_settings')
-          .insert({
-            organization_id: organizationId,
-            is_global_default: isSystemOrg,
-            ...updates
-          });
+    if (!existing) {
+      // Insert new settings
+      const { error } = await supabase
+        .from('organization_settings')
+        .insert({
+          organization_id: organizationId,
+          is_global_default: isSystemOrg,
+          ...updates
+        });
 
-        if (error) throw error;
+      if (error) throw error;
+    } else {
+      // Update existing settings
+      // For system orgs, update based on is_global_default flag
+      // For regular orgs, update based on organization_id
+      const query = supabase
+        .from('organization_settings')
+        .update(updates);
+      
+      if (isSystemOrg) {
+        query.eq('is_global_default', true);
       } else {
-        // Update existing settings
-        const { error } = await supabase
-          .from('organization_settings')
-          .update(updates)
-          .eq('organization_id', organizationId);
-
-        if (error) throw error;
+        query.eq('organization_id', organizationId);
       }
+
+      const { error } = await query;
+
+      if (error) throw error;
+    }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organization-prompts', organizationId] });

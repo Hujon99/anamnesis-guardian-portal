@@ -25,48 +25,22 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJ
 export const createSupabaseClient = (tokenProvider?: () => Promise<string | null>) => {
   // If no token provider, return a basic unauthenticated client
   if (!tokenProvider) {
-    console.log('[createSupabaseClient] No token provider, creating unauthenticated client');
     return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
-  
-  console.log('[createSupabaseClient] Creating authenticated client with token provider');
   
   // Create a custom fetch that injects fresh tokens for each request
   const customFetch = async (url: RequestInfo | URL, options: RequestInit = {}) => {
     const urlString = typeof url === 'string' ? url : url.toString();
     const isSupabaseRequest = urlString.includes('supabase.co');
     
-    console.log('[customFetch] Request to:', urlString.substring(0, 100));
-    console.log('[customFetch] Is Supabase request:', isSupabaseRequest);
-    
     if (isSupabaseRequest && tokenProvider) {
       try {
-        console.log('[customFetch] Calling tokenProvider...');
         const token = await tokenProvider();
         
         if (token) {
-          console.log('[customFetch] Token received, length:', token.length);
-          console.log('[customFetch] Token prefix:', token.substring(0, 20) + '...');
-          
-          // Try to decode and log JWT payload (for debugging)
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            console.log('[customFetch] JWT payload:', {
-              sub: payload.sub,
-              org_id: payload.org_id,
-              email: payload.email,
-              exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'none'
-            });
-          } catch (decodeError) {
-            console.warn('[customFetch] Could not decode JWT:', decodeError);
-          }
-          
           const headers = new Headers(options.headers);
           headers.set('Authorization', `Bearer ${token}`);
           options = { ...options, headers };
-          console.log('[customFetch] Authorization header set');
-        } else {
-          console.warn('[customFetch] Token provider returned null/empty token');
         }
       } catch (error) {
         console.error('[customFetch] Failed to get fresh token:', error);
@@ -75,25 +49,18 @@ export const createSupabaseClient = (tokenProvider?: () => Promise<string | null
     
     // Make the request with fresh token
     const response = await fetch(url, options);
-    console.log('[customFetch] Response status:', response.status);
     
     // If we get a JWT error, try once more with a fresh token
     if (response.status === 401 && isSupabaseRequest && tokenProvider) {
       try {
         const errorData = await response.clone().json();
-        console.log('[customFetch] 401 error data:', errorData);
         
         if (errorData?.code === 'PGRST301' || errorData?.message?.includes('JWT')) {
-          console.log('[customFetch] JWT error detected, retrying with fresh token');
-          
           const freshToken = await tokenProvider();
           if (freshToken) {
-            console.log('[customFetch] Fresh token obtained for retry, length:', freshToken.length);
             const retryHeaders = new Headers(options.headers);
             retryHeaders.set('Authorization', `Bearer ${freshToken}`);
             return fetch(url, { ...options, headers: retryHeaders });
-          } else {
-            console.error('[customFetch] Failed to get fresh token for retry');
           }
         }
       } catch (retryError) {

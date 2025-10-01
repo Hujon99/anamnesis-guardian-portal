@@ -73,81 +73,44 @@ export const useSupabaseClient = () => {
    * Token provider function that returns a fresh token with caching
    */
   const tokenProvider = useCallback(async (): Promise<string | null> => {
-    console.log("[tokenProvider] Called");
-    console.log("[tokenProvider] isSignedIn:", isSignedIn);
-    console.log("[tokenProvider] userId:", userId);
-    console.log("[tokenProvider] hasGetToken:", !!getToken);
-    
     if (!isSignedIn || !getToken) {
-      console.warn("[tokenProvider] User not signed in or getToken not available");
       return null;
     }
 
     // Check cache first
     const cachedToken = tokenCache.current.get();
     if (cachedToken) {
-      console.log("[tokenProvider] Using cached token, length:", cachedToken.length);
       return cachedToken;
     }
 
-    console.log("[tokenProvider] No cached token, fetching fresh token from Clerk");
-    
     // Get fresh token with retry logic
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        console.log(`[tokenProvider] Attempt ${attempt}/${MAX_RETRIES} - Calling getToken()`);
-        
         // Try with supabase template first, fallback to default if it doesn't exist
         let token;
         try {
-          console.log("[tokenProvider] Trying with 'supabase' template");
           token = await getToken({ template: "supabase" });
-          console.log("[tokenProvider] Token from template:", token ? `length=${token.length}` : "null");
         } catch (templateError) {
-          console.log("[tokenProvider] Supabase template not found, using default");
           token = await getToken();
-          console.log("[tokenProvider] Token from default:", token ? `length=${token.length}` : "null");
         }
         
         if (token) {
-          console.log("[tokenProvider] ✓ Fresh token retrieved successfully");
-          console.log("[tokenProvider] Token prefix:", token.substring(0, 20) + "...");
-          
-          // Decode and log payload for debugging
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            console.log("[tokenProvider] JWT payload decoded:", {
-              sub: payload.sub,
-              org_id: payload.org_id,
-              email: payload.email,
-              exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'none',
-              iat: payload.iat ? new Date(payload.iat * 1000).toISOString() : 'none'
-            });
-          } catch (decodeError) {
-            console.error("[tokenProvider] Failed to decode JWT:", decodeError);
-          }
-          
           tokenCache.current.set(token);
           return token;
-        } else {
-          console.warn(`[tokenProvider] Attempt ${attempt}: getToken returned null/empty`);
         }
       } catch (error) {
-        console.error(`[tokenProvider] Attempt ${attempt} failed with error:`, error);
+        console.error(`[tokenProvider] Attempt ${attempt} failed:`, error);
         
         if (attempt === MAX_RETRIES) {
-          console.error("[tokenProvider] All retry attempts exhausted");
           throw error;
         }
         
         // Wait before retrying (exponential backoff)
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt - 1);
-        console.log(`[tokenProvider] Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
-    console.error("[tokenProvider] Failed to get token after all retries");
     return null;
   }, [isSignedIn, getToken, userId]);
 
@@ -156,10 +119,8 @@ export const useSupabaseClient = () => {
    */
   const createAuthenticatedClient = useCallback(() => {
     if (isSignedIn) {
-      console.log("[useSupabaseClient] Creating authenticated client with token provider");
       return createSupabaseClient(tokenProvider);
     } else {
-      console.log("[useSupabaseClient] Creating unauthenticated client");
       return createSupabaseClient(); // No token provider for unauthenticated
     }
   }, [isSignedIn, tokenProvider]);
@@ -169,15 +130,12 @@ export const useSupabaseClient = () => {
    */
   const setupClient = useCallback(async (force = false) => {
     if (isSettingUpRef.current && !force) {
-      console.log("[useSupabaseClient] Setup already in progress, waiting...");
       if (setupPromiseRef.current) {
         await setupPromiseRef.current;
         return;
       }
     }
 
-    console.log("[useSupabaseClient] Setting up Supabase client" + (force ? " (forced)" : ""));
-    
     isSettingUpRef.current = true;
     setIsLoading(true);
     setError(null);
@@ -190,9 +148,6 @@ export const useSupabaseClient = () => {
           if (!testToken) {
             throw new Error("Kunde inte hämta åtkomsttoken");
           }
-          console.log("[useSupabaseClient] Client setup complete with token provider");
-        } else {
-          console.log("[useSupabaseClient] Client setup complete without authentication");
         }
 
         const newClient = createAuthenticatedClient();
@@ -217,7 +172,6 @@ export const useSupabaseClient = () => {
    * Handle JWT errors by clearing cache and refreshing
    */
   const handleJwtError = useCallback(async () => {
-    console.log("[useSupabaseClient] Handling JWT error, clearing token cache");
     tokenCache.current.clear();
   }, []);
 
@@ -225,8 +179,6 @@ export const useSupabaseClient = () => {
    * Refresh the Supabase client (mainly for external calls)
    */
   const refreshClient = useCallback(async (force = false) => {
-    console.log("[useSupabaseClient] Refreshing client" + (force ? " (forced)" : ""));
-    
     if (force) {
       tokenCache.current.clear();
     }
@@ -236,7 +188,6 @@ export const useSupabaseClient = () => {
 
   // Set up client when authentication state changes or on mount
   useEffect(() => {
-    console.log("[useSupabaseClient] Auth state changed:", { isSignedIn, userId });
     setupClient();
   }, [isSignedIn, userId, setupClient]);
 

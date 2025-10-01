@@ -60,7 +60,7 @@ export const useSyncClerkUsers = () => {
     }
   };
   
-  // Main sync function - uses edge function to bypass RLS
+  // Main sync function
   const syncUsers = useCallback(async () => {
     if (!organization || !isReady || !userId) {
       return { success: false, message: 'Organization, Supabase client, or user ID not available' };
@@ -79,45 +79,89 @@ export const useSyncClerkUsers = () => {
         return { success: false, message: 'No organization members found' };
       }
       
-      // Prepare members data for edge function
-      const members = memberships.data.map(member => {
-        const memberUser = member.publicUserData;
-        return {
-          clerkUserId: memberUser.userId,
-          email: memberUser.identifier || null,
-          firstName: memberUser.firstName || null,
-          lastName: memberUser.lastName || null,
-          displayName: [memberUser.firstName, memberUser.lastName].filter(Boolean).join(' ') || null,
-          role: determineRole(member),
-        };
-      }).filter(m => m.clerkUserId); // Filter out any invalid members
+      let createdCount = 0;
+      let updatedCount = 0;
       
-      // Call edge function to sync users
-      const { data, error: functionError } = await supabase.functions.invoke('sync-users', {
-        body: {
-          organizationId: organization.id,
-          members,
-        },
-      });
-      
-      if (functionError) {
-        throw new Error(functionError.message);
-      }
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Sync failed');
+      // Process each member
+      for (const member of memberships.data) {
+        const clerkUserId = member.publicUserData.userId;
+        
+        if (!clerkUserId) continue;
+        
+        // Check if user already exists in Supabase
+        const existingUser = await checkUserExists(clerkUserId);
+        const role = determineRole(member);
+        
+        if (!existingUser) {
+          // Create new user with email and name information
+          const memberUser = member.publicUserData;
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({
+              clerk_user_id: clerkUserId,
+              organization_id: organization.id,
+              role: role,
+              email: memberUser.identifier || null, // Clerk identifier is usually email
+              first_name: memberUser.firstName || null,
+              last_name: memberUser.lastName || null,
+              display_name: [memberUser.firstName, memberUser.lastName].filter(Boolean).join(' ') || null
+            });
+            
+          if (insertError) {
+            console.error('Error creating user:', insertError);
+            continue;
+          }
+          
+          createdCount++;
+        } else {
+          // Update user information if it has changed
+          const memberUser = member.publicUserData;
+          const newEmail = memberUser.identifier || null;
+          const newFirstName = memberUser.firstName || null;
+          const newLastName = memberUser.lastName || null;
+          const newDisplayName = [memberUser.firstName, memberUser.lastName].filter(Boolean).join(' ') || null;
+          
+          const needsUpdate = (
+            existingUser.role !== role ||
+            existingUser.email !== newEmail ||
+            existingUser.first_name !== newFirstName ||
+            existingUser.last_name !== newLastName ||
+            existingUser.display_name !== newDisplayName
+          );
+          
+          if (needsUpdate) {
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ 
+                role: role,
+                email: newEmail,
+                first_name: newFirstName,
+                last_name: newLastName,
+                display_name: newDisplayName
+              })
+              .eq('clerk_user_id', clerkUserId);
+              
+            if (updateError) {
+              console.error('Error updating user:', updateError);
+              continue;
+            }
+            
+            updatedCount++;
+          }
+        }
       }
       
       // Update sync timestamp
       const now = new Date();
       setLastSyncedAt(now);
+      
       setIsSyncing(false);
       
       return { 
         success: true, 
-        message: data.message || 'Sync completed',
-        createdCount: data.results?.created || 0,
-        updatedCount: data.results?.updated || 0,
+        message: `Sync completed: ${createdCount} users created, ${updatedCount} users updated`,
+        createdCount,
+        updatedCount
       };
     } catch (err) {
       const error = err as Error;

@@ -30,9 +30,6 @@ export function UserSyncManager() {
   } = useUserSyncStore();
   
   const [initialSyncComplete, setInitialSyncComplete] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 2000; // 2 seconds
 
   // Effect to handle organization switching or initial login
   useEffect(() => {
@@ -55,12 +52,6 @@ export function UserSyncManager() {
         return;
       }
 
-      // Circuit breaker: if we've failed too many times, don't retry immediately
-      if (syncStatus === 'error' && retryCount >= MAX_RETRIES) {
-        console.log(`[UserSyncManager] Max retries reached for organization ${organization.id}`);
-        return;
-      }
-
       // Wait for organization to be synced first
       if (!isOrgSynced && !isSyncingOrg) {
         console.log(`[UserSyncManager] Waiting for organization to sync first`);
@@ -72,22 +63,7 @@ export function UserSyncManager() {
 
       try {
         // First ensure the current user record exists
-        const ensureResult = await ensureUserRecordWithToast();
-        
-        // If ensuring current user failed, don't proceed with full sync
-        if (!ensureResult.success) {
-          console.warn(`[UserSyncManager] Failed to ensure current user, skipping full sync`);
-          setSyncStatus(organization.id, 'error');
-          setRetryCount(prev => prev + 1);
-          
-          // Retry after delay if under max retries
-          if (retryCount < MAX_RETRIES) {
-            setTimeout(() => {
-              setSyncStatus(organization.id, 'idle');
-            }, RETRY_DELAY);
-          }
-          return;
-        }
+        await ensureUserRecordWithToast();
         
         // Sync users for this organization
         const result = await syncUsers();
@@ -96,7 +72,6 @@ export function UserSyncManager() {
           console.log(`[UserSyncManager] Sync successful:`, result.message);
           setSyncStatus(organization.id, 'synced');
           setLastSynced(organization.id, new Date());
-          setRetryCount(0); // Reset retry count on success
           
           // Only show toast for manual syncs or initial load, not on every org switch
           if (!initialSyncComplete) {
@@ -105,33 +80,24 @@ export function UserSyncManager() {
         } else {
           console.error(`[UserSyncManager] Sync failed:`, result.message);
           setSyncStatus(organization.id, 'error');
-          setRetryCount(prev => prev + 1);
           
-          // Only show error toast if it's a real error and we've exhausted retries
-          if (!result.message.includes("No organization members found") && retryCount >= MAX_RETRIES - 1) {
+          // Only show error toast if it's a real error, not just "no members found"
+          if (!result.message.includes("No organization members found")) {
             toast({
               title: "Synkroniseringsfel",
-              description: "Kunde inte synkronisera användare med databasen efter flera försök.",
+              description: "Kunde inte synkronisera användare med databasen. Vissa funktioner kanske inte fungerar korrekt.",
               variant: "destructive",
             });
-          }
-          
-          // Retry after delay if under max retries
-          if (retryCount < MAX_RETRIES) {
-            setTimeout(() => {
-              setSyncStatus(organization.id, 'idle');
-            }, RETRY_DELAY);
           }
         }
       } catch (error) {
         console.error(`[UserSyncManager] Error during sync:`, error);
         setSyncStatus(organization.id, 'error');
-        setRetryCount(prev => prev + 1);
       }
     };
 
     handleSync();
-  }, [userLoaded, orgLoaded, authLoaded, organization?.id, userId, retryCount]);
+  }, [userLoaded, orgLoaded, authLoaded, organization?.id, userId]);
 
   // This component doesn't render anything visible
   return null;

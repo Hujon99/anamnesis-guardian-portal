@@ -33,33 +33,29 @@ export const useEnsureUserRecord = () => {
       const lastName = user.lastName || null;
       const displayName = user.fullName || [firstName, lastName].filter(Boolean).join(' ') || null;
       
-      // Use edge function to ensure user record (bypasses RLS)
-      const { data, error: functionError } = await supabase.functions.invoke('sync-users', {
-        body: {
-          organizationId: orgId,
-          members: [{
-            clerkUserId: userId,
-            email,
-            firstName,
-            lastName,
-            displayName,
-            role: 'optician', // Default role, can be changed by admins later
-          }],
-        },
-      });
-      
-      if (functionError) {
-        console.error('Error ensuring user record:', functionError);
-        setError(new Error(functionError.message));
+      // Try to upsert the user record
+      const { data, error: upsertError } = await supabase
+        .from('users')
+        .upsert({
+          clerk_user_id: userId,
+          organization_id: orgId,
+          email: email,
+          first_name: firstName,
+          last_name: lastName,
+          display_name: displayName,
+          role: 'optician' // Default role, can be changed by admins later
+        }, {
+          onConflict: 'organization_id,clerk_user_id',
+          ignoreDuplicates: false
+        })
+        .select()
+        .single();
+        
+      if (upsertError) {
+        console.error('Error upserting user record:', upsertError);
+        setError(new Error(upsertError.message));
         setIsEnsuring(false);
-        return { success: false, message: functionError.message };
-      }
-      
-      if (!data?.success) {
-        const errorMsg = data?.error || 'Failed to ensure user record';
-        setError(new Error(errorMsg));
-        setIsEnsuring(false);
-        return { success: false, message: errorMsg };
+        return { success: false, message: upsertError.message };
       }
       
       // Update timestamp

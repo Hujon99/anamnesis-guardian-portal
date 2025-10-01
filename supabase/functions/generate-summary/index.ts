@@ -213,6 +213,7 @@ LINSUNDERSÖKNING - Fokusera på följande områden:
         console.log('[generate-summary] No organization ID, using default prompts');
         switch (examinationType?.toLowerCase()) {
           case 'körkortsundersökning':
+            return defaultPrompts.driving_license;
           case 'driving_license':
             return defaultPrompts.driving_license;
           case 'linsundersökning':
@@ -235,6 +236,7 @@ LINSUNDERSÖKNING - Fokusera på följande områden:
           console.log('[generate-summary] Error fetching custom prompts, using defaults:', error.message);
           switch (examinationType?.toLowerCase()) {
             case 'körkortsundersökning':
+              return defaultPrompts.driving_license;
             case 'driving_license':
               return defaultPrompts.driving_license;
             case 'linsundersökning':
@@ -249,6 +251,7 @@ LINSUNDERSÖKNING - Fokusera på följande områden:
           console.log('[generate-summary] No custom prompts found, using defaults');
           switch (examinationType?.toLowerCase()) {
             case 'körkortsundersökning':
+              return defaultPrompts.driving_license;
             case 'driving_license':
               return defaultPrompts.driving_license;
             case 'linsundersökning':
@@ -263,6 +266,7 @@ LINSUNDERSÖKNING - Fokusera på följande områden:
         console.log('[generate-summary] Using custom prompts from organization settings');
         switch (examinationType?.toLowerCase()) {
           case 'körkortsundersökning':
+            return defaultPrompts.driving_license;
           case 'driving_license':
             return settings.ai_prompt_driving_license || defaultPrompts.driving_license;
           case 'linsundersökning':
@@ -276,6 +280,7 @@ LINSUNDERSÖKNING - Fokusera på följande områden:
         // Fallback to defaults on error
         switch (examinationType?.toLowerCase()) {
           case 'körkortsundersökning':
+            return defaultPrompts.driving_license;
           case 'driving_license':
             return defaultPrompts.driving_license;
           case 'linsundersökning':

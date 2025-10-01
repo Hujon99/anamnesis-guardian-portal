@@ -150,10 +150,19 @@ export function useOrganizationPrompts(organizationId: string | undefined) {
         if (error) throw error;
       } else {
         // Update existing settings
-        const { error } = await supabase
+        let updateQuery = supabase
           .from('organization_settings')
-          .update(updates)
-          .eq('organization_id', organizationId);
+          .update(updates);
+        
+        // For system orgs, update by is_global_default flag
+        // For regular orgs, update by organization_id
+        if (existing.is_global_default) {
+          updateQuery = updateQuery.eq('is_global_default', true);
+        } else {
+          updateQuery = updateQuery.eq('organization_id', organizationId);
+        }
+        
+        const { error } = await updateQuery;
 
         if (error) throw error;
       }

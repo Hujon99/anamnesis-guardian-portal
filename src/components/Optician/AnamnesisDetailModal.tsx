@@ -13,9 +13,10 @@ import { useAnamnesisDetail } from "@/hooks/useAnamnesisDetail";
 import { ModalHeader } from "./EntryDetails/ModalHeader";
 import { ModalTabContent } from "./EntryDetails/ModalTabContent";
 import { ModalActions } from "./EntryDetails/ModalActions";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useRobustUserRole } from "@/hooks/useRobustUserRole";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Lock, RefreshCw, Loader2 } from "lucide-react";
 
 interface AnamnesisDetailModalProps {
   entry: AnamnesesEntry;
@@ -30,7 +31,14 @@ export function AnamnesisDetailModal({
   onOpenChange,
   onEntryUpdated
 }: AnamnesisDetailModalProps) {
-  const { isAdmin, isOptician, isLoading: isLoadingRole } = useUserRole();
+  const { 
+    isAdmin, 
+    isOptician, 
+    isLoading: isLoadingRole,
+    error: roleError,
+    retry: retryRole,
+    retryCount
+  } = useRobustUserRole();
   
   // Only admin and optician can view anamnesis details
   const canViewDetails = isAdmin || isOptician;
@@ -76,7 +84,47 @@ export function AnamnesisDetailModal({
 
   // Show loading state while checking permissions
   if (isLoadingRole) {
-    return null; // Don't show anything while loading
+    return (
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <div className="p-6 text-center">
+            <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Verifierar behörigheter...
+              {retryCount > 0 && ` (försök ${retryCount}/${3})`}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show error state with retry option
+  if (roleError && !canViewDetails) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <div className="p-6 text-center space-y-4">
+            <Lock className="h-12 w-12 mx-auto mb-4 text-amber-500" />
+            <h3 className="text-lg font-semibold">Problem med behörighetskontroll</h3>
+            <Alert variant="destructive">
+              <AlertDescription>
+                Det gick inte att verifiera dina behörigheter. Detta kan bero på ett tillfälligt anslutningsfel.
+              </AlertDescription>
+            </Alert>
+            <div className="flex flex-col gap-2">
+              <Button onClick={retryRole} variant="default" className="w-full">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Försök igen
+              </Button>
+              <Button onClick={() => onOpenChange(false)} variant="outline" className="w-full">
+                Stäng
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   // Show access denied message if user doesn't have permission
@@ -84,7 +132,7 @@ export function AnamnesisDetailModal({
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
-          <div className="p-6 text-center">
+          <div className="p-6 text-center space-y-4">
             <Lock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">Åtkomst nekad</h3>
             <Alert>
@@ -92,6 +140,9 @@ export function AnamnesisDetailModal({
                 Endast optiker och administratörer kan öppna och se detaljer om anamneser.
               </AlertDescription>
             </Alert>
+            <Button onClick={() => onOpenChange(false)} variant="outline" className="w-full">
+              Stäng
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

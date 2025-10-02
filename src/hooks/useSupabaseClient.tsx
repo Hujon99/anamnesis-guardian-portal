@@ -12,7 +12,7 @@ import { Database } from "@/integrations/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 // Configuration constants
-const TOKEN_CACHE_TTL = 30 * 1000; // 30 seconds cache TTL for tokens
+const TOKEN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL for tokens (increased for better reliability)
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
 
@@ -70,7 +70,8 @@ export const useSupabaseClient = () => {
   const isSettingUpRef = useRef(false);
 
   /**
-   * Token provider function that returns a fresh token with caching
+   * Token provider function that returns a fresh token with caching.
+   * Implements retry logic and respects JWT expiry for optimal performance.
    */
   const tokenProvider = useCallback(async (): Promise<string | null> => {
     if (!isSignedIn || !getToken) {

@@ -388,11 +388,12 @@ export const FullAnamnesisTemplateReference: FormTemplate = {
         {
           "id": "ögonoperation_typ",
           "label": "Vad för operation har du gjort?",
-          "type": "radio",
+          "type": "checkbox",
           "options": [
             "Gråstarr-operation (Kataraktoperation)", "Glaukomkirurgi (t.ex. trycksänkande operationer, laserbehandling för grön starr)", "Näthinneoperation (t.ex. vid näthinneavlossning, makulahål, epiretinalt membran)", "Laserbehandling av ögonbotten (t.ex. vid diabetes eller kärlförändringar)", "Synkorrigerande operation (LASIK, LASEK, PRK, ICL, RLE)", "Hornhinnetransplantation (keratoplastik, t.ex. vid keratokonus eller ärrbildning)", "Skelningsoperation (Strabismkirurgi)", "Ögonlocksoperation (t.ex. ptos, blefaroplastik, entropion/ektropion)", "Pterygiumoperation (borttagning av bindvävstillväxt på ögat)", "Övrigt"
           ],
-          "show_if": { "question": "ögonoperation_genomgått", "equals": "Ja" }
+          "show_if": { "question": "ögonoperation_genomgått", "equals": "Ja" },
+          "followup_question_ids": ["ögonoperation_vilket_öga", "ögonoperation_när"]
         },
          {
            "id": "ögonoperation_typ_övrigt",
@@ -402,17 +403,17 @@ export const FullAnamnesisTemplateReference: FormTemplate = {
         },
         {
           "id": "ögonoperation_vilket_öga",
-          "label": "Vilket öga opererades?",
+          "label": "Vilket öga opererades för {option}?",
           "type": "radio",
           "options": [ "Höger öga", "Vänster öga", "Båda ögonen" ],
-          "show_if": { "question": "ögonoperation_genomgått", "equals": "Ja" }
+          "is_followup_template": true
         },
         {
           "id": "ögonoperation_när",
-          "label": "När genomfördes operationen?",
+          "label": "När genomfördes {option}?",
           "type": "radio",
           "options": [ "Under 1 år sedan", "1 år sedan", "2 år sedan", "3 år sedan", "Över 3 år sedan" ],
-          "show_if": { "question": "ögonoperation_genomgått", "equals": "Ja" }
+          "is_followup_template": true
         },
         {
           "id": "ögonop_optiker_ovrigt",

@@ -116,47 +116,43 @@ export const FormSection: React.FC<FormSectionProps> = ({
   const getDynamicQuestionsForSection = () => {
     const dynamicQuestions: DynamicFollowupQuestion[] = [];
     
-    // Look through all form values to find dynamic questions
-    Object.keys(currentValues).forEach(key => {
-      // Only process keys that match the dynamic question pattern
-      if (key.includes('_for_')) {
-        const [originalId] = key.split('_for_');
+    // First, generate dynamic questions from parent questions with followup_question_ids
+    section.questions.forEach(parentQuestion => {
+      if (parentQuestion.followup_question_ids && parentQuestion.followup_question_ids.length > 0) {
+        const parentValue = currentValues[parentQuestion.id];
         
-        // Check if any question in this section has this ID
-        let parentQuestion = section.questions.find(q => q.id === originalId);
+        // Handle both checkbox (array) and single-value responses
+        const selectedValues = Array.isArray(parentValue) ? parentValue : (parentValue ? [parentValue] : []);
         
-        if (parentQuestion) {
-          // This dynamic question belongs to this section
-          const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
-          const parentSelected = Array.isArray(currentValues[originalId]) 
-            ? currentValues[originalId].includes(parentValue) 
-            : currentValues[originalId] === parentValue;
-          
-          if (parentSelected) {
-            // Find the template for this follow-up question
+        selectedValues.forEach((value: string) => {
+          // For each selected value, create instances of all follow-up questions
+          parentQuestion.followup_question_ids?.forEach(followupId => {
             const template = section.questions.find(
-              q => q.is_followup_template && 
-              parentQuestion?.followup_question_ids?.includes(q.id)
+              q => q.id === followupId && q.is_followup_template
             );
             
             if (template) {
+              // Create runtime ID for this dynamic question
+              const runtimeId = `${followupId}_for_${value.replace(/\s+/g, '_')}`;
+              
               // Create a dynamic question instance
               const dynamicQuestion: DynamicFollowupQuestion = {
                 ...template,
-                parentId: originalId,
-                parentValue: parentValue,
-                runtimeId: key,
+                parentId: parentQuestion.id,
+                parentValue: value,
+                runtimeId: runtimeId,
                 originalId: template.id,
-                label: template.label.replace(/\{option\}/g, parentValue)
+                label: template.label.replace(/\{option\}/g, value)
               };
               
               // Remove the is_followup_template flag
               delete (dynamicQuestion as any).is_followup_template;
               
+              console.info(`[FormSection] Created dynamic question: ${runtimeId} for parent: ${parentQuestion.id} with value: ${value}`);
               dynamicQuestions.push(dynamicQuestion);
             }
-          }
-        }
+          });
+        });
       }
     });
     

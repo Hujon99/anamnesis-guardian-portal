@@ -179,7 +179,7 @@ Strukturera sammanfattningen under följande rubriker (anpassa efter den informa
   - Aktuella symtom/besvär: (Synproblem, huvudvärk, dubbelseende, torra ögon etc.)
   - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar)
   - Ärftlighet: (Ögonsjukdomar i släkten)
-  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier) För medeciner (Tänk på att svaren är exempel på en medecingrupp, inte en lista på alla medeciner som tas)
+  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier) För medeciner (Tänk på att svaren är den medecingrupp patienten tar, inte en lista på alla medeciner som tas. Så i de fall där det finns en lista, säg bara gruppen, och ananrs säg hela medecinen)
   - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)`,
         
         driving_license: `${baseInstructions}

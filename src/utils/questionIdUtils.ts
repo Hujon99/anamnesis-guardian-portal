@@ -7,26 +7,21 @@
  */
 
 /**
- * Creates a robust hash from a string value using the djb2 algorithm.
+ * Creates a short hash from a string value.
  * Used to generate short, unique identifiers for dynamic questions.
  * 
  * @param value - The string to hash
- * @returns A hash string (8 characters for better collision resistance)
+ * @returns A short hash string (6 characters)
  */
 export const createShortHash = (value: string): string => {
-  // djb2 hash algorithm - better distribution than simple multiplication
-  let hash = 5381;
+  let hash = 0;
   for (let i = 0; i < value.length; i++) {
     const char = value.charCodeAt(i);
-    hash = ((hash << 5) + hash) + char; // hash * 33 + char
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
   }
-  
-  // Convert to positive number and then to base36, take 8 characters for better uniqueness
-  const hashString = Math.abs(hash).toString(36).padStart(8, '0').substring(0, 8);
-  
-  console.log(`[questionIdUtils] Generated hash: ${hashString} for value: "${value}"`);
-  
-  return hashString;
+  // Convert to base36 and take first 6 characters
+  return Math.abs(hash).toString(36).substring(0, 6);
 };
 
 /**

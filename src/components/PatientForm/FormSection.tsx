@@ -136,74 +136,31 @@ export const FormSection: React.FC<FormSectionProps> = ({
               // Create runtime ID using hash-based utility function
               const runtimeId = generateRuntimeId(followupId, value);
               
-              // COLLISION DETECTION: Check if metadata already exists for this runtime ID
+              // Store metadata for this dynamic question in form values
+              // This allows us to retrieve the original parent value later
               const metadataKey = getMetadataKey(runtimeId);
-              const existingMetadata = currentValues[metadataKey];
+              setValue(metadataKey, {
+                parentValue: value,
+                parentId: parentQuestion.id,
+                originalId: template.id,
+                createdAt: new Date().toISOString()
+              }, { shouldDirty: false, shouldTouch: false, shouldValidate: false });
               
-              if (existingMetadata && existingMetadata.parentValue !== value) {
-                // Hash collision detected! Two different parent values produced the same hash
-                console.error(`[FormSection] HASH COLLISION DETECTED!`, {
-                  runtimeId,
-                  existingParentValue: existingMetadata.parentValue,
-                  newParentValue: value,
-                  existingParentId: existingMetadata.parentId,
-                  newParentId: parentQuestion.id
-                });
-                
-                // Generate a unique ID by appending a timestamp or counter
-                const uniqueSuffix = Date.now().toString(36).slice(-4);
-                const uniqueRuntimeId = `${runtimeId}_${uniqueSuffix}`;
-                const uniqueMetadataKey = getMetadataKey(uniqueRuntimeId);
-                
-                console.warn(`[FormSection] Generated collision-free ID: ${uniqueRuntimeId}`);
-                
-                // Store metadata with the unique ID
-                setValue(uniqueMetadataKey, {
-                  parentValue: value,
-                  parentId: parentQuestion.id,
-                  originalId: template.id,
-                  createdAt: new Date().toISOString(),
-                  collisionResolved: true
-                }, { shouldDirty: false, shouldTouch: false, shouldValidate: false });
-                
-                // Create dynamic question with unique runtime ID
-                const dynamicQuestion: DynamicFollowupQuestion = {
-                  ...template,
-                  parentId: parentQuestion.id,
-                  parentValue: value,
-                  runtimeId: uniqueRuntimeId,
-                  originalId: template.id,
-                  label: template.label.replace(/\{option\}/g, value)
-                };
-                
-                delete (dynamicQuestion as any).is_followup_template;
-                
-                console.info(`[FormSection] Created dynamic question with collision-free ID: ${uniqueRuntimeId}`);
-                dynamicQuestions.push(dynamicQuestion);
-              } else {
-                // No collision, proceed normally
-                setValue(metadataKey, {
-                  parentValue: value,
-                  parentId: parentQuestion.id,
-                  originalId: template.id,
-                  createdAt: new Date().toISOString()
-                }, { shouldDirty: false, shouldTouch: false, shouldValidate: false });
-                
-                // Create a dynamic question instance
-                const dynamicQuestion: DynamicFollowupQuestion = {
-                  ...template,
-                  parentId: parentQuestion.id,
-                  parentValue: value,
-                  runtimeId: runtimeId,
-                  originalId: template.id,
-                  label: template.label.replace(/\{option\}/g, value)
-                };
-                
-                delete (dynamicQuestion as any).is_followup_template;
-                
-                console.info(`[FormSection] Created dynamic question: ${runtimeId} for parent: ${parentQuestion.id} with value: "${value}". Metadata stored at: ${metadataKey}`);
-                dynamicQuestions.push(dynamicQuestion);
-              }
+              // Create a dynamic question instance
+              const dynamicQuestion: DynamicFollowupQuestion = {
+                ...template,
+                parentId: parentQuestion.id,
+                parentValue: value,
+                runtimeId: runtimeId,
+                originalId: template.id,
+                label: template.label.replace(/\{option\}/g, value)
+              };
+              
+              // Remove the is_followup_template flag
+              delete (dynamicQuestion as any).is_followup_template;
+              
+              console.info(`[FormSection] Created dynamic question: ${runtimeId} for parent: ${parentQuestion.id} with value: "${value}". Metadata stored at: ${metadataKey}`);
+              dynamicQuestions.push(dynamicQuestion);
             }
           });
         });

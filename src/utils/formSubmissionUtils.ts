@@ -342,13 +342,7 @@ export const enhancedProcessFormAnswers = (
         const parentValue = getParentValueFromMetadata(key, userInputs);
         
         if (!parentValue) {
-          const availableMetadata = Object.keys(userInputs).filter(k => k.startsWith('_meta_'));
-          console.error(`[formSubmissionUtils] Cannot process dynamic question ${key}: No parent value found in metadata`, {
-            runtimeId: key,
-            originalId,
-            availableMetadataKeys: availableMetadata,
-            metadataForThisQuestion: userInputs[`_meta_${key}`]
-          });
+          console.error(`[formSubmissionUtils] Cannot process dynamic question ${key}: No parent value found in metadata`);
           return;
         }
         

@@ -152,18 +152,13 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   
   // Enhanced form submission handler with better error handling and debugging
   const handleFormSubmit = () => async (data: any) => {
-    console.log("[FormContext/handleFormSubmit]: Form submission triggered", { 
-      dataKeys: Object.keys(data).length,
-      isOpticianMode,
-      visibleFieldCount: visibleFieldIds.length
-    });
+    // console.log("[FormContext/handleFormSubmit]: Form submission triggered", { 
+      // dataKeys: Object.keys(data).length,
+      // isOpticianMode,
+      // visibleFieldCount: visibleFieldIds.length
+    // });
     
-    // CRITICAL: Use form.getValues() to get ALL values including metadata set via setValue
-    const allFormValues = form.getValues();
-    console.log("[FormContext/handleFormSubmit]: Retrieved all form values", {
-      totalKeys: Object.keys(allFormValues).length,
-      metadataKeys: Object.keys(allFormValues).filter(k => k.startsWith('_meta_')).length
-    });
+    // console.log("[FormContext/handleFormSubmit]: Visible field IDs:", visibleFieldIds);
     
     try {
       // Validate only visible fields
@@ -191,14 +186,13 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         }
       }
       
-      console.log("[FormContext/handleFormSubmit]: Formatting answers for submission");
-      // Use allFormValues instead of data to ensure metadata is included
-      const formattedAnswers = formatAnswersForSubmission(allFormValues, formTemplate, isOpticianMode);
-      console.log("[FormContext/handleFormSubmit]: Answers formatted successfully");
+      // console.log("[FormContext/handleFormSubmit]: Formatting answers for submission");
+      const formattedAnswers = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
+      // console.log("[FormContext/handleFormSubmit]: Answers formatted successfully");
       
-      // Add consent metadata to submission data (use allFormValues)
+      // Add consent metadata to submission data
       const submissionData = {
-        ...allFormValues,
+        ...data,
         consent_given: consentGiven,
         privacy_policy_version: CURRENT_PRIVACY_POLICY_VERSION,
         terms_version: CURRENT_TERMS_VERSION

@@ -11,7 +11,7 @@ import { FormSection as FormSectionType, FormQuestion, DynamicFollowupQuestion }
 import { FormFieldRenderer, FormFieldRendererProps } from "./FormFieldRenderer";
 import { useFormContext as useHookFormContext } from "react-hook-form";
 import { useFormContext } from "@/contexts/FormContext";
-import { generateRuntimeId, getMetadataKey } from "@/utils/questionIdUtils";
+import { generateRuntimeId } from "@/utils/questionIdUtils";
 
 interface FormSectionProps {
   section: FormSectionType;
@@ -22,7 +22,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
   section, 
   currentValues 
 }) => {
-  const { formState, setValue } = useHookFormContext();
+  const { formState } = useHookFormContext();
   const { errors } = formState;
   
   // Get isOpticianMode from our custom form context
@@ -133,18 +133,8 @@ export const FormSection: React.FC<FormSectionProps> = ({
             );
             
             if (template) {
-              // Create runtime ID using hash-based utility function
+              // Create runtime ID using first word only
               const runtimeId = generateRuntimeId(followupId, value);
-              
-              // Store metadata for this dynamic question in form values
-              // This allows us to retrieve the original parent value later
-              const metadataKey = getMetadataKey(runtimeId);
-              setValue(metadataKey, {
-                parentValue: value,
-                parentId: parentQuestion.id,
-                originalId: template.id,
-                createdAt: new Date().toISOString()
-              }, { shouldDirty: false, shouldTouch: false, shouldValidate: false });
               
               // Create a dynamic question instance
               const dynamicQuestion: DynamicFollowupQuestion = {
@@ -159,7 +149,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
               // Remove the is_followup_template flag
               delete (dynamicQuestion as any).is_followup_template;
               
-              console.info(`[FormSection] Created dynamic question: ${runtimeId} for parent: ${parentQuestion.id} with value: "${value}". Metadata stored at: ${metadataKey}`);
+              console.info(`[FormSection] Created dynamic question: ${runtimeId} for parent: ${parentQuestion.id} with value: "${value}"`);
               dynamicQuestions.push(dynamicQuestion);
             }
           });

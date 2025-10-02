@@ -29,10 +29,20 @@ export const createShortHash = (value: string): string => {
  * Removes or replaces characters that would be problematic in database field names.
  * 
  * @param value - The raw string value (e.g., "Gråstarr-operation (Kataraktoperation)")
- * @returns Sanitized string (e.g., "Grastarr_operation_Kataraktoperation")
+ * @param firstWordOnly - If true, only use the first word (up to first space or parenthesis)
+ * @returns Sanitized string (e.g., "Grastarr_operation_Kataraktoperation" or "Grastarr")
  */
-export const sanitizeForFieldId = (value: string): string => {
-  return value
+export const sanitizeForFieldId = (value: string, firstWordOnly: boolean = false): string => {
+  let processedValue = value;
+  
+  // If firstWordOnly is true, extract only the first word
+  if (firstWordOnly) {
+    // Split by space or opening parenthesis and take the first part
+    const match = value.match(/^([^\s(]+)/);
+    processedValue = match ? match[1] : value;
+  }
+  
+  return processedValue
     // Replace Swedish characters
     .replace(/å/g, 'a')
     .replace(/ä/g, 'a')
@@ -51,19 +61,19 @@ export const sanitizeForFieldId = (value: string): string => {
 };
 
 /**
- * Generates a runtime ID for a dynamic follow-up question using a hash.
- * This creates short, manageable IDs regardless of parent value length.
+ * Generates a runtime ID for a dynamic follow-up question.
+ * Uses only the first word from the parent value for brevity and reliability.
  * 
  * @param questionId - The base question template ID (e.g., "ögonoperation_när")
- * @param parentValue - The parent value that triggered this follow-up (e.g., "Gråstarr-operation (Kataraktoperation)")
- * @returns A short runtime ID (e.g., "ogonoperation_nar_for_abc123")
+ * @param parentValue - The parent value that triggered this follow-up (e.g., "Näthinneoperation (t.ex. vid...)")
+ * @returns A runtime ID (e.g., "ogonoperation_nar_for_Nathinneoperation")
  */
 export const generateRuntimeId = (questionId: string, parentValue: string): string => {
   const sanitizedQuestionId = sanitizeForFieldId(questionId);
-  const hash = createShortHash(parentValue);
-  const runtimeId = `${sanitizedQuestionId}_for_${hash}`;
+  const sanitizedFirstWord = sanitizeForFieldId(parentValue, true);
+  const runtimeId = `${sanitizedQuestionId}_for_${sanitizedFirstWord}`;
   
-  console.log(`[questionIdUtils] Generated runtime ID: ${runtimeId} for questionId: ${questionId}, parentValue: "${parentValue}", hash: ${hash}`);
+  console.log(`[questionIdUtils] Generated runtime ID: ${runtimeId} for questionId: ${questionId}, parentValue: "${parentValue}" (first word: "${sanitizedFirstWord}")`);
   
   return runtimeId;
 };
@@ -95,18 +105,15 @@ export const getHashFromRuntimeId = (runtimeId: string): string => {
 };
 
 /**
- * Extracts the parent value from a runtime ID.
+ * Extracts the parent value (first word) from a runtime ID.
  * 
- * DEPRECATED: This function can no longer accurately reconstruct parent values
- * from hash-based runtime IDs. Use getParentValueFromMetadata() instead,
- * which retrieves the original parent value from stored metadata.
- * 
- * @deprecated Use getParentValueFromMetadata() with stored metadata instead
- * @param runtimeId - The runtime ID (e.g., "ogonoperation_nar_for_abc123")
- * @returns Empty string (unable to reconstruct from hash)
+ * @param runtimeId - The runtime ID (e.g., "ogonoperation_nar_for_Nathinneoperation")
+ * @returns The parent value first word (e.g., "Nathinneoperation")
  */
 export const getParentValueFromRuntimeId = (runtimeId: string): string => {
-  console.warn('[questionIdUtils] getParentValueFromRuntimeId is deprecated. Parent values can no longer be reconstructed from hash-based IDs. Use metadata instead.');
+  if (runtimeId.includes('_for_')) {
+    return runtimeId.split('_for_')[1];
+  }
   return '';
 };
 

@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData, SubmissionData, DynamicFollowupQuestion } from "@/types/anamnesis";
-import { getOriginalQuestionId, getParentValueFromMetadata, isDynamicFollowupId } from "@/utils/questionIdUtils";
+import { getOriginalQuestionId, getParentValueFromRuntimeId, isDynamicFollowupId } from "@/utils/questionIdUtils";
 
 export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Use ref for mutable submission data to avoid unnecessary re-renders
@@ -106,11 +106,11 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         // Check if this dynamic question belongs to a question in this section
         const baseQuestionId = getOriginalQuestionId(key);
         
-        // Retrieve the original parent value from metadata
-        const parentValue = getParentValueFromMetadata(key, currentValues);
+        // Extract the parent value from the runtime ID (first word)
+        const parentValue = getParentValueFromRuntimeId(key);
         
         if (!parentValue) {
-          console.warn(`[FormSubmissionState] Skipping dynamic question ${key}: No parent value found in metadata`);
+          console.warn(`[FormSubmissionState] Skipping dynamic question ${key}: Cannot extract parent value`);
           return;
         }
         

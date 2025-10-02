@@ -7,7 +7,6 @@ import { FormTemplate, FormQuestion, DynamicFollowupQuestion } from "@/types/ana
 import { 
   getOriginalQuestionId as utilGetOriginalQuestionId, 
   getParentValueFromRuntimeId as utilGetParentValue,
-  getParentValueFromMetadata,
   isDynamicFollowupId
 } from "@/utils/questionIdUtils";
 
@@ -338,11 +337,11 @@ export const enhancedProcessFormAnswers = (
       if (isDynamicFollowupId(key) && !processedRuntimeIds.has(key) && !key.startsWith('_meta_')) {
         const originalId = utilGetOriginalQuestionId(key);
         
-        // Retrieve the original parent value from metadata
-        const parentValue = getParentValueFromMetadata(key, userInputs);
+        // Extract the parent value from the runtime ID (first word)
+        const parentValue = utilGetParentValue(key);
         
         if (!parentValue) {
-          console.error(`[formSubmissionUtils] Cannot process dynamic question ${key}: No parent value found in metadata`);
+          console.error(`[formSubmissionUtils] Cannot extract parent value from dynamic question ${key}`);
           return;
         }
         

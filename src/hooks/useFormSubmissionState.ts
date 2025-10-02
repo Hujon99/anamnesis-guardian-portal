@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData, SubmissionData, DynamicFollowupQuestion } from "@/types/anamnesis";
+import { getOriginalQuestionId, getParentValueFromRuntimeId, isDynamicFollowupId } from "@/utils/questionIdUtils";
 
 export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Use ref for mutable submission data to avoid unnecessary re-renders
@@ -101,9 +102,10 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
     // Look for dynamic follow-up questions that belong to this section only
     Object.keys(currentValues).forEach(key => {
-      if (key.includes('_for_')) {
+      if (isDynamicFollowupId(key)) {
         // Check if this dynamic question belongs to a question in this section
-        const baseQuestionId = key.split('_for_')[0];
+        const baseQuestionId = getOriginalQuestionId(key);
+        const parentValue = getParentValueFromRuntimeId(key);
         let belongsToThisSection = false;
         
         // Check if the parent question is in this section
@@ -115,14 +117,16 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         
         // Only process if this dynamic question belongs to this section
         if (belongsToThisSection) {
+          console.log(`[FormSubmissionState] Processing dynamic question: ${key}, originalId: ${baseQuestionId}, parentValue: ${parentValue}`);
+          
           const dynamicQuestion: DynamicFollowupQuestion = {
-            id: key.split('_for_')[0],
+            id: baseQuestionId,
             runtimeId: key,
             label: `Dynamic Question ${key}`, // This doesn't matter for processing
             type: 'text', // Default type, doesn't matter for processing
-            parentId: key.split('_for_')[0],
-            parentValue: key.split('_for_')[1].replace(/_/g, ' '),
-            originalId: key.split('_for_')[0],
+            parentId: baseQuestionId,
+            parentValue: parentValue,
+            originalId: baseQuestionId,
           };
           
           processQuestion(dynamicQuestion, sectionTitle, currentValues);

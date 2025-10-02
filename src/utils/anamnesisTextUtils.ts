@@ -5,6 +5,7 @@
  */
 
 import { FormTemplate, FormQuestion, FormSection } from "@/types/anamnesis";
+import { getOriginalQuestionId, getParentValueFromRuntimeId, isDynamicFollowupId } from "@/utils/questionIdUtils";
 
 /**
  * Creates an optimized text representation of anamnesis data by combining
@@ -101,8 +102,8 @@ export const createOptimizedPromptInput = (
       // Look for follow-up questions related to this section
       Array.from(answeredQuestionsMap.keys()).forEach(key => {
         // Check if this is a follow-up question (_for_ indicates this)
-        if (key.includes('_for_')) {
-          const [baseQuestionId] = key.split('_for_');
+        if (isDynamicFollowupId(key)) {
+          const baseQuestionId = getOriginalQuestionId(key);
           
           // Check if the base question belongs to this section
           const baseQuestionBelongsToThisSection = section.questions.some(q => q.id === baseQuestionId);
@@ -120,7 +121,7 @@ export const createOptimizedPromptInput = (
             }
             
             // Format the follow-up question label nicely
-            const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
+            const parentValue = getParentValueFromRuntimeId(key);
             const baseQuestionLabel = questionLabelMap.get(baseQuestionId) || baseQuestionId;
             const followUpLabel = `${baseQuestionLabel} (${parentValue})`;
             
@@ -244,13 +245,14 @@ export const extractFormattedAnswers = (answers: Record<string, any>): any | und
           .filter(([key]) => !['formMetadata', 'metadata'].includes(key))
           .map(([id, answer]) => {
             // Handle dynamic follow-up questions
-            if (id.includes('_for_')) {
-              const [baseQuestion, parentValue] = id.split('_for_');
+            if (isDynamicFollowupId(id)) {
+              const baseQuestion = getOriginalQuestionId(id);
+              const parentValue = getParentValueFromRuntimeId(id);
               return {
                 id,
                 answer: {
                   parent_question: baseQuestion,
-                  parent_value: parentValue.replace(/_/g, ' '),
+                  parent_value: parentValue,
                   value: answer
                 }
               };

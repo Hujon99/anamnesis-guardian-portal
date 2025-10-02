@@ -331,8 +331,10 @@ export const enhancedProcessFormAnswers = (
     // Look for dynamic follow-up questions that belong to this section only
     Object.keys(userInputs).forEach(key => {
       if (key.includes('_for_') && !processedRuntimeIds.has(key)) {
-        const originalId = key.split('_for_')[0];
-        const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
+        const originalId = utilGetOriginalQuestionId(key);
+        const parentValue = utilGetParentValue(key);
+        
+        console.log(`[formSubmissionUtils] Processing dynamic question: ${key}, originalId: ${originalId}, parentValue: ${parentValue}`);
         
         // Only process if parent question belongs to this section
         const parentQuestionInSection = section.questions.some(q => q.id === originalId);

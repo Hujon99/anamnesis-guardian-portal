@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormTemplate, FormSection, FormQuestion, FormattedAnswerData, SubmissionData, DynamicFollowupQuestion } from "@/types/anamnesis";
-import { getOriginalQuestionId, getParentValueFromRuntimeId, isDynamicFollowupId } from "@/utils/questionIdUtils";
+import { getOriginalQuestionId, getParentValueFromMetadata, isDynamicFollowupId } from "@/utils/questionIdUtils";
 
 export function useFormSubmissionState(formTemplate: FormTemplate) {
   // Use ref for mutable submission data to avoid unnecessary re-renders
@@ -102,10 +102,18 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
     // Look for dynamic follow-up questions that belong to this section only
     Object.keys(currentValues).forEach(key => {
-      if (isDynamicFollowupId(key)) {
+      if (isDynamicFollowupId(key) && !key.startsWith('_meta_')) {
         // Check if this dynamic question belongs to a question in this section
         const baseQuestionId = getOriginalQuestionId(key);
-        const parentValue = getParentValueFromRuntimeId(key);
+        
+        // Retrieve the original parent value from metadata
+        const parentValue = getParentValueFromMetadata(key, currentValues);
+        
+        if (!parentValue) {
+          console.warn(`[FormSubmissionState] Skipping dynamic question ${key}: No parent value found in metadata`);
+          return;
+        }
+        
         let belongsToThisSection = false;
         
         // Check if the parent question is in this section
@@ -117,7 +125,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         
         // Only process if this dynamic question belongs to this section
         if (belongsToThisSection) {
-          console.log(`[FormSubmissionState] Processing dynamic question: ${key}, originalId: ${baseQuestionId}, parentValue: ${parentValue}`);
+          console.log(`[FormSubmissionState] Processing dynamic question: ${key}, originalId: ${baseQuestionId}, parentValue: "${parentValue}"`);
           
           const dynamicQuestion: DynamicFollowupQuestion = {
             id: baseQuestionId,

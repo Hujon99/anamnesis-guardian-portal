@@ -7,6 +7,24 @@
  */
 
 /**
+ * Creates a short hash from a string value.
+ * Used to generate short, unique identifiers for dynamic questions.
+ * 
+ * @param value - The string to hash
+ * @returns A short hash string (6 characters)
+ */
+export const createShortHash = (value: string): string => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    const char = value.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  // Convert to base36 and take first 6 characters
+  return Math.abs(hash).toString(36).substring(0, 6);
+};
+
+/**
  * Sanitizes a string value to be used as part of a field ID.
  * Removes or replaces characters that would be problematic in database field names.
  * 
@@ -33,16 +51,21 @@ export const sanitizeForFieldId = (value: string): string => {
 };
 
 /**
- * Generates a runtime ID for a dynamic follow-up question.
+ * Generates a runtime ID for a dynamic follow-up question using a hash.
+ * This creates short, manageable IDs regardless of parent value length.
  * 
  * @param questionId - The base question template ID (e.g., "ögonoperation_när")
  * @param parentValue - The parent value that triggered this follow-up (e.g., "Gråstarr-operation (Kataraktoperation)")
- * @returns A sanitized runtime ID (e.g., "ogonoperation_nar_for_Grastarr_operation_Kataraktoperation")
+ * @returns A short runtime ID (e.g., "ogonoperation_nar_for_abc123")
  */
 export const generateRuntimeId = (questionId: string, parentValue: string): string => {
   const sanitizedQuestionId = sanitizeForFieldId(questionId);
-  const sanitizedParentValue = sanitizeForFieldId(parentValue);
-  return `${sanitizedQuestionId}_for_${sanitizedParentValue}`;
+  const hash = createShortHash(parentValue);
+  const runtimeId = `${sanitizedQuestionId}_for_${hash}`;
+  
+  console.log(`[questionIdUtils] Generated runtime ID: ${runtimeId} for questionId: ${questionId}, parentValue: "${parentValue}", hash: ${hash}`);
+  
+  return runtimeId;
 };
 
 /**
@@ -59,17 +82,31 @@ export const getOriginalQuestionId = (runtimeId: string): string => {
 };
 
 /**
- * Extracts the parent value from a runtime ID (approximate reconstruction).
- * Note: This is lossy - the exact original string cannot be perfectly reconstructed
- * after sanitization, but this gives a readable approximation.
+ * Extracts the hash from a runtime ID.
  * 
- * @param runtimeId - The runtime ID (e.g., "ogonoperation_nar_for_Grastarr_operation")
- * @returns Approximate parent value (e.g., "Grastarr operation")
+ * @param runtimeId - The runtime ID (e.g., "ogonoperation_nar_for_abc123")
+ * @returns The hash portion (e.g., "abc123")
+ */
+export const getHashFromRuntimeId = (runtimeId: string): string => {
+  if (runtimeId.includes('_for_')) {
+    return runtimeId.split('_for_')[1];
+  }
+  return '';
+};
+
+/**
+ * Extracts the parent value from a runtime ID.
+ * 
+ * DEPRECATED: This function can no longer accurately reconstruct parent values
+ * from hash-based runtime IDs. Use getParentValueFromMetadata() instead,
+ * which retrieves the original parent value from stored metadata.
+ * 
+ * @deprecated Use getParentValueFromMetadata() with stored metadata instead
+ * @param runtimeId - The runtime ID (e.g., "ogonoperation_nar_for_abc123")
+ * @returns Empty string (unable to reconstruct from hash)
  */
 export const getParentValueFromRuntimeId = (runtimeId: string): string => {
-  if (runtimeId.includes('_for_')) {
-    return runtimeId.split('_for_')[1].replace(/_/g, ' ');
-  }
+  console.warn('[questionIdUtils] getParentValueFromRuntimeId is deprecated. Parent values can no longer be reconstructed from hash-based IDs. Use metadata instead.');
   return '';
 };
 
@@ -81,6 +118,41 @@ export const getParentValueFromRuntimeId = (runtimeId: string): string => {
  */
 export const isDynamicFollowupId = (fieldId: string): boolean => {
   return fieldId.includes('_for_');
+};
+
+// ==================== Metadata Storage Utilities ====================
+// These utilities help store and retrieve original parent values
+
+/**
+ * Creates a metadata key for storing the original parent value.
+ * 
+ * @param runtimeId - The runtime ID of the dynamic question
+ * @returns Metadata key (e.g., "_meta_ogonoperation_nar_for_abc123")
+ */
+export const getMetadataKey = (runtimeId: string): string => {
+  return `_meta_${runtimeId}`;
+};
+
+/**
+ * Retrieves the parent value from metadata stored in form values.
+ * 
+ * @param runtimeId - The runtime ID of the dynamic question
+ * @param formValues - The form values object containing metadata
+ * @returns The original parent value, or undefined if not found
+ */
+export const getParentValueFromMetadata = (
+  runtimeId: string,
+  formValues: Record<string, any>
+): string | undefined => {
+  const metadataKey = getMetadataKey(runtimeId);
+  const metadata = formValues[metadataKey];
+  
+  if (metadata && typeof metadata === 'object' && 'parentValue' in metadata) {
+    return metadata.parentValue;
+  }
+  
+  console.warn(`[questionIdUtils] No metadata found for runtime ID: ${runtimeId}`);
+  return undefined;
 };
 
 // ==================== Form Builder Utility Functions ====================

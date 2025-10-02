@@ -4,7 +4,12 @@
  */
 
 import { FormTemplate, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
-import { getOriginalQuestionId as utilGetOriginalQuestionId, getParentValueFromRuntimeId as utilGetParentValue } from "@/utils/questionIdUtils";
+import { 
+  getOriginalQuestionId as utilGetOriginalQuestionId, 
+  getParentValueFromRuntimeId as utilGetParentValue,
+  getParentValueFromMetadata,
+  isDynamicFollowupId
+} from "@/utils/questionIdUtils";
 
 /**
  * Interface for the structured answer format
@@ -330,11 +335,18 @@ export const enhancedProcessFormAnswers = (
 
     // Look for dynamic follow-up questions that belong to this section only
     Object.keys(userInputs).forEach(key => {
-      if (key.includes('_for_') && !processedRuntimeIds.has(key)) {
+      if (isDynamicFollowupId(key) && !processedRuntimeIds.has(key) && !key.startsWith('_meta_')) {
         const originalId = utilGetOriginalQuestionId(key);
-        const parentValue = utilGetParentValue(key);
         
-        console.log(`[formSubmissionUtils] Processing dynamic question: ${key}, originalId: ${originalId}, parentValue: ${parentValue}`);
+        // Retrieve the original parent value from metadata
+        const parentValue = getParentValueFromMetadata(key, userInputs);
+        
+        if (!parentValue) {
+          console.error(`[formSubmissionUtils] Cannot process dynamic question ${key}: No parent value found in metadata`);
+          return;
+        }
+        
+        console.log(`[formSubmissionUtils] Processing dynamic question: ${key}, originalId: ${originalId}, parentValue: "${parentValue}"`);
         
         // Only process if parent question belongs to this section
         const parentQuestionInSection = section.questions.some(q => q.id === originalId);

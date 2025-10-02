@@ -151,7 +151,7 @@ export const FormSection: React.FC<FormSectionProps> = ({
                 });
                 
                 // Generate a unique ID by appending a timestamp or counter
-                const uniqueSuffix = Date.now().toString(36).substring(-4);
+                const uniqueSuffix = Date.now().toString(36).slice(-4);
                 const uniqueRuntimeId = `${runtimeId}_${uniqueSuffix}`;
                 const uniqueMetadataKey = getMetadataKey(uniqueRuntimeId);
                 

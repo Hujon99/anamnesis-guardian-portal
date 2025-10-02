@@ -13,8 +13,9 @@ import { TouchFriendlyFieldRenderer } from "./TouchFriendlyFieldRenderer";
 import { FormStepContent } from "./FormStepContent";
 import { LegalConsentStep } from "@/components/Legal/LegalConsentStep";
 import { useFormContext } from "@/contexts/FormContext";
-import { FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
+import { FormQuestion, DynamicFollowupQuestion, FormSection } from "@/types/anamnesis";
 import { toast } from "sonner";
+import { generateRuntimeId } from "@/utils/questionIdUtils";
 
 interface SingleQuestionLayoutProps {
   createdByName?: string | null;
@@ -316,43 +317,69 @@ function shouldShowQuestion(question: FormQuestion, values: Record<string, any>)
   return !!dependentValue;
 }
 
-function getDynamicQuestionsForSection(section: any, values: Record<string, any>): DynamicFollowupQuestion[] {
+/**
+ * Generate dynamic follow-up questions based on current form values.
+ * This uses the same logic as FormSection.tsx for consistency.
+ */
+function getDynamicQuestionsForSection(section: FormSection, values: Record<string, any>): DynamicFollowupQuestion[] {
   const dynamicQuestions: DynamicFollowupQuestion[] = [];
-  
-  Object.keys(values).forEach(key => {
-    if (key.includes('_for_')) {
-      const [originalId] = key.split('_for_');
-      const parentQuestion = section.questions.find((q: any) => q.id === originalId);
-      
-      if (parentQuestion) {
-        const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
-        const parentSelected = Array.isArray(values[originalId]) 
-          ? values[originalId].includes(parentValue) 
-          : values[originalId] === parentValue;
-        
-        if (parentSelected) {
-          const template = section.questions.find(
-            (q: any) => q.is_followup_template && 
-            parentQuestion?.followup_question_ids?.includes(q.id)
-          );
+
+  // Iterate through each question in the section
+  section.questions.forEach((question) => {
+    // Check if this question has follow-up questions defined
+    const followupQuestionIds = question.followup_question_ids;
+    
+    if (!followupQuestionIds || followupQuestionIds.length === 0) {
+      return; // Skip if no follow-ups
+    }
+
+    // Get the current value for this question
+    const parentValue = values[question.id];
+    
+    // Determine selected values (handle both single and array values)
+    let selectedValues: string[] = [];
+    
+    if (Array.isArray(parentValue)) {
+      selectedValues = parentValue.filter(v => v != null && v !== '');
+    } else if (parentValue != null && parentValue !== '') {
+      selectedValues = [parentValue];
+    }
+
+    // Skip if no values selected
+    if (selectedValues.length === 0) {
+      return;
+    }
+
+    // For each selected value, create dynamic follow-up questions
+    selectedValues.forEach((value) => {
+      followupQuestionIds.forEach((followupId) => {
+        const template = section.questions.find(
+          (q) => q.id === followupId && q.is_followup_template
+        );
+
+        if (template) {
+          // Use the sanitized utility function to generate runtime ID
+          const runtimeId = generateRuntimeId(template.id, value);
           
-          if (template) {
+          // Only add if not already present
+          if (!dynamicQuestions.find(dq => dq.runtimeId === runtimeId)) {
             const dynamicQuestion: DynamicFollowupQuestion = {
               ...template,
-              parentId: originalId,
-              parentValue: parentValue,
-              runtimeId: key,
+              parentId: question.id,
+              parentValue: value,
+              runtimeId: runtimeId,
               originalId: template.id,
-              label: template.label.replace(/\{option\}/g, parentValue)
+              label: template.label.replace(/\{option\}/g, value),
             };
-            
+
+            // Remove the template flag so it's treated as a regular question
             delete (dynamicQuestion as any).is_followup_template;
             dynamicQuestions.push(dynamicQuestion);
           }
         }
-      }
-    }
+      });
+    });
   });
-  
+
   return dynamicQuestions;
 }

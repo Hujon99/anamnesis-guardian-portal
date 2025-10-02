@@ -4,6 +4,7 @@
  */
 
 import { FormTemplate, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
+import { getOriginalQuestionId as utilGetOriginalQuestionId, getParentValueFromRuntimeId as utilGetParentValue } from "@/utils/questionIdUtils";
 
 /**
  * Interface for the structured answer format
@@ -24,23 +25,19 @@ export interface FormattedAnswer {
 /**
  * Helper function to get the original question ID from a runtime ID
  * For example: "operation_type_for_Grå_starr" -> "operation_type"
+ * @deprecated Use utilGetOriginalQuestionId from questionIdUtils instead
  */
 const getOriginalQuestionId = (runtimeId: string): string => {
-  if (runtimeId.includes('_for_')) {
-    return runtimeId.split('_for_')[0];
-  }
-  return runtimeId;
+  return utilGetOriginalQuestionId(runtimeId);
 };
 
 /**
  * Helper function to get the parent value from a runtime ID
  * For example: "operation_type_for_Grå_starr" -> "Grå starr"
+ * @deprecated Use utilGetParentValue from questionIdUtils instead
  */
 const getParentValueFromRuntimeId = (runtimeId: string): string => {
-  if (runtimeId.includes('_for_')) {
-    return runtimeId.split('_for_')[1].replace(/_/g, ' ');
-  }
-  return '';
+  return utilGetParentValue(runtimeId);
 };
 
 /**

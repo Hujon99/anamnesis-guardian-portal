@@ -11,6 +11,7 @@ import { FormSection as FormSectionType, FormQuestion, DynamicFollowupQuestion }
 import { FormFieldRenderer, FormFieldRendererProps } from "./FormFieldRenderer";
 import { useFormContext as useHookFormContext } from "react-hook-form";
 import { useFormContext } from "@/contexts/FormContext";
+import { generateRuntimeId } from "@/utils/questionIdUtils";
 
 interface FormSectionProps {
   section: FormSectionType;
@@ -132,8 +133,8 @@ export const FormSection: React.FC<FormSectionProps> = ({
             );
             
             if (template) {
-              // Create runtime ID for this dynamic question
-              const runtimeId = `${followupId}_for_${value.replace(/\s+/g, '_')}`;
+              // Create runtime ID using sanitized utility function
+              const runtimeId = generateRuntimeId(followupId, value);
               
               // Create a dynamic question instance
               const dynamicQuestion: DynamicFollowupQuestion = {

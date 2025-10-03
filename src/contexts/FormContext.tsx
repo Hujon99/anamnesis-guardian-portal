@@ -83,7 +83,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const [showConsentStep] = useState(false);
   
   // Setup conditional fields logic
-  const { visibleSections, dynamicQuestions } = useConditionalFields(formTemplate, watchedFormValues, isOpticianMode);
+  const { visibleSections } = useConditionalFields(formTemplate, watchedFormValues, isOpticianMode);
   
   // Get all visible field IDs for validation
   const visibleFieldIds = useMemo(() => {

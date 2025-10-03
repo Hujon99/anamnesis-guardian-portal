@@ -33,11 +33,6 @@ export const useAutoSave = ({
   // Save function that can be called manually or automatically
   const saveFormData = useCallback(async (data: Record<string, any> | null) => {
     if (!token || !data || !enabled) {
-      console.log("[AutoSave] Skipping save - missing token, data, or disabled", {
-        hasToken: !!token,
-        hasData: !!data,
-        enabled
-      });
       return;
     }
     
@@ -48,14 +43,11 @@ export const useAutoSave = ({
     );
     
     if (!hasValues) {
-      console.log("[AutoSave] Skipping save - no meaningful data to save");
       return;
     }
     
     try {
       setIsSaving(true);
-      
-      console.log("[AutoSave] Saving form data for token:", token.substring(0, 6) + "...");
       
       // Call the save-draft edge function instead of direct database access
       const { error } = await supabase.functions.invoke('save-draft', {
@@ -66,15 +58,12 @@ export const useAutoSave = ({
       });
       
       if (error) {
-        console.error("[AutoSave] Error saving data:", error);
         throw new Error(`Failed to save progress: ${error.message}`);
       }
       
       setLastSaved(new Date());
-      console.log("[AutoSave] Data saved successfully at", new Date().toLocaleTimeString());
       
     } catch (err) {
-      console.error("[AutoSave] Error in saveFormData:", err);
       const error = err instanceof Error ? err : new Error("Unknown error saving form data");
       setError(error);
       if (onSaveError) onSaveError(error);
@@ -87,14 +76,10 @@ export const useAutoSave = ({
   useEffect(() => {
     if (!enabled || !token) return;
     
-    console.log(`[AutoSave] Setting up auto-save interval: ${interval}ms`);
-    
     const timer = setInterval(() => {
       if (formData) {
-        console.log("[AutoSave] Auto-save triggered");
         saveFormData(formData)
           .catch(err => {
-            console.error("[AutoSave] Error during auto-save:", err);
             // Show toast only on auto-save errors (not on manual save)
             toast.error("Automatisk sparande misslyckades", {
               description: "Din data sparades inte. Du kan fortsätta fylla i formuläret.",
@@ -105,7 +90,6 @@ export const useAutoSave = ({
     }, interval);
     
     return () => {
-      console.log("[AutoSave] Clearing auto-save interval");
       clearInterval(timer);
     };
   }, [token, formData, interval, enabled, saveFormData]);

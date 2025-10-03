@@ -31,13 +31,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
   // Update the current step tracking
   const setCurrentStep = useCallback((step: number) => {
-    if (currentStepRef.current !== step) {
-      currentStepRef.current = step;
-      // Reduced logging frequency
-      if (process.env.NODE_ENV === 'development') {
-        // console.log(`[FormSubmissionState] Current step updated to: ${step}`);
-      }
-    }
+    currentStepRef.current = step;
   }, []);
 
   // Find or create a section in the submission data
@@ -52,9 +46,6 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         responses: []
       };
       submissionDataRef.current.answeredSections.push(sectionData);
-      if (process.env.NODE_ENV === 'development') {
-        // console.log(`[FormSubmissionState] Added new section: ${sectionTitle}`);
-      }
     }
     
     return sectionData;
@@ -65,21 +56,12 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     const shouldShowSection = evaluateCondition(section.show_if, currentValues);
     const sectionTitle = section.section_title;
     
-    // Only log visibility changes or in debug mode (reduced frequency)
-    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
-      // console.log(`[FormSubmissionState] Section "${sectionTitle}" visible: ${shouldShowSection}`);
-    }
-    
     if (!shouldShowSection) {
-      // Remove any existing data for this section
       const sectionIndex = submissionDataRef.current.answeredSections.findIndex(
         s => s.section_title === sectionTitle
       );
       
       if (sectionIndex !== -1) {
-        if (process.env.NODE_ENV === 'development') {
-          // console.log(`[FormSubmissionState] Removing hidden section: ${sectionTitle}`);
-        }
         submissionDataRef.current.answeredSections.splice(sectionIndex, 1);
       }
       return;
@@ -158,11 +140,9 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       if (isDynamicQuestion) {
         const sectionTracker = processedQuestionsRef.current[sectionTitle];
         if (sectionTracker && sectionTracker.has(questionId)) {
-          // We've already processed this dynamic question in this section
           return;
         }
         
-        // Mark this dynamic question as processed for this section
         if (sectionTracker) {
           sectionTracker.add(questionId);
         }
@@ -170,11 +150,6 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       
       // For dynamic questions, we always want to include them if they have a value
       const shouldShowQuestion = isDynamicQuestion ? true : evaluateCondition(question.show_if, currentValues);
-      
-      // Very limited logging - only for development
-      if (process.env.NODE_ENV === 'development' && Math.random() < 0.05) {
-        // console.log(`[FormSubmissionState] Question "${questionId}" visible: ${shouldShowQuestion}`);
-      }
       
       // Find the section in our data
       let sectionIndex = submissionDataRef.current.answeredSections.findIndex(
@@ -201,9 +176,6 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
         );
         
         if (questionIndex !== -1) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[FormSubmissionState] Removing hidden question: ${questionId}`);
-          }
           submissionDataRef.current.answeredSections[sectionIndex].responses.splice(questionIndex, 1);
           
           // Also remove any associated "other" fields
@@ -237,11 +209,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       );
       
       if (isEmpty) {
-        // Remove the answer if it exists but is now empty
         if (existingResponseIndex !== -1) {
-          if (process.env.NODE_ENV === 'development') {
-            // console.log(`[FormSubmissionState] Removing empty answer for: ${questionId}`);
-          }
           submissionDataRef.current.answeredSections[sectionIndex].responses.splice(existingResponseIndex, 1);
         }
       } else {
@@ -257,27 +225,16 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
             parent_value: dynamicQuestion.parentValue,
             value: answer
           };
-          
-          // Log dynamic follow-up formatting
-          if (process.env.NODE_ENV === 'development') {
-            // console.log(`[FormSubmissionState] Formatted dynamic answer for ${questionId}:`, processedAnswer);
-          }
         }
         
         // Add or update the answer
         if (existingResponseIndex !== -1) {
           submissionDataRef.current.answeredSections[sectionIndex].responses[existingResponseIndex].answer = processedAnswer;
-          if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
-            // console.log(`[FormSubmissionState] Updated answer for: ${questionId}`);
-          }
         } else {
           submissionDataRef.current.answeredSections[sectionIndex].responses.push({
             id: questionId,
             answer: processedAnswer
           });
-          if (process.env.NODE_ENV === 'development') {
-            // console.log(`[FormSubmissionState] Added new answer for: ${questionId}`);
-          }
         }
         
         // Handle "Other" option for radio buttons and dropdowns
@@ -304,17 +261,11 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
             
             if (otherResponseIndex !== -1) {
               submissionDataRef.current.answeredSections[sectionIndex].responses[otherResponseIndex].answer = otherAnswer;
-              if (process.env.NODE_ENV === 'development') {
-                // console.log(`[FormSubmissionState] Updated "other" answer for: ${otherFieldIdToUse}`);
-              }
             } else {
               submissionDataRef.current.answeredSections[sectionIndex].responses.push({
                 id: otherFieldIdToUse,
                 answer: otherAnswer
               });
-              if (process.env.NODE_ENV === 'development') {
-                // console.log(`[FormSubmissionState] Added new "other" answer for: ${otherFieldIdToUse}`);
-              }
             }
           }
         }
@@ -331,16 +282,9 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
   // Clean up any sections that no longer have answers
   const cleanEmptySections = useCallback(() => {
-    const initialCount = submissionDataRef.current.answeredSections.length;
-    
     submissionDataRef.current.answeredSections = submissionDataRef.current.answeredSections.filter(
       section => section.responses.length > 0
     );
-    
-    const removedCount = initialCount - submissionDataRef.current.answeredSections.length;
-    if (removedCount > 0 && process.env.NODE_ENV === 'development') {
-      console.log(`[FormSubmissionState] Removed ${removedCount} empty sections`);
-    }
   }, []);
 
   // Process all sections with debouncing to prevent excessive processing
@@ -383,9 +327,6 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
     sections: Array<FormSection[]>,
     currentValues: Record<string, any>
   ) => {
-    // console.log('[FormSubmissionState] Processing all sections immediately for submission');
-    // console.log('[FormSubmissionState] Current form values:', currentValues);
-    
     // Reset the processed questions tracker to ensure fresh processing
     processedQuestionsRef.current = {};
     
@@ -404,8 +345,6 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
   // Update the timestamp before final submission
   const finalizeSubmissionData = useCallback((): SubmissionData => {
-    // console.log('[FormSubmissionState] Finalizing submission data');
-    
     submissionDataRef.current.submissionTimestamp = new Date().toISOString();
     
     return {

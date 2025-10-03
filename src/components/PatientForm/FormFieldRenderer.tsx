@@ -36,12 +36,6 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   const { control, watch, setValue } = useFormContext();
   const hasError = error !== undefined;
   
-  useEffect(() => {
-    if (hasError) {
-      const fieldId = (question as DynamicFollowupQuestion).runtimeId || question.id;
-      // console.log(`[FormFieldRenderer] Rendering field with error: ${fieldId}`, error);
-    }
-  }, [hasError, question, error]);
   
   const fieldId = `field-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
   const descriptionId = `desc-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
@@ -81,10 +75,6 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
       const extractedValue = extractValue(fieldValue);
       
       if (extractedValue !== fieldValue && extractedValue !== undefined) {
-        // console.log(`[FormFieldRenderer] Normalizing value for ${fieldName}:`, {
-        //   from: fieldValue,
-        //   to: extractedValue
-        // });
         setValue(fieldName, extractedValue);
       }
     }

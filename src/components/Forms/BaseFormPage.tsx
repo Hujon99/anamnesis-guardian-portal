@@ -113,16 +113,6 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     }
   }, [token]);
   
-  // Track component mount for debugging purposes
-  useEffect(() => {
-    logSafariDebug(
-      `[BaseFormPage/${instanceId.current}]: Mounted with token: ${token ? token.substring(0, 6) + '...' : 'none'} and mode: ${mode}`,
-      { safari: safariConfig.isSafari }
-    );
-    return () => {
-      logSafariDebug(`[BaseFormPage/${instanceId.current}]: Unmounting`);
-    };
-  }, [token, mode, safariConfig.isSafari]);
   
   // Use the effective token (either from props or ref)
   const effectiveToken = token || stableTokenRef.current;
@@ -210,12 +200,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   
   // Enhanced retry handler with reset of all verification state
   const handleEnhancedRetry = useCallback(() => {
-    logSafariDebug(`[BaseFormPage/${instanceId.current}]: Enhanced retry initiated`);
-    
-    // Increment retry attempt counter to force clean remounting
     setRetryAttempt(prev => prev + 1);
     
-    // Safari: shorter delay for retry
     const retryDelay = safariConfig.isSafari ? 50 : 100;
     setTimeout(() => {
       handleVerificationRetry();
@@ -225,35 +211,22 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   // Handle form submission with form template
   const handleSubmitWithFormTemplate = useCallback(async (values: any, formattedAnswers?: any) => {
     if (!effectiveToken) {
-      console.error(`[BaseFormPage/${instanceId.current}]: Cannot submit form: No token provided`);
       return;
     }
     
-    console.log(`[BaseFormPage/${instanceId.current}]: Submitting form with token: ${effectiveToken.substring(0, 6) + "..."}`);
     setFormPageState("SUBMITTING");
     await handleFormSubmit(values, formTemplate, formattedAnswers);
   }, [effectiveToken, handleFormSubmit, formTemplate, setFormPageState]);
   
   // Handle retry for submission errors
   const handleSubmissionRetry = useCallback(() => {
-    console.log(`[BaseFormPage/${instanceId.current}]: Retrying submission...`);
-    
-    // If in error state, reset error and update state
     if (formPageState === "SUBMISSION_ERROR") {
       resetError();
       setFormPageState("FORM_READY");
       
-      // After a short delay to let the UI update, retry submission
       setTimeout(async () => {
         setFormPageState("SUBMITTING");
-        const result = await handleRetrySubmission();
-        
-        if (!result?.success) {
-          console.log(`[BaseFormPage/${instanceId.current}]: Retry submission failed`);
-          setFormPageState("SUBMISSION_ERROR");
-        } else {
-          console.log(`[BaseFormPage/${instanceId.current}]: Retry submission succeeded`);
-        }
+        await handleRetrySubmission();
       }, 100);
     }
   }, [formPageState, resetError, handleRetrySubmission, setFormPageState]);
@@ -265,11 +238,6 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   const bookingDate = entryData?.booking_date || null;
   const storeId = entryData?.store_id || null;
   const createdByName = entryData?.created_by_name || null;
-  
-  // Log state transitions for debugging with Safari awareness
-  useEffect(() => {
-    logSafariDebug(`[BaseFormPage/${instanceId.current}]: State transition to: ${formPageState}`);
-  }, [formPageState]);
   
   // Render different components based on form state
   switch (formPageState) {

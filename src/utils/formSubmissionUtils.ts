@@ -66,7 +66,6 @@ const groupDynamicQuestions = (
     }
   });
   
-  console.log("Grouped dynamic questions:", dynamicQuestions);
   return dynamicQuestions;
 };
 
@@ -86,13 +85,8 @@ export const prepareFormSubmission = (
   formattedAnswers?: any,
   isOpticianMode?: boolean
 ): Record<string, any> => {
-  console.log("[formSubmissionUtils/prepareFormSubmission]: Called with isOpticianMode:", isOpticianMode);
-  console.log("[formSubmissionUtils/prepareFormSubmission]: Raw userInputs:", userInputs);
-  console.log("[formSubmissionUtils/prepareFormSubmission]: Pre-processed formattedAnswers:", formattedAnswers);
-  
   // Always check for dynamic follow-up questions in the userInputs
   const hasDynamicQuestions = Object.keys(userInputs).some(key => key.includes('_for_'));
-  console.log("[formSubmissionUtils/prepareFormSubmission]: Has dynamic questions:", hasDynamicQuestions);
   
   // Process the formatted answers if provided
   let processedAnswers = formattedAnswers;
@@ -105,10 +99,8 @@ export const prepareFormSubmission = (
     // Mark this as an optician submission
     if (processedAnswers.formattedAnswers) {
       processedAnswers.formattedAnswers.isOpticianSubmission = true;
-      console.log("[formSubmissionUtils/prepareFormSubmission]: Marked formattedAnswers.formattedAnswers as optician submission");
     } else if (processedAnswers) {
       processedAnswers.isOpticianSubmission = true;
-      console.log("[formSubmissionUtils/prepareFormSubmission]: Marked processedAnswers as optician submission");
     }
   }
   
@@ -117,11 +109,9 @@ export const prepareFormSubmission = (
       (processedAnswers.formattedAnswers && processedAnswers.formattedAnswers.answeredSections) ||
       (processedAnswers.answeredSections)
     )) {
-    console.log("[formSubmissionUtils/prepareFormSubmission]: Using pre-processed formattedAnswers");
     
     // If there are dynamic questions, ensure they are included
     if (hasDynamicQuestions) {
-      console.log("[formSubmissionUtils/prepareFormSubmission]: Adding dynamic questions to pre-processed answers");
       // Use the enhanced form processing to make sure dynamic questions are included
       const enhancedAnswers = enhancedProcessFormAnswers(formTemplate, userInputs);
       
@@ -185,8 +175,6 @@ export const prepareFormSubmission = (
       }
     };
   } else {
-    console.log("[formSubmissionUtils/prepareFormSubmission]: Using enhancedProcessFormAnswers approach");
-    
     // Use enhanced form processing for the new template structure
     const formattedAnswer = enhancedProcessFormAnswers(formTemplate, userInputs);
     
@@ -232,8 +220,6 @@ export const enhancedProcessFormAnswers = (
 
   // Find dynamic follow-up questions and group them by their parent
   const dynamicQuestionGroups = groupDynamicQuestions(userInputs);
-  
-  console.log("[formSubmissionUtils/enhancedProcessFormAnswers]: Dynamic question groups:", dynamicQuestionGroups);
 
   // Create a map to track which dynamic questions belong to which section
   const dynamicQuestionSectionMap: Record<string, string> = {};
@@ -345,8 +331,6 @@ export const enhancedProcessFormAnswers = (
           return;
         }
         
-        console.log(`[formSubmissionUtils] Processing dynamic question: ${key}, originalId: ${originalId}, parentValue: "${parentValue}"`);
-        
         // Only process if parent question belongs to this section
         const parentQuestionInSection = section.questions.some(q => q.id === originalId);
         
@@ -399,7 +383,6 @@ export const enhancedProcessFormAnswers = (
     }
   });
 
-  console.log("[formSubmissionUtils/enhancedProcessFormAnswers]: Formatted answer:", formattedAnswer);
   return formattedAnswer;
 };
 

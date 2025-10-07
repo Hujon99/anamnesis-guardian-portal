@@ -61,7 +61,7 @@ export function useOpticians() {
         .from('users')
         .select('id, clerk_user_id, role, email, first_name, last_name, display_name, organization_id')
         .eq('organization_id', organization.id)
-        .eq('role', 'optician')
+        .in('role', ['optician', 'admin'])
         .order('display_name, first_name, last_name');
         
       if (error) {

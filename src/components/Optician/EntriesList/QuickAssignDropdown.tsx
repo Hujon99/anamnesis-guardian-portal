@@ -58,7 +58,6 @@ export function QuickAssignDropdown({
         }
       }
       
-      console.log(`Assigning optician with ID: ${opticianId}`);
       await onAssign(opticianId);
       
       // Show success message

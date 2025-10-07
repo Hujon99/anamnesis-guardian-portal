@@ -15,7 +15,6 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   // Proactively refresh token on route changes
   useEffect(() => {
     if (userId) {
-      console.log('[Layout] Route changed, proactive token refresh');
       handleJwtError();
     }
   }, [location.pathname, userId, handleJwtError]);
@@ -25,13 +24,11 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
     if (!userId) return;
 
     const handleFocus = () => {
-      console.log('[Layout] Window focused, proactive token refresh');
       handleJwtError();
     };
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('[Layout] Page visible, proactive token refresh');
         handleJwtError();
       }
     };

@@ -45,15 +45,12 @@ export function QuickStoreAssignDropdown({
   
   // Pre-fetch stores and prepare data when component mounts
   useEffect(() => {
-    console.log("QuickStoreAssignDropdown: Component mounted, preparing data");
     
     const preloadStores = async () => {
       if (safeStores.length === 0 && !isLoadingStores && !dataLoaded) {
         try {
-          console.log("QuickStoreAssignDropdown: Pre-loading store data");
           await refetchStores();
           setDataLoaded(true);
-          console.log(`QuickStoreAssignDropdown: Pre-load complete, received ${safeStores.length} stores`);
         } catch (err) {
           console.error("QuickStoreAssignDropdown: Failed to prefetch stores:", err);
           // Show refresh button after a delay if we fail to load
@@ -64,7 +61,6 @@ export function QuickStoreAssignDropdown({
       } else if (safeStores.length > 0 && !dataLoaded) {
         // Mark as loaded if we already have data
         setDataLoaded(true);
-        console.log(`QuickStoreAssignDropdown: Data already available, ${safeStores.length} stores`);
       }
     };
     
@@ -91,8 +87,6 @@ export function QuickStoreAssignDropdown({
       setIsAssigning(true);
       setAssignmentError(null);
       
-      console.log(`QuickStoreAssignDropdown: Tilldelar butik med ID: ${storeId || 'ingen'} till anamnes: ${entryId}`);
-      
       if (!entryId) {
         throw new Error("Saknar anamnes-ID för butikstilldelning");
       }
@@ -101,7 +95,6 @@ export function QuickStoreAssignDropdown({
       await onAssign(entryId, storeId);
       
       // Success case
-      console.log(`QuickStoreAssignDropdown: Lyckades tilldela butik ${storeId} till anamnes ${entryId}`);
       
       // After successful assignment, refresh store data
       await refetchStores();
@@ -148,12 +141,10 @@ export function QuickStoreAssignDropdown({
     e.preventDefault();
     
     try {
-      console.log("QuickStoreAssignDropdown: Refreshing store data");
       await forceRefreshStores();
       
       // Check if we got data after refresh
       const refreshedStores = Array.isArray(stores) ? stores : [];
-      console.log(`QuickStoreAssignDropdown: Refresh complete, received ${refreshedStores.length} stores`);
       
       setDataLoaded(true);
       
@@ -175,10 +166,8 @@ export function QuickStoreAssignDropdown({
   // Pre-fetch data when dropdown opens
   const handleOpenChange = useCallback((open: boolean) => {
     if (open) {
-      console.log("QuickStoreAssignDropdown: Dropdown opening");
       
       if (safeStores.length === 0 && !isLoadingStores) {
-        console.log("QuickStoreAssignDropdown: No stores available, fetching on open");
         refetchStores().catch(err => {
           console.error("Failed to fetch stores on open:", err);
         });

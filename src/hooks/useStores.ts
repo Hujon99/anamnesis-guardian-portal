@@ -47,13 +47,12 @@ export function useStores() {
       if (cachedData && organization?.id) {
         const { stores, timestamp, organizationId } = JSON.parse(cachedData);
         
-        // Check if cache is still valid and for the same organization
-        if (Date.now() - timestamp < STORE_CACHE_EXPIRY && 
-            Array.isArray(stores) && 
-            organizationId === organization.id) {
-          console.log(`useStores: Loading ${stores.length} stores from local cache for org ${organization.id}`);
-          
-          // Keep a local copy as a fallback
+      // Check if cache is still valid and for the same organization
+      if (Date.now() - timestamp < STORE_CACHE_EXPIRY && 
+          Array.isArray(stores) && 
+          organizationId === organization.id) {
+        
+        // Keep a local copy as a fallback
           setLocalStoresBackup(stores as Store[]);
           
           // Update store map from cache
@@ -84,7 +83,6 @@ export function useStores() {
     // Safari-specific request deduplication
     const requestId = `${organization.id}-${Date.now()}`;
     if (isSafari.current && activeRequestRef.current && requestIdRef.current === organization.id) {
-      console.log(`useStores: [Safari] Deduplicating request for org ${organization.id}`);
       return activeRequestRef.current;
     }
     
@@ -92,11 +90,6 @@ export function useStores() {
     
     const fetchRequest = async () => {
       try {
-        if (isSafari.current) {
-          console.log(`useStores: [Safari] Fetching stores for organization ${organization.id}, attempt ${retryCount + 1}`);
-        } else {
-          console.log(`useStores: Fetching stores for organization ${organization.id}, attempt ${retryCount + 1}`);
-        }
       
       const { data, error } = await supabase
         .from('stores')
@@ -111,9 +104,6 @@ export function useStores() {
                           error.message?.includes("401");
                           
         if (isAuthError && retryCount < maxRetries) {
-          console.log(`JWT error detected (${error.code}): ${error.message}`);
-          console.log(`Refreshing token and retrying (attempt ${retryCount + 1})`);
-          
           // Wait a bit and retry after refreshing the client
           await new Promise(resolve => setTimeout(resolve, 1000));
           await refreshClient(true);
@@ -128,7 +118,6 @@ export function useStores() {
       
       // Update last successful fetch time
       lastRefreshRef.current = Date.now();
-      console.log(`useStores: Successfully fetched ${safeData.length} stores for org ${organization.id}:`, safeData);
       
       // FIX: Explicitly cast the data to Store[] with proper type handling for metadata
       const typedStoreData: Store[] = safeData.map(store => ({
@@ -147,7 +136,6 @@ export function useStores() {
           timestamp: Date.now(),
           organizationId: organization.id
         }));
-        console.log(`useStores: Saved ${typedStoreData.length} stores to local cache for org ${organization.id}`);
       } catch (cacheError) {
         console.error('Failed to cache stores in localStorage:', cacheError);
       }
@@ -168,7 +156,6 @@ export function useStores() {
       
       // If fetching fails, return local backup only if it's for the same organization
       if (localStoresBackup.length > 0) {
-        console.log(`useStores: Falling back to ${localStoresBackup.length} locally backed up stores due to fetch error`);
         return localStoresBackup;
       }
       
@@ -178,7 +165,6 @@ export function useStores() {
         try {
           const { stores, organizationId } = JSON.parse(cachedData);
           if (Array.isArray(stores) && stores.length > 0 && organizationId === organization.id) {
-            console.log(`useStores: Falling back to ${stores.length} cached stores for org ${organization.id} due to fetch error`);
             // FIX: Explicitly cast the cached data to Store[] with proper type handling
             const typedStores = stores.map((store: any) => ({
               ...store,
@@ -242,7 +228,6 @@ export function useStores() {
           newStoreMap.set(store.id, store.name);
         }
       });
-      console.log(`useStores: Generated map with ${newStoreMap.size} store entries`);
       setStoreMapCache(newStoreMap);
       
       // Update the localStorage cache whenever we get new data
@@ -274,7 +259,6 @@ export function useStores() {
       const storesArray = Array.isArray(stores) ? stores : [];
       const storeFromArray = storesArray.find(s => s.id === storeId);
       if (storeFromArray) {
-        console.log(`useStores: Store ${storeId} not in map but found in array: ${storeFromArray.name}`);
         return storeFromArray.name;
       }
     }
@@ -283,7 +267,6 @@ export function useStores() {
     if (!name && localStoresBackup.length > 0) {
       const storeFromBackup = localStoresBackup.find(s => s.id === storeId);
       if (storeFromBackup) {
-        console.log(`useStores: Store ${storeId} found in local backup: ${storeFromBackup.name}`);
         return storeFromBackup.name;
       }
     }
@@ -297,7 +280,6 @@ export function useStores() {
           if (Array.isArray(cachedStores)) {
             const storeFromCache = cachedStores.find((s: Store) => s.id === storeId);
             if (storeFromCache) {
-              console.log(`useStores: Store ${storeId} found in localStorage cache: ${storeFromCache.name}`);
               return storeFromCache.name;
             }
           }
@@ -317,15 +299,12 @@ export function useStores() {
   
   // Force refresh function that clears cache and fetches fresh data
   const forceRefreshStores = useCallback(async () => {
-    console.log('useStores: Force refreshing stores data');
-    
     try {
       // Only force token refresh if it's been at least 30 seconds since last refresh
       const shouldRefreshToken = Date.now() - lastRefreshRef.current > 30000;
       
       if (shouldRefreshToken) {
         await refreshClient(true);
-        console.log('useStores: Refreshed auth token');
       }
       
       // Clear the query cache for stores
@@ -479,7 +458,6 @@ export function useStores() {
     }
     
     try {
-      console.log(`useStores: Finding or creating store with name "${name}" for org ${organization.id}`);
       
       // First check local cache/memory for the current organization
       const existingStoreInMemory = stores.find(
@@ -487,7 +465,6 @@ export function useStores() {
       );
       
       if (existingStoreInMemory) {
-        console.log(`useStores: Found existing store in memory: ${existingStoreInMemory.name} for org ${organization.id}`);
         return existingStoreInMemory;
       }
       
@@ -503,7 +480,6 @@ export function useStores() {
       
       // If store exists, return it
       if (existingStores && existingStores.length > 0) {
-        console.log(`useStores: Found existing store in database: ${existingStores[0].name} for org ${organization.id}`);
         
         // Cast to ensure type compatibility
         const existingStore = existingStores[0] as unknown as Store;
@@ -541,7 +517,6 @@ export function useStores() {
       }
       
       // Otherwise create a new store in the current organization
-      console.log(`useStores: Creating new store: ${name} for org ${organization.id}`);
       const { data: newStore, error: createError } = await supabase
         .from('stores')
         .insert({
@@ -579,7 +554,6 @@ export function useStores() {
         }
       );
       
-      console.log(`useStores: Successfully created new store: ${name} for org ${organization.id}`);
       return typedNewStore;
     } catch (err) {
       console.error('Error finding or creating store:', err);

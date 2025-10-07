@@ -76,14 +76,11 @@ export function EntriesList({
   
   // Get the store map
   const storeMap = useMemo(() => {
-    const map = getStoreMap();
-    console.log(`EntriesList: Using store map with ${map.size} entries:`, [...map.entries()]);
-    return map;
+    return getStoreMap();
   }, [getStoreMap]);
   
   // Force fetch stores when component mounts
   useEffect(() => {
-    console.log("EntriesList: Initial load - fetching stores");
     refetchStores();
     
     // Show store data warning if we have entries with store IDs but no stores data
@@ -91,7 +88,6 @@ export function EntriesList({
     const hasStoreData = Array.isArray(stores) && stores.length > 0;
     
     if (entriesWithStores > 0 && !hasStoreData) {
-      console.log("EntriesList: Found entries with store IDs but no store data");
       setShowStoreDataWarning(true);
     } else {
       setShowStoreDataWarning(false);
@@ -135,7 +131,6 @@ export function EntriesList({
     }
     
     try {
-      console.log(`EntriesList: Assigning store ${storeId || 'null'} to entry ${entryId}`);
       
       // Use the callback provided by the parent component
       if (onStoreAssigned) {

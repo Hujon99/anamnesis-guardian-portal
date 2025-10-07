@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -165,7 +165,7 @@ export const IdVerificationDialog = ({
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row justify-end gap-3 p-6 pt-4 border-t bg-muted/20">
+        <DialogFooter className="gap-3 p-6 pt-4 border-t bg-muted/20">
           <Button
             variant="outline"
             onClick={handleCancel}
@@ -212,7 +212,7 @@ export const IdVerificationDialog = ({
               Gå till formulär
             </Button>
           )}
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

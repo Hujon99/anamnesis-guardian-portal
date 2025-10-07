@@ -7,7 +7,8 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { FormTemplate, FormSection, FormQuestion } from "@/types/anamnesis";
+import { FormTemplate, FormSection, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
+import { generateRuntimeId } from "@/utils/questionIdUtils";
 
 export const useConditionalFields = (
   template: FormTemplate | null,
@@ -56,20 +57,49 @@ export const useConditionalFields = (
   }, []);
 
 
-  // Filter out any questions that should only be shown in optician mode
-  const filterQuestionsByMode = useCallback((questions: FormQuestion[], isOpticianMode: boolean) => {
-    return questions.filter(question => {
-      // Skip follow-up templates - they should never be rendered directly
-      if (question.is_followup_template) return false;
-
-      // If there's no mode restriction, or we're in optician mode and it's marked for opticians, show it
-      if (!question.show_in_mode || (isOpticianMode && question.show_in_mode === "optician")) {
-        return true;
+  // Generate dynamic follow-up questions for a section based on current values
+  const generateDynamicQuestions = useCallback((section: FormSection, values: Record<string, any>): DynamicFollowupQuestion[] => {
+    const dynamicQuestions: DynamicFollowupQuestion[] = [];
+    
+    section.questions.forEach(parentQuestion => {
+      if (parentQuestion.followup_question_ids && parentQuestion.followup_question_ids.length > 0) {
+        const parentValue = values[parentQuestion.id];
+        
+        // Handle both checkbox (array) and single-value responses
+        const selectedValues = Array.isArray(parentValue) ? parentValue : (parentValue ? [parentValue] : []);
+        
+        selectedValues.forEach((value: string) => {
+          // For each selected value, create instances of all follow-up questions
+          parentQuestion.followup_question_ids?.forEach(followupId => {
+            const template = section.questions.find(
+              q => q.id === followupId && q.is_followup_template
+            );
+            
+            if (template) {
+              // Create runtime ID using first word only
+              const runtimeId = generateRuntimeId(followupId, value);
+              
+              // Create a dynamic question instance
+              const dynamicQuestion: DynamicFollowupQuestion = {
+                ...template,
+                parentId: parentQuestion.id,
+                parentValue: value,
+                runtimeId: runtimeId,
+                originalId: template.id,
+                label: template.label.replace(/\{option\}/g, value)
+              };
+              
+              // Remove the is_followup_template flag
+              delete (dynamicQuestion as any).is_followup_template;
+              
+              dynamicQuestions.push(dynamicQuestion);
+            }
+          });
+        });
       }
-      
-      // Otherwise, filter out questions with mode restrictions
-      return false;
     });
+    
+    return dynamicQuestions;
   }, []);
 
   // Update the sections when the template or values change
@@ -113,8 +143,14 @@ export const useConditionalFields = (
             return evaluateCondition(question.show_if, values);
           });
           
-          // Update the processed section with filtered questions
-          processedSection.questions = visibleQuestions;
+          // Generate dynamic follow-up questions for this section
+          const dynamicQuestions = generateDynamicQuestions(section, values);
+          
+          // Combine regular and dynamic questions
+          const allQuestions = [...visibleQuestions, ...dynamicQuestions];
+          
+          // Update the processed section with all questions (regular + dynamic)
+          processedSection.questions = allQuestions;
           
           // Add the section to the current step if it has visible questions
           if (processedSection.questions.length > 0) {
@@ -145,7 +181,7 @@ export const useConditionalFields = (
       setVisibleSections([]);
       setTotalSections(0);
     }
-  }, [template, values, evaluateCondition, isOpticianMode]);
+  }, [template, values, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
   
   return {
     visibleSections,

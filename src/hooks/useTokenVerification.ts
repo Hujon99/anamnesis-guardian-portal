@@ -169,27 +169,29 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     // Skip if no token
     if (!effectiveToken) return;
     
-    // Check for completion conditions
-    if (!loading && 
-        !isVerifyingRef.current && 
-        activeFormTemplateSuccess && 
-        !activeFormTemplateLoading && 
-        entryData && 
-        activeFormTemplate && 
-        !error && 
-        !expired && 
-        !submitted) {
+    // CRITICAL: All three must be present:
+    // 1. Entry data from token verification
+    // 2. Form template from template fetch
+    // 3. No errors/expired/submitted states
+    const hasAllRequiredData = 
+      entryData && 
+      activeFormTemplate && 
+      activeFormTemplateSuccess &&
+      !activeFormTemplateLoading &&
+      !loading &&
+      !isVerifyingRef.current &&
+      !error &&
+      !expired &&
+      !submitted;
       
-      // If all conditions are met, mark as fully loaded
-      if (!isFullyLoaded) {
-        console.log(`[useTokenVerification/${instanceIdRef.current}]: All data loaded, marking as fully loaded`);
-        setFormLoading(false);
-        setIsFullyLoaded(true);
-        verificationCompletedRef.current = true;
-        foundDataRef.current = true;
-      }
+    if (hasAllRequiredData && !isFullyLoaded) {
+      console.log(`[useTokenVerification/${instanceIdRef.current}]: All data loaded, marking as fully loaded`);
+      setFormLoading(false);
+      setIsFullyLoaded(true);
+      verificationCompletedRef.current = true;
+      foundDataRef.current = true;
     }
-  }, [loading, formTemplateLoading, formTemplateSuccess, formTemplate, entryData, error, expired, submitted, isFullyLoaded, token]);
+  }, [loading, activeFormTemplateLoading, activeFormTemplateSuccess, activeFormTemplate, entryData, error, expired, submitted, isFullyLoaded, token]);
   
   // Primary token verification effect
   useEffect(() => {
@@ -444,10 +446,11 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     if (activeFormTemplateSuccess && activeFormTemplate) {
       console.log(`[useTokenVerification/${instanceIdRef.current}]: Form template loaded successfully`);
       isVerifyingRef.current = false;
-      verificationCompletedRef.current = true;
       
-      // Mark as fully loaded if we have entry data
+      // CRITICAL: Only mark as completed if we also have entry data
+      // Without entry data, we haven't actually verified the token yet
       if (entryData) {
+        verificationCompletedRef.current = true;
         setIsFullyLoaded(true);
         setFormLoading(false);
       }

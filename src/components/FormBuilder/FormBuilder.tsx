@@ -91,20 +91,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   
   const [currentForm, setCurrentForm] = useState<FormState>(() => {
     if (initialForm) {
-      console.log('[FormBuilder] Initializing with form:', { 
-        title: initialForm.title, 
-        hasSchema: !!initialForm.schema 
-      });
-      
-      if (initialForm.schema) {
-        // Debug: Log question IDs from database
-        initialForm.schema.sections.forEach((section, sIdx) => {
-          section.questions.forEach((question, qIdx) => {
-            console.log(`[FormBuilder] Section ${sIdx}, Question ${qIdx}: ID="${question.id}", Label="${question.label}"`);
-          });
-        });
-      }
-      
       return {
         title: initialForm.title,
         examination_type: initialForm.examination_type,
@@ -140,18 +126,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
     }),
     useSensor(KeyboardSensor)
   );
-
-  // Debug: Watch for changes to currentForm.schema
-  useEffect(() => {
-    if (currentForm.schema?.sections) {
-      console.log('[FormBuilder] Schema updated, checking question IDs:');
-      currentForm.schema.sections.forEach((section, sIdx) => {
-        section.questions.forEach((question, qIdx) => {
-          console.log(`[FormBuilder] Section ${sIdx}, Question ${qIdx}: ID="${question.id}", Label="${question.label}"`);
-        });
-      });
-    }
-  }, [currentForm.schema]);
 
   const { createForm, updateForm, isLoading } = useFormCRUD();
   const { validateForm, validateFormMetadata, hasErrors, hasWarnings } = useFormValidation();
@@ -319,14 +293,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   // Handle section drag end
   const handleSectionDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
-    console.log('[FormBuilder] Drag end:', { activeId: active.id, overId: over?.id });
 
     if (active.id !== over?.id) {
       const activeIndex = parseInt(active.id.toString().replace('section-', ''));
       const overIndex = parseInt(over?.id.toString().replace('section-', '') || '0');
-      
-      console.log('[FormBuilder] Moving section:', { activeIndex, overIndex });
       
       if (activeIndex !== overIndex && !isNaN(activeIndex) && !isNaN(overIndex)) {
         const newSections = arrayMove(currentForm.schema.sections, activeIndex, overIndex);
@@ -335,8 +305,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
           sections: newSections
         });
         addToHistory(`Flyttade sektion från position ${activeIndex + 1} till ${overIndex + 1}`);
-        
-        console.log('[FormBuilder] Section moved successfully');
       }
     }
   };
@@ -482,7 +450,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                       sensors={sensors}
                       collisionDetection={closestCenter}
                       onDragEnd={handleSectionDragEnd}
-                      onDragStart={() => console.log('[FormBuilder] Drag started')}
                     >
                       <SortableContext 
                         items={currentForm.schema.sections.map((_, index) => `section-${index}`)}

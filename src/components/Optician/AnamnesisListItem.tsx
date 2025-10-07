@@ -177,7 +177,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 
   const handleStoreAssign = async (storeId: string | null) => {
     if (onStoreAssign) {
-      console.log(`AnamnesisListItem: Assigning store ${storeId} to entry ${entry.id}`);
+      // Assigning store to entry
       await onStoreAssign(entry.id, storeId);
     }
   };
@@ -196,8 +196,6 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
     e.stopPropagation();
     e.preventDefault();
   };
-
-  console.log(`AnamnesisListItem: Entry ${entry.id} has patient_identifier:`, entry.patient_identifier);
 
   // Check if this is a driving license examination
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';

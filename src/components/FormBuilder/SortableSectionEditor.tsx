@@ -47,9 +47,6 @@ export const SortableSectionEditor: React.FC<SortableSectionEditorProps> = ({
     transition,
   };
 
-  // Debug logging
-  console.log(`[SortableSectionEditor] Rendering section ${sectionIndex}, isDragging: ${isDragging}`);
-
   return (
     <div
       ref={setNodeRef}

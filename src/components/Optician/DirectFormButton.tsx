@@ -77,15 +77,7 @@ export const DirectFormButton: React.FC = () => {
       const fullName = lastName ? `${firstName} ${lastName}` : firstName;
       const patientIdentifier = `${fullName} (Direkt ifyllning i butik)`;
 
-      console.log("Creating direct form entry with:", {
-        organizationId: organization.id,
-        formId: form.id,
-        userId: user.id,
-        fullName,
-        expiresAt
-      });
-
-          // Create entry in anamnes_entries with ID verification data
+      // Create entry in anamnes_entries with ID verification data
           const { data, error } = await supabase
             .from("anamnes_entries")
             .insert({
@@ -116,8 +108,6 @@ export const DirectFormButton: React.FC = () => {
         console.error("Error creating entry:", error);
         throw new Error(`Kunde inte skapa formulär: ${error.message}`);
       }
-
-      console.log("Successfully created entry:", data);
       
       // Update entry with GDPR confirmation data
       const { error: gdprError } = await supabase

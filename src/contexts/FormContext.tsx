@@ -67,11 +67,6 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   isOpticianMode = false,
   onFormValuesChange
 }) => {
-  console.log("[FormContext]: Initializing FormContext with template:", {
-    title: formTemplate?.title,
-    sections: formTemplate?.sections?.length || 0
-  });
-
   // Use state for form values that will be watched
   const [watchedFormValues, setWatchedFormValues] = useState<Record<string, any>>(initialValues || {});
   

@@ -80,7 +80,6 @@ export function AnamnesisListView({
   // Prefetch and warm up the stores cache immediately when component mounts
   useEffect(() => {
     const prefetchStores = async () => {
-      console.log("AnamnesisListView: Initial prefetch of stores");
       await refetchStores();
     };
     
@@ -92,7 +91,6 @@ export function AnamnesisListView({
 
   // Manual refresh handler that refetches both entries and stores
   const handleManualRefresh = useCallback(() => {
-    console.log("Manual refresh triggered in AnamnesisListView");
     refetch();
     refetchStores();
   }, [refetch, refetchStores]);
@@ -111,7 +109,6 @@ export function AnamnesisListView({
     
     try {
       setIsAssigningOptician(true);
-      console.log(`AnamnesisListView: Assigning optician ${opticianId || 'null'} to entry ${entryId}`);
       
       // Use the utility function directly
       await assignOpticianToEntry(supabase, entryId, opticianId);
@@ -154,7 +151,6 @@ export function AnamnesisListView({
     
     try {
       setIsAssigningStore(true);
-      console.log(`AnamnesisListView: Assigning store ${storeId || 'null'} to entry ${entryId}`);
       
       // Use the utility function directly
       await assignStoreToEntry(supabase, entryId, storeId);
@@ -195,17 +191,9 @@ export function AnamnesisListView({
       const targetEntry = entries.find(entry => entry.id === autoOpenDrivingLicenseExam);
       
       if (targetEntry) {
-        console.log("[AnamnesisListView]: Auto-opening driving license examination for:", targetEntry.id);
         handleDrivingLicenseExamination(targetEntry);
         
         // Notify parent that the examination has been opened
-        if (onDrivingLicenseExamOpened) {
-          onDrivingLicenseExamOpened();
-        }
-      } else {
-        console.warn("[AnamnesisListView]: Entry not found for auto-open:", autoOpenDrivingLicenseExam);
-        
-        // Clear the auto-open state even if entry wasn't found
         if (onDrivingLicenseExamOpened) {
           onDrivingLicenseExamOpened();
         }

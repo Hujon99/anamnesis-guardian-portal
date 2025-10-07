@@ -36,25 +36,14 @@ const FormContainer: React.FC<FormContainerProps> = ({
   onFormValuesChange
 }) => {
   
-  // Add a component mount effect to detect when form is rendered
+  // Validate template once on mount to provide a better user experience
   useEffect(() => {
-    console.log("[FormContainer]: Mounted with template:", 
-      formTemplate?.title,
-      "isOpticianMode:", isOpticianMode,
-      "initialValues:", initialValues ? "present" : "none"
-    );
-    
-    // Validate template once on mount to provide a better user experience
     if (!formTemplate) {
       console.error("[FormContainer]: Form template is missing");
     } else if (!formTemplate.sections || !Array.isArray(formTemplate.sections)) {
       console.error("[FormContainer]: Form template has invalid sections array");
     }
-    
-    return () => {
-      console.log("[FormContainer]: Unmounting form container");
-    };
-  }, [formTemplate, isOpticianMode, initialValues]);
+  }, [formTemplate]);
   
   // Validate the form template structure before rendering
   const isValidTemplate = React.useMemo(() => {
@@ -78,15 +67,10 @@ const FormContainer: React.FC<FormContainerProps> = ({
       return false;
     }
     
-    // Success - template structure is valid
-    console.log("[FormContainer]: Template structure validation passed!");
-    
     return true;
   }, [formTemplate]);
   
   const handleSubmit = async (values: any, formattedAnswers?: any) => {
-    console.log("[FormContainer/handleSubmit]: Form submission EXPLICITLY triggered by user");
-    
     try {
       // Show a toast to inform the user the submission is in progress
       toast({

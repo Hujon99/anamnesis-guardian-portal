@@ -80,8 +80,12 @@ export const createOptimizedPromptInput = (
         // Get the answer if it exists
         const answer = answeredQuestionsMap.get(question.id);
         
-        // Skip questions without answers
-        if (answer === undefined) return;
+        // Skip questions without answers (unless it has dynamic follow-ups)
+        const hasDynamicFollowups = Array.from(answeredQuestionsMap.keys()).some(key => 
+          isDynamicFollowupId(key) && getOriginalQuestionId(key) === question.id
+        );
+        
+        if (answer === undefined && !hasDynamicFollowups) return;
         
         // If this is the first question added for this section, add the section title
         if (!sectionAdded) {
@@ -92,46 +96,36 @@ export const createOptimizedPromptInput = (
         // Get the question label
         const label = questionLabelMap.get(question.id) || question.label || question.id;
         
-        // Handle different answer types
-        let formattedAnswer = formatAnswerValue(answer);
-        
-        // Add the question-answer pair
-        outputText += `${label}: ${formattedAnswer}\n`;
-      });
-      
-      // Look for follow-up questions related to this section
-      Array.from(answeredQuestionsMap.keys()).forEach(key => {
-        // Check if this is a follow-up question (_for_ indicates this)
-        if (isDynamicFollowupId(key)) {
-          const baseQuestionId = getOriginalQuestionId(key);
-          
-          // Check if the base question belongs to this section
-          const baseQuestionBelongsToThisSection = section.questions.some(q => q.id === baseQuestionId);
-          
-          if (baseQuestionBelongsToThisSection) {
-            const followUpAnswer = answeredQuestionsMap.get(key);
-            
-            // Skip if no answer
-            if (followUpAnswer === undefined || followUpAnswer === null || followUpAnswer === '') return;
-            
-            // If this is the first question added for this section, add the section title
-            if (!sectionAdded) {
-              outputText += `\n-- ${section.section_title} --\n`;
-              sectionAdded = true;
-            }
-            
-            // Format the follow-up question label nicely
-            const parentValue = getParentValueFromRuntimeId(key);
-            const baseQuestionLabel = questionLabelMap.get(baseQuestionId) || baseQuestionId;
-            const followUpLabel = `${baseQuestionLabel} (${parentValue})`;
-            
-            // Format the answer
-            let formattedAnswer = formatAnswerValue(followUpAnswer);
-            
-            // Add the follow-up question-answer pair
-            outputText += `${followUpLabel}: ${formattedAnswer}\n`;
-          }
+        // Add the main question if it has an answer
+        if (answer !== undefined) {
+          let formattedAnswer = formatAnswerValue(answer);
+          outputText += `${label}: ${formattedAnswer}\n`;
         }
+        
+        // Immediately add any dynamic follow-ups for this question (grouped together)
+        Array.from(answeredQuestionsMap.keys()).forEach(key => {
+          if (isDynamicFollowupId(key)) {
+            const baseQuestionId = getOriginalQuestionId(key);
+            
+            // Only process follow-ups for THIS question
+            if (baseQuestionId === question.id) {
+              const followUpAnswer = answeredQuestionsMap.get(key);
+              
+              // Skip if no answer
+              if (followUpAnswer === undefined || followUpAnswer === null || followUpAnswer === '') return;
+              
+              // Format the follow-up question label with indentation for clarity
+              const parentValue = getParentValueFromRuntimeId(key);
+              const followUpLabel = `  └─ ${label} (${parentValue})`;
+              
+              // Format the answer
+              let formattedAnswer = formatAnswerValue(followUpAnswer);
+              
+              // Add the follow-up question-answer pair with indentation
+              outputText += `${followUpLabel}: ${formattedAnswer}\n`;
+            }
+          }
+        });
       });
     });
   }

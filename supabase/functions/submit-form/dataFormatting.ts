@@ -147,7 +147,14 @@ export class DataFormatter {
           if (question.show_in_mode === "optician") return;
           
           const answer = answeredQuestionsMap.get(question.id);
-          if (answer === undefined) return;
+          
+          // Check if this question has dynamic follow-ups
+          const hasDynamicFollowups = Array.from(answeredQuestionsMap.keys()).some(key => 
+            key.includes('_for_') && key.split('_for_')[0] === question.id
+          );
+          
+          // Skip if no answer and no dynamic follow-ups
+          if (answer === undefined && !hasDynamicFollowups) return;
           
           if (!sectionAdded) {
             outputText += `\n-- ${section.section_title} --\n`;
@@ -155,37 +162,34 @@ export class DataFormatter {
           }
           
           const label = questionLabelMap.get(question.id) || question.label || question.id;
-          let formattedAnswer = this.formatAnswerValue(answer);
           
-          outputText += `${label}: ${formattedAnswer}\n`;
-        });
-        
-        // Look for follow-up questions
-        Array.from(answeredQuestionsMap.keys()).forEach(key => {
-          if (key.includes('_for_')) {
-            const [baseQuestionId] = key.split('_for_');
-            
-            const baseQuestionBelongsToThisSection = section.questions.some(q => q.id === baseQuestionId);
-            
-            if (baseQuestionBelongsToThisSection) {
-              const followUpAnswer = answeredQuestionsMap.get(key);
-              
-              if (followUpAnswer === undefined || followUpAnswer === null || followUpAnswer === '') return;
-              
-              if (!sectionAdded) {
-                outputText += `\n-- ${section.section_title} --\n`;
-                sectionAdded = true;
-              }
-              
-              const parentValue = key.split('_for_')[1].replace(/_/g, ' ');
-              const baseQuestionLabel = questionLabelMap.get(baseQuestionId) || baseQuestionId;
-              const followUpLabel = `${baseQuestionLabel} (${parentValue})`;
-              
-              let formattedAnswer = this.formatAnswerValue(followUpAnswer);
-              
-              outputText += `${followUpLabel}: ${formattedAnswer}\n`;
-            }
+          // Add the main question if it has an answer
+          if (answer !== undefined) {
+            let formattedAnswer = this.formatAnswerValue(answer);
+            outputText += `${label}: ${formattedAnswer}\n`;
           }
+          
+          // Immediately add any dynamic follow-ups for this question (grouped together)
+          Array.from(answeredQuestionsMap.keys()).forEach(key => {
+            if (key.includes('_for_')) {
+              const [baseQuestionId, parentValue] = key.split('_for_');
+              
+              // Only process follow-ups for THIS question
+              if (baseQuestionId === question.id) {
+                const followUpAnswer = answeredQuestionsMap.get(key);
+                
+                if (followUpAnswer === undefined || followUpAnswer === null || followUpAnswer === '') return;
+                
+                // Format with indentation for clarity
+                const formattedParentValue = parentValue.replace(/_/g, ' ');
+                const followUpLabel = `  └─ ${label} (${formattedParentValue})`;
+                
+                let formattedAnswer = this.formatAnswerValue(followUpAnswer);
+                
+                outputText += `${followUpLabel}: ${formattedAnswer}\n`;
+              }
+            }
+          });
         });
       });
     }

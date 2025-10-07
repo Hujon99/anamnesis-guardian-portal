@@ -323,8 +323,14 @@ export const enhancedProcessFormAnswers = (
       if (isDynamicFollowupId(key) && !processedRuntimeIds.has(key) && !key.startsWith('_meta_')) {
         const originalId = utilGetOriginalQuestionId(key);
         
-        // Extract the parent value from the runtime ID (first word)
-        const parentValue = utilGetParentValue(key);
+        // Try to get the full parent value from metadata first
+        const metadataKey = `_meta_parentValue_${key}`;
+        let parentValue = userInputs[metadataKey];
+        
+        // Fallback to extracting from runtime ID (first word only) if no metadata
+        if (!parentValue) {
+          parentValue = utilGetParentValue(key);
+        }
         
         if (!parentValue) {
           console.error(`[formSubmissionUtils] Cannot extract parent value from dynamic question ${key}`);
@@ -355,6 +361,8 @@ export const enhancedProcessFormAnswers = (
               value: userAnswer
             }
           });
+          
+          processedRuntimeIds.add(key);
           
           // Handle "Övrigt" for dynamic questions
           if (

@@ -104,10 +104,26 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Get the form values and handle them for auto-save
   const watchedValues = form.watch();
   
-  // Update our local state when form values change
+  // Update our local state when form values change and store metadata for dynamic questions
   useEffect(() => {
-    setWatchedFormValues(watchedValues);
-  }, [watchedValues]);
+    // Create a copy to add metadata
+    const valuesWithMetadata = { ...watchedValues };
+    
+    // For each dynamic follow-up question in visible sections, store its full parent value as metadata
+    visibleSections.forEach(stepSections => {
+      stepSections.forEach(section => {
+        section.questions.forEach(q => {
+          if ('runtimeId' in q && 'parentValue' in q) {
+            const dynamicQ = q as DynamicFollowupQuestion;
+            const metadataKey = `_meta_parentValue_${dynamicQ.runtimeId}`;
+            valuesWithMetadata[metadataKey] = dynamicQ.parentValue;
+          }
+        });
+      });
+    });
+    
+    setWatchedFormValues(valuesWithMetadata);
+  }, [watchedValues, visibleSections]);
   
   // Call onFormValuesChange when form values change
   useEffect(() => {

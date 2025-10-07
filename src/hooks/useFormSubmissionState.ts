@@ -82,45 +82,12 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
       processQuestion(question, sectionTitle, currentValues);
     });
 
-    // Look for dynamic follow-up questions that belong to this section only
-    Object.keys(currentValues).forEach(key => {
-      if (isDynamicFollowupId(key) && !key.startsWith('_meta_')) {
-        // Check if this dynamic question belongs to a question in this section
-        const baseQuestionId = getOriginalQuestionId(key);
-        
-        // Extract the parent value from the runtime ID (first word)
-        const parentValue = getParentValueFromRuntimeId(key);
-        
-        if (!parentValue) {
-          console.warn(`[FormSubmissionState] Skipping dynamic question ${key}: Cannot extract parent value`);
-          return;
-        }
-        
-        let belongsToThisSection = false;
-        
-        // Check if the parent question is in this section
-        section.questions.forEach(q => {
-          if (q.id === baseQuestionId) {
-            belongsToThisSection = true;
-          }
-        });
-        
-        // Only process if this dynamic question belongs to this section
-        if (belongsToThisSection) {
-          console.log(`[FormSubmissionState] Processing dynamic question: ${key}, originalId: ${baseQuestionId}, parentValue: "${parentValue}"`);
-          
-          const dynamicQuestion: DynamicFollowupQuestion = {
-            id: baseQuestionId,
-            runtimeId: key,
-            label: `Dynamic Question ${key}`, // This doesn't matter for processing
-            type: 'text', // Default type, doesn't matter for processing
-            parentId: baseQuestionId,
-            parentValue: parentValue,
-            originalId: baseQuestionId,
-          };
-          
-          processQuestion(dynamicQuestion, sectionTitle, currentValues);
-        }
+    // Look for dynamic follow-up questions that were already generated
+    section.questions.forEach(question => {
+      // Check if this is a dynamic follow-up question with full parent value metadata
+      if ('runtimeId' in question && 'parentValue' in question) {
+        const dynamicQ = question as DynamicFollowupQuestion;
+        processQuestion(dynamicQ, sectionTitle, currentValues);
       }
     });
   }, [findOrCreateSection]);

@@ -11,6 +11,7 @@ import { FormTemplate } from "@/types/anamnesis";
 import { Card } from "@/components/ui/card";
 import { FormLayout } from "@/components/PatientForm/FormLayout";
 import { FormContextProvider } from "@/contexts/FormContext";
+import { useFormSessionTracking } from "@/hooks/useFormSessionTracking";
 
 interface FormOrchestratorProps {
   formTemplate: FormTemplate;
@@ -20,6 +21,9 @@ interface FormOrchestratorProps {
   initialValues?: Record<string, any> | null;
   createdByName?: string | null;
   onFormValuesChange?: (values: Record<string, any>) => void;
+  entryId?: string | null;
+  token?: string | null;
+  organizationId?: string;
 }
 
 export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
@@ -29,8 +33,17 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
   isOpticianMode = false,
   initialValues = null,
   createdByName = null,
-  onFormValuesChange
+  onFormValuesChange,
+  entryId = null,
+  token = null,
+  organizationId
 }) => {
+  // Initialize form session tracking
+  const tracking = useFormSessionTracking({
+    entryId,
+    organizationId: organizationId || 'unknown',
+    token
+  });
   
   return (
     <FormContextProvider 
@@ -40,6 +53,7 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
       isOpticianMode={isOpticianMode}
       initialValues={initialValues}
       onFormValuesChange={onFormValuesChange}
+      tracking={tracking}
     >
       <Card>
         <FormLayout createdByName={createdByName} />

@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useUser, useOrganization } from "@clerk/clerk-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Building2, AlertTriangle, Settings, Plus, FileText } from "lucide-react";
+import { Building2, AlertTriangle, Settings, Plus, FileText, Bug } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -25,6 +25,7 @@ import { SystemSettings } from "@/components/AdminPanel/SystemSettings";
 import { FormManagementGrid } from "@/components/FormBuilder/FormManagementGrid";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useSystemAdmin } from "@/contexts/SystemAdminContext";
+import { FormSessionDebugView } from "@/components/AdminPanel/FormSessionDebugView";
 
 type Store = Tables<"stores">;
 
@@ -154,6 +155,10 @@ const AdminPanel = () => {
             <Settings className="h-4 w-4" />
             Inställningar
           </TabsTrigger>
+          <TabsTrigger value="debug" className="flex items-center gap-2">
+            <Bug className="h-4 w-4" />
+            Felsökning
+          </TabsTrigger>
           {isSystemAdmin && (
             <TabsTrigger value="system" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -223,6 +228,10 @@ const AdminPanel = () => {
         
         <TabsContent value="settings" className="mt-0">
           <OrganizationSettings />
+        </TabsContent>
+        
+        <TabsContent value="debug" className="mt-0">
+          <FormSessionDebugView />
         </TabsContent>
         
         {isSystemAdmin && (

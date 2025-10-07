@@ -540,6 +540,77 @@ export type Database = {
         }
         Relationships: []
       }
+      form_session_logs: {
+        Row: {
+          browser: string | null
+          created_at: string | null
+          current_question_id: string | null
+          current_section_index: number | null
+          device_type: string | null
+          entry_id: string | null
+          error_message: string | null
+          error_type: string | null
+          event_data: Json | null
+          event_type: string
+          form_progress_percent: number | null
+          id: string
+          is_touch_device: boolean | null
+          organization_id: string
+          session_id: string
+          token: string | null
+          viewport_height: number | null
+          viewport_width: number | null
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string | null
+          current_question_id?: string | null
+          current_section_index?: number | null
+          device_type?: string | null
+          entry_id?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          event_data?: Json | null
+          event_type: string
+          form_progress_percent?: number | null
+          id?: string
+          is_touch_device?: boolean | null
+          organization_id: string
+          session_id: string
+          token?: string | null
+          viewport_height?: number | null
+          viewport_width?: number | null
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string | null
+          current_question_id?: string | null
+          current_section_index?: number | null
+          device_type?: string | null
+          entry_id?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          event_data?: Json | null
+          event_type?: string
+          form_progress_percent?: number | null
+          id?: string
+          is_touch_device?: boolean | null
+          organization_id?: string
+          session_id?: string
+          token?: string | null
+          viewport_height?: number | null
+          viewport_width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_session_logs_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "anamnes_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_settings: {
         Row: {
           ai_prompt_driving_license: string | null

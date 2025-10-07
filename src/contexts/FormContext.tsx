@@ -18,6 +18,13 @@ import { useFormattedRawData } from "@/hooks/useFormattedRawData";
 import { toast } from "sonner";
 import { CURRENT_PRIVACY_POLICY_VERSION, CURRENT_TERMS_VERSION } from '@/legal';
 
+interface FormSessionTracking {
+  logSectionChange: (sectionIndex: number, questionId: string | undefined, progress: number) => void;
+  logSubmissionAttempt: (progress: number) => void;
+  logSubmissionSuccess: () => void;
+  logSubmissionError: (errorMessage: string, errorType: string) => void;
+}
+
 interface FormContextProviderProps {
   children: React.ReactNode;
   formTemplate: FormTemplate;
@@ -26,6 +33,7 @@ interface FormContextProviderProps {
   initialValues?: Record<string, any> | null;
   isOpticianMode?: boolean;
   onFormValuesChange?: (values: Record<string, any>) => void;
+  tracking?: FormSessionTracking;
 }
 
 interface FormContextValue {
@@ -65,7 +73,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   isSubmitting,
   initialValues = null,
   isOpticianMode = false,
-  onFormValuesChange
+  onFormValuesChange,
+  tracking
 }) => {
   // Use state for form values that will be watched
   const [watchedFormValues, setWatchedFormValues] = useState<Record<string, any>>(initialValues || {});
@@ -160,6 +169,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   
   // Enhanced form submission handler with better error handling and debugging
   const handleFormSubmit = () => async (data: any) => {
+    tracking?.logSubmissionAttempt(100);
+    
     try {
       // Validate only visible fields
       const isValid = await form.trigger(visibleFieldIds);
@@ -172,6 +183,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         
         if (visibleErrors.length > 0) {
           toast.error("Formuläret innehåller fel som måste åtgärdas");
+          tracking?.logSubmissionError("Validation errors present", "ValidationError");
           return;
         }
       }
@@ -194,15 +206,20 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       try {
         await onSubmit(submissionData, formattedAnswers);
         console.log("[FormContext/handleFormSubmit]: Form submitted successfully");
+        tracking?.logSubmissionSuccess();
         clearTimeout(submissionTimeout);
       } catch (error) {
         clearTimeout(submissionTimeout);
         console.error("[FormContext/handleFormSubmit]: Error submitting form:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        tracking?.logSubmissionError(errorMessage, error instanceof Error ? error.constructor.name : 'UnknownError');
         toast.error("Det gick inte att skicka in formuläret");
         throw error;
       }
     } catch (error) {
       console.error("[FormContext/handleFormSubmit]: Error formatting answers:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      tracking?.logSubmissionError(errorMessage, 'FormattingError');
       toast.error("Ett fel uppstod vid formatering av svaren");
       throw error;
     }
@@ -263,6 +280,12 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       const isValid = await form.trigger(visibleFields);
       if (isValid) {
         setCompletedSteps(prev => [...new Set([...prev, currentStep])]);
+        const nextSectionIndex = currentStep + 1;
+        const nextSection = visibleSections[nextSectionIndex];
+        const firstQuestionId = nextSection?.[0]?.questions?.[0]?.id;
+        const progressPercent = Math.round(((nextSectionIndex + 1) / totalSections) * 100);
+        
+        tracking?.logSectionChange(nextSectionIndex, firstQuestionId, progressPercent);
         goToNextStep();
       } else {
         toast.error("Vänligen åtgärda felen innan du fortsätter");
@@ -273,6 +296,12 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   };
   
   const previousStep = () => {
+    const prevSectionIndex = currentStep - 1;
+    const prevSection = visibleSections[prevSectionIndex];
+    const firstQuestionId = prevSection?.[0]?.questions?.[0]?.id;
+    const progressPercent = Math.round(((prevSectionIndex + 1) / totalSections) * 100);
+    
+    tracking?.logSectionChange(prevSectionIndex, firstQuestionId, progressPercent);
     goToPreviousStep();
   };
   

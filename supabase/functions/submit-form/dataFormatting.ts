@@ -65,22 +65,7 @@ export class DataFormatter {
           section_title: "Patientens svar",
           responses: Object.entries(answers)
             .filter(([key]) => !['formMetadata', 'metadata', '_metadata', '_isOptician'].includes(key))
-            .map(([id, answer]) => {
-              // Handle dynamic follow-up questions
-              if (id.includes('_for_')) {
-                const [baseQuestion, parentValue] = id.split('_for_');
-                return {
-                  id,
-                  answer: {
-                    parent_question: baseQuestion,
-                    parent_value: parentValue.replace(/_/g, ' '),
-                    value: answer
-                  }
-                };
-              }
-              // Regular questions
-              return { id, answer };
-            })
+            .map(([id, answer]) => ({ id, answer }))
         }]
       };
     }

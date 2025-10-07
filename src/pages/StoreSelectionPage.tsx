@@ -5,7 +5,7 @@
  * Shows available examination types for each store to help users make informed decisions.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { MapPin, Phone, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import { useStores } from '@/hooks/useStores';
 import { useFormsByStore } from '@/hooks/useFormsByStore';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface StoreCardProps {
   store: any;
@@ -96,6 +98,7 @@ const StoreCard: React.FC<StoreCardProps> = ({ store, onSelect, isLoading }) => 
 const StoreSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const [isNavigating, setIsNavigating] = React.useState(false);
   const [selectedStore, setSelectedStore] = React.useState<string | null>(null);
 
@@ -103,6 +106,30 @@ const StoreSelectionPage: React.FC = () => {
   const formId = searchParams.get('form_id');
 
   const { stores, isLoading: isLoadingStores, error } = useStores();
+  
+  // Prefetch forms for all stores as soon as they load
+  useEffect(() => {
+    if (stores && stores.length > 0) {
+      console.log("[StoreSelectionPage]: Prefetching forms for all stores");
+      stores.forEach(store => {
+        if (store.id) {
+          // Prefetch forms for each store
+          queryClient.prefetchQuery({
+            queryKey: ["forms-by-store", store.id],
+            queryFn: async () => {
+              const { data, error } = await supabase.functions.invoke('get-store-forms', {
+                body: { storeId: store.id }
+              });
+              
+              if (error) throw error;
+              return data || [];
+            },
+            staleTime: 2 * 60 * 1000,
+          });
+        }
+      });
+    }
+  }, [stores, queryClient]);
 
   const handleStoreSelect = async (storeId: string) => {
     setIsNavigating(true);

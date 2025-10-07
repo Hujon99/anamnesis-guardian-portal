@@ -69,8 +69,8 @@ export const useFormTemplateByFormId = (formId?: string) => {
         return null;
       }
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    gcTime: 10 * 60 * 1000,
+    staleTime: 15 * 60 * 1000, // Cache for 15 minutes (templates rarely change)
+    gcTime: 30 * 60 * 1000,
     enabled: !!supabase && !!formId, // Only run when supabase client and formId are available
     retry: 2,
     retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000),

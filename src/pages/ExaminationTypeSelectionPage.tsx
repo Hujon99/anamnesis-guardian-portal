@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Eye, Contact, Car, FileText, Store, ArrowLeft } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useFormsByStore } from "@/hooks/useFormsByStore";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFormTemplateByFormId } from "@/hooks/useFormTemplateByFormId";
 
 interface ExaminationType {
   type: string;
@@ -25,6 +27,7 @@ interface ExaminationType {
 const ExaminationTypeSelectionPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [examinationTypes, setExaminationTypes] = useState<ExaminationType[]>([]);
@@ -169,6 +172,31 @@ const ExaminationTypeSelectionPage = () => {
       setExaminationTypes(types);
       setError(null); // Clear any previous errors
       setIsLoading(false);
+      
+      // Prefetch form templates for all examination types
+      console.log("[ExaminationTypeSelectionPage]: Prefetching form templates");
+      types.forEach(type => {
+        queryClient.prefetchQuery({
+          queryKey: ["form-template-by-id", type.formId],
+          queryFn: async () => {
+            const { data, error } = await supabase
+              .from('anamnes_forms')
+              .select("*")
+              .eq('id', type.formId)
+              .single();
+            
+            if (error) throw error;
+            return {
+              schema: data.schema,
+              id: data.id,
+              title: data.title,
+              organization_id: data.organization_id,
+              examination_type: data.examination_type,
+            };
+          },
+          staleTime: 15 * 60 * 1000,
+        });
+      });
     } else if (storeId && !isLoadingStoreForms && storeforms.length === 0) {
       console.error("[ExaminationTypeSelectionPage]: No forms found for store");
       setError("Inga formulär hittades för denna butik. Kontrollera att butiken har aktiva formulär tilldelade.");
@@ -178,7 +206,7 @@ const ExaminationTypeSelectionPage = () => {
       setIsLoading(true);
       setError(null); // Clear any previous errors while loading
     }
-  }, [storeforms, isLoadingStoreForms, storeId]);
+  }, [storeforms, isLoadingStoreForms, storeId, queryClient]);
 
   const handleExaminationTypeSelect = async (examinationType: ExaminationType) => {
     try {
@@ -207,7 +235,33 @@ const ExaminationTypeSelectionPage = () => {
         return;
       }
       
-      console.log("ExaminationTypeSelectionPage: Token generated successfully, redirecting to patient form");
+      console.log("ExaminationTypeSelectionPage: Token generated successfully, prefetching form template");
+      
+      // Prefetch form template before navigation if formId is returned
+      if (data.formId) {
+        await queryClient.prefetchQuery({
+          queryKey: ["form-template-by-id", data.formId],
+          queryFn: async () => {
+            const { data: formData, error: formError } = await supabase
+              .from('anamnes_forms')
+              .select("*")
+              .eq('id', data.formId)
+              .single();
+            
+            if (formError) throw formError;
+            return {
+              schema: formData.schema,
+              id: formData.id,
+              title: formData.title,
+              organization_id: formData.organization_id,
+              examination_type: formData.examination_type,
+            };
+          },
+          staleTime: 15 * 60 * 1000,
+        });
+      }
+      
+      console.log("ExaminationTypeSelectionPage: Redirecting to patient form");
       
       // Redirect to patient form with token
       navigate(`/patient-form?token=${data.accessToken}`);

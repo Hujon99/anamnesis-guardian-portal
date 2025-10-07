@@ -187,12 +187,14 @@ serve(async (req: Request) => {
       );
     }
     
-    // Return the access token and entry ID
+    // Return the access token and entry ID, plus form metadata for prefetching
     return new Response(
       JSON.stringify({ 
         accessToken,
         entryId: entry.id,
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
+        formId: formId,
+        organizationId: formData.organization_id
       }),
       { 
         status: 200, 

@@ -164,8 +164,8 @@ export const useFormTemplate = (examinationType?: string) => {
         return null;
       }
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    gcTime: 10 * 60 * 1000,
+    staleTime: 15 * 60 * 1000, // Cache for 15 minutes (templates rarely change)
+    gcTime: 30 * 60 * 1000,
     enabled: !!supabase, // Only run when supabase client is available
     retry: 2, // Limit retries to prevent loops
     retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000), // Exponential backoff

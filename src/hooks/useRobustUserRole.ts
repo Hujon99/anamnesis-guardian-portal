@@ -46,7 +46,6 @@ export const useRobustUserRole = () => {
     const isSameOrg = cacheRef.current.orgId === organization.id;
     
     if (!isExpired && isSameOrg) {
-      console.log('useRobustUserRole: Using cached role', cacheRef.current.role);
       return cacheRef.current.role;
     }
     
@@ -61,20 +60,16 @@ export const useRobustUserRole = () => {
         timestamp: Date.now(),
         orgId: organization.id
       };
-      console.log('useRobustUserRole: Cached role', role, 'for org', organization.id);
     }
   }, [organization?.id]);
 
   // Fetch role from Supabase with retry logic
   const fetchSupabaseRole = useCallback(async (attempt: number = 1): Promise<UserRole | null> => {
     if (!userId || !isReady) {
-      console.log('useRobustUserRole: Skipping fetch - userId or supabase not ready');
       return null;
     }
 
     try {
-      console.log(`useRobustUserRole: Fetching role from Supabase (attempt ${attempt}/${MAX_RETRIES})`);
-      
       const { data, error: queryError } = await supabase
         .from('users')
         .select('role')
@@ -86,7 +81,6 @@ export const useRobustUserRole = () => {
       }
 
       const fetchedRole = (data?.role as UserRole) || null;
-      console.log('useRobustUserRole: Successfully fetched role:', fetchedRole);
       
       setError(null);
       setRetryCount(0);
@@ -98,7 +92,6 @@ export const useRobustUserRole = () => {
       
       // Retry logic
       if (attempt < MAX_RETRIES) {
-        console.log(`useRobustUserRole: Retrying in ${RETRY_DELAY}ms...`);
         setRetryCount(attempt);
         
         return new Promise((resolve) => {
@@ -117,7 +110,6 @@ export const useRobustUserRole = () => {
 
   // Manual retry function
   const retry = useCallback(async () => {
-    console.log('useRobustUserRole: Manual retry triggered');
     setIsLoading(true);
     setError(null);
     setRetryCount(0);
@@ -169,18 +161,6 @@ export const useRobustUserRole = () => {
 
   // Final role priority: Clerk admin > Supabase optician > Supabase member
   const role: UserRole | null = isAdmin ? 'admin' : supabaseRole;
-
-  console.log('useRobustUserRole: Final state', {
-    isAdmin,
-    isOptician,
-    isMember,
-    role,
-    clerkOrgRole,
-    supabaseRole,
-    isLoading,
-    error,
-    retryCount
-  });
 
   return {
     role,

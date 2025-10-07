@@ -96,14 +96,6 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
   };
 
   const handleSubmit = async (data: FeedbackFormData) => {
-    console.log("=== FEEDBACK SUBMISSION START ===");
-    console.log("Form values:", data);
-    console.log("Screenshot:", screenshot?.name);
-    console.log("User ID:", userId);
-    console.log("Organization ID:", organization?.id);
-    console.log("Supabase ready:", isReady);
-    console.log("refreshClient function:", typeof refreshClient);
-    
     if (!userId || !organization?.id || !isReady) {
       console.error("Missing required data for submission");
       toast({
@@ -117,8 +109,6 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
     setIsSubmitting(true);
 
     try {
-      console.log("=== STEP 1: INSERTING FEEDBACK TO DATABASE ===");
-      
       // Always insert feedback first, regardless of image
       const { data: feedbackData, error: feedbackError } = await supabase
         .from("feedback")
@@ -137,7 +127,6 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 
       // Handle JWT expiry specifically
       if (feedbackError?.code === 'PGRST301' || feedbackError?.message?.includes('JWT expired')) {
-        console.log("JWT expired, refreshing client and retrying...");
         toast({
           title: "Sessionen uppdateras",
           description: "Väntar på ny inloggning...",
@@ -177,17 +166,12 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
         throw new Error(`Kunde inte spara feedback: ${feedbackError.message}`);
       }
 
-      console.log("✅ Feedback saved to database with ID:", feedbackData?.id);
-
       // Handle image upload separately (optional - don't fail if this fails)
       let imageUploadSuccess = false;
       if (screenshot && feedbackData) {
-        console.log("=== STEP 2: UPLOADING IMAGE ===");
-        
         // Validate file first
         const validation = validateFile(screenshot);
         if (!validation.isValid) {
-          console.warn("File validation failed:", validation.error);
           toast({
             variant: "destructive",
             title: "Bildfel",
@@ -198,8 +182,6 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
             const fileExt = screenshot.name.split('.').pop();
             const fileName = `${feedbackData.id}_${Date.now()}.${fileExt}`;
             const filePath = `${organization.id}/${fileName}`;
-            
-            console.log("Uploading to path:", filePath);
 
             const { error: uploadError } = await supabase.storage
               .from("feedback-screenshots")
@@ -216,8 +198,6 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
                 description: "Feedback skickades men bilden kunde inte laddas upp.",
               });
             } else {
-              console.log("✅ Image uploaded successfully");
-              
               // Update feedback with screenshot URL
               const { error: updateError } = await supabase
                 .from("feedback")
@@ -232,7 +212,6 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
                   description: "Bilden laddades upp men kunde inte länkas till feedback.",
                 });
               } else {
-                console.log("✅ Screenshot URL saved to database");
                 imageUploadSuccess = true;
               }
             }
@@ -253,15 +232,13 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
         description: successMessage,
       });
 
-      console.log("=== SUBMISSION COMPLETED SUCCESSFULLY ===");
-
       // Reset and close
       form.reset();
       setScreenshot(null);
       onOpenChange(false);
 
     } catch (error) {
-      console.error("=== SUBMISSION FAILED ===", error);
+      console.error("Feedback submission failed:", error);
       toast({
         variant: "destructive",
         title: "Kunde inte skicka feedback",

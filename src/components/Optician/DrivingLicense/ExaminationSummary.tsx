@@ -60,17 +60,6 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   const verifiedBy = entry?.verified_by || examination?.verified_by;
   const canPass = visionPassed && idVerified;
   
-  // Debug logging to see what values we're receiving
-  console.log('[ExaminationSummary] Debug - examination visual acuity values:', {
-    both_eyes: examination?.visual_acuity_both_eyes,
-    both_eyes_type: typeof examination?.visual_acuity_both_eyes,
-    right_eye: examination?.visual_acuity_right_eye,
-    right_eye_type: typeof examination?.visual_acuity_right_eye,
-    left_eye: examination?.visual_acuity_left_eye,
-    left_eye_type: typeof examination?.visual_acuity_left_eye,
-    with_correction_both: examination?.visual_acuity_with_correction_both,
-    with_correction_both_type: typeof examination?.visual_acuity_with_correction_both
-  });
   const handleComplete = async () => {
     if (!selectedOpticianId) {
       toast({
@@ -123,7 +112,6 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
           console.error('[ExaminationSummary] Email notification failed:', emailError);
           // Don't fail the whole process for email errors, just log it
         } else {
-          console.log('[ExaminationSummary] Email notification sent successfully:', emailResult);
           if (emailResult && emailResult.success === false) {
             toast({
               title: 'E-post kunde inte skickas',

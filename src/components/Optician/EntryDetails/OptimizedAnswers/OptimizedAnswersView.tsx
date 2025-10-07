@@ -62,12 +62,6 @@ export const OptimizedAnswersView = ({
     }
   }, [hasAnswers, answers, entryId, supabase]);
 
-  console.log("OptimizedAnswersView render:", { 
-    aiSummary: aiSummary?.substring(0, 100) + "...", 
-    aiSummaryLength: aiSummary?.length,
-    activeTab 
-  });
-
   // Use the summary generator hook (simplified)
   const {
     isGenerating,

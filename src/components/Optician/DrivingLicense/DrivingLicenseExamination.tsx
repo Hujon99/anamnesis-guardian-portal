@@ -70,7 +70,6 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           return; // Wait until authenticated client is ready
         }
         setIsLoading(true);
-        console.log('[DrivingLicenseExamination] Loading examination for entry:', entry.id);
         
         const { data: existingExam, error } = await db
           .from('driving_license_examinations')
@@ -78,20 +77,16 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           .eq('entry_id', entry.id)
           .single();
 
-        console.log('[DrivingLicenseExamination] Query result:', { existingExam, error });
-
         if (error && error.code !== 'PGRST116') {
           throw error;
         }
 
         if (existingExam) {
-          console.log('[DrivingLicenseExamination] Found existing examination:', existingExam);
           setExamination(existingExam);
           // Always start at step 1 (ID verification) to show status clearly
           setCurrentStep(1);
         } else {
           // Create new examination record
-          console.log('[DrivingLicenseExamination] Creating new examination for entry:', entry.id);
           const newExamination = {
             entry_id: entry.id,
             organization_id: entry.organization_id,
@@ -103,8 +98,6 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
             .insert(newExamination)
             .select()
             .single();
-
-          console.log('[DrivingLicenseExamination] Created examination:', { created, createError });
 
           if (createError) {
             console.warn('[DrivingLicenseExamination] Insert blocked or failed, switching to offline mode', createError);
@@ -137,18 +130,6 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
   }, [entry.id, entry.organization_id, isReady, db]);
 
   const saveExamination = async (updates: Database['public']['Tables']['driving_license_examinations']['Update']) => {
-    console.log('[DrivingLicenseExamination] saveExamination called with updates:', updates);
-    if (updates.personal_number !== undefined) {
-      console.log('[DrivingLicenseExamination] PERSONAL_NUMBER in updates:', updates.personal_number);
-    }
-    console.log('[DrivingLicenseExamination] Current state:', { 
-      examination: examination?.id, 
-      isOffline, 
-      offlineData: !!offlineData,
-      isReady,
-      hasDb: !!db 
-    });
-
     try {
       setIsSaving(true);
 
@@ -162,7 +143,6 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
 
       if (examination?.id) {
         // Update existing examination
-        console.log('[DrivingLicenseExamination] Updating existing examination:', examination.id);
         const { data, error: updateError } = await db
           .from('driving_license_examinations')
           .update(updates)
@@ -174,7 +154,6 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
         error = updateError;
       } else {
         // Insert new examination
-        console.log('[DrivingLicenseExamination] Inserting new examination');
         const payload = {
           entry_id: entry.id,
           organization_id: entry.organization_id,
@@ -192,15 +171,12 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
         error = insertError;
       }
 
-      console.log('[DrivingLicenseExamination] Operation result:', { result, error });
-
       if (error) {
         console.error('[DrivingLicenseExamination] Database operation failed:', error);
         throw new Error(`Databasfel: ${error.message}`);
       }
 
       if (result) {
-        console.log('[DrivingLicenseExamination] Successfully saved to database');
         setExamination(result);
         setIsOffline(false);
         setOfflineData(null);
@@ -215,13 +191,12 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           
           if (refetched) {
             setExamination(refetched);
-            console.log('[DrivingLicenseExamination] Refetched examination data:', refetched);
           }
         } catch (refetchError) {
           console.warn('[DrivingLicenseExamination] Refetch failed, using operation result');
         }
         
-        toast({ 
+        toast({
           title: 'Sparat', 
           description: 'Undersökningen har sparats i databasen',
           variant: 'default'
@@ -264,11 +239,6 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
     ...examination,
     ...(offlineData || {}),
   } as any;
-
-  // Debug logging
-  React.useEffect(() => {
-    console.log('[DrivingLicenseExamination] Rendering step content - currentStep:', currentStep, 'examination:', examination, 'offline:', isOffline);
-  }, [currentStep, examination, isOffline]);
 
   if (isLoading) {
     return (

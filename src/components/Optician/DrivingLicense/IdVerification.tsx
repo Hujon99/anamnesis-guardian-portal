@@ -122,8 +122,6 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
           throw new Error(`Kunde inte spara legitimationsdata: ${anamnesError.message}`);
         }
         
-        console.log('[IdVerification] Successfully updated anamnes_entries');
-        
         // Also update the driving license examination record for examination-specific data
         const drivingLicenseUpdates = {
           id_verification_completed: true,
@@ -133,7 +131,6 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
           personal_number: personalNumber.trim() || null
         };
 
-        console.log('[IdVerification] Updates object:', drivingLicenseUpdates);
         await onSave(drivingLicenseUpdates);
       }
       
@@ -145,13 +142,9 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
   };
 
   const handleDeferVerification = async () => {
-    console.log('[IdVerification] Defer verification clicked for entry:', entry?.id);
-    
     try {
       // Update anamnes_entries to mark that ID verification is deferred
       if (entry?.id && supabase) {
-        console.log('[IdVerification] Updating entry to pending_id_verification status');
-
         const { error } = await supabase
           .from('anamnes_entries')
           .update({
@@ -164,19 +157,13 @@ export const IdVerification: React.FC<IdVerificationProps> = ({
           console.error('[IdVerification] Failed to defer verification:', error);
           throw error;
         }
-        
-        console.log('[IdVerification] Successfully updated entry status to pending_id_verification');
-      } else {
-        console.warn('[IdVerification] No entry ID available for deferring verification');
       }
       
-      console.log('[IdVerification] Calling onNext to continue to next step');
       // Continue to next step without verification
       onNext();
     } catch (error) {
       console.error('[IdVerification] Error deferring verification:', error);
       // Still proceed to next step even if database update fails
-      console.log('[IdVerification] Proceeding to next step despite error');
       onNext();
     }
   };

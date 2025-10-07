@@ -34,13 +34,6 @@ export const ContentTabs = ({
   isRegenerating = false
 }: ContentTabsProps) => {
   const hasSummary = aiSummary && aiSummary.trim().length > 0;
-  
-  console.log("ContentTabs render:", { 
-    activeTab, 
-    hasSummary, 
-    aiSummaryLength: aiSummary?.length,
-    aiSummaryPreview: aiSummary?.substring(0, 50) + "..."
-  });
 
   return (
     <div className="w-full">

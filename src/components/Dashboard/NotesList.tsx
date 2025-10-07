@@ -38,11 +38,8 @@ export const NotesList = ({ retryCount, onRetry }: NotesListProps) => {
       if (!organization?.id) return [];
       
       if (!isSynced) {
-        console.log("Organization not synced yet, delaying notes fetch");
         return [];
       }
-      
-      console.log("Fetching notes for organization:", organization.id);
       
       const { data, error } = await supabase
         .from("test_notes")

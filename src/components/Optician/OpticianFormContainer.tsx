@@ -18,6 +18,9 @@ interface OpticianFormContainerProps {
   onRetry: () => void;
   initialValues?: Record<string, any> | null;
   createdByName?: string | null;
+  entryId?: string | null;
+  token?: string | null;
+  organizationId?: string;
 }
 
 const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({ 
@@ -26,7 +29,10 @@ const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
   isSubmitting,
   onRetry,
   initialValues = null,
-  createdByName = null
+  createdByName = null,
+  entryId = null,
+  token = null,
+  organizationId
 }) => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
@@ -41,6 +47,9 @@ const OpticianFormContainer: React.FC<OpticianFormContainerProps> = ({
             isOpticianMode={true}
             initialValues={initialValues}
             createdByName={createdByName}
+            entryId={entryId}
+            token={token}
+            organizationId={organizationId}
           />
         ) : (
           <ErrorCard 

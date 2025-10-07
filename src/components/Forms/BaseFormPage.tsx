@@ -440,6 +440,9 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
                   initialValues={currentFormValues}
                   createdByName={createdByName}
                   onFormValuesChange={handleFormValuesChange}
+                  entryId={entryData?.id || null}
+                  token={effectiveToken}
+                  organizationId={formTemplate?.organization_id || entryData?.organization_id}
                 />
               </CardContent>
               

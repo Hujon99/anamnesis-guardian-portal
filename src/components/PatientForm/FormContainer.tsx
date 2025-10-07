@@ -24,6 +24,9 @@ interface FormContainerProps {
   initialValues?: Record<string, any> | null;
   createdByName?: string | null;
   onFormValuesChange?: (values: Record<string, any>) => void;
+  entryId?: string | null;
+  token?: string | null;
+  organizationId?: string;
 }
 
 const FormContainer: React.FC<FormContainerProps> = ({ 
@@ -33,7 +36,10 @@ const FormContainer: React.FC<FormContainerProps> = ({
   isOpticianMode = false,
   initialValues = null,
   createdByName = null,
-  onFormValuesChange
+  onFormValuesChange,
+  entryId = null,
+  token = null,
+  organizationId
 }) => {
   
   // Validate template once on mount to provide a better user experience
@@ -131,6 +137,9 @@ const FormContainer: React.FC<FormContainerProps> = ({
         initialValues={initialValues}
         createdByName={createdByName}
         onFormValuesChange={handleValuesChange}
+        entryId={entryId}
+        token={token}
+        organizationId={organizationId}
       />
       <Toaster />
       <SonnerToaster position="top-center" />

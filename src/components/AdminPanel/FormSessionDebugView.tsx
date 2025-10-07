@@ -24,6 +24,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { Smartphone, Monitor, Tablet } from 'lucide-react';
@@ -39,8 +47,14 @@ interface FormSessionLog {
   browser: string;
   is_touch_device: boolean;
   error_message: string | null;
+  error_type: string | null;
   created_at: string;
   form_progress_percent: number | null;
+  current_section_index: number | null;
+  current_question_id: string | null;
+  event_data: Record<string, any> | null;
+  viewport_width: number | null;
+  viewport_height: number | null;
 }
 
 interface SessionGroup {
@@ -58,6 +72,7 @@ export const FormSessionDebugView = () => {
   const [deviceFilter, setDeviceFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [browserFilter, setBrowserFilter] = useState<string>('all');
+  const [selectedSession, setSelectedSession] = useState<SessionGroup | null>(null);
   
   const { data: sessions, isLoading } = useQuery({
     queryKey: ['form-session-logs'],
@@ -66,14 +81,14 @@ export const FormSessionDebugView = () => {
       
       const { data, error } = await supabase
         .from('form_session_logs')
-        .select('id, session_id, entry_id, organization_id, event_type, device_type, browser, is_touch_device, error_message, created_at, form_progress_percent')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(200);
       
       if (error) throw error;
       
       // Group by session_id
-      const grouped = data.reduce((acc: Record<string, FormSessionLog[]>, log: FormSessionLog) => {
+      const grouped = data.reduce((acc: Record<string, any[]>, log: any) => {
         if (!acc[log.session_id]) {
           acc[log.session_id] = [];
         }
@@ -82,17 +97,17 @@ export const FormSessionDebugView = () => {
       }, {});
       
       const sessionGroups: SessionGroup[] = Object.entries(grouped).map(([sessionId, logs]) => {
-        const sortedLogs = logs.sort((a, b) => 
+        const sortedLogs = logs.sort((a: any, b: any) => 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         
         return {
           sessionId,
-          logs: sortedLogs,
-          firstEvent: sortedLogs[0],
-          lastEvent: sortedLogs[sortedLogs.length - 1],
-          hasError: logs.some(l => l.event_type === 'submission_error'),
-          wasCompleted: logs.some(l => l.event_type === 'submission_success')
+          logs: sortedLogs as FormSessionLog[],
+          firstEvent: sortedLogs[0] as FormSessionLog,
+          lastEvent: sortedLogs[sortedLogs.length - 1] as FormSessionLog,
+          hasError: logs.some((l: any) => l.event_type === 'submission_error'),
+          wasCompleted: logs.some((l: any) => l.event_type === 'submission_success')
         };
       });
       
@@ -309,10 +324,7 @@ export const FormSessionDebugView = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => {
-                          // TODO: Implement detail modal
-                          console.log('Session details:', session);
-                        }}
+                        onClick={() => setSelectedSession(session)}
                       >
                         Detaljer
                       </Button>
@@ -330,6 +342,106 @@ export const FormSessionDebugView = () => {
           </Table>
         </div>
       </CardContent>
+
+      {/* Session Details Dialog */}
+      <Dialog open={!!selectedSession} onOpenChange={() => setSelectedSession(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Session Detaljer</DialogTitle>
+            <DialogDescription>
+              Session ID: {selectedSession?.sessionId}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSession && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium">Organisation</p>
+                  <p className="text-sm text-muted-foreground">{selectedSession.firstEvent.organization_id}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Enhet</p>
+                  <div className="flex items-center gap-2">
+                    {getDeviceIcon(selectedSession.firstEvent.device_type)}
+                    <span className="text-sm text-muted-foreground capitalize">{selectedSession.firstEvent.device_type}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Status</p>
+                  {getStatusBadge(selectedSession)}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Varaktighet</p>
+                  <p className="text-sm text-muted-foreground">{getDuration(selectedSession)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Webbläsare</p>
+                  <p className="text-sm text-muted-foreground truncate" title={selectedSession.firstEvent.browser}>
+                    {selectedSession.firstEvent.browser}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Upplösning</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedSession.firstEvent.viewport_width} × {selectedSession.firstEvent.viewport_height}
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h3 className="text-sm font-medium mb-3">Events ({selectedSession.logs.length})</h3>
+                <div className="space-y-2">
+                  {selectedSession.logs.map((event) => (
+                    <Card key={event.id} className="p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{event.event_type}</Badge>
+                          {event.error_message && (
+                            <Badge variant="destructive">Error</Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(event.created_at), 'HH:mm:ss', { locale: sv })}
+                        </span>
+                      </div>
+                      
+                      {event.error_message && (
+                        <div className="mt-2 p-2 bg-destructive/10 rounded text-xs">
+                          <p className="font-medium text-destructive">Error: {event.error_type}</p>
+                          <p className="text-muted-foreground">{event.error_message}</p>
+                        </div>
+                      )}
+                      
+                      {event.event_data && Object.keys(event.event_data).length > 0 && (
+                        <div className="mt-2">
+                          <details className="text-xs">
+                            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                              Event Data
+                            </summary>
+                            <pre className="mt-2 p-2 bg-muted rounded overflow-x-auto">
+                              {JSON.stringify(event.event_data, null, 2)}
+                            </pre>
+                          </details>
+                        </div>
+                      )}
+                      
+                      {event.current_section_index !== null && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Sektion: {event.current_section_index}, 
+                          Progress: {event.form_progress_percent}%
+                        </p>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

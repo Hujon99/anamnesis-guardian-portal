@@ -165,12 +165,12 @@ export const IdVerificationDialog = ({
           </div>
         )}
 
-        <DialogFooter className="gap-3 p-6 pt-4 border-t bg-muted/20">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-3 p-4 sm:p-6 bg-background">
           <Button
             variant="outline"
             onClick={handleCancel}
             disabled={isVerifying}
-            className="order-1 sm:order-1"
+            className="w-full sm:w-auto"
           >
             Avbryt
           </Button>
@@ -181,15 +181,15 @@ export const IdVerificationDialog = ({
                 variant="outline"
                 onClick={() => onConfirm({ idType: 'deferred', personalNumber: 'pending' })}
                 disabled={isVerifying}
-                className="order-2 sm:order-2 border-accent_coral/50 text-accent_coral hover:bg-accent_coral/10 hover:border-accent_coral"
+                className="w-full sm:w-auto border-accent_coral/50 text-accent_coral hover:bg-accent_coral/10 hover:border-accent_coral"
               >
-                Kunden legitimerar sig senare
+                Kunden legitimerar senare
               </Button>
               
               <Button
                 onClick={handleCompleteVerification}
                 disabled={!canComplete || isVerifying}
-                className="order-3 sm:order-3 bg-primary hover:bg-primary/90"
+                className="w-full sm:w-auto bg-primary hover:bg-primary/90"
               >
                 {isVerifying ? (
                   <>
@@ -207,7 +207,7 @@ export const IdVerificationDialog = ({
           ) : (
             <Button
               onClick={() => onOpenChange(false)}
-              className="order-2 sm:order-2 bg-primary hover:bg-primary/90"
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90"
             >
               Gå till formulär
             </Button>

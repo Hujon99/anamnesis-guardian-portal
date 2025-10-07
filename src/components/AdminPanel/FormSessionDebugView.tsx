@@ -17,14 +17,23 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { Smartphone, Monitor, Tablet } from 'lucide-react';
+import { useState, useMemo } from 'react';
 
 interface FormSessionLog {
   id: string;
   session_id: string;
   entry_id: string | null;
+  organization_id: string;
   event_type: string;
   device_type: string;
   browser: string;
@@ -45,6 +54,10 @@ interface SessionGroup {
 
 export const FormSessionDebugView = () => {
   const { supabase } = useSupabaseClient();
+  const [organizationFilter, setOrganizationFilter] = useState<string>('all');
+  const [deviceFilter, setDeviceFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [browserFilter, setBrowserFilter] = useState<string>('all');
   
   const { data: sessions, isLoading } = useQuery({
     queryKey: ['form-session-logs'],
@@ -53,7 +66,7 @@ export const FormSessionDebugView = () => {
       
       const { data, error } = await supabase
         .from('form_session_logs')
-        .select('*')
+        .select('id, session_id, entry_id, organization_id, event_type, device_type, browser, is_touch_device, error_message, created_at, form_progress_percent')
         .order('created_at', { ascending: false })
         .limit(200);
       
@@ -89,6 +102,50 @@ export const FormSessionDebugView = () => {
       ).slice(0, 50);
     }
   });
+
+  // Extract unique values for filters
+  const uniqueOrganizations = useMemo(() => {
+    if (!sessions) return [];
+    const orgIds = new Set(sessions.map(s => s.firstEvent.organization_id));
+    return Array.from(orgIds).sort();
+  }, [sessions]);
+
+  const uniqueBrowsers = useMemo(() => {
+    if (!sessions) return [];
+    const browsers = new Set(sessions.map(s => s.firstEvent.browser));
+    return Array.from(browsers).sort();
+  }, [sessions]);
+
+  // Apply filters
+  const filteredSessions = useMemo(() => {
+    if (!sessions) return [];
+    
+    return sessions.filter(session => {
+      // Organization filter
+      if (organizationFilter !== 'all' && session.firstEvent.organization_id !== organizationFilter) {
+        return false;
+      }
+      
+      // Device filter
+      if (deviceFilter !== 'all' && session.firstEvent.device_type !== deviceFilter) {
+        return false;
+      }
+      
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'completed' && !session.wasCompleted) return false;
+        if (statusFilter === 'error' && !session.hasError) return false;
+        if (statusFilter === 'started' && (session.wasCompleted || session.hasError)) return false;
+      }
+      
+      // Browser filter
+      if (browserFilter !== 'all' && session.firstEvent.browser !== browserFilter) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [sessions, organizationFilter, deviceFilter, statusFilter, browserFilter]);
   
   const getStatusBadge = (session: SessionGroup) => {
     if (session.wasCompleted) {
@@ -135,6 +192,72 @@ export const FormSessionDebugView = () => {
         </p>
       </CardHeader>
       <CardContent>
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Organisation</label>
+            <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Alla organisationer" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alla organisationer</SelectItem>
+                {uniqueOrganizations.map(orgId => (
+                  <SelectItem key={orgId} value={orgId}>
+                    {orgId.substring(0, 8)}...
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Enhet</label>
+            <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Alla enheter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alla enheter</SelectItem>
+                <SelectItem value="desktop">Desktop</SelectItem>
+                <SelectItem value="mobile">Mobile</SelectItem>
+                <SelectItem value="tablet">Tablet</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Status</label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Alla statusar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alla statusar</SelectItem>
+                <SelectItem value="completed">Slutförd</SelectItem>
+                <SelectItem value="error">Fel uppstod</SelectItem>
+                <SelectItem value="started">Påbörjad</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Webbläsare</label>
+            <Select value={browserFilter} onValueChange={setBrowserFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Alla webbläsare" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alla webbläsare</SelectItem>
+                {uniqueBrowsers.map(browser => (
+                  <SelectItem key={browser} value={browser}>
+                    {browser}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -149,8 +272,8 @@ export const FormSessionDebugView = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions && sessions.length > 0 ? (
-                sessions.map(session => (
+              {filteredSessions && filteredSessions.length > 0 ? (
+                filteredSessions.map(session => (
                   <TableRow key={session.sessionId}>
                     <TableCell>{getStatusBadge(session)}</TableCell>
                     <TableCell>

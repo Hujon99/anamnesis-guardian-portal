@@ -82,7 +82,7 @@ export const IdVerificationDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleCancel}>
-      <DialogContent className="sm:max-w-[580px] p-0">
+      <DialogContent className="sm:max-w-[580px]">
         <DialogHeader className="p-6 pb-4">
           <div className="flex items-center gap-3">
             <IdCard className="h-6 w-6 text-primary" />

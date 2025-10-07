@@ -67,7 +67,7 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-8">
+      <DialogContent className="max-w-2xl p-8">
         <DialogHeader className="space-y-3 pb-4">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Shield className="h-5 w-5 text-primary" />

@@ -52,20 +52,31 @@ export const useOnboarding = () => {
   }, [user?.id]);
 
   // Mark onboarding as complete
-  const completeOnboarding = async () => {
+  const completeOnboarding = async (retryCount = 0) => {
     if (!user?.id) return;
 
     try {
-      const { error } = await supabase
+      console.log('[useOnboarding]: Attempting to mark onboarding as complete...');
+      
+      const { error, data } = await supabase
         .from('users')
         .update({ 
           onboarding_completed: true,
           onboarding_step: 0 
         })
-        .eq('clerk_user_id', user.id);
+        .eq('clerk_user_id', user.id)
+        .select();
 
       if (error) {
         console.error('[useOnboarding]: Error completing onboarding:', error);
+        
+        // Retry once after 500ms
+        if (retryCount < 1) {
+          console.log('[useOnboarding]: Retrying...');
+          setTimeout(() => completeOnboarding(retryCount + 1), 500);
+          return;
+        }
+        
         toast({
           title: "Kunde inte spara",
           description: "Ett fel uppstod när onboarding skulle sparas.",
@@ -74,8 +85,14 @@ export const useOnboarding = () => {
         return;
       }
 
+      console.log('[useOnboarding]: Successfully completed onboarding', data);
       setIsOnboardingComplete(true);
       setCurrentStep(0);
+      
+      toast({
+        title: "Välkommen!",
+        description: "Guiden är nu klar. Du kan börja använda systemet.",
+      });
     } catch (err) {
       console.error('[useOnboarding]: Unexpected error:', err);
     }

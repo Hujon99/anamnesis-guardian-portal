@@ -7,6 +7,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Play } from 'lucide-react';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useNavigate } from 'react-router-dom';
 
 interface RestartTourButtonProps {
   variant?: 'default' | 'outline' | 'ghost';
@@ -18,12 +19,19 @@ export const RestartTourButton: React.FC<RestartTourButtonProps> = ({
   size = 'default' 
 }) => {
   const { restartOnboarding } = useOnboarding();
+  const navigate = useNavigate();
+
+  const handleClick = async () => {
+    await restartOnboarding();
+    // Navigate to dashboard where OnboardingTour is rendered
+    navigate('/dashboard');
+  };
 
   return (
     <Button 
       variant={variant} 
       size={size}
-      onClick={restartOnboarding}
+      onClick={handleClick}
       className="gap-2"
     >
       <Play className="h-4 w-4" />

@@ -12,7 +12,7 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
       target: 'body',
       content: (
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-foreground">Välkommen till Anamnesis Guardian! 🎉</h2>
+          <h2 className="text-2xl font-bold text-foreground">Välkommen till Anamnesportalen</h2>
           <p className="text-muted-foreground">
             Vi hjälper dig att digitalisera och hantera patientanamneser på ett säkert och effektivt sätt.
           </p>

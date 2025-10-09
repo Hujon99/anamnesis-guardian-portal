@@ -18,12 +18,15 @@ export const OnboardingTour: React.FC = () => {
   // Start tour when onboarding is not complete
   React.useEffect(() => {
     if (!isLoading && isOnboardingComplete === false) {
-      // Small delay to ensure DOM elements are ready
-      setTimeout(() => setRun(true), 100);
+      // Reset run first to ensure clean state
+      setRun(false);
+      // Then start tour with delay to ensure DOM elements are ready
+      const timer = setTimeout(() => setRun(true), 300);
+      return () => clearTimeout(timer);
     } else {
       setRun(false);
     }
-  }, [isOnboardingComplete, isLoading]);
+  }, [isOnboardingComplete, isLoading, currentStep]);
 
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
     const { status, type, index, action } = data;

@@ -57,6 +57,21 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
       placement: 'top',
     },
     {
+      target: '[data-tour="today-bookings"]',
+      content: (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold text-foreground">Dagens bokningar 📅</h3>
+          <p className="text-sm text-muted-foreground">
+            Här visas alla anamneser med bokningar för idag. Perfekt för att snabbt se vilka kunder som kommer in.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Sektionen visas automatiskt när det finns bokningar för dagens datum.
+          </p>
+        </div>
+      ),
+      placement: 'top',
+    },
+    {
       target: '[data-tour="filters"]',
       content: (
         <div className="space-y-3">

@@ -13,6 +13,17 @@ import { getTourSteps } from './tourSteps';
 export const OnboardingTour: React.FC = () => {
   const { isOnboardingComplete, currentStep, isLoading, completeOnboarding, updateStep } = useOnboarding();
   const { isOptician, isAdmin } = useUserRole();
+  const [run, setRun] = React.useState(false);
+
+  // Start tour when onboarding is not complete
+  React.useEffect(() => {
+    if (!isLoading && isOnboardingComplete === false) {
+      // Small delay to ensure DOM elements are ready
+      setTimeout(() => setRun(true), 100);
+    } else {
+      setRun(false);
+    }
+  }, [isOnboardingComplete, isLoading]);
 
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
     const { status, type, index, action } = data;
@@ -52,7 +63,7 @@ export const OnboardingTour: React.FC = () => {
     <Joyride
       steps={steps}
       stepIndex={currentStep}
-      run={!isOnboardingComplete}
+      run={run}
       continuous
       showProgress
       showSkipButton

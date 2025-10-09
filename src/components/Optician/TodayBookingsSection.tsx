@@ -46,7 +46,7 @@ export function TodayBookingsSection({
   }
 
   return (
-    <Card className="p-6 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20 rounded-2xl">
+    <Card data-tour="today-bookings" className="p-6 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20 rounded-2xl">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">

@@ -31,6 +31,7 @@ export const OnboardingTour: React.FC = () => {
     // User finished or skipped the tour
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       completeOnboarding();
+      setRun(false);
       return;
     }
 
@@ -44,6 +45,7 @@ export const OnboardingTour: React.FC = () => {
     // User closed the tour (allow resuming)
     if (action === ACTIONS.CLOSE) {
       updateStep(index);
+      setRun(false);
     }
   }, [completeOnboarding, updateStep]);
 

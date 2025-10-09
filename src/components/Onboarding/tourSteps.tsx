@@ -153,7 +153,7 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
       <div className="space-y-4">
         <h2 className="text-2xl font-bold text-foreground">Redo att börja! 🚀</h2>
         <p className="text-muted-foreground">
-          Du är nu redo att använda Anamnesis Guardian. Du kan när som helst visa guiden igen från sidomenyn.
+          Du är nu redo att använda Anamnesportalen. Du kan när som helst visa guiden igen från sidomenyn.
         </p>
         <p className="text-sm text-muted-foreground">
           Lycka till!

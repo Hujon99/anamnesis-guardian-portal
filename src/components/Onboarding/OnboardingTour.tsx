@@ -14,6 +14,20 @@ export const OnboardingTour: React.FC = () => {
   const { isOnboardingComplete, currentStep, isLoading, completeOnboarding, updateStep } = useOnboarding();
   const { isOptician, isAdmin } = useUserRole();
   const [run, setRun] = React.useState(false);
+  const [hasTodayBookings, setHasTodayBookings] = React.useState(true);
+
+  // Check if today-bookings element exists in DOM
+  React.useEffect(() => {
+    const checkElement = () => {
+      const element = document.querySelector('[data-tour="today-bookings"]');
+      setHasTodayBookings(!!element);
+    };
+
+    checkElement();
+    // Recheck periodically in case element appears/disappears
+    const interval = setInterval(checkElement, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Start tour when onboarding is not complete
   React.useEffect(() => {
@@ -34,12 +48,22 @@ export const OnboardingTour: React.FC = () => {
     // Log for debugging
     console.log('Joyride callback:', { status, type, index, action, target: step.target });
 
-    // Handle errors - if step target not found, skip to next
-    if (status === STATUS.ERROR) {
+    // Handle errors - if step target not found, skip to next and restart tour
+    if (status === STATUS.ERROR || type === 'error:target_not_found') {
       console.warn('Joyride error - target not found:', step.target);
-      // Skip to next step if possible
-      if (index < getTourSteps(isOptician ?? false, isAdmin ?? false).length - 1) {
-        setTimeout(() => updateStep(index + 1), 100);
+      
+      const totalSteps = getTourSteps(isOptician ?? false, isAdmin ?? false, hasTodayBookings).length;
+      
+      // Skip to next step and restart tour
+      if (index < totalSteps - 1) {
+        const nextIndex = index + 1;
+        updateStep(nextIndex);
+        setRun(false);
+        setTimeout(() => setRun(true), 200);
+      } else {
+        // If last step had error, complete tour
+        completeOnboarding();
+        setRun(false);
       }
       return;
     }
@@ -66,7 +90,7 @@ export const OnboardingTour: React.FC = () => {
       updateStep(index);
       setRun(false);
     }
-  }, [completeOnboarding, updateStep, isOptician, isAdmin]);
+  }, [completeOnboarding, updateStep, isOptician, isAdmin, hasTodayBookings]);
 
   // Don't render while loading
   if (isLoading || isOnboardingComplete === null) {
@@ -78,7 +102,7 @@ export const OnboardingTour: React.FC = () => {
     return null;
   }
 
-  const steps = getTourSteps(isOptician ?? false, isAdmin ?? false);
+  const steps = getTourSteps(isOptician ?? false, isAdmin ?? false, hasTodayBookings);
 
   return (
     <Joyride

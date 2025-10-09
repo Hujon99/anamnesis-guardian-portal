@@ -6,7 +6,7 @@
 
 import { Step } from 'react-joyride';
 
-export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
+export const getTourSteps = (isOptician: boolean, isAdmin: boolean, hasTodayBookings: boolean = true): Step[] => {
   const baseSteps: Step[] = [
     {
       target: 'body',
@@ -60,7 +60,11 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
       disableBeacon: true,
       spotlightPadding: 10,
     },
-    {
+  ];
+
+  // Only include today-bookings step if the element exists
+  if (hasTodayBookings) {
+    baseSteps.push({
       target: '[data-tour="today-bookings"]',
       content: (
         <div className="space-y-3">
@@ -76,39 +80,41 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
       placement: 'top',
       disableBeacon: true,
       spotlightPadding: 10,
-    },
-    {
-      target: '[data-tour="filters"]',
-      content: (
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-foreground">Filtrera anamneser 🔍</h3>
-          <p className="text-sm text-muted-foreground">
-            Använd dessa filter för att snabbt hitta rätt anamnes. Du kan filtrera på status, undersökningstyp, tidsperiod och mer.
-          </p>
-        </div>
-      ),
-      placement: 'top',
-      disableBeacon: true,
-      spotlightPadding: 10,
-    },
-    {
-      target: '[data-tour="entries-list"]',
-      content: (
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-foreground">Anamnes-lista 📋</h3>
-          <p className="text-sm text-muted-foreground">
-            Här visas alla dina anamneser. Klicka på en rad för att se detaljer, redigera eller hantera undersökningsresultat.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Du kan snabbt tilldela optiker, ändra status och mer direkt från listan.
-          </p>
-        </div>
-      ),
-      placement: 'top',
-      disableBeacon: true,
-      spotlightPadding: 10,
-    },
-  ];
+    });
+  }
+
+  baseSteps.push({
+    target: '[data-tour="filters"]',
+    content: (
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-foreground">Filtrera anamneser 🔍</h3>
+        <p className="text-sm text-muted-foreground">
+          Använd dessa filter för att snabbt hitta rätt anamnes. Du kan filtrera på status, undersökningstyp, tidsperiod och mer.
+        </p>
+      </div>
+    ),
+    placement: 'top',
+    disableBeacon: true,
+    spotlightPadding: 10,
+  });
+
+  baseSteps.push({
+    target: '[data-tour="entries-list"]',
+    content: (
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-foreground">Anamnes-lista 📋</h3>
+        <p className="text-sm text-muted-foreground">
+          Här visas alla dina anamneser. Klicka på en rad för att se detaljer, redigera eller hantera undersökningsresultat.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Du kan snabbt tilldela optiker, ändra status och mer direkt från listan.
+        </p>
+      </div>
+    ),
+    placement: 'top',
+    disableBeacon: true,
+    spotlightPadding: 10,
+  });
 
   // Add optician/admin specific steps
   if (isOptician || isAdmin) {

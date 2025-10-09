@@ -17,6 +17,7 @@ import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
+import { OnboardingTour } from "@/components/Onboarding/OnboardingTour";
 // Import debug utility for testing (remove after testing)
 import { debugSummaryRepair } from "@/utils/debugSummaryRepair";
 
@@ -128,24 +129,31 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Översikt</h1>
-          <p className="text-muted-foreground mt-2">Hantering av samtliga anamneser i organisationen</p>
+    <>
+      <OnboardingTour />
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Översikt</h1>
+            <p className="text-muted-foreground mt-2">Hantering av samtliga anamneser i organisationen</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {canAccessOpticianFeatures && (
+              <Button 
+                data-tour="my-anamnesis"
+                variant="outline" 
+                asChild 
+                className="flex items-center gap-2 font-medium border-accent-1/30 hover:bg-accent-1/10 hover:text-accent-1 hover:border-accent-1"
+              >
+                <Link to="/my-anamneses">
+                  <Clipboard className="h-4 w-4" />
+                  <span>Till mina anamneser</span>
+                </Link>
+              </Button>
+            )}
+            <DirectFormButton />
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          {canAccessOpticianFeatures && (
-            <Button variant="outline" asChild className="flex items-center gap-2 font-medium border-accent-1/30 hover:bg-accent-1/10 hover:text-accent-1 hover:border-accent-1">
-              <Link to="/my-anamneses">
-                <Clipboard className="h-4 w-4" />
-                <span>Till mina anamneser</span>
-              </Link>
-            </Button>
-          )}
-          <DirectFormButton />
-        </div>
-      </div>
 
       <QueryErrorResetBoundary>
         {({ reset }) => (
@@ -155,10 +163,11 @@ const Dashboard = () => {
               autoOpenDrivingLicenseExam={autoOpenDrivingLicenseExam}
               onDrivingLicenseExamOpened={() => setAutoOpenDrivingLicenseExam(null)}
             />
-          </ErrorBoundary>
+      </ErrorBoundary>
         )}
       </QueryErrorResetBoundary>
-    </div>
+      </div>
+    </>
   );
 };
 

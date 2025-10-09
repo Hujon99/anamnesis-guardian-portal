@@ -32,6 +32,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { FeedbackButton } from "@/components/Feedback/FeedbackButton";
 import { useUserRole } from "@/hooks/useUserRole";
+import { RestartTourButton } from "@/components/Onboarding/RestartTourButton";
 
 export function AppSidebar() {
   const { has, userId } = useAuth();
@@ -79,6 +80,7 @@ export function AppSidebar() {
                     asChild 
                     isActive={location.pathname === '/my-anamneses'}
                     tooltip="Mina tilldelade anamneser"
+                    data-tour="my-anamnesis"
                   >
                     <Link to="/my-anamneses" className="relative">
                       <Clipboard />
@@ -99,6 +101,7 @@ export function AppSidebar() {
                   <SidebarMenuButton 
                     asChild 
                     isActive={location.pathname === '/admin'}
+                    data-tour="admin-panel"
                   >
                     <Link to="/admin">
                       <Settings />
@@ -115,8 +118,19 @@ export function AppSidebar() {
           <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <FeedbackButton />
+              <div data-tour="feedback">
+                <FeedbackButton />
+              </div>
             </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup>
+          <SidebarGroupLabel>Guide</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <div className="px-3 py-2">
+              <RestartTourButton variant="ghost" size="sm" />
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

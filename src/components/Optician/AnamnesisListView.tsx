@@ -319,6 +319,7 @@ export function AnamnesisListView({
       </Card>
 
       {/* Filters Section */}
+      <div data-tour="filters">
         <AnamnesisFilters
           statusFilter={filters.statusFilter}
           onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
@@ -336,6 +337,7 @@ export function AnamnesisListView({
           onExaminationTypeFilterChange={(value) => updateFilter("examinationTypeFilter", value)}
           onResetFilters={resetFilters}
         />
+      </div>
       
       {/* Advanced Filters Section */}
       {showAdvancedFilters && (
@@ -351,14 +353,16 @@ export function AnamnesisListView({
       
       {/* Results Section */}
       <div className="space-y-6">
-        <EntriesSummary
-          filteredCount={enhancedEntries.length}
-          totalCount={entries.length}
-          statusFilter={filters.statusFilter}
-          isFetching={isFetching || isLoadingStores}
-          lastUpdated={dataLastUpdated}
-          todayBookingsCount={todayBookings.length}
-        />
+        <div data-tour="stats-cards">
+          <EntriesSummary
+            filteredCount={enhancedEntries.length}
+            totalCount={entries.length}
+            statusFilter={filters.statusFilter}
+            isFetching={isFetching || isLoadingStores}
+            lastUpdated={dataLastUpdated}
+            todayBookingsCount={todayBookings.length}
+          />
+        </div>
         
         {/* Today's Bookings Section */}
         {todayBookings.length > 0 && filters.timeFilter !== "today_bookings" && (
@@ -374,7 +378,7 @@ export function AnamnesisListView({
         
         {/* Other Entries */}
         {(filters.timeFilter !== "today_bookings" ? otherEntries : enhancedEntries).length > 0 && (
-          <div>
+          <div data-tour="entries-list">
             {todayBookings.length > 0 && filters.timeFilter !== "today_bookings" && (
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-px bg-muted flex-1"></div>

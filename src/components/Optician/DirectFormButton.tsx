@@ -372,11 +372,12 @@ export const DirectFormButton: React.FC = () => {
   return (
     <>
       <Button
-          onClick={handleCreateDirectForm}
-          disabled={isCreating || createDirectFormEntry.isPending}
-          className="w-full"
-          size="lg"
-        >
+        data-tour="direct-form"
+        onClick={handleCreateDirectForm}
+        disabled={isCreating || createDirectFormEntry.isPending}
+        className="w-full"
+        size="lg"
+      >
           {isCreating || createDirectFormEntry.isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />

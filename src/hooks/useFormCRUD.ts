@@ -133,35 +133,35 @@ export const useFormCRUD = () => {
         throw new Error("Supabase client eller organisation saknas");
       }
 
-      // Check if form is used by any entries
-      const { data: entries, error: checkError } = await supabase
+      // Check if form is used by any entries (use count to avoid potential RLS issues)
+      const { count: entriesCount, error: checkError } = await supabase
         .from('anamnes_entries')
-        .select('id')
-        .eq('form_id', formId)
-        .limit(1);
+        .select('id', { count: 'exact', head: true })
+        .eq('form_id', formId);
 
-      if (checkError) {
+      // Ignore 404-like errors for empty results, but catch real errors
+      if (checkError && checkError.code !== 'PGRST116') {
         console.error("[useFormCRUD]: Error checking form usage:", checkError);
         throw new Error("Kunde inte kontrollera om formuläret används");
       }
 
-      if (entries && entries.length > 0) {
+      if (entriesCount && entriesCount > 0) {
         throw new Error("Formuläret kan inte tas bort eftersom det används av befintliga anamneser. Ta bort eller flytta dessa först.");
       }
 
       // Check if form is assigned to any stores
-      const { data: storeAssignments, error: storeCheckError } = await supabase
+      const { count: storesCount, error: storeCheckError } = await supabase
         .from('store_forms')
-        .select('id')
-        .eq('form_id', formId)
-        .limit(1);
+        .select('id', { count: 'exact', head: true })
+        .eq('form_id', formId);
 
-      if (storeCheckError) {
+      // Ignore 404-like errors for empty results
+      if (storeCheckError && storeCheckError.code !== 'PGRST116') {
         console.error("[useFormCRUD]: Error checking store assignments:", storeCheckError);
         throw new Error("Kunde inte kontrollera butikstilldelningar");
       }
 
-      if (storeAssignments && storeAssignments.length > 0) {
+      if (storesCount && storesCount > 0) {
         throw new Error("Formuläret kan inte tas bort eftersom det är tilldelat till butiker. Ta bort dessa tilldelningar först.");
       }
 

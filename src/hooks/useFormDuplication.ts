@@ -1,7 +1,7 @@
 /**
  * Hook for duplicating forms from templates.
- * Handles deep cloning of form structure with proper ID generation
- * and reference updates for sections and questions.
+ * Performs deep cloning while preserving all question IDs to ensure
+ * conditional logic references remain intact across duplications.
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,36 +24,9 @@ export const useFormDuplication = () => {
   const { supabase } = useSupabaseClient();
   const queryClient = useQueryClient();
 
-  const generateNewId = () => crypto.randomUUID();
-
-  const cloneFormQuestion = (question: FormQuestion): FormQuestion => {
-    const newId = generateNewId();
-    const clonedQuestion = {
-      ...question,
-      id: newId
-    };
-
-    // Update any show_if conditions that reference the old ID
-    if (clonedQuestion.show_if) {
-      // This would need more sophisticated logic to update references
-      // For now, we keep the original structure
-    }
-
-    return clonedQuestion;
-  };
-
-  const cloneFormSection = (section: FormSection): FormSection => {
-    return {
-      ...section,
-      questions: section.questions.map(cloneFormQuestion)
-    };
-  };
-
   const cloneFormSchema = (schema: FormTemplate): FormTemplate => {
-    return {
-      ...schema,
-      sections: schema.sections.map(cloneFormSection)
-    };
+    // Deep clone to preserve all IDs and structure - this ensures conditional logic works
+    return JSON.parse(JSON.stringify(schema));
   };
 
   const duplicateForm = useMutation({
@@ -78,7 +51,7 @@ export const useFormDuplication = () => {
         throw new Error("Mall hittades inte");
       }
 
-      // Clone the schema with new IDs
+      // Clone the schema preserving all IDs
       const clonedSchema = cloneFormSchema(template.schema as unknown as FormTemplate);
 
       // Create the new form

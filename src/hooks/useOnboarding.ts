@@ -69,6 +69,7 @@ export const useOnboarding = () => {
 
       if (error) {
         console.error('[useOnboarding]: Error completing onboarding:', error);
+        console.error('[useOnboarding]: Error details:', JSON.stringify(error, null, 2));
         
         // Retry once after 500ms
         if (retryCount < 1) {
@@ -79,7 +80,7 @@ export const useOnboarding = () => {
         
         toast({
           title: "Kunde inte spara",
-          description: "Ett fel uppstod när onboarding skulle sparas.",
+          description: error.message || "Ett fel uppstod när onboarding skulle sparas.",
           variant: "destructive",
         });
         return;
@@ -95,6 +96,11 @@ export const useOnboarding = () => {
       });
     } catch (err) {
       console.error('[useOnboarding]: Unexpected error:', err);
+      toast({
+        title: "Nätverksfel",
+        description: "Kunde inte ansluta till databasen. Försök igen.",
+        variant: "destructive",
+      });
     }
   };
 

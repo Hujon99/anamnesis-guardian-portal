@@ -29,7 +29,20 @@ export const OnboardingTour: React.FC = () => {
   }, [isOnboardingComplete, isLoading, currentStep]);
 
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
-    const { status, type, index, action } = data;
+    const { status, type, index, action, step } = data;
+
+    // Log for debugging
+    console.log('Joyride callback:', { status, type, index, action, target: step.target });
+
+    // Handle errors - if step target not found, skip to next
+    if (status === STATUS.ERROR) {
+      console.warn('Joyride error - target not found:', step.target);
+      // Skip to next step if possible
+      if (index < getTourSteps(isOptician ?? false, isAdmin ?? false).length - 1) {
+        setTimeout(() => updateStep(index + 1), 100);
+      }
+      return;
+    }
 
     // User finished or skipped the tour
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
@@ -41,7 +54,10 @@ export const OnboardingTour: React.FC = () => {
     // Update step when moving forward/backward
     if (type === EVENTS.STEP_AFTER) {
       if (action === ACTIONS.NEXT || action === ACTIONS.PREV) {
-        updateStep(index + 1);
+        // Add small delay to let DOM update before moving to next step
+        setTimeout(() => {
+          updateStep(index + 1);
+        }, 150);
       }
     }
 
@@ -50,7 +66,7 @@ export const OnboardingTour: React.FC = () => {
       updateStep(index);
       setRun(false);
     }
-  }, [completeOnboarding, updateStep]);
+  }, [completeOnboarding, updateStep, isOptician, isAdmin]);
 
   // Don't render while loading
   if (isLoading || isOnboardingComplete === null) {
@@ -72,19 +88,27 @@ export const OnboardingTour: React.FC = () => {
       continuous
       showProgress
       showSkipButton
+      disableOverlayClose
+      spotlightClicks={false}
+      scrollToFirstStep={false}
+      scrollOffset={120}
       callback={handleJoyrideCallback}
       styles={{
         options: {
           primaryColor: 'hsl(210 100% 40%)', // --primary from design system
           textColor: 'hsl(222.2 84% 4.9%)', // --foreground
           backgroundColor: 'hsl(0 0% 100%)', // --background
-          overlayColor: 'rgba(0, 0, 0, 0.5)',
+          overlayColor: 'rgba(0, 0, 0, 0.6)',
           arrowColor: 'hsl(0 0% 100%)',
           zIndex: 10000,
+        },
+        overlay: {
+          transition: 'opacity 0.3s ease-in-out',
         },
         tooltip: {
           borderRadius: '0.75rem',
           padding: '1.5rem',
+          transition: 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out',
         },
         tooltipContainer: {
           textAlign: 'left',
@@ -96,13 +120,16 @@ export const OnboardingTour: React.FC = () => {
           padding: '0.5rem 1rem',
           fontSize: '0.875rem',
           fontWeight: 500,
+          transition: 'all 0.2s ease',
         },
         buttonBack: {
           color: 'hsl(210 100% 40%)',
           marginRight: '0.5rem',
+          transition: 'all 0.2s ease',
         },
         buttonSkip: {
           color: 'hsl(215.4 16.3% 46.9%)', // --muted-foreground
+          transition: 'all 0.2s ease',
         },
       }}
       locale={{
@@ -114,6 +141,13 @@ export const OnboardingTour: React.FC = () => {
       }}
       floaterProps={{
         disableAnimation: false,
+        hideArrow: false,
+        offset: 10,
+        styles: {
+          floater: {
+            transition: 'opacity 0.3s ease-in-out',
+          },
+        },
       }}
     />
   );

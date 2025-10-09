@@ -43,6 +43,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
         </div>
       ),
       placement: 'bottom',
+      disableBeacon: true,
+      spotlightPadding: 10,
     },
     {
       target: '[data-tour="stats-cards"]',
@@ -55,6 +57,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
         </div>
       ),
       placement: 'top',
+      disableBeacon: true,
+      spotlightPadding: 10,
     },
     {
       target: '[data-tour="today-bookings"]',
@@ -70,6 +74,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
         </div>
       ),
       placement: 'top',
+      disableBeacon: true,
+      spotlightPadding: 10,
     },
     {
       target: '[data-tour="filters"]',
@@ -82,6 +88,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
         </div>
       ),
       placement: 'top',
+      disableBeacon: true,
+      spotlightPadding: 10,
     },
     {
       target: '[data-tour="entries-list"]',
@@ -97,6 +105,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
         </div>
       ),
       placement: 'top',
+      disableBeacon: true,
+      spotlightPadding: 10,
     },
   ];
 
@@ -113,6 +123,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
         </div>
       ),
       placement: 'right',
+      disableBeacon: true,
+      spotlightPadding: 10,
     });
   }
 
@@ -129,6 +141,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
         </div>
       ),
       placement: 'right',
+      disableBeacon: true,
+      spotlightPadding: 10,
     });
   }
 
@@ -144,6 +158,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
       </div>
     ),
     placement: 'left',
+    disableBeacon: true,
+    spotlightPadding: 10,
   });
 
   // Final step
@@ -161,6 +177,8 @@ export const getTourSteps = (isOptician: boolean, isAdmin: boolean): Step[] => {
       </div>
     ),
     placement: 'center',
+    disableBeacon: true,
+    spotlightPadding: 0,
     styles: {
       options: {
         width: 600,

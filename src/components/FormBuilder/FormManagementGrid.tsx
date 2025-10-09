@@ -62,8 +62,12 @@ export const FormManagementGrid: React.FC<FormManagementGridProps> = ({
   const { deleteForm, isDeleting } = useFormCRUD();
   const { duplicateForm } = useFormDuplication();
 
+  // Only show organization-specific forms (not global templates)
+  // Global templates should only be visible in TemplateSelector
+  const organizationForms = forms.filter(form => form.organization_id !== null);
+
   // Filter forms based on search
-  const filteredForms = forms.filter(form =>
+  const filteredForms = organizationForms.filter(form =>
     form.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     form.examination_type.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -166,7 +170,7 @@ export const FormManagementGrid: React.FC<FormManagementGridProps> = ({
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Inga formulär ännu</h3>
             <p className="text-muted-foreground mb-6">
-              Skapa ditt första formulär för att komma igång
+              Kom igång genom att skapa ett nytt formulär eller duplicera en färdig mall
             </p>
             <div className="flex justify-center gap-2">
               <Button onClick={handleCreateNew} className="gap-2">

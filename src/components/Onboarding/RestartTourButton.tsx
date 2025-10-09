@@ -23,8 +23,12 @@ export const RestartTourButton: React.FC<RestartTourButtonProps> = ({
 
   const handleClick = async () => {
     await restartOnboarding();
+    // Small delay to ensure state propagates before navigation
+    await new Promise(resolve => setTimeout(resolve, 100));
     // Navigate to dashboard where OnboardingTour is rendered
     navigate('/dashboard');
+    // Force a page reload to ensure clean state
+    window.location.reload();
   };
 
   return (

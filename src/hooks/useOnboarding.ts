@@ -6,12 +6,13 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
 export const useOnboarding = () => {
   const { user } = useUser();
   const { toast } = useToast();
+  const { supabase, isReady } = useSupabaseClient();
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,12 +20,13 @@ export const useOnboarding = () => {
   // Fetch onboarding status from database
   useEffect(() => {
     const fetchOnboardingStatus = async () => {
-      if (!user?.id) {
+      if (!user?.id || !isReady || !supabase) {
         setIsLoading(false);
         return;
       }
 
       try {
+        console.log('[useOnboarding]: Fetching status with authenticated client');
         const { data, error } = await supabase
           .from('users')
           .select('onboarding_completed, onboarding_step')
@@ -49,14 +51,17 @@ export const useOnboarding = () => {
     };
 
     fetchOnboardingStatus();
-  }, [user?.id]);
+  }, [user?.id, isReady, supabase]);
 
   // Mark onboarding as complete
   const completeOnboarding = async (retryCount = 0) => {
-    if (!user?.id) return;
+    if (!user?.id || !supabase) {
+      console.error('[useOnboarding]: Missing user or supabase client');
+      return;
+    }
 
     try {
-      console.log('[useOnboarding]: Attempting to mark onboarding as complete...');
+      console.log('[useOnboarding]: Attempting to mark onboarding as complete with authenticated client...');
       
       const { error, data } = await supabase
         .from('users')
@@ -66,6 +71,17 @@ export const useOnboarding = () => {
         })
         .eq('clerk_user_id', user.id)
         .select();
+
+      // Check if update was blocked by RLS (empty data array)
+      if (!error && (!data || data.length === 0)) {
+        console.error('[useOnboarding]: Update blocked - no rows affected (likely RLS issue)');
+        toast({
+          title: "Kunde inte spara",
+          description: "Databasuppdateringen blockerades. Kontrollera behörigheter.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (error) {
         console.error('[useOnboarding]: Error completing onboarding:', error);
@@ -106,13 +122,19 @@ export const useOnboarding = () => {
 
   // Update current step (for resuming)
   const updateStep = async (step: number) => {
-    if (!user?.id) return;
+    if (!user?.id || !supabase) return;
 
     try {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('users')
         .update({ onboarding_step: step })
-        .eq('clerk_user_id', user.id);
+        .eq('clerk_user_id', user.id)
+        .select();
+
+      if (!error && (!data || data.length === 0)) {
+        console.error('[useOnboarding]: Step update blocked - no rows affected');
+        return;
+      }
 
       if (error) {
         console.error('[useOnboarding]: Error updating step:', error);
@@ -127,16 +149,27 @@ export const useOnboarding = () => {
 
   // Restart onboarding
   const restartOnboarding = async () => {
-    if (!user?.id) return;
+    if (!user?.id || !supabase) return;
 
     try {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('users')
         .update({ 
           onboarding_completed: false,
           onboarding_step: 0 
         })
-        .eq('clerk_user_id', user.id);
+        .eq('clerk_user_id', user.id)
+        .select();
+
+      if (!error && (!data || data.length === 0)) {
+        console.error('[useOnboarding]: Restart blocked - no rows affected');
+        toast({
+          title: "Kunde inte återställa",
+          description: "Databasuppdateringen blockerades.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (error) {
         console.error('[useOnboarding]: Error restarting onboarding:', error);

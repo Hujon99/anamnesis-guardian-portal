@@ -30,26 +30,22 @@ export const useOpticianFormAuth = ({
   const navigationInProgressRef = useRef<boolean>(false);
   const instanceId = useRef(`auth-${Math.random().toString(36).substring(2, 7)}`);
   
-  // For patient mode, skip all auth logic - token gives access
+  // Determine mode early
   const effectiveMode = mode || 'patient';
-  if (effectiveMode === 'patient') {
-    return {
-      isAuthLoaded: true,
-      isSignedIn: true, // Token-based access doesn't need Clerk auth
-      isRedirecting: false
-    };
-  }
+  const isPatientMode = effectiveMode === 'patient';
   
   // Only use Clerk hooks if Clerk is available and we're in optician mode
-  const authResult = clerkAvailable ? useAuth() : { isLoaded: true, isSignedIn: false };
+  // IMPORTANT: Always call this hook (Rules of Hooks) but don't use it for patient mode
+  const authResult = clerkAvailable && !isPatientMode ? useAuth() : { isLoaded: true, isSignedIn: false };
   const { isLoaded: isAuthLoaded, isSignedIn } = authResult;
 
   // Handle non-authenticated users for optician mode
   useEffect(() => {
+    // Skip for patient mode - token gives access
+    if (isPatientMode) return;
+    
     // Skip if Clerk is not available or initialization is in progress
     if (!clerkAvailable || isInitializing || isRedirecting) return;
-    
-    const effectiveMode = mode || 'optician';
     
     if (isAuthLoaded && !isSignedIn && effectiveMode === "optician") {
       console.log(`[OpticianFormAuth/${instanceId.current}]: User not authenticated, redirecting to login`);
@@ -63,10 +59,13 @@ export const useOpticianFormAuth = ({
       // Redirect with replace to avoid history issues
       navigate("/sign-in", { replace: true });
     }
-  }, [clerkAvailable, isAuthLoaded, isSignedIn, mode, navigate, isRedirecting, token, isInitializing]);
+  }, [isPatientMode, clerkAvailable, isAuthLoaded, isSignedIn, effectiveMode, navigate, isRedirecting, token, isInitializing]);
 
   // Check if returning from authentication
   useEffect(() => {
+    // Skip for patient mode - token gives access
+    if (isPatientMode) return;
+    
     // Skip if Clerk is not available, initialization is in progress, or navigation is in progress
     if (!clerkAvailable || isInitializing || navigationInProgressRef.current) return;
     
@@ -94,8 +93,18 @@ export const useOpticianFormAuth = ({
         navigate("/dashboard");
       }
     }
-  }, [clerkAvailable, isAuthLoaded, isSignedIn, token, navigate, isInitializing, onTokenRestore]);
+  }, [isPatientMode, clerkAvailable, isAuthLoaded, isSignedIn, token, navigate, isInitializing, onTokenRestore]);
 
+  // For patient mode, return that we're always "authenticated" (token gives access)
+  if (isPatientMode) {
+    return {
+      isAuthLoaded: true,
+      isSignedIn: true,
+      isRedirecting: false
+    };
+  }
+  
+  // For optician mode, return actual Clerk auth state
   return {
     isAuthLoaded,
     isSignedIn,

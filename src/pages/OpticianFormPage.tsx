@@ -17,7 +17,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { ErrorBoundary } from "react-error-boundary";
-import FormLayout from "@/components/FormLayout";
 
 // Import refactored components and utilities
 import { 
@@ -224,30 +223,29 @@ const OpticianFormPage = () => {
   
   console.log(`[OpticianFormPage/${instanceIdRef.current}]: Rendering form. mode: ${formMode}, token: ${effectiveToken?.substring(0, 6) || "missing"}...`);
   
-  // Wrap in ErrorBoundary for better error handling and use FormLayout with clean layout (no sidebar/breadcrumbs)
+  // Wrap in ErrorBoundary for better error handling
+  // Note: We don't use FormLayout here because it's already rendered inside FormOrchestrator
   return (
-    <FormLayout cleanLayout={true}>
-      <div className="min-h-screen bg-background py-8 px-4 sm:px-6">
-        <div className="max-w-2xl mx-auto">
-          <OpticianFormHeader />
-          <ErrorBoundary
-            FallbackComponent={OpticianFormErrorFallback}
-            onReset={() => {
-              // Reset error boundary and reload the page
-              window.location.reload();
-            }}
-          >
-            <BaseFormPage 
-              token={effectiveToken}
-              mode={formMode}
-              hideAutoSave={true}
-              hideCopyLink={true}
-              onError={handleSubmissionError}
-            />
-          </ErrorBoundary>
-        </div>
+    <div className="min-h-screen bg-background py-8 px-4 sm:px-6">
+      <div className="max-w-2xl mx-auto">
+        <OpticianFormHeader />
+        <ErrorBoundary
+          FallbackComponent={OpticianFormErrorFallback}
+          onReset={() => {
+            // Reset error boundary and reload the page
+            window.location.reload();
+          }}
+        >
+          <BaseFormPage 
+            token={effectiveToken}
+            mode={formMode}
+            hideAutoSave={true}
+            hideCopyLink={true}
+            onError={handleSubmissionError}
+          />
+        </ErrorBoundary>
       </div>
-    </FormLayout>
+    </div>
   );
 };
 

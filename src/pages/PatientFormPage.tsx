@@ -58,15 +58,17 @@ const PatientFormPage = () => {
   
   // Use FormLayout which handles sidebar display based on authentication status
   return (
-    <FormLayout>
-      <BaseFormPage 
-        token={token}
-        mode="patient"
-        showBookingInfo={true}
-        key={`patient-form-${refreshTrigger}`}
-        onError={handleTokenError}
-      />
-    </FormLayout>
+    <div className="min-h-screen bg-gradient-primary">
+      <FormLayout>
+        <BaseFormPage 
+          token={token}
+          mode="patient"
+          showBookingInfo={true}
+          key={`patient-form-${refreshTrigger}`}
+          onError={handleTokenError}
+        />
+      </FormLayout>
+    </div>
   );
 };
 

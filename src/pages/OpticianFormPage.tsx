@@ -226,7 +226,7 @@ const OpticianFormPage = () => {
   // Wrap in ErrorBoundary for better error handling
   // Note: We don't use FormLayout here because it's already rendered inside FormOrchestrator
   return (
-    <div className="min-h-screen bg-background py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-gradient-primary py-8 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <OpticianFormHeader />
         <ErrorBoundary

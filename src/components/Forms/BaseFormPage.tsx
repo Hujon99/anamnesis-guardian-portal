@@ -410,7 +410,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       // Add a key based on retry attempt to force full remounting
       const formKey = `form-${effectiveToken}-${retryAttempt}`;
       
-      // Default form UI with gradient background
+      // Default form UI
       return (
         <ErrorBoundary
           FallbackComponent={FormErrorFallback}
@@ -419,44 +419,42 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
             handleEnhancedRetry();
           }}
         >
-          <div className="min-h-screen bg-gradient-primary p-4 md:p-8">
-            <div className="space-y-4 max-w-4xl mx-auto" key={formKey}>
-              {/* Show info card when booking information is available */}
-              {showBookingInfo && (firstName || bookingId || bookingDate || storeId) && (
-                <BookingInfoCard 
-                  firstName={firstName}
-                  bookingId={bookingId}
-                  bookingDate={bookingDate}
-                  storeId={storeId}
+          <div className="space-y-4" key={formKey}>
+            {/* Show info card when booking information is available */}
+            {showBookingInfo && (firstName || bookingId || bookingDate || storeId) && (
+              <BookingInfoCard 
+                firstName={firstName}
+                bookingId={bookingId}
+                bookingDate={bookingDate}
+                storeId={storeId}
+              />
+            )}
+            
+            <Card>
+              <CardContent className="p-0">
+                <FormContainer
+                  formTemplate={formTemplate.schema}
+                  onSubmit={handleSubmitWithFormTemplate}
+                  isSubmitting={isSubmitting}
+                  isOpticianMode={mode === 'optician'}
+                  initialValues={currentFormValues}
+                  createdByName={createdByName}
+                  onFormValuesChange={handleFormValuesChange}
+                  entryId={entryData?.id || null}
+                  token={effectiveToken}
+                  organizationId={formTemplate?.organization_id || entryData?.organization_id}
                 />
-              )}
+              </CardContent>
               
-              <Card className="shadow-lg/20">
-                <CardContent className="p-0">
-                  <FormContainer
-                    formTemplate={formTemplate.schema}
-                    onSubmit={handleSubmitWithFormTemplate}
-                    isSubmitting={isSubmitting}
-                    isOpticianMode={mode === 'optician'}
-                    initialValues={currentFormValues}
-                    createdByName={createdByName}
-                    onFormValuesChange={handleFormValuesChange}
-                    entryId={entryData?.id || null}
-                    token={effectiveToken}
-                    organizationId={formTemplate?.organization_id || entryData?.organization_id}
-                  />
-                </CardContent>
-                
-                <CardFooter className="flex justify-between pt-0 pb-4 px-6">
-                  {!hideAutoSave && (
-                    <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
-                  )}
-                  {!hideCopyLink && (
-                    <CopyLinkButton />
-                  )}
-                </CardFooter>
-              </Card>
-            </div>
+              <CardFooter className="flex justify-between pt-0 pb-4 px-6">
+                {!hideAutoSave && (
+                  <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
+                )}
+                {!hideCopyLink && (
+                  <CopyLinkButton />
+                )}
+              </CardFooter>
+            </Card>
           </div>
         </ErrorBoundary>
       );

@@ -86,7 +86,7 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
             return (
               <Card 
                 key={form.id} 
-                className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-2 hover:border-primary/20"
+                className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/20"
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start gap-4">

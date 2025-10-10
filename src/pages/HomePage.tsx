@@ -2,6 +2,7 @@
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { Logo } from "@/components/Logo";
 
 const HomePage = () => {
   return (
@@ -13,9 +14,9 @@ const HomePage = () => {
       <SignedOut>
         <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-white px-4">
           <div className="text-center max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
-              Anamnesportalen
-            </h1>
+            <div className="mb-6 flex justify-center">
+              <Logo size="lg" />
+            </div>
             <p className="text-xl text-gray-600 mb-8">
               Säker hantering av hälsouppgifter för optiker och deras patienter
             </p>

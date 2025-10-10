@@ -30,7 +30,7 @@ export const DirectFormButton: React.FC = () => {
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [showIdVerificationDialog, setShowIdVerificationDialog] = useState(false);
   const [selectedForm, setSelectedForm] = useState<OrganizationForm | null>(null);
-  const [customerName, setCustomerName] = useState({ firstName: "", lastName: "" });
+  const [customerName, setCustomerName] = useState("");
   const [gdprData, setGdprData] = useState<{ infoType: 'full' | 'short'; notes?: string } | null>(null);
   
   const navigate = useNavigate();
@@ -52,15 +52,13 @@ export const DirectFormButton: React.FC = () => {
   const createDirectFormEntry = useMutation({
     mutationFn: async ({ 
       form, 
-      firstName, 
-      lastName, 
+      name, 
       idType, 
       personalNumber,
       gdprInfo
     }: { 
       form: OrganizationForm, 
-      firstName: string, 
-      lastName: string,
+      name: string,
       idType: string,
       personalNumber: string,
       gdprInfo: { infoType: 'full' | 'short'; notes?: string }
@@ -74,8 +72,7 @@ export const DirectFormButton: React.FC = () => {
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours from now
 
       // Create patient identifier from name
-      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-      const patientIdentifier = `${fullName} (Direkt ifyllning i butik)`;
+      const patientIdentifier = `${name} (Direkt ifyllning i butik)`;
 
       // Create entry in anamnes_entries with ID verification data
           const { data, error } = await supabase
@@ -89,7 +86,7 @@ export const DirectFormButton: React.FC = () => {
               created_by: user.id,
               created_by_name: user.fullName || user.firstName || "Okänd optiker",
               patient_identifier: patientIdentifier,
-              first_name: fullName,
+              first_name: name,
               expires_at: expiresAt.toISOString(),
               booking_date: new Date().toISOString(), // Automatically set today's date
               // Set initial answers as empty object
@@ -149,7 +146,7 @@ export const DirectFormButton: React.FC = () => {
       setShowNameDialog(false);
       setShowIdVerificationDialog(false);
       setSelectedForm(null);
-      setCustomerName({ firstName: "", lastName: "" });
+      setCustomerName("");
       setGdprData(null);
       setIsCreating(false);
     },
@@ -214,10 +211,10 @@ export const DirectFormButton: React.FC = () => {
     setShowNameDialog(true);
   };
 
-  const handleNameConfirm = (firstName: string, lastName: string) => {
+  const handleNameConfirm = (name: string) => {
     if (!selectedForm) return;
     
-    setCustomerName({ firstName, lastName });
+    setCustomerName(name);
     setShowNameDialog(false);
     setShowIdVerificationDialog(true);
   };
@@ -237,8 +234,7 @@ export const DirectFormButton: React.FC = () => {
       try {
         const accessToken = crypto.randomUUID();
         const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
-        const fullName = customerName.lastName ? `${customerName.firstName} ${customerName.lastName}` : customerName.firstName;
-        const patientIdentifier = `${fullName} (Direkt ifyllning i butik)`;
+        const patientIdentifier = `${customerName} (Direkt ifyllning i butik)`;
 
         const { data, error } = await supabase
           .from("anamnes_entries")
@@ -251,7 +247,7 @@ export const DirectFormButton: React.FC = () => {
             created_by: user.id,
             created_by_name: user.fullName || user.firstName || "Okänd optiker",
             patient_identifier: patientIdentifier,
-            first_name: fullName,
+            first_name: customerName,
             expires_at: expiresAt.toISOString(),
             booking_date: new Date().toISOString(),
             answers: {},
@@ -298,7 +294,7 @@ export const DirectFormButton: React.FC = () => {
         setShowNameDialog(false);
         setShowIdVerificationDialog(false);
         setSelectedForm(null);
-        setCustomerName({ firstName: "", lastName: "" });
+        setCustomerName("");
         setGdprData(null);
         setIsCreating(false);
       } catch (error: any) {
@@ -316,8 +312,7 @@ export const DirectFormButton: React.FC = () => {
       setIsCreating(true);
       createDirectFormEntry.mutate({ 
         form: selectedForm, 
-        firstName: customerName.firstName,
-        lastName: customerName.lastName,
+        name: customerName,
         idType: idData.idType,
         personalNumber: idData.personalNumber,
         gdprInfo: gdprData!
@@ -419,7 +414,7 @@ export const DirectFormButton: React.FC = () => {
         onOpenChange={setShowIdVerificationDialog}
         onConfirm={handleIdVerificationConfirm}
         isVerifying={isCreating}
-        customerName={customerName.lastName ? `${customerName.firstName} ${customerName.lastName}` : customerName.firstName}
+        customerName={customerName}
       />
     </>
   );

@@ -14,7 +14,7 @@ import { User, Loader2 } from "lucide-react";
 interface CustomerNameDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (firstName: string, lastName: string) => void;
+  onConfirm: (name: string) => void;
   isCreating: boolean;
   examinationType: string;
 }
@@ -26,20 +26,18 @@ export const CustomerNameDialog = ({
   isCreating,
   examinationType
 }: CustomerNameDialogProps) => {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [name, setName] = useState("");
 
   const handleConfirm = () => {
-    onConfirm(firstName.trim(), lastName.trim());
+    onConfirm(name.trim());
   };
 
   const handleCancel = () => {
-    setFirstName("");
-    setLastName("");
+    setName("");
     onOpenChange(false);
   };
 
-  const isValid = firstName.trim().length > 0;
+  const isValid = name.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleCancel}>
@@ -51,32 +49,19 @@ export const CustomerNameDialog = ({
           </div>
           <DialogDescription className="text-base leading-relaxed">
             Ange kundens namn för {examinationType.toLowerCase()}undersökningen.
-            Förnamn krävs, efternamn är valfritt.
           </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-6 py-6">
           <div className="grid gap-3">
-            <Label htmlFor="firstName" className="text-base">Förnamn *</Label>
+            <Label htmlFor="name" className="text-base">Namn *</Label>
             <Input
-              id="firstName"
-              placeholder="Ange förnamn"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
+              id="name"
+              placeholder="Ange kundens fullständiga namn"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               disabled={isCreating}
               autoFocus
-              className="h-12 text-base"
-            />
-          </div>
-          
-          <div className="grid gap-3">
-            <Label htmlFor="lastName" className="text-base">Efternamn</Label>
-            <Input
-              id="lastName"
-              placeholder="Ange efternamn (valfritt)"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              disabled={isCreating}
               className="h-12 text-base"
             />
           </div>

@@ -50,9 +50,8 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SystemAdminProvider>
-        <TooltipProvider>
-          <Routes>
+      <TooltipProvider>
+        <Routes>
             {/* Public routes */}
             <Route path="/" element={<Index />} />
             <Route path="/sign-in" element={<SignInPage />} />
@@ -73,11 +72,13 @@ function App() {
             <Route 
               element={
                 <ProtectedRoute>
-                  <AnamnesisProvider>
-                    {/* UserSyncManager runs here to ensure it's active for all authenticated routes */}
-                    <UserSyncManager />
-                    <Layout />
-                  </AnamnesisProvider>
+                  <SystemAdminProvider>
+                    <AnamnesisProvider>
+                      {/* UserSyncManager runs here to ensure it's active for all authenticated routes */}
+                      <UserSyncManager />
+                      <Layout />
+                    </AnamnesisProvider>
+                  </SystemAdminProvider>
                 </ProtectedRoute>
               }
             >
@@ -96,7 +97,6 @@ function App() {
           </Routes>
           <Toaster richColors position="top-center" />
         </TooltipProvider>
-      </SystemAdminProvider>
     </QueryClientProvider>
   );
 }

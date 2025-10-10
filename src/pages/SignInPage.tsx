@@ -1,17 +1,13 @@
 
 import { SignIn } from "@clerk/clerk-react";
-import { Logo } from "@/components/Logo";
 
 const SignInPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="mb-4 flex justify-center">
-            <Logo size="lg" />
-          </div>
           <h1 className="text-3xl font-bold text-primary">Välkommen tillbaka</h1>
-          <p className="text-gray-600 mt-2">Logga in för att fortsätta</p>
+          <p className="text-gray-600 mt-2">Logga in för att fortsätta till Anamnesportalen</p>
         </div>
         
         <SignIn 

@@ -214,7 +214,7 @@ export const useConditionalFields = (
       setVisibleSections([]);
       setTotalSections(0);
     }
-  }, [template, safeValues, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
+  }, [template, values, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
   
   return {
     visibleSections,

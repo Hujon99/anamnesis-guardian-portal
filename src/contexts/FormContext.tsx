@@ -87,7 +87,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const [consentGiven] = useState(true);
   const [showConsentStep] = useState(false);
   
-  // Create the form with React Hook Form
+  // Create the form with React Hook Form FIRST (before using it)
   const form = useForm({
     defaultValues: initialValues || {},
     mode: "onTouched"
@@ -95,7 +95,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
 
   // Get the form values - use IMMEDIATE values for conditional logic (not debounced)
   // This ensures follow-up questions appear instantly when parent values change
-  const immediateValues = form.watch();
+  // Make sure we always have an object (form.watch() can return undefined initially)
+  const immediateValues = form.watch() || {};
   
   // Setup conditional fields logic with IMMEDIATE values
   const { visibleSections } = useConditionalFields(formTemplate, immediateValues, isOpticianMode);

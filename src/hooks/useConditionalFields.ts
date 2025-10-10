@@ -130,10 +130,12 @@ export const useConditionalFields = (
 
   // Track values directly (no JSON.stringify to avoid timing issues)
   // This ensures we re-evaluate immediately when values change
+  // Guard against undefined values
+  const safeValues = values || {};
 
   // Update the sections when the template or values change
   useEffect(() => {
-    console.log('[useConditionalFields]: Re-evaluating conditional logic with values:', values);
+    console.log('[useConditionalFields]: Re-evaluating conditional logic with values:', safeValues);
     
     if (!template) {
       setVisibleSections([]);
@@ -153,7 +155,7 @@ export const useConditionalFields = (
       // Process each section, applying conditions
       allSections.forEach((section) => {
         // Apply section visibility condition
-        const sectionVisible = evaluateCondition(section.show_if, values);
+        const sectionVisible = evaluateCondition(section.show_if, safeValues);
         
         if (sectionVisible) {
           // Clone the section to modify its questions without mutating the original
@@ -171,11 +173,11 @@ export const useConditionalFields = (
             if (!meetsModeCriteria) return false;
             
             // Then check conditional logic
-            return evaluateCondition(question.show_if, values);
+            return evaluateCondition(question.show_if, safeValues);
           });
           
           // Generate dynamic follow-up questions for this section
-          const dynamicQuestions = generateDynamicQuestions(section, values);
+          const dynamicQuestions = generateDynamicQuestions(section, safeValues);
           
           // Combine regular and dynamic questions
           const allQuestions = [...visibleQuestions, ...dynamicQuestions];
@@ -212,7 +214,7 @@ export const useConditionalFields = (
       setVisibleSections([]);
       setTotalSections(0);
     }
-  }, [template, values, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
+  }, [template, safeValues, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
   
   return {
     visibleSections,

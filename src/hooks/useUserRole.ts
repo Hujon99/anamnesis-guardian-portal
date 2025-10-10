@@ -80,9 +80,9 @@ export const useUserRole = () => {
   return {
     role,
     isLoading,
-    isAdmin: role === 'admin',
-    isOptician: role === 'optician',
-    isMember: role === 'member',
+    isAdmin: (role === 'admin') as boolean,
+    isOptician: (role === 'optician') as boolean,
+    isMember: (role === 'member') as boolean,
     retryCount,
   };
 };

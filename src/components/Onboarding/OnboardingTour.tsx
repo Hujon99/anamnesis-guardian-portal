@@ -52,7 +52,7 @@ export const OnboardingTour: React.FC = () => {
     if (status === STATUS.ERROR || type === 'error:target_not_found') {
       console.warn('Joyride error - target not found:', step.target);
       
-      const totalSteps = getTourSteps(isOptician ?? false, isAdmin ?? false, hasTodayBookings).length;
+      const totalSteps = getTourSteps(isOptician, isAdmin, hasTodayBookings).length;
       
       // Skip to next step and restart tour
       if (index < totalSteps - 1) {
@@ -102,7 +102,7 @@ export const OnboardingTour: React.FC = () => {
     return null;
   }
 
-  const steps = getTourSteps(isOptician ?? false, isAdmin ?? false, hasTodayBookings);
+  const steps = getTourSteps(isOptician, isAdmin, hasTodayBookings);
 
   return (
     <Joyride

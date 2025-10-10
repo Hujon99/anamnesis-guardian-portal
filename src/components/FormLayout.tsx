@@ -18,10 +18,22 @@ interface FormLayoutProps {
 }
 
 const FormLayout = ({ children, cleanLayout = false }: FormLayoutProps) => {
-  const { isLoaded, userId } = useAuth();
+  // Safely attempt to use Clerk auth, but handle case where Clerk isn't loaded
+  let isLoaded = true;
+  let userId: string | null | undefined = null;
+  
+  try {
+    const auth = useAuth();
+    isLoaded = auth.isLoaded;
+    userId = auth.userId;
+  } catch (error) {
+    // Clerk not available (token-based patient access)
+    // This is expected and fine - just use defaults
+    console.log("FormLayout: Clerk not available, using clean layout for token-based access");
+  }
 
-  // Show loading state while Clerk is initializing
-  if (!isLoaded) {
+  // Show loading state while Clerk is initializing (only if Clerk is actually being used)
+  if (!isLoaded && userId !== null) {
     return <div className="flex items-center justify-center min-h-screen">Laddar...</div>;
   }
 

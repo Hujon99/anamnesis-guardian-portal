@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { FeedbackButton } from "@/components/Feedback/FeedbackButton";
 import { useUserRole } from "@/hooks/useUserRole";
 import { RestartTourButton } from "@/components/Onboarding/RestartTourButton";
+import { Logo } from "@/components/Logo";
 
 export function AppSidebar() {
   const { has, userId } = useAuth();
@@ -50,9 +51,9 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-border">
         <div className="flex items-center justify-between px-3 py-3">
-          <h2 className="text-lg font-bold text-primary group-data-[collapsible=icon]:hidden">
-            Anamnesportalen
-          </h2>
+          <div className="group-data-[collapsible=icon]:hidden">
+            <Logo size="sm" />
+          </div>
           <SidebarTrigger className="-mr-1" />
         </div>
       </SidebarHeader>

@@ -119,9 +119,9 @@ const OpticianFormPage = () => {
     localStorage.setItem(DIRECT_FORM_MODE_KEY, restoredMode);
   };
 
-  // Clerk is only available when we DON'T have a token in the URL
-  // (ConditionalClerkProvider doesn't load Clerk for token-based public route access)
-  const clerkAvailable = !initialToken;
+  // Clerk should be available for optician mode (they must be logged in)
+  // For patient mode with token, Clerk is not needed
+  const clerkAvailable = (initialMode === "optician" || mode === "optician");
   
   // ===== AUTHENTICATION HANDLING =====
   const { isAuthLoaded, isSignedIn, isRedirecting } = useOpticianFormAuth({

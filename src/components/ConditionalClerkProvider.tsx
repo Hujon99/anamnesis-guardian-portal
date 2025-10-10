@@ -17,6 +17,7 @@ export const ConditionalClerkProvider: React.FC<{ children: React.ReactNode }> =
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const hasToken = searchParams.has('token');
+    const mode = searchParams.get('mode');
     const isPublicRoute = [
       '/patient-form',
       '/optician-form', 
@@ -27,8 +28,13 @@ export const ConditionalClerkProvider: React.FC<{ children: React.ReactNode }> =
       '/link'
     ].some(route => location.pathname.startsWith(route));
 
-    // Only load Clerk if NOT using token-based access
-    setNeedsAuth(!hasToken || !isPublicRoute);
+    // For optician forms with mode=optician, ALWAYS need Clerk (opticians must be authenticated)
+    const isOpticianMode = location.pathname.startsWith('/optician-form') && mode === 'optician';
+    
+    // Load Clerk if:
+    // 1. It's optician mode (opticians must be authenticated)
+    // 2. OR it's not a token-based public route
+    setNeedsAuth(isOpticianMode || (!hasToken || !isPublicRoute));
   }, [location]);
 
   // Show loading state while determining if auth is needed

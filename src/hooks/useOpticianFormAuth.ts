@@ -25,13 +25,24 @@ export const useOpticianFormAuth = ({
   onTokenRestore,
   clerkAvailable
 }: UseOpticianFormAuthProps) => {
-  // Only use Clerk hooks if Clerk is available
-  const authResult = clerkAvailable ? useAuth() : { isLoaded: true, isSignedIn: false };
-  const { isLoaded: isAuthLoaded, isSignedIn } = authResult;
   const navigate = useNavigate();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const navigationInProgressRef = useRef<boolean>(false);
   const instanceId = useRef(`auth-${Math.random().toString(36).substring(2, 7)}`);
+  
+  // For patient mode, skip all auth logic - token gives access
+  const effectiveMode = mode || 'patient';
+  if (effectiveMode === 'patient') {
+    return {
+      isAuthLoaded: true,
+      isSignedIn: true, // Token-based access doesn't need Clerk auth
+      isRedirecting: false
+    };
+  }
+  
+  // Only use Clerk hooks if Clerk is available and we're in optician mode
+  const authResult = clerkAvailable ? useAuth() : { isLoaded: true, isSignedIn: false };
+  const { isLoaded: isAuthLoaded, isSignedIn } = authResult;
 
   // Handle non-authenticated users for optician mode
   useEffect(() => {

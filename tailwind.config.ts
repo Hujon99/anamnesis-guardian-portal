@@ -40,8 +40,9 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					DEFAULT: 'hsl(210 100% 40%)',
-					foreground: 'hsl(var(--primary-foreground))'
+					DEFAULT: 'hsl(var(--primary))',
+					foreground: 'hsl(var(--primary-foreground))',
+					hover: 'hsl(var(--primary-hover))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -57,7 +58,10 @@ export default {
 				},
 				accent: {
 					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))'
+					foreground: 'hsl(var(--accent-foreground))',
+					teal: 'hsl(var(--accent-teal))',
+					blue: 'hsl(var(--accent-blue))',
+					light: 'hsl(var(--accent-light))'
 				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',
@@ -76,13 +80,10 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				},
-				// New accent colors
-				accent_teal: 'hsl(173 64% 45%)',
-				accent_coral: 'hsl(12 90% 55%)',
-				// New surface colors
-				surface_light: 'hsl(210 20% 98%)',
-				surface_dark: 'hsl(220 15% 16%)'
+				}
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

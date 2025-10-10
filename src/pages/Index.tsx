@@ -1,12 +1,13 @@
 
 /**
  * This page serves as the entry point of the application.
- * It automatically redirects authenticated users to the dashboard
- * and unauthenticated users to the sign-in page.
+ * It redirects authenticated users to the dashboard and shows
+ * the sign-in page for unauthenticated users without redirecting.
  */
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
+import SignInPage from "./SignInPage";
 
 const Index = () => {
   const { isSignedIn, isLoaded } = useAuth();
@@ -23,8 +24,8 @@ const Index = () => {
     );
   }
   
-  // Redirect signed-in users to dashboard, others to sign-in
-  return <Navigate to={isSignedIn ? "/dashboard" : "/sign-in"} replace />;
+  // Redirect signed-in users to dashboard, show sign-in for others (no redirect)
+  return isSignedIn ? <Navigate to="/dashboard" replace /> : <SignInPage />;
 };
 
 export default Index;

@@ -54,6 +54,7 @@ function App() {
         <TooltipProvider>
           <Routes>
             {/* Public routes */}
+            <Route path="/" element={<Index />} />
             <Route path="/sign-in" element={<SignInPage />} />
             <Route path="/sign-up" element={<SignUpPage />} />
             
@@ -80,7 +81,6 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route 
                 path="/my-anamneses" 

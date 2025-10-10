@@ -17,7 +17,17 @@ interface SystemAdminContextType {
 const SystemAdminContext = createContext<SystemAdminContextType | undefined>(undefined);
 
 export const SystemAdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { organization } = useOrganization();
+  // Safely attempt to use Clerk organization, but handle case where Clerk isn't loaded
+  let organization: any = null;
+  
+  try {
+    const orgData = useOrganization();
+    organization = orgData.organization;
+  } catch (error) {
+    // Clerk not available (token-based patient access)
+    // This is expected and fine - just use defaults
+    console.log("SystemAdminProvider: Clerk not available, using defaults for token-based access");
+  }
 
   // Check if the current organization is marked as a system org
   const { data: isSystemOrg, isLoading } = useQuery({

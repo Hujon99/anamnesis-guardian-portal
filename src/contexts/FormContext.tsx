@@ -87,8 +87,18 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   const [consentGiven] = useState(true);
   const [showConsentStep] = useState(false);
   
-  // Setup conditional fields logic
-  const { visibleSections } = useConditionalFields(formTemplate, watchedFormValues, isOpticianMode);
+  // Create the form with React Hook Form
+  const form = useForm({
+    defaultValues: initialValues || {},
+    mode: "onTouched"
+  });
+
+  // Get the form values - use IMMEDIATE values for conditional logic (not debounced)
+  // This ensures follow-up questions appear instantly when parent values change
+  const immediateValues = form.watch();
+  
+  // Setup conditional fields logic with IMMEDIATE values
+  const { visibleSections } = useConditionalFields(formTemplate, immediateValues, isOpticianMode);
   
   // Get all visible field IDs for validation
   const visibleFieldIds = useMemo(() => {
@@ -105,15 +115,13 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Setup form validation
   const { validateForm } = useFormValidation();
   
-  // Create the form with React Hook Form
-  const form = useForm({
-    defaultValues: initialValues || {},
-    mode: "onTouched"
-  });
-
-  // Get the form values - use debounced for conditional logic, immediate for auto-save
-  const immediateValues = form.watch();
+  // Get debounced values for auto-save (to reduce API calls)
   const watchedValues = useDebouncedWatch(form.watch, 300);
+  
+  // Log form value changes for debugging
+  useEffect(() => {
+    console.log('[FormContext]: Form values changed:', immediateValues);
+  }, [immediateValues]);
   
   // Update our local state when form values change and store metadata for dynamic questions
   useEffect(() => {

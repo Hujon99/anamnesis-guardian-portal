@@ -26,34 +26,46 @@ export const useConditionalFields = (
     
     // If dependent question doesn't exist in values, don't show the item
     if (!(question in values)) {
+      console.log(`[useConditionalFields/evaluateCondition]: Question "${question}" not found in values, hiding dependent field`);
       return false;
     }
     
     const value = values[question];
+    console.log(`[useConditionalFields/evaluateCondition]: Evaluating condition for question "${question}", value:`, value, 'condition:', { equals, contains });
 
     // Handle 'contains' condition for checkboxes and multi-select fields
     if (contains !== undefined) {
       if (Array.isArray(value)) {
-        return value.includes(contains);
+        const result = value.includes(contains);
+        console.log(`[useConditionalFields/evaluateCondition]: Contains check (array): ${result}`);
+        return result;
       }
       // If value is a string, check if it's equal to contains
-      return value === contains;
+      const result = value === contains;
+      console.log(`[useConditionalFields/evaluateCondition]: Contains check (string): ${result}`);
+      return result;
     }
     
     // Handle 'equals' condition
     if (equals !== undefined) {
       // Handle array of possible values
       if (Array.isArray(equals)) {
-        return equals.includes(value);
+        const result = equals.includes(value);
+        console.log(`[useConditionalFields/evaluateCondition]: Equals check (array): ${result}`);
+        return result;
       }
       
       // Handle single value
-      return value === equals;
+      const result = value === equals;
+      console.log(`[useConditionalFields/evaluateCondition]: Equals check (single): ${result}`);
+      return result;
     }
     
     // If no specific condition is provided but the question is specified,
     // show the item if the value is truthy
-    return !!value;
+    const result = !!value;
+    console.log(`[useConditionalFields/evaluateCondition]: Truthy check: ${result}`);
+    return result;
   }, []);
 
 
@@ -61,12 +73,22 @@ export const useConditionalFields = (
   const generateDynamicQuestions = useCallback((section: FormSection, values: Record<string, any>): DynamicFollowupQuestion[] => {
     const dynamicQuestions: DynamicFollowupQuestion[] = [];
     
+    console.log(`[useConditionalFields/generateDynamicQuestions]: Processing section "${section.section_title}"`);
+    
     section.questions.forEach(parentQuestion => {
       if (parentQuestion.followup_question_ids && parentQuestion.followup_question_ids.length > 0) {
         const parentValue = values[parentQuestion.id];
+        console.log(`[useConditionalFields/generateDynamicQuestions]: Parent question "${parentQuestion.id}" has value:`, parentValue);
+        
+        // Guard against undefined/null values
+        if (parentValue === undefined || parentValue === null) {
+          console.log(`[useConditionalFields/generateDynamicQuestions]: Parent value is undefined/null, skipping follow-ups`);
+          return;
+        }
         
         // Handle both checkbox (array) and single-value responses
         const selectedValues = Array.isArray(parentValue) ? parentValue : (parentValue ? [parentValue] : []);
+        console.log(`[useConditionalFields/generateDynamicQuestions]: Selected values for follow-ups:`, selectedValues);
         
         selectedValues.forEach((value: string) => {
           // For each selected value, create instances of all follow-up questions
@@ -78,6 +100,7 @@ export const useConditionalFields = (
             if (template) {
               // Create runtime ID using first word only
               const runtimeId = generateRuntimeId(followupId, value);
+              console.log(`[useConditionalFields/generateDynamicQuestions]: Creating dynamic question with runtimeId: ${runtimeId}`);
               
               // Create a dynamic question instance
               const dynamicQuestion: DynamicFollowupQuestion = {
@@ -93,20 +116,25 @@ export const useConditionalFields = (
               delete (dynamicQuestion as any).is_followup_template;
               
               dynamicQuestions.push(dynamicQuestion);
+            } else {
+              console.warn(`[useConditionalFields/generateDynamicQuestions]: Follow-up template not found for id: ${followupId}`);
             }
           });
         });
       }
     });
     
+    console.log(`[useConditionalFields/generateDynamicQuestions]: Generated ${dynamicQuestions.length} dynamic questions for section "${section.section_title}"`);
     return dynamicQuestions;
   }, []);
 
-  // Memoize values to prevent unnecessary recalculations
-  const memoizedValues = useMemo(() => values, [JSON.stringify(values)]);
+  // Track values directly (no JSON.stringify to avoid timing issues)
+  // This ensures we re-evaluate immediately when values change
 
   // Update the sections when the template or values change
   useEffect(() => {
+    console.log('[useConditionalFields]: Re-evaluating conditional logic with values:', values);
+    
     if (!template) {
       setVisibleSections([]);
       setTotalSections(0);
@@ -184,7 +212,7 @@ export const useConditionalFields = (
       setVisibleSections([]);
       setTotalSections(0);
     }
-  }, [template, memoizedValues, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
+  }, [template, values, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
   
   return {
     visibleSections,

@@ -14,32 +14,24 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BaseFormPage } from "@/components/Forms/BaseFormPage";
 import { toast } from "@/hooks/use-toast";
-import { useAuth } from "@clerk/clerk-react";
 import FormLayout from "@/components/FormLayout";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
-  const { userId } = useAuth();
   const token = searchParams.get("token");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
-  // Check if this is an optician accessing the form (any authenticated user)
-  const isOpticianMode = !!userId;
   
   // Log token for debugging
   useEffect(() => {
     if (token) {
       console.log("PatientFormPage: Rendering with token", token.substring(0, 6) + "...");
-      if (isOpticianMode) {
-        console.log("PatientFormPage: Optician mode detected - showing sidebar");
-      }
     } else {
       console.log("PatientFormPage: No token in URL");
       toast.error("Ingen åtkomsttoken hittades", {
         description: "Kontrollera att URL:en är korrekt"
       });
     }
-  }, [token, isOpticianMode]);
+  }, [token]);
   
   // Add ability to handle token expiration by refreshing the page
   const handleTokenError = (error: Error) => {

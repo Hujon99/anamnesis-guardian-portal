@@ -2,6 +2,7 @@
 /**
  * Hook that manages authentication flow for optician forms.
  * Handles redirects, token persistence, and authentication recovery.
+ * Now safely handles cases where Clerk is not loaded.
  */
 
 import { useEffect, useState, useRef } from "react";
@@ -14,15 +15,19 @@ interface UseOpticianFormAuthProps {
   token: string | null;
   isInitializing: boolean;
   onTokenRestore: (token: string, mode: string) => void;
+  clerkAvailable: boolean;
 }
 
 export const useOpticianFormAuth = ({
   mode,
   token,
   isInitializing,
-  onTokenRestore
+  onTokenRestore,
+  clerkAvailable
 }: UseOpticianFormAuthProps) => {
-  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
+  // Only use Clerk hooks if Clerk is available
+  const authResult = clerkAvailable ? useAuth() : { isLoaded: true, isSignedIn: false };
+  const { isLoaded: isAuthLoaded, isSignedIn } = authResult;
   const navigate = useNavigate();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const navigationInProgressRef = useRef<boolean>(false);
@@ -30,8 +35,8 @@ export const useOpticianFormAuth = ({
 
   // Handle non-authenticated users for optician mode
   useEffect(() => {
-    // Only proceed if initialization is complete and not already redirecting
-    if (isInitializing || isRedirecting) return;
+    // Skip if Clerk is not available or initialization is in progress
+    if (!clerkAvailable || isInitializing || isRedirecting) return;
     
     const effectiveMode = mode || 'optician';
     
@@ -47,12 +52,12 @@ export const useOpticianFormAuth = ({
       // Redirect with replace to avoid history issues
       navigate("/sign-in", { replace: true });
     }
-  }, [isAuthLoaded, isSignedIn, mode, navigate, isRedirecting, token, isInitializing]);
+  }, [clerkAvailable, isAuthLoaded, isSignedIn, mode, navigate, isRedirecting, token, isInitializing]);
 
   // Check if returning from authentication
   useEffect(() => {
-    // Only run if initialization is complete and not already processing
-    if (isInitializing || navigationInProgressRef.current) return;
+    // Skip if Clerk is not available, initialization is in progress, or navigation is in progress
+    if (!clerkAvailable || isInitializing || navigationInProgressRef.current) return;
     
     // Only run if the user is now authenticated but we don't have a token in state
     if (isAuthLoaded && isSignedIn && !token) {
@@ -78,7 +83,7 @@ export const useOpticianFormAuth = ({
         navigate("/dashboard");
       }
     }
-  }, [isAuthLoaded, isSignedIn, token, navigate, isInitializing, onTokenRestore]);
+  }, [clerkAvailable, isAuthLoaded, isSignedIn, token, navigate, isInitializing, onTokenRestore]);
 
   return {
     isAuthLoaded,

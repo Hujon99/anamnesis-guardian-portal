@@ -58,8 +58,27 @@ const getTokenCache = () => {
 };
 
 export const useSupabaseClient = () => {
-  const { getToken, isSignedIn, userId } = useAuth();
-  const clerk = useClerk();
+  // Safely attempt to use Clerk hooks - they may not be available in public token-based routes
+  let authData = { getToken: null as any, isSignedIn: false, userId: null as string | null };
+  let clerk = null as any;
+  
+  try {
+    // Attempt to use Clerk hooks (will throw if not in ClerkProvider)
+    const clerkAuth = useAuth();
+    const clerkInstance = useClerk();
+    
+    authData = {
+      getToken: clerkAuth.getToken,
+      isSignedIn: clerkAuth.isSignedIn || false,
+      userId: clerkAuth.userId || null
+    };
+    clerk = clerkInstance;
+  } catch (error) {
+    // Clerk not available, use default values for unauthenticated mode
+    console.log('[useSupabaseClient]: Clerk not available, using unauthenticated mode');
+  }
+  
+  const { getToken, isSignedIn, userId } = authData;
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -81,21 +81,18 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
     return true;
   }, [question.type, question.options]);
 
-  // Extract and validate values on mount - aggressive clearing for single question layout
+  // Initialize field with proper default value only on mount
   React.useEffect(() => {
     const currentValue = watch(fieldName);
     
-    console.log(`[TouchFriendlyFieldRenderer] Field ${fieldName} initial value:`, currentValue);
-    
-    // AGGRESSIVE: Always clear the field on mount to prevent any propagation
-    console.log(`[TouchFriendlyFieldRenderer] Aggressively clearing field ${fieldName} to prevent propagation`);
-    
-    if (question.type === "checkbox") {
-      setValue(fieldName, [], { shouldValidate: false, shouldDirty: false });
-    } else {
-      setValue(fieldName, "", { shouldValidate: false, shouldDirty: false });
+    // Only set default for empty fields on initial mount
+    // Don't clear existing values - let conditional logic handle visibility
+    if (currentValue === undefined || currentValue === null || currentValue === "") {
+      if (question.type === "checkbox" && question.options && question.options.length > 0) {
+        setValue(fieldName, [], { shouldValidate: false, shouldDirty: false });
+      }
     }
-  }, [fieldName, setValue]); // Run whenever fieldName changes (new question)
+  }, []); // Empty deps - only run on initial mount
   
   const getOptionValue = (option: FormQuestionOption): string => {
     return typeof option === 'string' ? option : option.value;

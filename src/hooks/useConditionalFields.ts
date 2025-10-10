@@ -6,7 +6,7 @@
  * for checkbox fields.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { FormTemplate, FormSection, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
 import { generateRuntimeId } from "@/utils/questionIdUtils";
 
@@ -102,6 +102,9 @@ export const useConditionalFields = (
     return dynamicQuestions;
   }, []);
 
+  // Memoize values to prevent unnecessary recalculations
+  const memoizedValues = useMemo(() => values, [JSON.stringify(values)]);
+
   // Update the sections when the template or values change
   useEffect(() => {
     if (!template) {
@@ -181,7 +184,7 @@ export const useConditionalFields = (
       setVisibleSections([]);
       setTotalSections(0);
     }
-  }, [template, values, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
+  }, [template, memoizedValues, evaluateCondition, isOpticianMode, generateDynamicQuestions]);
   
   return {
     visibleSections,

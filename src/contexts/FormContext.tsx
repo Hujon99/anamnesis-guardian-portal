@@ -15,6 +15,7 @@ import { useMultiStepForm } from "@/hooks/useMultiStepForm";
 import { useFormValidation } from "@/hooks/useFormValidation";
 import { useConditionalFields } from "@/hooks/useConditionalFields";
 import { useFormattedRawData } from "@/hooks/useFormattedRawData";
+import { useDebouncedWatch } from "@/hooks/useDebouncedWatch";
 import { toast } from "sonner";
 import { CURRENT_PRIVACY_POLICY_VERSION, CURRENT_TERMS_VERSION } from '@/legal';
 
@@ -110,8 +111,9 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     mode: "onTouched"
   });
 
-  // Get the form values and handle them for auto-save
-  const watchedValues = form.watch();
+  // Get the form values - use debounced for conditional logic, immediate for auto-save
+  const immediateValues = form.watch();
+  const watchedValues = useDebouncedWatch(form.watch, 300);
   
   // Update our local state when form values change and store metadata for dynamic questions
   useEffect(() => {
@@ -134,12 +136,12 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
     setWatchedFormValues(valuesWithMetadata);
   }, [watchedValues, visibleSections]);
   
-  // Call onFormValuesChange when form values change
+  // Call onFormValuesChange when form values change - use immediate values for auto-save
   useEffect(() => {
     if (onFormValuesChange) {
-      onFormValuesChange(watchedValues);
+      onFormValuesChange(immediateValues);
     }
-  }, [watchedValues, onFormValuesChange]);
+  }, [immediateValues, onFormValuesChange]);
 
   // Setup multi-step form navigation
   const multiStepForm = useMultiStepForm({ 

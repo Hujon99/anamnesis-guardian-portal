@@ -4,7 +4,7 @@
  * with proper value extraction and nested data structures.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { FormQuestion, FormQuestionOption, DynamicFollowupQuestion } from "@/types/anamnesis";
 import { 
   FormField, 
@@ -28,7 +28,7 @@ export interface FormFieldRendererProps {
   isOpticianField?: boolean;
 }
 
-export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
+export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
   question,
   error,
   isOpticianField = false
@@ -36,10 +36,19 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   const { control, watch, setValue } = useFormContext();
   const hasError = error !== undefined;
   
-  
-  const fieldId = `field-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
-  const descriptionId = `desc-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
-  const errorId = `error-${(question as DynamicFollowupQuestion).runtimeId || question.id}`;
+  // Memoize field IDs to prevent recalculation
+  const fieldId = useMemo(
+    () => `field-${(question as DynamicFollowupQuestion).runtimeId || question.id}`,
+    [question]
+  );
+  const descriptionId = useMemo(
+    () => `desc-${(question as DynamicFollowupQuestion).runtimeId || question.id}`,
+    [question]
+  );
+  const errorId = useMemo(
+    () => `error-${(question as DynamicFollowupQuestion).runtimeId || question.id}`,
+    [question]
+  );
   
   const fieldName = (question as DynamicFollowupQuestion).runtimeId || question.id;
   
@@ -408,4 +417,13 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   };
 
   return renderField();
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison for memoization
+  return (
+    prevProps.question.id === nextProps.question.id &&
+    prevProps.error === nextProps.error &&
+    prevProps.isOpticianField === nextProps.isOpticianField
+  );
+});
+
+FormFieldRenderer.displayName = 'FormFieldRenderer';

@@ -50,8 +50,10 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     );
   }
 
-  // Flatten all visible questions with section context
+  // Flatten all visible questions with section context - memoized for performance
   const allQuestions = useMemo(() => {
+    if (!visibleSections || visibleSections.length === 0) return [];
+    
     const questions: Array<{
       question: FormQuestion | DynamicFollowupQuestion;
       sectionTitle: string;
@@ -61,30 +63,33 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
     visibleSections.forEach((sections, sectionIndex) => {
       sections.forEach((section) => {
-        // Add regular questions
-        const visibleQuestions = section.questions.filter(q => {
-          if (q.is_followup_template) return false;
-          if (q.show_in_mode === "optician") return false; // Hide optician questions in patient mode
-          return shouldShowQuestion(q, watchedValues);
-        });
-
-        visibleQuestions.forEach((question, qIndex) => {
+        // Filter visible questions
+        section.questions.forEach((q, qIndex) => {
+          // Skip follow-up templates
+          if (q.is_followup_template) return;
+          
+          // Skip optician-only questions in patient mode
+          if (q.show_in_mode === "optician") return;
+          
+          // Check conditional visibility
+          if (!shouldShowQuestion(q, watchedValues)) return;
+          
           questions.push({
-            question,
+            question: q,
             sectionTitle: section.section_title,
             sectionIndex,
             questionIndex: qIndex
           });
         });
 
-        // Add dynamic follow-up questions
+        // Add dynamic follow-up questions (already filtered in useConditionalFields)
         const dynamicQuestions = getDynamicQuestionsForSection(section, watchedValues);
         dynamicQuestions.forEach((question, qIndex) => {
           questions.push({
             question,
             sectionTitle: section.section_title,
             sectionIndex,
-            questionIndex: visibleQuestions.length + qIndex
+            questionIndex: section.questions.length + qIndex
           });
         });
       });

@@ -20,7 +20,16 @@ export interface FormTemplateWithMeta {
 }
 
 export const useFormTemplate = (examinationType?: string) => {
-  const { organization } = useOrganization();
+  // Safely attempt to use Clerk's useOrganization hook
+  let organization = null;
+  try {
+    const orgData = useOrganization();
+    organization = orgData.organization;
+  } catch (error) {
+    // Clerk not available, use null organization (will fetch default template)
+    console.log('[useFormTemplate]: Clerk not available, using default template');
+  }
+  
   const { supabase } = useSupabaseClient();
   
   return useQuery({

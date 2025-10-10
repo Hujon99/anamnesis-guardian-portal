@@ -34,9 +34,15 @@ export const useOpticianFormAuth = ({
   const effectiveMode = mode || 'patient';
   const isPatientMode = effectiveMode === 'patient';
   
-  // Only use Clerk hooks if Clerk is available and we're in optician mode
-  // IMPORTANT: Always call this hook (Rules of Hooks) but don't use it for patient mode
-  const authResult = clerkAvailable && !isPatientMode ? useAuth() : { isLoaded: true, isSignedIn: false };
+  // IMPORTANT: Always call useAuth() unconditionally (Rules of Hooks)
+  // Wrap in try-catch for when Clerk is not available
+  let authResult = { isLoaded: true, isSignedIn: false };
+  try {
+    authResult = useAuth();
+  } catch (error) {
+    // Clerk not available (patient mode or token-based access)
+    console.log('[useOpticianFormAuth]: Clerk not available, using default auth state');
+  }
   const { isLoaded: isAuthLoaded, isSignedIn } = authResult;
 
   // Handle non-authenticated users for optician mode

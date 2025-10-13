@@ -25,13 +25,11 @@ import { FieldError } from "react-hook-form";
 interface TouchFriendlyFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
   error: FieldError | any;
-  onFieldTouched?: (fieldId: string) => void;
 }
 
 export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProps> = ({
   question,
-  error,
-  onFieldTouched
+  error
 }) => {
   const form = useFormContext();
   const { control, watch, setValue } = form;
@@ -126,11 +124,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                   <Textarea 
                     placeholder="Skriv ditt svar här..." 
                     {...field}
-                    onFocus={() => {
-                      if (onFieldTouched) {
-                        onFieldTouched(fieldName);
-                      }
-                    }}
                     rows={4}
                     className="text-base p-4 min-h-[120px] rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
@@ -159,12 +152,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                  <FormControl>
                    <RadioGroup
                      onValueChange={(value) => {
-                       // Mark as touched FIRST (synchronous)
-                       if (onFieldTouched) {
-                         onFieldTouched(fieldName);
-                       }
-                       
-                       // Then update the value
                        field.onChange(value);
                        form.setValue(fieldName, value, { 
                          shouldValidate: true,
@@ -172,12 +159,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                          shouldTouch: true
                        });
                      }}
-                     value={
-                       // Only use field value if it's a valid option for THIS question
-                       (field.value && question.options?.some(opt => 
-                         (typeof opt === 'string' ? opt : opt.value) === field.value
-                       )) ? field.value : undefined
-                     }
+                     value={validateFieldValue(field.value) ? field.value : undefined}
                      className="space-y-3"
                    >
                     {question.options?.map(option => {
@@ -215,8 +197,15 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
               control={control}
               name={fieldName}
               render={({ field }) => {
-                const values = Array.isArray(field.value) ? field.value : 
+                // Only use valid values that exist in this question's options
+                const validOptions = question.options?.map(opt => 
+                  typeof opt === 'string' ? opt : opt.value
+                ) || [];
+                
+                const rawValues = Array.isArray(field.value) ? field.value : 
                   field.value ? [field.value] : [];
+                
+                const values = rawValues.filter(v => validOptions.includes(v));
                 
                 return (
                   <FormItem className="space-y-6">
@@ -238,15 +227,10 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                             name={fieldName}
                             render={() => (
                               <FormItem className="flex items-center space-x-4 space-y-0">
-                                <FormControl>
+                               <FormControl>
                        <Checkbox
                          checked={isChecked}
                          onCheckedChange={(checked) => {
-                           // Mark as touched FIRST
-                           if (onFieldTouched) {
-                             onFieldTouched(fieldName);
-                           }
-                           
                            const newValues = checked 
                              ? [...values, optionValue] 
                              : values.filter(val => val !== optionValue);
@@ -288,11 +272,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                  <Checkbox
                    checked={field.value}
                    onCheckedChange={(checked) => {
-                     // Mark as touched FIRST
-                     if (onFieldTouched) {
-                       onFieldTouched(fieldName);
-                     }
-                     
                      field.onChange(checked);
                      form.setValue(fieldName, checked, {
                        shouldValidate: true,
@@ -329,11 +308,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 </FormLabel>
                <Select 
                  onValueChange={(value) => {
-                   // Mark as touched FIRST
-                   if (onFieldTouched) {
-                     onFieldTouched(fieldName);
-                   }
-                   
                    field.onChange(value);
                    form.setValue(fieldName, value, {
                      shouldValidate: true,
@@ -388,11 +362,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                     type="number" 
                     placeholder="0" 
                     {...field}
-                    onFocus={() => {
-                      if (onFieldTouched) {
-                        onFieldTouched(fieldName);
-                      }
-                    }}
                     onChange={e => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
                     className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
@@ -418,11 +387,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 <FormControl>
                   <Input 
                     {...field}
-                    onFocus={() => {
-                      if (onFieldTouched) {
-                        onFieldTouched(fieldName);
-                      }
-                    }}
                     className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </FormControl>

@@ -37,11 +37,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
-  const [isClearingComplete, setIsClearingComplete] = useState(false);
-  
-  // Track which questions have been touched by the user in this session
-  // This is more reliable than form.formState.touchedFields which updates asynchronously
-  const [touchedFieldsSet, setTouchedFieldsSet] = useState<Set<string>>(new Set());
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -89,49 +84,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const totalQuestions = allQuestions.length;
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
   
-  // Clear untouched fields when navigating to prevent answer leaking
-  // Uses local touchedFieldsSet for synchronous tracking to avoid race conditions
-  useEffect(() => {
-    if (!currentQuestion) {
-      setIsClearingComplete(false);
-      return;
-    }
-    
-    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-    
-    // Use our local Set instead of React Hook Form's async touchedFields
-    if (!touchedFieldsSet.has(fieldId)) {
-      const currentValue = form.getValues(fieldId);
-      
-      if (currentValue !== undefined && currentValue !== '' && currentValue !== null) {
-        console.log('[SingleQuestionLayout] Clearing leaked value for untouched field:', fieldId, 'value:', currentValue);
-        form.setValue(fieldId, undefined, { 
-          shouldValidate: false,
-          shouldDirty: false,
-          shouldTouch: false
-        });
-      }
-    }
-    
-    // Mark clearing as complete, allowing render to proceed
-    setIsClearingComplete(true);
-    
-    // CRITICAL: Only depend on question changes and touchedFieldsSet, NOT form state
-  }, [currentQuestionIndex, currentQuestion, touchedFieldsSet, form]);
-  
-  // Create a callback to mark field as touched - will be passed to TouchFriendlyFieldRenderer
-  const markFieldAsTouched = React.useCallback((fieldId: string) => {
-    console.log('[SingleQuestionLayout] Marking field as touched:', fieldId);
-    setTouchedFieldsSet(prev => {
-      if (!prev.has(fieldId)) {
-        const newSet = new Set(prev);
-        newSet.add(fieldId);
-        return newSet;
-      }
-      return prev; // Avoid unnecessary state update
-    });
-  }, []);
-  
   // Process form sections for proper submission handling
   useEffect(() => {
     if (processSectionsWithDebounce && visibleSections.length > 0) {
@@ -163,19 +115,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     if (!currentQuestion) return false;
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
     
-    // Check if field has been touched (user has interacted with it)
-    const isTouched = form.formState.touchedFields[fieldId];
-    
-    if (!isTouched) {
-      // Field hasn't been touched yet - show as unanswered regardless of value
-      console.log('[SingleQuestionLayout] Field not touched:', fieldId);
-      return false;
-    }
-    
-    // Field has been touched - check if it has a valid value
     const value = form.watch(fieldId);
-    
-    console.log('[SingleQuestionLayout] Field:', fieldId, 'Touched:', isTouched, 'Value:', value, 'Type:', typeof value);
     
     if (value === undefined || value === null || value === '') return false;
     if (value === false) return false;
@@ -187,7 +127,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
-      setIsClearingComplete(false); // Reset before navigating
       setAnimationClass("slide-out-left");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev + 1);
@@ -201,7 +140,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      setIsClearingComplete(false); // Reset before navigating
       setAnimationClass("slide-out-right");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev - 1);
@@ -259,14 +197,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
       {/* Question content */}
       <CardContent className="flex-1 p-6 md:p-8">
-        {/* Don't render the question until clearing is complete to prevent showing leaked values */}
-        {!isClearingComplete ? (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-pulse text-muted-foreground">Laddar fråga...</div>
-          </div>
-        ) : (
-          <div className={`transition-all duration-300 ${animationClass} min-h-[400px] flex flex-col justify-center`}>
-            {currentQuestion && (
+        <div className={`transition-all duration-300 ${animationClass} min-h-[400px] flex flex-col justify-center`}>
+          {currentQuestion && (
             <div className="space-y-6">
               {/* Question number indicator */}
               <div className="text-center">
@@ -283,13 +215,11 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
                 <TouchFriendlyFieldRenderer
                   question={currentQuestion.question}
                   error={form.formState.errors[(currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id]}
-                  onFieldTouched={markFieldAsTouched}
                 />
               </div>
             </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
 
       {/* Navigation */}

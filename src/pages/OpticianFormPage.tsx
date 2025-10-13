@@ -17,6 +17,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useTokenVerification } from "@/hooks/useTokenVerification";
 import { SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { ErrorBoundary } from "react-error-boundary";
+import { Card, CardContent } from "@/components/ui/card";
+import FormContainer from "@/components/PatientForm/FormContainer";
 
 // Import refactored components and utilities
 import { 
@@ -225,27 +227,48 @@ const OpticianFormPage = () => {
   
   // Wrap in ErrorBoundary for better error handling
   // Note: We don't use FormLayout here because it's already rendered inside FormOrchestrator
+  // For submitted state, BaseFormPage will render OpticianSubmittedView which is fullscreen
   return (
-    <div className="min-h-screen bg-gradient-primary py-8 px-4 sm:px-6">
-      <div className="max-w-2xl mx-auto">
-        <OpticianFormHeader />
-        <ErrorBoundary
-          FallbackComponent={OpticianFormErrorFallback}
-          onReset={() => {
-            // Reset error boundary and reload the page
-            window.location.reload();
-          }}
-        >
-          <BaseFormPage 
-            token={effectiveToken}
-            mode={formMode}
-            hideAutoSave={true}
-            hideCopyLink={true}
-            onError={handleSubmissionError}
-          />
-        </ErrorBoundary>
-      </div>
-    </div>
+    <ErrorBoundary
+      FallbackComponent={OpticianFormErrorFallback}
+      onReset={() => {
+        // Reset error boundary and reload the page
+        window.location.reload();
+      }}
+    >
+      <BaseFormPage 
+        token={effectiveToken}
+        mode={formMode}
+        hideAutoSave={true}
+        hideCopyLink={true}
+        onError={handleSubmissionError}
+        renderCustomContent={(props) => (
+          <div className="min-h-screen bg-gradient-primary py-8 px-4 sm:px-6">
+            <div className="max-w-2xl mx-auto">
+              <OpticianFormHeader />
+              <div className="space-y-4">
+                <Card>
+                  <CardContent className="p-0">
+                    <FormContainer
+                      formTemplate={props.formTemplate.schema}
+                      onSubmit={props.onSubmit}
+                      isSubmitting={props.isSubmitting}
+                      isOpticianMode={props.mode === 'optician'}
+                      initialValues={props.initialValues}
+                      createdByName={props.createdByName}
+                      onFormValuesChange={props.onFormValuesChange}
+                      entryId={null}
+                      token={effectiveToken}
+                      organizationId={props.formTemplate?.organization_id}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        )}
+      />
+    </ErrorBoundary>
   );
 };
 

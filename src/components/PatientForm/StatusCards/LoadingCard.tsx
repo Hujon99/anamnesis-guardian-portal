@@ -51,27 +51,29 @@ const LoadingCard: React.FC<LoadingCardProps> = ({
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="mb-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        </div>
-        <h2 className="text-xl font-medium mb-2">{message}</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          {isFormDataReady ? "Förbereder formulär..." : "Hämtar information..."}
-        </p>
-        
-        {showRetry && onRetry && (
-          <Button 
-            variant="outline" 
-            onClick={onRetry} 
-            className="mt-4"
-          >
-            Försök igen
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-primary p-4">
+      <Card className="w-full max-w-3xl bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="mb-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          </div>
+          <h2 className="text-xl font-medium mb-2">{message}</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            {isFormDataReady ? "Förbereder formulär..." : "Hämtar information..."}
+          </p>
+          
+          {showRetry && onRetry && (
+            <Button 
+              variant="outline" 
+              onClick={onRetry} 
+              className="mt-4"
+            >
+              Försök igen
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

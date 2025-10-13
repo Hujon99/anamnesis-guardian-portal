@@ -145,19 +145,37 @@ export const useSupabaseClient = () => {
       try {
         if (isSignedIn) {
           // For authenticated users, test token provider
-          const testToken = await tokenProvider();
-          if (!testToken) {
-            throw new Error("Kunde inte hämta åtkomsttoken");
+          try {
+            const testToken = await tokenProvider();
+            if (!testToken) {
+              console.warn("[useSupabaseClient] Could not get token, falling back to anonymous client");
+              // Fallback to anonymous client instead of crashing
+              const newClient = createSupabaseClient();
+              setClient(newClient);
+              return;
+            }
+            // Create authenticated client with token
+            const newClient = createSupabaseClient(tokenProvider);
+            setClient(newClient);
+          } catch (tokenError) {
+            console.error("[useSupabaseClient] Token fetch failed, using anonymous client:", tokenError);
+            // Fallback to anonymous client if token fetch fails
+            const fallbackClient = createSupabaseClient();
+            setClient(fallbackClient);
           }
+        } else {
+          // For unauthenticated users (patients with magic links), create anonymous client directly
+          console.log("[useSupabaseClient] Creating anonymous client for unauthenticated user");
+          const newClient = createSupabaseClient();
+          setClient(newClient);
         }
-
-        const newClient = createAuthenticatedClient();
-        setClient(newClient);
       } catch (err) {
-        console.error("[useSupabaseClient] Setup failed:", err);
+        console.error("[useSupabaseClient] Setup failed, using anonymous client as fallback:", err);
+        // Always fallback to anonymous client instead of null to prevent crashes
+        const fallbackClient = createSupabaseClient();
+        setClient(fallbackClient);
         const errorMessage = err instanceof Error ? err.message : "Okänt fel uppstod";
-        setError(`Kunde inte konfigurera databasanslutning: ${errorMessage}`);
-        setClient(null);
+        setError(`Varning: Använder anonym åtkomst: ${errorMessage}`);
       } finally {
         setIsLoading(false);
         isSettingUpRef.current = false;
@@ -167,7 +185,7 @@ export const useSupabaseClient = () => {
 
     setupPromiseRef.current = setupPromise;
     await setupPromise;
-  }, [isSignedIn, tokenProvider, createAuthenticatedClient]);
+  }, [isSignedIn, tokenProvider]);
 
   /**
    * Handle JWT errors by clearing cache and refreshing

@@ -27,8 +27,12 @@ export const useSyncOrganization = () => {
 
   useEffect(() => {
     const syncOrganization = async () => {
-      // Skip if no organization, auth not loaded, or supabase is loading
-      if (!isOrgLoaded || !organization?.id || isSupabaseLoading) {
+      // Skip if auth not loaded, no organization (e.g., patients), or supabase is loading
+      if (!isOrgLoaded || !organization?.id || isSupabaseLoading || !supabase) {
+        // For patients without organization, this is expected behavior
+        if (!organization?.id && isOrgLoaded) {
+          console.log("[useSyncOrganization] Skipping sync - no organization (patient flow)");
+        }
         return;
       }
       

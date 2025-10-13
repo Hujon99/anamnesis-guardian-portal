@@ -48,8 +48,8 @@ const FormLayout = ({ children, cleanLayout = false }: FormLayoutProps) => {
     );
   }
 
-  // For unauthenticated users (patients), show clean layout without sidebar
-  return <div className="min-h-screen">{children}</div>;
+  // For unauthenticated users (patients), show clean layout without sidebar with gradient
+  return <div className="min-h-screen bg-gradient-primary">{children}</div>;
 };
 
 export default FormLayout;

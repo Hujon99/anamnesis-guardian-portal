@@ -15,7 +15,7 @@ const PrivacyPolicyPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-surface-light">
+    <div className="min-h-screen bg-gradient-primary">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-6">
           <Button
@@ -28,7 +28,7 @@ const PrivacyPolicyPage: React.FC = () => {
           </Button>
         </div>
 
-        <div className="bg-card rounded-lg shadow-elegant p-8">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg/20 border-white/60 p-8">
           <LegalDocumentViewer
             content={privacyPolicyContent}
             title="Integritetspolicy"

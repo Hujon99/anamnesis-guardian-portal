@@ -5,7 +5,8 @@
  * Only accessible by opticians and admins.
  */
 
-import { useUser, useAuth } from "@clerk/clerk-react";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, LayoutDashboard, Loader2 } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";

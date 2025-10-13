@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { IdCard, CheckCircle, AlertTriangle, User } from "lucide-react";
-import { useUser } from "@clerk/clerk-react";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { useUserResolver } from "@/utils/userDisplayUtils";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 

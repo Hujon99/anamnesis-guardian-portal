@@ -4,7 +4,9 @@
  * and role requirements. Provides custom UI for unauthorized access scenarios.
  */
 
-import { useAuth, useOrganization, RedirectToSignIn } from "@clerk/clerk-react";
+import { RedirectToSignIn } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";

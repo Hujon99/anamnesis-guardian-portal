@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { subDays } from "date-fns";

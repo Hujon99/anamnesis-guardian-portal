@@ -17,7 +17,7 @@ import { DrivingLicenseOpticianDecision } from "./DrivingLicenseOpticianDecision
 import { CopyableExaminationSummary } from "./CopyableExaminationSummary";
 import { RecommendationEngine } from "../DrivingLicense/RecommendationEngine";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useUser } from "@clerk/clerk-react";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { useOpticians } from "@/hooks/useOpticians";
 import { toast } from "@/hooks/use-toast";
 import { useUserResolver } from "@/utils/userDisplayUtils";

@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { saveAuthContext, restoreAuthContext } from "@/utils/opticianFormTokenUtils";
 
 interface UseOpticianFormAuthProps {

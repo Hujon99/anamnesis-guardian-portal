@@ -6,7 +6,7 @@
  * allowing the form content to handle its own access control logic.
  */
 
-import { useAuth } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { NavigationBreadcrumbs } from "./NavigationBreadcrumbs";
@@ -18,19 +18,7 @@ interface FormLayoutProps {
 }
 
 const FormLayout = ({ children, cleanLayout = false }: FormLayoutProps) => {
-  // Safely attempt to use Clerk auth, but handle case where Clerk isn't loaded
-  let isLoaded = true;
-  let userId: string | null | undefined = null;
-  
-  try {
-    const auth = useAuth();
-    isLoaded = auth.isLoaded;
-    userId = auth.userId;
-  } catch (error) {
-    // Clerk not available (token-based patient access)
-    // This is expected and fine - just use defaults
-    console.log("FormLayout: Clerk not available, using clean layout for token-based access");
-  }
+  const { isLoaded, userId } = useAuth();
 
   // Show loading state while Clerk is initializing (only if Clerk is actually being used)
   if (!isLoaded && userId !== null) {

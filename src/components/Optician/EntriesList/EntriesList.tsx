@@ -13,7 +13,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import React, { useState, useEffect, useMemo } from "react";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
-import { useAuth } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { toast } from "@/components/ui/use-toast";
 import { useStores } from "@/hooks/useStores";
 import { Button } from "@/components/ui/button";

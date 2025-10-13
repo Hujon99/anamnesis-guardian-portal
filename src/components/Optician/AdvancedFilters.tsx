@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from "react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

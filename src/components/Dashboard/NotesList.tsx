@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Loader2, Store, User } from "lucide-react";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSyncOrganization } from "@/hooks/useSyncOrganization";
 import { toast } from "@/components/ui/use-toast";

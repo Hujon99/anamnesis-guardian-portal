@@ -6,7 +6,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useSupabaseClient } from "./useSupabaseClient";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { toast } from "@/components/ui/use-toast";
 import { ExaminationType, EXAMINATION_TYPE_OPTIONS } from "@/types/examinationType";
 import { FormTemplate } from "@/types/anamnesis";

@@ -10,7 +10,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth, useOrganization } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { MessageSquare, Send, Upload, X } from "lucide-react";
 import {
   Dialog,

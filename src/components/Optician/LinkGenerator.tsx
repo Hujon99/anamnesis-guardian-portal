@@ -8,7 +8,9 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";

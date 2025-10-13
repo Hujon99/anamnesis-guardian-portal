@@ -16,7 +16,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { IdCard, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useIdVerificationSave } from "@/hooks/useIdVerificationSave";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useUser } from "@clerk/clerk-react";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { toast } from "@/hooks/use-toast";
 
 interface IdVerificationQuickUpdateProps {

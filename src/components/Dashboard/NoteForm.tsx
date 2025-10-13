@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { PlusCircle } from "lucide-react";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useOrganization, useUser } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { useSyncOrganizationStore } from "@/hooks/useSyncOrganizationStore";
 
 export const NoteForm = () => {

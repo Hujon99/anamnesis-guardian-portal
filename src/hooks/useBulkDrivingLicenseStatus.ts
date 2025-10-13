@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSupabaseClient } from "./useSupabaseClient";
 import { Database } from "@/integrations/supabase/types";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 
 type DrivingLicenseExamination = Database['public']['Tables']['driving_license_examinations']['Row'];
 

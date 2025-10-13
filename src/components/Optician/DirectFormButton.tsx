@@ -11,7 +11,8 @@ import { useOrganizationForms, OrganizationForm } from "@/hooks/useOrganizationF
 import { useMutation } from "@tanstack/react-query";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useNavigate } from "react-router-dom";
-import { useOrganization, useUser } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { toast } from "@/hooks/use-toast";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { Badge } from "@/components/ui/badge";

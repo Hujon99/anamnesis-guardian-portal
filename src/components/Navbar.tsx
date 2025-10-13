@@ -5,7 +5,9 @@
  * that allows for account management and sign out functionality.
  */
 
-import { UserButton, OrganizationSwitcher, useAuth, useUser } from "@clerk/clerk-react";
+import { UserButton, OrganizationSwitcher } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { User } from "lucide-react";
 
 const Navbar = () => {

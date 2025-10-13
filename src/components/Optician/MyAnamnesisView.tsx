@@ -20,7 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { Store } from "@/types/anamnesis";
 import { useQuery } from "@tanstack/react-query";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { toast } from "@/components/ui/use-toast";

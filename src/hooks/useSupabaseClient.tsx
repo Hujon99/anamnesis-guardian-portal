@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuth, useClerk } from "@clerk/clerk-react";
+import { useClerk } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { createSupabaseClient } from "@/utils/supabaseClientUtils";
 import { Database } from "@/integrations/supabase/types";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -58,27 +59,7 @@ const getTokenCache = () => {
 };
 
 export const useSupabaseClient = () => {
-  // Safely attempt to use Clerk hooks - they may not be available in public token-based routes
-  let authData = { getToken: null as any, isSignedIn: false, userId: null as string | null };
-  let clerk = null as any;
-  
-  try {
-    // Attempt to use Clerk hooks (will throw if not in ClerkProvider)
-    const clerkAuth = useAuth();
-    const clerkInstance = useClerk();
-    
-    authData = {
-      getToken: clerkAuth.getToken,
-      isSignedIn: clerkAuth.isSignedIn || false,
-      userId: clerkAuth.userId || null
-    };
-    clerk = clerkInstance;
-  } catch (error) {
-    // Clerk not available, use default values for unauthenticated mode
-    console.log('[useSupabaseClient]: Clerk not available, using unauthenticated mode');
-  }
-  
-  const { getToken, isSignedIn, userId } = authData;
+  const { getToken, isSignedIn, userId } = useAuth();
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

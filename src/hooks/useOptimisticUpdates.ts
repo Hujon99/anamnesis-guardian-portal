@@ -5,7 +5,7 @@
  */
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { AnamnesesEntry } from "@/types/anamnesis";
 
 export const useOptimisticUpdates = () => {

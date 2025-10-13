@@ -22,7 +22,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useStores } from "@/hooks/useStores";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { assignOpticianToEntry, assignStoreToEntry } from "@/utils/entryMutationUtils";

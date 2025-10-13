@@ -5,7 +5,9 @@
  * providing a comprehensive overview of all organization entries.
  */
 
-import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { AnamnesisListView } from "@/components/Optician/AnamnesisListView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Clipboard, Loader2 } from "lucide-react";

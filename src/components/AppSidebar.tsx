@@ -5,7 +5,8 @@
  * The navigation includes links to the Overview (all anamneses) and My Anamneses views.
  */
 
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { Link, useLocation } from "react-router-dom";
 import { 
   ClipboardList, 

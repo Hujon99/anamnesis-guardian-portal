@@ -1,7 +1,8 @@
 
 import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
-import { useAuth, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
+import { SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";

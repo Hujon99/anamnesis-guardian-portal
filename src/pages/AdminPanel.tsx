@@ -6,7 +6,8 @@
  */
 
 import { useState } from "react";
-import { useUser, useOrganization } from "@clerk/clerk-react";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Building2, AlertTriangle, Settings, Plus, FileText, Bug } from "lucide-react";

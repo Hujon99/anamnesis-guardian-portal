@@ -6,7 +6,7 @@
  */
 
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import SignInPage from "./SignInPage";
 
 const Index = () => {

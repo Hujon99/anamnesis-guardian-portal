@@ -4,7 +4,7 @@
  * It displays the organization name and the optician icon.
  */
 
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { Eye } from "lucide-react";
 
 export const OpticianHeader = () => {

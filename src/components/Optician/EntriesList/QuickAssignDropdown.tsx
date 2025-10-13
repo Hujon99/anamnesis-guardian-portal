@@ -16,7 +16,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { toast } from "@/components/ui/use-toast";
 
 interface QuickAssignDropdownProps {

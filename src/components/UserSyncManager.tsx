@@ -7,7 +7,9 @@
  */
 
 import { useEffect, useState } from "react";
-import { useUser, useOrganization, useAuth } from "@clerk/clerk-react";
+import { useSafeUser as useUser } from "@/hooks/useSafeUser";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
+import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { useSyncOrganization } from "@/hooks/useSyncOrganization";
 import { useEnsureUserRecord } from "@/hooks/useEnsureUserRecord";

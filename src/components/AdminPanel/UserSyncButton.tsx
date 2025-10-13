@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { useUserSyncStore } from "@/hooks/useUserSyncStore";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { Loader2, RefreshCw, Check, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";

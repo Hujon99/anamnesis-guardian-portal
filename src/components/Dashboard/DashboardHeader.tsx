@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { useOrganization } from "@clerk/clerk-react";
+import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { Loader2 } from "lucide-react";
 
 interface DashboardHeaderProps {

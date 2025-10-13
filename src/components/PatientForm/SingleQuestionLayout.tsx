@@ -51,6 +51,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   }
 
   // Flatten all visible questions with section context - memoized for performance
+  // Uses visibleSections from useConditionalFields which already handles dynamic follow-up questions
   const allQuestions = useMemo(() => {
     if (!visibleSections || visibleSections.length === 0) return [];
     
@@ -63,17 +64,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
     visibleSections.forEach((sections, sectionIndex) => {
       sections.forEach((section) => {
-        // Filter visible questions
+        // All questions are already filtered and processed by useConditionalFields
+        // This includes both regular questions and dynamic follow-ups
         section.questions.forEach((q, qIndex) => {
-          // Skip follow-up templates
-          if (q.is_followup_template) return;
-          
-          // Skip optician-only questions in patient mode
-          if (q.show_in_mode === "optician") return;
-          
-          // Check conditional visibility
-          if (!shouldShowQuestion(q, watchedValues)) return;
-          
           questions.push({
             question: q,
             sectionTitle: section.section_title,
@@ -81,42 +74,30 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
             questionIndex: qIndex
           });
         });
-
-        // Add dynamic follow-up questions (already filtered in useConditionalFields)
-        const dynamicQuestions = getDynamicQuestionsForSection(section, watchedValues);
-        dynamicQuestions.forEach((question, qIndex) => {
-          questions.push({
-            question,
-            sectionTitle: section.section_title,
-            sectionIndex,
-            questionIndex: section.questions.length + qIndex
-          });
-        });
       });
     });
 
     return questions;
-  }, [visibleSections, watchedValues]);
+  }, [visibleSections]);
 
   const currentQuestion = allQuestions[currentQuestionIndex];
   const totalQuestions = allQuestions.length;
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
   
-  // Track which questions the user has interacted with in this session
-  const [interactedQuestions, setInteractedQuestions] = useState<Set<string>>(new Set());
-  
-  // Clear field value when navigating to new questions that haven't been interacted with
+  // SIMPLIFIED: Always clear untouched fields when navigating to prevent answer leaking
   useEffect(() => {
     if (!currentQuestion) return;
     
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
     
-    // Only clear if user hasn't interacted with this specific question
-    if (!interactedQuestions.has(fieldId)) {
+    // Check if field is marked as touched by React Hook Form
+    const isTouched = form.formState.touchedFields[fieldId];
+    
+    if (!isTouched) {
       const currentValue = form.getValues(fieldId);
       
-      if (currentValue !== undefined) {
-        console.log('[SingleQuestionLayout] Clearing leaked value for untouched field:', fieldId, 'value:', currentValue);
+      if (currentValue !== undefined && currentValue !== '' && currentValue !== null) {
+        console.log('[SingleQuestionLayout] Clearing value for untouched field:', fieldId, 'value:', currentValue);
         form.setValue(fieldId, undefined, { 
           shouldValidate: false,
           shouldDirty: false,
@@ -124,30 +105,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
         });
       }
     }
-    // CRITICAL: Only run when question changes, NOT when form state changes
-  }, [currentQuestionIndex, currentQuestion, interactedQuestions]);
-  
-  // Track when user interacts with the current question
-  useEffect(() => {
-    if (!currentQuestion) return;
-    
-    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-    
-    // Subscribe to changes on this specific field
-    const subscription = form.watch((value, { name }) => {
-      // If the current field has a value, mark it as interacted
-      if (name === fieldId && value[name] !== undefined && value[name] !== '') {
-        console.log('[SingleQuestionLayout] User interacted with field:', fieldId);
-        setInteractedQuestions(prev => {
-          const newSet = new Set(prev);
-          newSet.add(fieldId);
-          return newSet;
-        });
-      }
-    });
-    
-    return () => subscription.unsubscribe();
-  }, [currentQuestion, form]);
+  }, [currentQuestionIndex, currentQuestion, form.formState.touchedFields]);
   
   // Process form sections for proper submission handling
   useEffect(() => {
@@ -356,94 +314,3 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     </>
   );
 };
-
-// Helper functions
-function shouldShowQuestion(question: FormQuestion, values: Record<string, any>): boolean {
-  if (!question.show_if) return true;
-  
-  const { question: dependentQuestionId, equals, contains } = question.show_if;
-  const dependentValue = values[dependentQuestionId];
-  
-  if (contains !== undefined) {
-    if (Array.isArray(dependentValue)) {
-      return dependentValue.includes(contains);
-    }
-    return dependentValue === contains;
-  }
-  
-  if (equals !== undefined) {
-    if (Array.isArray(equals)) {
-      return equals.includes(dependentValue);
-    }
-    return dependentValue === equals;
-  }
-  
-  return !!dependentValue;
-}
-
-/**
- * Generate dynamic follow-up questions based on current form values.
- * This uses the same logic as FormSection.tsx for consistency.
- */
-function getDynamicQuestionsForSection(section: FormSection, values: Record<string, any>): DynamicFollowupQuestion[] {
-  const dynamicQuestions: DynamicFollowupQuestion[] = [];
-
-  // Iterate through each question in the section
-  section.questions.forEach((question) => {
-    // Check if this question has follow-up questions defined
-    const followupQuestionIds = question.followup_question_ids;
-    
-    if (!followupQuestionIds || followupQuestionIds.length === 0) {
-      return; // Skip if no follow-ups
-    }
-
-    // Get the current value for this question
-    const parentValue = values[question.id];
-    
-    // Determine selected values (handle both single and array values)
-    let selectedValues: string[] = [];
-    
-    if (Array.isArray(parentValue)) {
-      selectedValues = parentValue.filter(v => v != null && v !== '');
-    } else if (parentValue != null && parentValue !== '') {
-      selectedValues = [parentValue];
-    }
-
-    // Skip if no values selected
-    if (selectedValues.length === 0) {
-      return;
-    }
-
-    // For each selected value, create dynamic follow-up questions
-    selectedValues.forEach((value) => {
-      followupQuestionIds.forEach((followupId) => {
-        const template = section.questions.find(
-          (q) => q.id === followupId && q.is_followup_template
-        );
-
-        if (template) {
-          // Use the sanitized utility function to generate runtime ID
-          const runtimeId = generateRuntimeId(template.id, value);
-          
-          // Only add if not already present
-          if (!dynamicQuestions.find(dq => dq.runtimeId === runtimeId)) {
-            const dynamicQuestion: DynamicFollowupQuestion = {
-              ...template,
-              parentId: question.id,
-              parentValue: value,
-              runtimeId: runtimeId,
-              originalId: template.id,
-              label: template.label.replace(/\{option\}/g, value),
-            };
-
-            // Remove the template flag so it's treated as a regular question
-            delete (dynamicQuestion as any).is_followup_template;
-            dynamicQuestions.push(dynamicQuestion);
-          }
-        }
-      });
-    });
-  });
-
-  return dynamicQuestions;
-}

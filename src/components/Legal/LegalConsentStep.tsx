@@ -24,8 +24,8 @@ export const LegalConsentStep: React.FC<LegalConsentStepProps> = ({
   organizationName = 'din optiker'
 }) => {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-surface-light">
-      <Card className="w-full max-w-2xl bg-card shadow-elegant">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-primary">
+      <Card className="w-full max-w-2xl bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
         <CardHeader className="text-center pb-6">
           <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
             <Shield className="h-8 w-8 text-primary" />

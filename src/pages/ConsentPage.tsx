@@ -131,8 +131,8 @@ const ConsentPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-surface-light">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-primary">
+        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
           <CardContent className="flex flex-col items-center gap-4 p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-lg font-medium">Validerar organisation...</p>
@@ -144,8 +144,8 @@ const ConsentPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-surface-light">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-primary">
+        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
           <CardContent className="flex flex-col items-center gap-4 p-8">
             <AlertCircle className="h-8 w-8 text-destructive" />
             <p className="text-lg font-medium text-destructive">Ett fel uppstod</p>

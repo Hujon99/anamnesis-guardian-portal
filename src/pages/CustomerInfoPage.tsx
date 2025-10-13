@@ -243,8 +243,8 @@ const CustomerInfoPage = () => {
   
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-lg">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-primary">
+        <Card className="w-full max-w-lg bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
           <CardContent className="pt-6 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
             <p className="text-lg">Förbereder formuläret...</p>
@@ -256,8 +256,8 @@ const CustomerInfoPage = () => {
   
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-lg border-destructive">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-primary">
+        <Card className="w-full max-w-lg border-destructive bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
           <CardHeader>
             <CardTitle className="flex items-center text-destructive">
               <AlertCircle className="mr-2 h-5 w-5" />
@@ -278,8 +278,8 @@ const CustomerInfoPage = () => {
   }
   
   return (
-    <div className="flex items-center justify-center min-h-screen p-4">
-      <Card className="w-full max-w-lg">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-primary">
+      <Card className="w-full max-w-lg bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
         <CardHeader>
           <CardTitle>Dina uppgifter</CardTitle>
           <CardDescription>

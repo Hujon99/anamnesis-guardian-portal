@@ -151,19 +151,21 @@ const StoreSelectionPage: React.FC = () => {
 
   if (isLoadingStores) {
     return (
-      <div className="min-h-screen bg-surface-light flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Laddar butiker...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-primary flex items-center justify-center">
+        <Card className="bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60 p-8">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">Laddar butiker...</p>
+          </div>
+        </Card>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-surface-light flex items-center justify-center">
-        <Card className="p-8 max-w-md w-full mx-4">
+      <div className="min-h-screen bg-gradient-primary flex items-center justify-center">
+        <Card className="p-8 max-w-md w-full mx-4 bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
           <div className="text-center space-y-4">
             <div className="text-red-500 text-xl">⚠️</div>
             <h2 className="text-xl font-semibold text-foreground">Ett fel uppstod</h2>
@@ -186,7 +188,7 @@ const StoreSelectionPage: React.FC = () => {
   const activeStores = stores?.filter(store => store.id) || [];
 
   return (
-    <div className="min-h-screen bg-surface-light">
+    <div className="min-h-screen bg-gradient-primary">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-4">Välj butik</h1>

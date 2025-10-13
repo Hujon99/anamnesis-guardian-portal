@@ -410,7 +410,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
       // Add a key based on retry attempt to force full remounting
       const formKey = `form-${effectiveToken}-${retryAttempt}`;
       
-      // Default form UI
+      // Default form UI with centered layout for patient mode
       return (
         <ErrorBoundary
           FallbackComponent={FormErrorFallback}
@@ -419,42 +419,44 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
             handleEnhancedRetry();
           }}
         >
-          <div className="space-y-4" key={formKey}>
-            {/* Show info card when booking information is available */}
-            {showBookingInfo && (firstName || bookingId || bookingDate || storeId) && (
-              <BookingInfoCard 
-                firstName={firstName}
-                bookingId={bookingId}
-                bookingDate={bookingDate}
-                storeId={storeId}
-              />
-            )}
-            
-            <Card>
-              <CardContent className="p-0">
-                <FormContainer
-                  formTemplate={formTemplate.schema}
-                  onSubmit={handleSubmitWithFormTemplate}
-                  isSubmitting={isSubmitting}
-                  isOpticianMode={mode === 'optician'}
-                  initialValues={currentFormValues}
-                  createdByName={createdByName}
-                  onFormValuesChange={handleFormValuesChange}
-                  entryId={entryData?.id || null}
-                  token={effectiveToken}
-                  organizationId={formTemplate?.organization_id || entryData?.organization_id}
+          <div className={mode === 'patient' ? 'container max-w-4xl mx-auto px-4 py-8' : ''}>
+            <div className="space-y-4" key={formKey}>
+              {/* Show info card when booking information is available */}
+              {showBookingInfo && (firstName || bookingId || bookingDate || storeId) && (
+                <BookingInfoCard 
+                  firstName={firstName}
+                  bookingId={bookingId}
+                  bookingDate={bookingDate}
+                  storeId={storeId}
                 />
-              </CardContent>
+              )}
               
-              <CardFooter className="flex justify-between pt-0 pb-4 px-6">
-                {!hideAutoSave && (
-                  <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
-                )}
-                {!hideCopyLink && (
-                  <CopyLinkButton />
-                )}
-              </CardFooter>
-            </Card>
+              <Card className="bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
+                <CardContent className="p-0">
+                  <FormContainer
+                    formTemplate={formTemplate.schema}
+                    onSubmit={handleSubmitWithFormTemplate}
+                    isSubmitting={isSubmitting}
+                    isOpticianMode={mode === 'optician'}
+                    initialValues={currentFormValues}
+                    createdByName={createdByName}
+                    onFormValuesChange={handleFormValuesChange}
+                    entryId={entryData?.id || null}
+                    token={effectiveToken}
+                    organizationId={formTemplate?.organization_id || entryData?.organization_id}
+                  />
+                </CardContent>
+                
+                <CardFooter className="flex justify-between pt-0 pb-4 px-6">
+                  {!hideAutoSave && (
+                    <AutoSaveIndicator lastSaved={lastSaved} isSaving={isSaving} />
+                  )}
+                  {!hideCopyLink && (
+                    <CopyLinkButton />
+                  )}
+                </CardFooter>
+              </Card>
+            </div>
           </div>
         </ErrorBoundary>
       );

@@ -290,8 +290,8 @@ const ExaminationTypeSelectionPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-light flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
           <CardContent className="flex flex-col items-center gap-4 p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-lg font-medium">
@@ -308,8 +308,8 @@ const ExaminationTypeSelectionPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-surface-light flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
           <CardHeader>
             <CardTitle className="text-destructive">Ett fel uppstod</CardTitle>
           </CardHeader>
@@ -339,7 +339,7 @@ const ExaminationTypeSelectionPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-surface-light">
+    <div className="min-h-screen bg-gradient-primary">
       <div className="container max-w-4xl mx-auto p-4 pt-8">
         {storeId && storeName && (
           <div className="mb-6">

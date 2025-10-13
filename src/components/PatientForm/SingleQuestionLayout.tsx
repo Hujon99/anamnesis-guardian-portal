@@ -102,6 +102,25 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const totalQuestions = allQuestions.length;
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
   
+  // Clear field value when navigating to untouched questions to prevent answer "leaking"
+  useEffect(() => {
+    if (!currentQuestion) return;
+    
+    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+    const currentValue = form.getValues(fieldId);
+    const isTouched = form.formState.touchedFields[fieldId];
+    
+    // If field is not touched and has a value, clear it
+    // This prevents values from "leaking" from previous questions or auto-save
+    if (!isTouched && currentValue !== undefined) {
+      form.setValue(fieldId, undefined, { 
+        shouldValidate: false,
+        shouldDirty: false,
+        shouldTouch: false
+      });
+    }
+  }, [currentQuestionIndex, currentQuestion, form]);
+  
   // Process form sections for proper submission handling
   useEffect(() => {
     if (processSectionsWithDebounce && visibleSections.length > 0) {

@@ -151,7 +151,12 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                  <FormControl>
                    <RadioGroup
                      onValueChange={field.onChange}
-                     value={field.value === undefined || field.value === null ? undefined : field.value}
+                     value={
+                       // Only use field value if it's a valid option for THIS question
+                       (field.value && question.options?.some(opt => 
+                         (typeof opt === 'string' ? opt : opt.value) === field.value
+                       )) ? field.value : undefined
+                     }
                      className="space-y-3"
                    >
                     {question.options?.map(option => {

@@ -37,6 +37,10 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
+  
+  // Track which questions have been touched by the user in this session
+  // This is more reliable than form.formState.touchedFields which updates asynchronously
+  const [touchedFieldsSet, setTouchedFieldsSet] = useState<Set<string>>(new Set());
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -84,20 +88,19 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const totalQuestions = allQuestions.length;
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
   
-  // SIMPLIFIED: Always clear untouched fields when navigating to prevent answer leaking
+  // Clear untouched fields when navigating to prevent answer leaking
+  // Uses local touchedFieldsSet for synchronous tracking to avoid race conditions
   useEffect(() => {
     if (!currentQuestion) return;
     
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
     
-    // Check if field is marked as touched by React Hook Form
-    const isTouched = form.formState.touchedFields[fieldId];
-    
-    if (!isTouched) {
+    // Use our local Set instead of React Hook Form's async touchedFields
+    if (!touchedFieldsSet.has(fieldId)) {
       const currentValue = form.getValues(fieldId);
       
       if (currentValue !== undefined && currentValue !== '' && currentValue !== null) {
-        console.log('[SingleQuestionLayout] Clearing value for untouched field:', fieldId, 'value:', currentValue);
+        console.log('[SingleQuestionLayout] Clearing leaked value for untouched field:', fieldId, 'value:', currentValue);
         form.setValue(fieldId, undefined, { 
           shouldValidate: false,
           shouldDirty: false,
@@ -105,7 +108,21 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
         });
       }
     }
-  }, [currentQuestionIndex, currentQuestion, form.formState.touchedFields]);
+    // CRITICAL: Only depend on question changes and touchedFieldsSet, NOT form state
+  }, [currentQuestionIndex, currentQuestion, touchedFieldsSet]);
+  
+  // Create a callback to mark field as touched - will be passed to TouchFriendlyFieldRenderer
+  const markFieldAsTouched = React.useCallback((fieldId: string) => {
+    console.log('[SingleQuestionLayout] Marking field as touched:', fieldId);
+    setTouchedFieldsSet(prev => {
+      if (!prev.has(fieldId)) {
+        const newSet = new Set(prev);
+        newSet.add(fieldId);
+        return newSet;
+      }
+      return prev; // Avoid unnecessary state update
+    });
+  }, []);
   
   // Process form sections for proper submission handling
   useEffect(() => {
@@ -250,6 +267,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
                 <TouchFriendlyFieldRenderer
                   question={currentQuestion.question}
                   error={form.formState.errors[(currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id]}
+                  onFieldTouched={markFieldAsTouched}
                 />
               </div>
             </div>

@@ -25,11 +25,13 @@ import { FieldError } from "react-hook-form";
 interface TouchFriendlyFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
   error: FieldError | any;
+  onFieldTouched?: (fieldId: string) => void;
 }
 
 export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProps> = ({
   question,
-  error
+  error,
+  onFieldTouched
 }) => {
   const form = useFormContext();
   const { control, watch, setValue } = form;
@@ -123,7 +125,12 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 <FormControl>
                   <Textarea 
                     placeholder="Skriv ditt svar här..." 
-                    {...field} 
+                    {...field}
+                    onFocus={() => {
+                      if (onFieldTouched) {
+                        onFieldTouched(fieldName);
+                      }
+                    }}
                     rows={4}
                     className="text-base p-4 min-h-[120px] rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
@@ -152,7 +159,12 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                  <FormControl>
                    <RadioGroup
                      onValueChange={(value) => {
-                       // Update the value and mark field as touched immediately
+                       // Mark as touched FIRST (synchronous)
+                       if (onFieldTouched) {
+                         onFieldTouched(fieldName);
+                       }
+                       
+                       // Then update the value
                        field.onChange(value);
                        form.setValue(fieldName, value, { 
                          shouldValidate: true,
@@ -230,6 +242,11 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                        <Checkbox
                          checked={isChecked}
                          onCheckedChange={(checked) => {
+                           // Mark as touched FIRST
+                           if (onFieldTouched) {
+                             onFieldTouched(fieldName);
+                           }
+                           
                            const newValues = checked 
                              ? [...values, optionValue] 
                              : values.filter(val => val !== optionValue);
@@ -271,6 +288,11 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                  <Checkbox
                    checked={field.value}
                    onCheckedChange={(checked) => {
+                     // Mark as touched FIRST
+                     if (onFieldTouched) {
+                       onFieldTouched(fieldName);
+                     }
+                     
                      field.onChange(checked);
                      form.setValue(fieldName, checked, {
                        shouldValidate: true,
@@ -307,13 +329,18 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 </FormLabel>
                <Select 
                  onValueChange={(value) => {
+                   // Mark as touched FIRST
+                   if (onFieldTouched) {
+                     onFieldTouched(fieldName);
+                   }
+                   
                    field.onChange(value);
                    form.setValue(fieldName, value, {
                      shouldValidate: true,
                      shouldDirty: true,
                      shouldTouch: true
                    });
-                 }} 
+                 }}
                  value={validateFieldValue(field.value) ? field.value || "" : ""}
                  name={fieldName}
                >
@@ -360,7 +387,12 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                   <Input 
                     type="number" 
                     placeholder="0" 
-                    {...field} 
+                    {...field}
+                    onFocus={() => {
+                      if (onFieldTouched) {
+                        onFieldTouched(fieldName);
+                      }
+                    }}
                     onChange={e => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
                     className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
@@ -386,6 +418,11 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 <FormControl>
                   <Input 
                     {...field}
+                    onFocus={() => {
+                      if (onFieldTouched) {
+                        onFieldTouched(fieldName);
+                      }
+                    }}
                     className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </FormControl>

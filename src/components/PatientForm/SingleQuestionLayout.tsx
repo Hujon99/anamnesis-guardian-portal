@@ -147,8 +147,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
         setAnimationClass("slide-in-right");
         setTimeout(() => {
           setAnimationClass("");
-          // Clear field values after navigation is complete
-          clearInvalidFieldValues();
         }, 100);
       }, 200);
     }
@@ -162,8 +160,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
         setAnimationClass("slide-in-left");
         setTimeout(() => {
           setAnimationClass("");
-          // Clear field values after navigation is complete
-          clearInvalidFieldValues();
         }, 100);
       }, 200);
     }

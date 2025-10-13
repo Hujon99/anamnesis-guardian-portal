@@ -81,18 +81,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
     return true;
   }, [question.type, question.options]);
 
-  // Initialize field with proper default value only on mount
-  React.useEffect(() => {
-    const currentValue = watch(fieldName);
-    
-    // Only set default for empty fields on initial mount
-    // Don't clear existing values - let conditional logic handle visibility
-    if (currentValue === undefined || currentValue === null || currentValue === "") {
-      if (question.type === "checkbox" && question.options && question.options.length > 0) {
-        setValue(fieldName, [], { shouldValidate: false, shouldDirty: false });
-      }
-    }
-  }, []); // Empty deps - only run on initial mount
   
   const getOptionValue = (option: FormQuestionOption): string => {
     return typeof option === 'string' ? option : option.value;

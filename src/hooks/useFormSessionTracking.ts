@@ -12,8 +12,9 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useSupabaseClient } from './useSupabaseClient';
-import { SUPABASE_URL } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+
+const SUPABASE_URL = "https://jawtwwwelxaaprzsqfyp.supabase.co";
 
 // Detect device information
 const getDeviceInfo = () => ({

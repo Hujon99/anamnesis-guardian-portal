@@ -133,11 +133,25 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     if (!currentQuestion) return false;
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
     
-    // Use immediate form values instead of debounced watchedValues
+    // Check if field has been touched (user has interacted with it)
+    const isTouched = form.formState.touchedFields[fieldId];
+    
+    if (!isTouched) {
+      // Field hasn't been touched yet - show as unanswered regardless of value
+      console.log('[SingleQuestionLayout] Field not touched:', fieldId);
+      return false;
+    }
+    
+    // Field has been touched - check if it has a valid value
     const value = form.watch(fieldId);
     
+    console.log('[SingleQuestionLayout] Field:', fieldId, 'Touched:', isTouched, 'Value:', value, 'Type:', typeof value);
+    
     if (value === undefined || value === null || value === '') return false;
+    if (value === false) return false;
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return false;
     if (Array.isArray(value)) return value.length > 0;
+    
     return true;
   };
 

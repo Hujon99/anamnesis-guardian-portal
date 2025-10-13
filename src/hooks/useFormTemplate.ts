@@ -58,7 +58,7 @@ export const useFormTemplate = (examinationType?: string, options?: { enabled?: 
             
           // Add examination type filter if provided
           if (examinationType) {
-            orgQuery = orgQuery.eq('examination_type', examinationType);
+            orgQuery = orgQuery.eq('examination_type', examinationType as any);
           }
           
           // When multiple templates exist, pick the latest by created_at
@@ -93,7 +93,7 @@ export const useFormTemplate = (examinationType?: string, options?: { enabled?: 
           // Add examination type filter if provided
           if (examinationType) {
             defaultQuery = defaultQuery
-              .eq('examination_type', examinationType)
+              .eq('examination_type', examinationType as any)
               .order('created_at', { ascending: false })
               .limit(1);
             var { data: defaultTemplate, error: defaultError } = await defaultQuery.maybeSingle();
@@ -131,7 +131,7 @@ export const useFormTemplate = (examinationType?: string, options?: { enabled?: 
           // Add examination type filter if provided
           if (examinationType) {
             query = query
-              .eq('examination_type', examinationType)
+              .eq('examination_type', examinationType as any)
               .order('created_at', { ascending: false })
               .limit(1);
             var { data, error } = await query.maybeSingle();

@@ -37,6 +37,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
+  const [isClearingComplete, setIsClearingComplete] = useState(false);
   
   // Track which questions have been touched by the user in this session
   // This is more reliable than form.formState.touchedFields which updates asynchronously
@@ -91,7 +92,10 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   // Clear untouched fields when navigating to prevent answer leaking
   // Uses local touchedFieldsSet for synchronous tracking to avoid race conditions
   useEffect(() => {
-    if (!currentQuestion) return;
+    if (!currentQuestion) {
+      setIsClearingComplete(false);
+      return;
+    }
     
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
     
@@ -108,8 +112,12 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
         });
       }
     }
+    
+    // Mark clearing as complete, allowing render to proceed
+    setIsClearingComplete(true);
+    
     // CRITICAL: Only depend on question changes and touchedFieldsSet, NOT form state
-  }, [currentQuestionIndex, currentQuestion, touchedFieldsSet]);
+  }, [currentQuestionIndex, currentQuestion, touchedFieldsSet, form]);
   
   // Create a callback to mark field as touched - will be passed to TouchFriendlyFieldRenderer
   const markFieldAsTouched = React.useCallback((fieldId: string) => {
@@ -179,6 +187,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
+      setIsClearingComplete(false); // Reset before navigating
       setAnimationClass("slide-out-left");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev + 1);
@@ -192,6 +201,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
+      setIsClearingComplete(false); // Reset before navigating
       setAnimationClass("slide-out-right");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev - 1);
@@ -249,8 +259,14 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
       {/* Question content */}
       <CardContent className="flex-1 p-6 md:p-8">
-        <div className={`transition-all duration-300 ${animationClass} min-h-[400px] flex flex-col justify-center`}>
-          {currentQuestion && (
+        {/* Don't render the question until clearing is complete to prevent showing leaked values */}
+        {!isClearingComplete ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-pulse text-muted-foreground">Laddar fråga...</div>
+          </div>
+        ) : (
+          <div className={`transition-all duration-300 ${animationClass} min-h-[400px] flex flex-col justify-center`}>
+            {currentQuestion && (
             <div className="space-y-6">
               {/* Question number indicator */}
               <div className="text-center">
@@ -271,8 +287,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
                 />
               </div>
             </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </CardContent>
 
       {/* Navigation */}

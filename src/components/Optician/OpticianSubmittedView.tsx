@@ -43,7 +43,7 @@ const OpticianSubmittedView: React.FC<OpticianSubmittedViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-primary p-4">
       <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
         <CardHeader>
           <div className="flex justify-center mb-4">

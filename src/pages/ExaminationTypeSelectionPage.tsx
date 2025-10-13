@@ -343,20 +343,20 @@ const ExaminationTypeSelectionPage = () => {
       <div className="container max-w-4xl mx-auto p-4 pt-8">
         {storeId && storeName && (
           <div className="mb-6">
-            <Card className="p-4 bg-accent/10">
+            <Card className="p-4 bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
               <div className="flex items-center gap-2">
                 <Store className="h-5 w-5 text-primary" />
-                <span className="font-medium">Vald butik: {storeName}</span>
+                <span className="font-medium text-foreground">Vald butik: {storeName}</span>
               </div>
             </Card>
           </div>
         )}
 
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg/20">
           <h1 className="text-3xl font-bold text-primary mb-2">
             Välj typ av undersökning
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-foreground/80">
             {storeId ? 'Välj bland de undersökningar som finns tillgängliga i butiken' : 'Välj den typ av undersökning som passar ditt behov'}
           </p>
         </div>
@@ -365,7 +365,7 @@ const ExaminationTypeSelectionPage = () => {
           {examinationTypes.map((type) => (
             <Card 
               key={type.formId} 
-              className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 border-2 hover:border-primary/20"
+              className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 border-2 hover:border-primary/20 bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60"
               onClick={() => handleExaminationTypeSelect(type)}
             >
               <CardHeader className="text-center pb-4">
@@ -374,7 +374,7 @@ const ExaminationTypeSelectionPage = () => {
                     {type.icon}
                   </div>
                 </div>
-                <CardTitle className="text-xl">{type.type}</CardTitle>
+                <CardTitle className="text-xl text-foreground">{type.type}</CardTitle>
                 {storeId && (
                   <Badge variant="secondary" className="mt-2">
                     Tillgänglig i butiken
@@ -382,7 +382,7 @@ const ExaminationTypeSelectionPage = () => {
                 )}
               </CardHeader>
               <CardContent className="text-center">
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-foreground/70 mb-4">
                   {type.description}
                 </p>
                 <Button 
@@ -401,9 +401,9 @@ const ExaminationTypeSelectionPage = () => {
 
         {preservedParams.first_name && (
           <div className="mt-8 text-center">
-            <Card className="inline-block px-6 py-3 bg-accent/10">
-              <p className="text-sm text-muted-foreground">
-                Bokning för: <span className="font-medium">{preservedParams.first_name}</span>
+            <Card className="inline-block px-6 py-3 bg-white/90 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
+              <p className="text-sm text-foreground/80">
+                Bokning för: <span className="font-medium text-foreground">{preservedParams.first_name}</span>
                 {preservedParams.booking_date && (
                   <span className="ml-2">
                     • {new Date(preservedParams.booking_date).toLocaleDateString('sv-SE')}

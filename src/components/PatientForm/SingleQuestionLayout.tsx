@@ -16,6 +16,7 @@ import { useFormContext } from "@/contexts/FormContext";
 import { FormQuestion, DynamicFollowupQuestion, FormSection } from "@/types/anamnesis";
 import { toast } from "sonner";
 import { generateRuntimeId } from "@/utils/questionIdUtils";
+import { validateFieldValue } from "@/utils/fieldValidation";
 
 interface SingleQuestionLayoutProps {
   createdByName?: string | null;
@@ -117,10 +118,17 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     
     const value = form.watch(fieldId);
     
+    // First check if value exists at all
     if (value === undefined || value === null || value === '') return false;
     if (value === false) return false;
     if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return false;
-    if (Array.isArray(value)) return value.length > 0;
+    if (Array.isArray(value) && value.length === 0) return false;
+    
+    // CRITICAL: Validate that the value is appropriate for THIS question
+    // This prevents leaked values from other questions from marking this as answered
+    if (!validateFieldValue(value, currentQuestion.question)) {
+      return false;
+    }
     
     return true;
   };

@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
 import { FieldError } from "react-hook-form";
+import { validateFieldValue } from "@/utils/fieldValidation";
 
 interface TouchFriendlyFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
@@ -53,34 +54,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
     
     return val;
   };
-
-  // Validate that current field value is appropriate for this question
-  const validateFieldValue = React.useCallback((value: any) => {
-    if (!value || value === "") return true;
-    
-    // For radio/dropdown questions with options, ensure value is in valid options
-    if ((question.type === "radio" || question.type === "dropdown") && question.options) {
-      const validOptions = question.options.map(option => 
-        typeof option === 'string' ? option : option.value
-      );
-      return validOptions.includes(value);
-    }
-    
-    // For checkbox questions, ensure all values are valid options
-    if (question.type === "checkbox" && question.options && Array.isArray(value)) {
-      const validOptions = question.options.map(option => 
-        typeof option === 'string' ? option : option.value
-      );
-      return value.every(v => validOptions.includes(v));
-    }
-    
-    // For number fields, ensure value is numeric
-    if (question.type === "number") {
-      return !isNaN(Number(value));
-    }
-    
-    return true;
-  }, [question.type, question.options]);
 
   
   const getOptionValue = (option: FormQuestionOption): string => {
@@ -159,7 +132,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                          shouldTouch: true
                        });
                      }}
-                     value={validateFieldValue(field.value) ? field.value : undefined}
+                     value={validateFieldValue(field.value, question) ? field.value : undefined}
                      className="space-y-3"
                    >
                     {question.options?.map(option => {
@@ -315,7 +288,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                      shouldTouch: true
                    });
                  }}
-                 value={validateFieldValue(field.value) ? field.value || "" : ""}
+                 value={validateFieldValue(field.value, question) ? field.value || "" : ""}
                  name={fieldName}
                >
                   <FormControl>

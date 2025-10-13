@@ -139,10 +139,16 @@ export function AppSidebar() {
       <SidebarFooter className="p-4">
         <div className="text-xs text-muted-foreground space-y-2">
           <div className="flex justify-center space-x-4">
-            <Link to="/privacy-policy" className="hover:text-primary transition-colors">
+            <Link 
+              to="/privacy-policy" 
+              className="hover:text-primary transition-all duration-300 hover:scale-105 inline-block"
+            >
               Integritetspolicy
             </Link>
-            <Link to="/terms-of-service" className="hover:text-primary transition-colors">
+            <Link 
+              to="/terms-of-service" 
+              className="hover:text-primary transition-all duration-300 hover:scale-105 inline-block"
+            >
               Användarvillkor
             </Link>
           </div>

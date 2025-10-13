@@ -102,24 +102,52 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const totalQuestions = allQuestions.length;
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
   
-  // Clear field value when navigating to untouched questions to prevent answer "leaking"
+  // Track which questions the user has interacted with in this session
+  const [interactedQuestions, setInteractedQuestions] = useState<Set<string>>(new Set());
+  
+  // Clear field value when navigating to new questions that haven't been interacted with
   useEffect(() => {
     if (!currentQuestion) return;
     
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-    const currentValue = form.getValues(fieldId);
-    const isTouched = form.formState.touchedFields[fieldId];
     
-    // If field is not touched and has a value, clear it
-    // This prevents values from "leaking" from previous questions or auto-save
-    if (!isTouched && currentValue !== undefined) {
-      form.setValue(fieldId, undefined, { 
-        shouldValidate: false,
-        shouldDirty: false,
-        shouldTouch: false
-      });
+    // Only clear if user hasn't interacted with this specific question
+    if (!interactedQuestions.has(fieldId)) {
+      const currentValue = form.getValues(fieldId);
+      
+      if (currentValue !== undefined) {
+        console.log('[SingleQuestionLayout] Clearing leaked value for untouched field:', fieldId, 'value:', currentValue);
+        form.setValue(fieldId, undefined, { 
+          shouldValidate: false,
+          shouldDirty: false,
+          shouldTouch: false
+        });
+      }
     }
-  }, [currentQuestionIndex, currentQuestion, form]);
+    // CRITICAL: Only run when question changes, NOT when form state changes
+  }, [currentQuestionIndex, currentQuestion, interactedQuestions]);
+  
+  // Track when user interacts with the current question
+  useEffect(() => {
+    if (!currentQuestion) return;
+    
+    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+    
+    // Subscribe to changes on this specific field
+    const subscription = form.watch((value, { name }) => {
+      // If the current field has a value, mark it as interacted
+      if (name === fieldId && value[name] !== undefined && value[name] !== '') {
+        console.log('[SingleQuestionLayout] User interacted with field:', fieldId);
+        setInteractedQuestions(prev => {
+          const newSet = new Set(prev);
+          newSet.add(fieldId);
+          return newSet;
+        });
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [currentQuestion, form]);
   
   // Process form sections for proper submission handling
   useEffect(() => {

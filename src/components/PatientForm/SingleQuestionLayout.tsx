@@ -132,7 +132,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const isCurrentQuestionAnswered = () => {
     if (!currentQuestion) return false;
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-    const value = watchedValues[fieldId];
+    
+    // Use immediate form values instead of debounced watchedValues
+    const value = form.watch(fieldId);
     
     if (value === undefined || value === null || value === '') return false;
     if (Array.isArray(value)) return value.length > 0;

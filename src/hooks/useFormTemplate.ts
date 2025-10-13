@@ -19,7 +19,7 @@ export interface FormTemplateWithMeta {
   organization_id: string | null;
 }
 
-export const useFormTemplate = (examinationType?: string) => {
+export const useFormTemplate = (examinationType?: string, options?: { enabled?: boolean }) => {
   // Safely attempt to use Clerk's useOrganization hook
   let organization = null;
   try {
@@ -175,7 +175,7 @@ export const useFormTemplate = (examinationType?: string) => {
     },
     staleTime: 15 * 60 * 1000, // Cache for 15 minutes (templates rarely change)
     gcTime: 30 * 60 * 1000,
-    enabled: !!supabase, // Only run when supabase client is available
+    enabled: options?.enabled !== false && !!supabase, // Respect the enabled option
     retry: 2, // Limit retries to prevent loops
     retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000), // Exponential backoff
   });

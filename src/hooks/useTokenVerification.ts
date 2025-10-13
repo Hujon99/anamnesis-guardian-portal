@@ -87,13 +87,16 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
   }, [token]);
   
   // Get the form template - prioritize specific form_id if available
+  // ONLY use useFormTemplate as fallback when no form_id exists
+  const shouldUseFormId = !!formId;
+  
   const { 
     data: formTemplate, 
     refetch: refetchFormTemplate,
     isLoading: formTemplateLoading,
     isSuccess: formTemplateSuccess,
     isError: formTemplateError
-  } = useFormTemplate();
+  } = useFormTemplate(undefined, { enabled: !shouldUseFormId });
   
   // Get specific form template by form_id if we have one
   const { 
@@ -104,12 +107,12 @@ export const useTokenVerification = (token: string | null): UseTokenVerification
     isError: specificFormTemplateError
   } = useFormTemplateByFormId(formId || undefined);
   
-  // Determine which template to use - prioritize specific form template
-  const activeFormTemplate = specificFormTemplate || formTemplate;
-  const activeFormTemplateLoading = formId ? specificFormTemplateLoading : formTemplateLoading;
-  const activeFormTemplateSuccess = formId ? specificFormTemplateSuccess : formTemplateSuccess;
-  const activeFormTemplateError = formId ? specificFormTemplateError : formTemplateError;
-  const activeRefetchFormTemplate = formId ? refetchSpecificFormTemplate : refetchFormTemplate;
+  // Determine which template to use - ALWAYS prioritize specific form template when formId exists
+  const activeFormTemplate = shouldUseFormId ? specificFormTemplate : formTemplate;
+  const activeFormTemplateLoading = shouldUseFormId ? specificFormTemplateLoading : formTemplateLoading;
+  const activeFormTemplateSuccess = shouldUseFormId ? specificFormTemplateSuccess : formTemplateSuccess;
+  const activeFormTemplateError = shouldUseFormId ? specificFormTemplateError : formTemplateError;
+  const activeRefetchFormTemplate = shouldUseFormId ? refetchSpecificFormTemplate : refetchFormTemplate;
   
   // Circuit breaker reset when unmounting/remounting or token changes
   useEffect(() => {

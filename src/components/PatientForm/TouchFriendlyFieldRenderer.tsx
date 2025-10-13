@@ -219,7 +219,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                                       const newValues = checked 
                                         ? [...values, optionValue] 
                                         : values.filter(val => val !== optionValue);
-                                      field.onChange(newValues.length ? newValues : undefined);
+                                      field.onChange(newValues);
                                     }}
                                     className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                   />

@@ -286,7 +286,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
               <Button
                 onClick={handleFormSubmit}
                 disabled={isSubmitting || !isCurrentQuestionAnswered()}
-                className="h-12 px-4 md:px-8 bg-accent_teal hover:bg-accent_teal/90 text-white flex-shrink-0"
+                className="h-12 px-4 md:px-8 bg-accent-teal hover:bg-accent-teal/90 text-white flex-shrink-0"
               >
                 <CheckCircle className="w-4 h-4 mr-1 md:mr-2" />
                 {isSubmitting ? "Skickar..." : "Skicka in"}

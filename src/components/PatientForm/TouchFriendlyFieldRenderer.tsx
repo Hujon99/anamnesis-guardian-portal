@@ -53,33 +53,6 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
     return val;
   };
 
-  // Validate that current field value is appropriate for this question
-  const validateFieldValue = React.useCallback((value: any) => {
-    if (!value || value === "") return true;
-    
-    // For radio/dropdown questions with options, ensure value is in valid options
-    if ((question.type === "radio" || question.type === "dropdown") && question.options) {
-      const validOptions = question.options.map(option => 
-        typeof option === 'string' ? option : option.value
-      );
-      return validOptions.includes(value);
-    }
-    
-    // For checkbox questions, ensure all values are valid options
-    if (question.type === "checkbox" && question.options && Array.isArray(value)) {
-      const validOptions = question.options.map(option => 
-        typeof option === 'string' ? option : option.value
-      );
-      return value.every(v => validOptions.includes(v));
-    }
-    
-    // For number fields, ensure value is numeric
-    if (question.type === "number") {
-      return !isNaN(Number(value));
-    }
-    
-    return true;
-  }, [question.type, question.options]);
 
   // Initialize field with proper default value only on mount
   React.useEffect(() => {
@@ -293,7 +266,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 </FormLabel>
                  <Select 
                    onValueChange={field.onChange} 
-                   value={validateFieldValue(field.value) ? field.value || "" : ""}
+                   value={field.value || ""}
                    name={fieldName}
                  >
                   <FormControl>

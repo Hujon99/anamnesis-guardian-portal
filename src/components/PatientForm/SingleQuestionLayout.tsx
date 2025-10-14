@@ -162,11 +162,20 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
       }
     });
     
-    // For the current question: only keep value if it was already set in this session
-    // Check if the field has been "touched" or "dirty" - if not, reset it
-    const fieldState = form.getFieldState(fieldId);
-    if (!fieldState.isDirty && !fieldState.isTouched) {
-      form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
+    // CRITICAL: For the current question, ALWAYS reset to undefined first
+    // This ensures we start with a clean slate regardless of previous state
+    form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
+    
+    // Then immediately check if we have a VALID saved answer for THIS specific question
+    const savedValue = currentValues[fieldId];
+    if (savedValue !== undefined && savedValue !== null && savedValue !== '') {
+      // Validate that the saved value is actually valid for this question's options
+      const isValidForQuestion = validateAnswerForQuestion(savedValue, currentQuestion.question);
+      
+      if (isValidForQuestion) {
+        // Only restore if the value is valid for THIS question
+        form.setValue(fieldId, savedValue, { shouldValidate: false, shouldDirty: true });
+      }
     }
   }, [currentQuestionIndex, currentQuestion, form, allQuestions]);
 
@@ -418,4 +427,35 @@ function getDynamicQuestionsForSection(section: FormSection, values: Record<stri
   });
 
   return dynamicQuestions;
+};
+
+/**
+ * Validate that a saved answer is appropriate for the current question.
+ * Prevents values from one question leaking into another.
+ */
+function validateAnswerForQuestion(value: any, question: FormQuestion | DynamicFollowupQuestion): boolean {
+  if (value === undefined || value === null || value === '') return false;
+  
+  // For questions with options (radio, checkbox, dropdown), verify value matches options
+  if ((question.type === "radio" || question.type === "dropdown") && question.options) {
+    const validOptions = question.options.map(option => 
+      typeof option === 'string' ? option : option.value
+    );
+    return validOptions.includes(value);
+  }
+  
+  // For checkbox questions, ensure all values are valid options
+  if (question.type === "checkbox" && question.options && Array.isArray(value)) {
+    const validOptions = question.options.map(option => 
+      typeof option === 'string' ? option : option.value
+    );
+    return value.every(v => validOptions.includes(v));
+  }
+  
+  // For text/number questions, any non-empty value is valid
+  if (question.type === "text" || question.type === "number") {
+    return true;
+  }
+  
+  return false;
 }

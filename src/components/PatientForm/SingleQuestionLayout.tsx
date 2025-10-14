@@ -266,12 +266,12 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
       {/* Navigation */}
       <CardFooter className="p-6 border-t bg-surface_light">
         <div className="w-full space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-4">
             <Button
               variant="outline"
               onClick={handlePrevious}
               disabled={currentQuestionIndex === 0}
-              className="h-12 px-6"
+              className="h-12 px-6 flex-shrink-0"
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
               Föregående
@@ -280,8 +280,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
             {currentQuestionIndex === totalQuestions - 1 ? (
               <Button
                 onClick={handleFormSubmit}
-                disabled={isSubmitting}
-                className="h-12 px-8 bg-accent_teal hover:bg-accent_teal/90 text-white"
+                disabled={isSubmitting || !isCurrentQuestionAnswered()}
+                className="h-12 px-8 bg-accent_teal hover:bg-accent_teal/90 text-white flex-shrink-0"
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
                 {isSubmitting ? "Skickar..." : "Skicka in"}
@@ -289,8 +289,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
             ) : (
               <Button
                 onClick={handleNext}
-                disabled={!isCurrentQuestionAnswered() || currentQuestionIndex >= totalQuestions - 1}
-                className="h-12 px-6"
+                disabled={!isCurrentQuestionAnswered()}
+                className="h-12 px-6 flex-shrink-0"
               >
                 Nästa
                 <ChevronRight className="w-4 h-4 ml-2" />

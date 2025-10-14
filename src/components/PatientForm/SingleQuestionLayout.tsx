@@ -192,6 +192,10 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   };
 
   const handleFormSubmit = () => {
+    console.log("Form submit triggered");
+    console.log("Current question index:", currentQuestionIndex);
+    console.log("Total questions:", totalQuestions);
+    console.log("Is last question:", currentQuestionIndex === totalQuestions - 1);
     toast.info("Skickar in dina svar...");
     const submitHandler = contextHandleSubmit();
     submitHandler(form.getValues());
@@ -264,36 +268,37 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
       </CardContent>
 
       {/* Navigation */}
-      <CardFooter className="p-6 border-t bg-surface_light">
+      <CardFooter className="p-4 md:p-6 border-t bg-surface_light sticky bottom-0">
         <div className="w-full space-y-4">
-          <div className="flex justify-between items-center gap-4">
+          <div className="flex justify-between items-center gap-2 md:gap-4">
             <Button
               variant="outline"
               onClick={handlePrevious}
               disabled={currentQuestionIndex === 0}
-              className="h-12 px-6 flex-shrink-0"
+              className="h-12 px-4 md:px-6 flex-shrink-0"
             >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Föregående
+              <ChevronLeft className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Föregående</span>
+              <span className="sm:hidden">Föreg.</span>
             </Button>
 
             {currentQuestionIndex === totalQuestions - 1 ? (
               <Button
                 onClick={handleFormSubmit}
                 disabled={isSubmitting || !isCurrentQuestionAnswered()}
-                className="h-12 px-8 bg-accent_teal hover:bg-accent_teal/90 text-white flex-shrink-0"
+                className="h-12 px-4 md:px-8 bg-accent_teal hover:bg-accent_teal/90 text-white flex-shrink-0"
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
+                <CheckCircle className="w-4 h-4 mr-1 md:mr-2" />
                 {isSubmitting ? "Skickar..." : "Skicka in"}
               </Button>
             ) : (
               <Button
                 onClick={handleNext}
                 disabled={!isCurrentQuestionAnswered()}
-                className="h-12 px-6 flex-shrink-0"
+                className="h-12 px-4 md:px-6 flex-shrink-0"
               >
                 Nästa
-                <ChevronRight className="w-4 h-4 ml-2" />
+                <ChevronRight className="w-4 h-4 ml-1 md:ml-2" />
               </Button>
             )}
           </div>

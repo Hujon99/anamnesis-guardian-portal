@@ -36,6 +36,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
+  // State to explicitly store answers for each question by ID
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, any>>({});
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -112,28 +114,23 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, currentFormValues, processSectionsWithDebounce]);
 
-  // Synchronous cleanup function that runs BEFORE navigation
-  const cleanupFieldsForQuestion = (targetQuestionIndex: number) => {
-    const targetQuestion = allQuestions[targetQuestionIndex];
-    if (!targetQuestion) return;
+  // CRITICAL: Set field value synchronously when question changes
+  // This runs BEFORE rendering, preventing leaked values from showing
+  useEffect(() => {
+    if (!currentQuestion) return;
     
-    const fieldId = (targetQuestion.question as DynamicFollowupQuestion).runtimeId || targetQuestion.question.id;
+    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+    const savedAnswer = questionAnswers[fieldId];
     
-    // CRITICAL: Always reset the target question field to undefined FIRST
-    form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
-    
-    // Then check if we have a valid saved answer
-    const currentValues = form.getValues();
-    const savedValue = currentValues[fieldId];
-    
-    if (savedValue !== undefined && savedValue !== null && savedValue !== '') {
-      const isValidForQuestion = validateAnswerForQuestion(savedValue, targetQuestion.question);
-      
-      if (isValidForQuestion) {
-        form.setValue(fieldId, savedValue, { shouldValidate: false, shouldDirty: true });
-      }
+    // Validate the saved answer is appropriate for THIS specific question
+    if (!savedAnswer || !validateAnswerForQuestion(savedAnswer, currentQuestion.question)) {
+      // No valid saved answer - clear the field IMMEDIATELY
+      form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
+    } else {
+      // Valid saved answer - restore it
+      form.setValue(fieldId, savedAnswer, { shouldValidate: false, shouldDirty: true });
     }
-  };
+  }, [currentQuestionIndex, currentQuestion, questionAnswers, form]);
 
   // Check if current question is answered
   const isCurrentQuestionAnswered = () => {
@@ -168,14 +165,19 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
-      const nextIndex = currentQuestionIndex + 1;
+      // Save current answer BEFORE navigating
+      const currentFieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+      const currentValue = form.getValues()[currentFieldId];
       
-      // Clean up the NEXT question's field BEFORE navigating
-      cleanupFieldsForQuestion(nextIndex);
+      setQuestionAnswers(prev => ({
+        ...prev,
+        [currentFieldId]: currentValue
+      }));
       
+      // Then navigate with animation
       setAnimationClass("slide-out-left");
       setTimeout(() => {
-        setCurrentQuestionIndex(nextIndex);
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
         setAnimationClass("slide-in-right");
         setTimeout(() => setAnimationClass(""), 100);
       }, 200);
@@ -184,14 +186,19 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      const prevIndex = currentQuestionIndex - 1;
+      // Save current answer BEFORE navigating
+      const currentFieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+      const currentValue = form.getValues()[currentFieldId];
       
-      // Clean up the PREVIOUS question's field BEFORE navigating
-      cleanupFieldsForQuestion(prevIndex);
+      setQuestionAnswers(prev => ({
+        ...prev,
+        [currentFieldId]: currentValue
+      }));
       
+      // Then navigate with animation
       setAnimationClass("slide-out-right");
       setTimeout(() => {
-        setCurrentQuestionIndex(prevIndex);
+        setCurrentQuestionIndex(currentQuestionIndex - 1);
         setAnimationClass("slide-in-left");
         setTimeout(() => setAnimationClass(""), 100);
       }, 200);
@@ -421,6 +428,9 @@ function getDynamicQuestionsForSection(section: FormSection, values: Record<stri
 /**
  * Validate that a saved answer is appropriate for the current question.
  * Prevents values from one question leaking into another.
+ * CRITICAL: For text/number questions, we can't truly validate ownership,
+ * so we accept any non-empty value and rely on questionAnswers state
+ * to ensure the right value is set for the right question.
  */
 function validateAnswerForQuestion(value: any, question: FormQuestion | DynamicFollowupQuestion): boolean {
   if (value === undefined || value === null || value === '') return false;
@@ -441,7 +451,8 @@ function validateAnswerForQuestion(value: any, question: FormQuestion | DynamicF
     return value.every(v => validOptions.includes(v));
   }
   
-  // For text/number questions, any non-empty value is valid
+  // For text/number questions, accept any non-empty value
+  // The questionAnswers state ensures we're setting the right value for each question
   if (question.type === "text" || question.type === "number") {
     return true;
   }

@@ -24,7 +24,6 @@ interface SingleQuestionLayoutProps {
 export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ createdByName }) => {
   const {
     visibleSections,
-    watchedValues,
     isSubmitting,
     handleSubmit: contextHandleSubmit,
     form,
@@ -50,6 +49,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     );
   }
 
+  // Get current form values using immediate watch (not debounced)
+  const currentFormValues = form.watch();
+
   // Flatten all visible questions with section context - memoized for performance
   const allQuestions = useMemo(() => {
     if (!visibleSections || visibleSections.length === 0) return [];
@@ -71,8 +73,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
           // Skip optician-only questions in patient mode
           if (q.show_in_mode === "optician") return;
           
-          // Check conditional visibility
-          if (!shouldShowQuestion(q, watchedValues)) return;
+          // Check conditional visibility using CURRENT form values
+          if (!shouldShowQuestion(q, currentFormValues)) return;
           
           questions.push({
             question: q,
@@ -82,8 +84,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
           });
         });
 
-        // Add dynamic follow-up questions (already filtered in useConditionalFields)
-        const dynamicQuestions = getDynamicQuestionsForSection(section, watchedValues);
+        // Add dynamic follow-up questions using CURRENT form values
+        const dynamicQuestions = getDynamicQuestionsForSection(section, currentFormValues);
         dynamicQuestions.forEach((question, qIndex) => {
           questions.push({
             question,
@@ -96,7 +98,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     });
 
     return questions;
-  }, [visibleSections, watchedValues]);
+  }, [visibleSections, currentFormValues]);
 
   const currentQuestion = allQuestions[currentQuestionIndex];
   const totalQuestions = allQuestions.length;
@@ -106,9 +108,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   useEffect(() => {
     if (processSectionsWithDebounce && visibleSections.length > 0) {
       const allSections = visibleSections.flat();
-      processSectionsWithDebounce(allSections, watchedValues);
+      processSectionsWithDebounce(allSections, currentFormValues);
     }
-  }, [visibleSections, watchedValues, processSectionsWithDebounce]);
+  }, [visibleSections, currentFormValues, processSectionsWithDebounce]);
 
   // Function to clear invalid field values but preserve valid answers
   const clearInvalidFieldValues = () => {
@@ -118,7 +120,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     
     // Only clear fields that don't correspond to any current questions
     // This preserves answers needed for follow-up question logic
-    Object.keys(watchedValues).forEach(fieldKey => {
+    Object.keys(currentFormValues).forEach(fieldKey => {
       if (!currentQuestionIds.includes(fieldKey)) {
         form.setValue(fieldKey, undefined, { shouldValidate: false, shouldDirty: false });
       }

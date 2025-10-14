@@ -101,7 +101,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     // Step 1: COMPLETELY clear ALL fields from React Hook Form
     const currentValues = form.getValues();
     Object.keys(currentValues).forEach(key => {
-      form.unregister(key);  // Completely remove field from form state
+      form.setValue(key, undefined);  // First clear the value explicitly
+      form.unregister(key);           // Then remove field registration
     });
     
     // Step 2: Register and set ONLY this question's value

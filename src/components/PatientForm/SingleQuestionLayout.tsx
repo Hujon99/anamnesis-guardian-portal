@@ -16,7 +16,6 @@ import { useFormContext } from "@/contexts/FormContext";
 import { FormQuestion, DynamicFollowupQuestion, FormSection } from "@/types/anamnesis";
 import { toast } from "sonner";
 import { generateRuntimeId } from "@/utils/questionIdUtils";
-import { validateFieldValue } from "@/utils/fieldValidation";
 
 interface SingleQuestionLayoutProps {
   createdByName?: string | null;
@@ -38,10 +37,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
-  
-  // CRITICAL: Isolated state for all answers to prevent leakage between questions
-  // Form state will only ever contain the CURRENT question's value
-  const [allAnswers, setAllAnswers] = useState<Record<string, any>>({});
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -56,7 +51,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   }
 
   // Flatten all visible questions with section context - memoized for performance
-  // Uses visibleSections from useConditionalFields which already handles dynamic follow-up questions
   const allQuestions = useMemo(() => {
     if (!visibleSections || visibleSections.length === 0) return [];
     
@@ -69,9 +63,17 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
     visibleSections.forEach((sections, sectionIndex) => {
       sections.forEach((section) => {
-        // All questions are already filtered and processed by useConditionalFields
-        // This includes both regular questions and dynamic follow-ups
+        // Filter visible questions
         section.questions.forEach((q, qIndex) => {
+          // Skip follow-up templates
+          if (q.is_followup_template) return;
+          
+          // Skip optician-only questions in patient mode
+          if (q.show_in_mode === "optician") return;
+          
+          // Check conditional visibility
+          if (!shouldShowQuestion(q, watchedValues)) return;
+          
           questions.push({
             question: q,
             sectionTitle: section.section_title,
@@ -79,42 +81,26 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
             questionIndex: qIndex
           });
         });
+
+        // Add dynamic follow-up questions (already filtered in useConditionalFields)
+        const dynamicQuestions = getDynamicQuestionsForSection(section, watchedValues);
+        dynamicQuestions.forEach((question, qIndex) => {
+          questions.push({
+            question,
+            sectionTitle: section.section_title,
+            sectionIndex,
+            questionIndex: section.questions.length + qIndex
+          });
+        });
       });
     });
 
     return questions;
-  }, [visibleSections]);
+  }, [visibleSections, watchedValues]);
 
   const currentQuestion = allQuestions[currentQuestionIndex];
   const totalQuestions = allQuestions.length;
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
-  
-  // CRITICAL: Isolate form state to only the current question
-  // This prevents values from leaking between questions
-  // NOTE: We only depend on currentQuestionIndex to prevent clearing form state during user interaction
-  useEffect(() => {
-    if (!currentQuestion) return;
-    
-    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-    const savedAnswer = allAnswers[fieldId];
-    
-    // Step 1: COMPLETELY clear ALL fields from React Hook Form
-    const currentValues = form.getValues();
-    Object.keys(currentValues).forEach(key => {
-      form.setValue(key, undefined);  // First clear the value explicitly
-      form.unregister(key);           // Then remove field registration
-    });
-    
-    // Step 2: Register and set ONLY this question's value
-    if (savedAnswer !== undefined && savedAnswer !== null && savedAnswer !== '') {
-      form.register(fieldId);
-      form.setValue(fieldId, savedAnswer, { shouldValidate: false, shouldDirty: false });
-    } else {
-      // Register field but leave it empty
-      form.register(fieldId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestionIndex]);
   
   // Process form sections for proper submission handling
   useEffect(() => {
@@ -124,46 +110,45 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, watchedValues, processSectionsWithDebounce]);
 
+  // Function to clear invalid field values but preserve valid answers
+  const clearInvalidFieldValues = () => {
+    const currentQuestionIds = allQuestions.map(q => 
+      (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
+    );
+    
+    // Only clear fields that don't correspond to any current questions
+    // This preserves answers needed for follow-up question logic
+    Object.keys(watchedValues).forEach(fieldKey => {
+      if (!currentQuestionIds.includes(fieldKey)) {
+        form.setValue(fieldKey, undefined, { shouldValidate: false, shouldDirty: false });
+      }
+    });
+    
+    // Don't clear the current question field - let TouchFriendlyFieldRenderer handle inappropriate values
+    // This allows follow-up questions to work properly
+  };
 
   // Check if current question is answered
   const isCurrentQuestionAnswered = () => {
     if (!currentQuestion) return false;
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+    const value = watchedValues[fieldId];
     
-    const value = form.watch(fieldId);
-    
-    // First check if value exists at all
     if (value === undefined || value === null || value === '') return false;
-    if (value === false) return false;
-    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return false;
-    if (Array.isArray(value) && value.length === 0) return false;
-    
-    // CRITICAL: Validate that the value is appropriate for THIS question
-    // This prevents leaked values from other questions from marking this as answered
-    if (!validateFieldValue(value, currentQuestion.question)) {
-      return false;
-    }
-    
+    if (Array.isArray(value)) return value.length > 0;
     return true;
   };
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
-      // CRITICAL: Save the current question's answer before navigating
-      if (currentQuestion) {
-        const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-        const answer = form.watch(fieldId);
-        
-        // Save to our isolated state
-        setAllAnswers(prev => ({ ...prev, [fieldId]: answer }));
-      }
-      
       setAnimationClass("slide-out-left");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev + 1);
         setAnimationClass("slide-in-right");
         setTimeout(() => {
           setAnimationClass("");
+          // Clear field values after navigation is complete
+          clearInvalidFieldValues();
         }, 100);
       }, 200);
     }
@@ -171,40 +156,23 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      // CRITICAL: Save the current question's answer before navigating
-      if (currentQuestion) {
-        const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-        const answer = form.watch(fieldId);
-        
-        // Save to our isolated state
-        setAllAnswers(prev => ({ ...prev, [fieldId]: answer }));
-      }
-      
       setAnimationClass("slide-out-right");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev - 1);
         setAnimationClass("slide-in-left");
         setTimeout(() => {
           setAnimationClass("");
+          // Clear field values after navigation is complete
+          clearInvalidFieldValues();
         }, 100);
       }, 200);
     }
   };
 
   const handleFormSubmit = () => {
-    // CRITICAL: Save the final question's answer before submitting
-    if (currentQuestion) {
-      const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-      const answer = form.watch(fieldId);
-      
-      // Create final answers object with all saved answers plus the current one
-      const finalAnswers = { ...allAnswers, [fieldId]: answer };
-      
-      toast.info("Skickar in dina svar...");
-      const submitHandler = contextHandleSubmit();
-      // Submit the isolated answers state, NOT form.getValues()
-      submitHandler(finalAnswers);
-    }
+    toast.info("Skickar in dina svar...");
+    const submitHandler = contextHandleSubmit();
+    submitHandler(form.getValues());
   };
 
   if (totalQuestions === 0) {
@@ -329,3 +297,94 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     </>
   );
 };
+
+// Helper functions
+function shouldShowQuestion(question: FormQuestion, values: Record<string, any>): boolean {
+  if (!question.show_if) return true;
+  
+  const { question: dependentQuestionId, equals, contains } = question.show_if;
+  const dependentValue = values[dependentQuestionId];
+  
+  if (contains !== undefined) {
+    if (Array.isArray(dependentValue)) {
+      return dependentValue.includes(contains);
+    }
+    return dependentValue === contains;
+  }
+  
+  if (equals !== undefined) {
+    if (Array.isArray(equals)) {
+      return equals.includes(dependentValue);
+    }
+    return dependentValue === equals;
+  }
+  
+  return !!dependentValue;
+}
+
+/**
+ * Generate dynamic follow-up questions based on current form values.
+ * This uses the same logic as FormSection.tsx for consistency.
+ */
+function getDynamicQuestionsForSection(section: FormSection, values: Record<string, any>): DynamicFollowupQuestion[] {
+  const dynamicQuestions: DynamicFollowupQuestion[] = [];
+
+  // Iterate through each question in the section
+  section.questions.forEach((question) => {
+    // Check if this question has follow-up questions defined
+    const followupQuestionIds = question.followup_question_ids;
+    
+    if (!followupQuestionIds || followupQuestionIds.length === 0) {
+      return; // Skip if no follow-ups
+    }
+
+    // Get the current value for this question
+    const parentValue = values[question.id];
+    
+    // Determine selected values (handle both single and array values)
+    let selectedValues: string[] = [];
+    
+    if (Array.isArray(parentValue)) {
+      selectedValues = parentValue.filter(v => v != null && v !== '');
+    } else if (parentValue != null && parentValue !== '') {
+      selectedValues = [parentValue];
+    }
+
+    // Skip if no values selected
+    if (selectedValues.length === 0) {
+      return;
+    }
+
+    // For each selected value, create dynamic follow-up questions
+    selectedValues.forEach((value) => {
+      followupQuestionIds.forEach((followupId) => {
+        const template = section.questions.find(
+          (q) => q.id === followupId && q.is_followup_template
+        );
+
+        if (template) {
+          // Use the sanitized utility function to generate runtime ID
+          const runtimeId = generateRuntimeId(template.id, value);
+          
+          // Only add if not already present
+          if (!dynamicQuestions.find(dq => dq.runtimeId === runtimeId)) {
+            const dynamicQuestion: DynamicFollowupQuestion = {
+              ...template,
+              parentId: question.id,
+              parentValue: value,
+              runtimeId: runtimeId,
+              originalId: template.id,
+              label: template.label.replace(/\{option\}/g, value),
+            };
+
+            // Remove the template flag so it's treated as a regular question
+            delete (dynamicQuestion as any).is_followup_template;
+            dynamicQuestions.push(dynamicQuestion);
+          }
+        }
+      });
+    });
+  });
+
+  return dynamicQuestions;
+}

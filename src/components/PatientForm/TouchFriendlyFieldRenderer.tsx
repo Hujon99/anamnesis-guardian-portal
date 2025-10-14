@@ -22,7 +22,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
 import { FieldError } from "react-hook-form";
 
-
 interface TouchFriendlyFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
   error: FieldError | any;
@@ -32,8 +31,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
   question,
   error
 }) => {
-  const form = useFormContext();
-  const { control, watch, setValue } = form;
+  const { control, watch, setValue } = useFormContext();
   const hasError = error !== undefined;
   
   const fieldName = (question as DynamicFollowupQuestion).runtimeId || question.id;
@@ -55,6 +53,46 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
     return val;
   };
 
+  // Validate that current field value is appropriate for this question
+  const validateFieldValue = React.useCallback((value: any) => {
+    if (!value || value === "") return true;
+    
+    // For radio/dropdown questions with options, ensure value is in valid options
+    if ((question.type === "radio" || question.type === "dropdown") && question.options) {
+      const validOptions = question.options.map(option => 
+        typeof option === 'string' ? option : option.value
+      );
+      return validOptions.includes(value);
+    }
+    
+    // For checkbox questions, ensure all values are valid options
+    if (question.type === "checkbox" && question.options && Array.isArray(value)) {
+      const validOptions = question.options.map(option => 
+        typeof option === 'string' ? option : option.value
+      );
+      return value.every(v => validOptions.includes(v));
+    }
+    
+    // For number fields, ensure value is numeric
+    if (question.type === "number") {
+      return !isNaN(Number(value));
+    }
+    
+    return true;
+  }, [question.type, question.options]);
+
+  // Initialize field with proper default value only on mount
+  React.useEffect(() => {
+    const currentValue = watch(fieldName);
+    
+    // Only set default for empty fields on initial mount
+    // Don't clear existing values - let conditional logic handle visibility
+    if (currentValue === undefined || currentValue === null || currentValue === "") {
+      if (question.type === "checkbox" && question.options && question.options.length > 0) {
+        setValue(fieldName, [], { shouldValidate: false, shouldDirty: false });
+      }
+    }
+  }, []); // Empty deps - only run on initial mount
   
   const getOptionValue = (option: FormQuestionOption): string => {
     return typeof option === 'string' ? option : option.value;
@@ -96,7 +134,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 <FormControl>
                   <Textarea 
                     placeholder="Skriv ditt svar här..." 
-                    {...field}
+                    {...field} 
                     rows={4}
                     className="text-base p-4 min-h-[120px] rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
@@ -124,15 +162,8 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 </FormLabel>
                  <FormControl>
                    <RadioGroup
-                     onValueChange={(value) => {
-                       field.onChange(value);
-                       form.setValue(fieldName, value, { 
-                         shouldValidate: true,
-                         shouldDirty: true,
-                         shouldTouch: true
-                       });
-                     }}
-                     value={field.value || undefined}
+                     onValueChange={field.onChange}
+                     value={field.value || ""}
                      className="space-y-3"
                    >
                     {question.options?.map(option => {
@@ -170,15 +201,8 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
               control={control}
               name={fieldName}
               render={({ field }) => {
-                // Only use valid values that exist in this question's options
-                const validOptions = question.options?.map(opt => 
-                  typeof opt === 'string' ? opt : opt.value
-                ) || [];
-                
-                const rawValues = Array.isArray(field.value) ? field.value : 
+                const values = Array.isArray(field.value) ? field.value : 
                   field.value ? [field.value] : [];
-                
-                const values = rawValues.filter(v => validOptions.includes(v));
                 
                 return (
                   <FormItem className="space-y-6">
@@ -200,22 +224,17 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                             name={fieldName}
                             render={() => (
                               <FormItem className="flex items-center space-x-4 space-y-0">
-                               <FormControl>
-                       <Checkbox
-                         checked={isChecked}
-                         onCheckedChange={(checked) => {
-                           const newValues = checked 
-                             ? [...values, optionValue] 
-                             : values.filter(val => val !== optionValue);
-                           field.onChange(newValues);
-                           form.setValue(fieldName, newValues, {
-                             shouldValidate: true,
-                             shouldDirty: true,
-                             shouldTouch: true
-                           });
-                         }}
-                         className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                       />
+                                <FormControl>
+                                  <Checkbox
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => {
+                                      const newValues = checked 
+                                        ? [...values, optionValue] 
+                                        : values.filter(val => val !== optionValue);
+                                      field.onChange(newValues.length ? newValues : undefined);
+                                    }}
+                                    className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                  />
                                 </FormControl>
                                 <FormLabel className="text-base font-medium leading-relaxed flex-1 cursor-pointer p-4 rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 transition-all">
                                   {optionLabel}
@@ -242,18 +261,11 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                   {renderFollowUpHeading()}
                   <div className="flex items-center space-x-4">
                     <FormControl>
-                 <Checkbox
-                   checked={field.value}
-                   onCheckedChange={(checked) => {
-                     field.onChange(checked);
-                     form.setValue(fieldName, checked, {
-                       shouldValidate: true,
-                       shouldDirty: true,
-                       shouldTouch: true
-                     });
-                   }}
-                   className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                 />
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                      />
                     </FormControl>
                     <FormLabel className="text-lg font-semibold text-foreground leading-relaxed cursor-pointer">
                       {question.label}
@@ -279,18 +291,11 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
-               <Select 
-                 onValueChange={(value) => {
-                   field.onChange(value);
-                   form.setValue(fieldName, value, {
-                     shouldValidate: true,
-                     shouldDirty: true,
-                     shouldTouch: true
-                   });
-                 }}
-                 value={field.value || ""}
-                 name={fieldName}
-               >
+                 <Select 
+                   onValueChange={field.onChange} 
+                   value={validateFieldValue(field.value) ? field.value || "" : ""}
+                   name={fieldName}
+                 >
                   <FormControl>
                     <SelectTrigger className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20">
                       <SelectValue placeholder="Välj ett alternativ" />
@@ -334,7 +339,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                   <Input 
                     type="number" 
                     placeholder="0" 
-                    {...field}
+                    {...field} 
                     onChange={e => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
                     className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />

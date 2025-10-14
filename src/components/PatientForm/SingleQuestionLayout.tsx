@@ -36,8 +36,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
-  // State to explicitly store answers for each question by ID
-  const [questionAnswers, setQuestionAnswers] = useState<Record<string, any>>({});
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -114,23 +112,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, currentFormValues, processSectionsWithDebounce]);
 
-  // CRITICAL: Set field value synchronously when question changes
-  // This runs BEFORE rendering, preventing leaked values from showing
-  useEffect(() => {
-    if (!currentQuestion) return;
-    
-    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-    const savedAnswer = questionAnswers[fieldId];
-    
-    // Validate the saved answer is appropriate for THIS specific question
-    if (!savedAnswer || !validateAnswerForQuestion(savedAnswer, currentQuestion.question)) {
-      // No valid saved answer - clear the field IMMEDIATELY
-      form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
-    } else {
-      // Valid saved answer - restore it
-      form.setValue(fieldId, savedAnswer, { shouldValidate: false, shouldDirty: true });
-    }
-  }, [currentQuestionIndex, currentQuestion, questionAnswers, form]);
 
   // Check if current question is answered
   const isCurrentQuestionAnswered = () => {
@@ -145,64 +126,69 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     return true;
   };
 
-  // Cleanup invisible fields only (not the current question)
+  // Cleanup invisible fields (not in visible questions list)
   useEffect(() => {
-    if (!currentQuestion) return;
-    
-    const visibleQuestionIds = allQuestions.map(q => 
+    // Samla alla synliga field IDs
+    const visibleFieldIds = allQuestions.map(q => 
       (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
     );
     
     const currentValues = form.getValues();
     
-    // Only clear fields that are NOT in the visible questions list
+    // Rensa ENDAST fält som inte är synliga OCH inte är metadata
     Object.keys(currentValues).forEach(key => {
-      if (!visibleQuestionIds.includes(key) && !key.startsWith('_meta_')) {
+      if (!visibleFieldIds.includes(key) && !key.startsWith('_meta_')) {
         form.setValue(key, undefined, { shouldValidate: false, shouldDirty: false });
       }
     });
-  }, [currentQuestion, allQuestions, form]);
+  }, [allQuestions, form]);
 
   const handleNext = () => {
-    if (currentQuestionIndex < totalQuestions - 1) {
-      // Save current answer BEFORE navigating
-      const currentFieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-      const currentValue = form.getValues()[currentFieldId];
-      
-      setQuestionAnswers(prev => ({
-        ...prev,
-        [currentFieldId]: currentValue
-      }));
-      
-      // Then navigate with animation
-      setAnimationClass("slide-out-left");
-      setTimeout(() => {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-        setAnimationClass("slide-in-right");
-        setTimeout(() => setAnimationClass(""), 100);
-      }, 200);
-    }
+    if (currentQuestionIndex >= totalQuestions - 1) return;
+    
+    const nextIndex = currentQuestionIndex + 1;
+    const nextQuestion = allQuestions[nextIndex];
+    
+    if (!nextQuestion) return;
+    
+    // KRITISKT: Rensa nästa frågas fält INNAN navigation
+    const nextFieldId = (nextQuestion.question as DynamicFollowupQuestion).runtimeId || nextQuestion.question.id;
+    form.setValue(nextFieldId, undefined, { shouldValidate: false, shouldDirty: false });
+    
+    // Navigera med animation
+    setAnimationClass("slide-out-left");
+    setTimeout(() => {
+      setCurrentQuestionIndex(nextIndex);
+      setAnimationClass("slide-in-right");
+      setTimeout(() => setAnimationClass(""), 100);
+    }, 200);
   };
 
   const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      // Save current answer BEFORE navigating
-      const currentFieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-      const currentValue = form.getValues()[currentFieldId];
-      
-      setQuestionAnswers(prev => ({
-        ...prev,
-        [currentFieldId]: currentValue
-      }));
-      
-      // Then navigate with animation
-      setAnimationClass("slide-out-right");
-      setTimeout(() => {
-        setCurrentQuestionIndex(currentQuestionIndex - 1);
-        setAnimationClass("slide-in-left");
-        setTimeout(() => setAnimationClass(""), 100);
-      }, 200);
+    if (currentQuestionIndex <= 0) return;
+    
+    const prevIndex = currentQuestionIndex - 1;
+    const prevQuestion = allQuestions[prevIndex];
+    
+    if (!prevQuestion) return;
+    
+    // KRITISKT: Kontrollera om vi har ett giltigt sparat svar
+    const prevFieldId = (prevQuestion.question as DynamicFollowupQuestion).runtimeId || prevQuestion.question.id;
+    const savedValue = form.getValues()[prevFieldId];
+    
+    // Om inget giltigt svar finns, rensa fältet
+    if (savedValue === undefined || savedValue === null || savedValue === '') {
+      form.setValue(prevFieldId, undefined, { shouldValidate: false, shouldDirty: false });
     }
+    // Om det finns ett giltigt svar behöver vi inte göra något - det finns redan i form state
+    
+    // Navigera med animation
+    setAnimationClass("slide-out-right");
+    setTimeout(() => {
+      setCurrentQuestionIndex(prevIndex);
+      setAnimationClass("slide-in-left");
+      setTimeout(() => setAnimationClass(""), 100);
+    }, 200);
   };
 
   const handleFormSubmit = () => {
@@ -267,6 +253,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
               {/* Question */}
               <div className="max-w-2xl mx-auto">
                 <TouchFriendlyFieldRenderer
+                  key={currentQuestionIndex}
                   question={currentQuestion.question}
                   error={form.formState.errors[(currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id]}
                 />
@@ -424,38 +411,3 @@ function getDynamicQuestionsForSection(section: FormSection, values: Record<stri
 
   return dynamicQuestions;
 };
-
-/**
- * Validate that a saved answer is appropriate for the current question.
- * Prevents values from one question leaking into another.
- * CRITICAL: For text/number questions, we can't truly validate ownership,
- * so we accept any non-empty value and rely on questionAnswers state
- * to ensure the right value is set for the right question.
- */
-function validateAnswerForQuestion(value: any, question: FormQuestion | DynamicFollowupQuestion): boolean {
-  if (value === undefined || value === null || value === '') return false;
-  
-  // For questions with options (radio, checkbox, dropdown), verify value matches options
-  if ((question.type === "radio" || question.type === "dropdown") && question.options) {
-    const validOptions = question.options.map(option => 
-      typeof option === 'string' ? option : option.value
-    );
-    return validOptions.includes(value);
-  }
-  
-  // For checkbox questions, ensure all values are valid options
-  if (question.type === "checkbox" && question.options && Array.isArray(value)) {
-    const validOptions = question.options.map(option => 
-      typeof option === 'string' ? option : option.value
-    );
-    return value.every(v => validOptions.includes(v));
-  }
-  
-  // For text/number questions, accept any non-empty value
-  // The questionAnswers state ensures we're setting the right value for each question
-  if (question.type === "text" || question.type === "number") {
-    return true;
-  }
-  
-  return false;
-}

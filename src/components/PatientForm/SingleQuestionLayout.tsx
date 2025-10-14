@@ -91,6 +91,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   
   // CRITICAL: Isolate form state to only the current question
   // This prevents values from leaking between questions
+  // NOTE: We only depend on currentQuestionIndex to prevent clearing form state during user interaction
   useEffect(() => {
     if (!currentQuestion) return;
     
@@ -107,7 +108,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     if (savedAnswer !== undefined && savedAnswer !== null && savedAnswer !== '') {
       form.setValue(fieldId, savedAnswer, { shouldValidate: false, shouldDirty: false });
     }
-  }, [currentQuestionIndex, currentQuestion, allAnswers, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex]);
   
   // Process form sections for proper submission handling
   useEffect(() => {

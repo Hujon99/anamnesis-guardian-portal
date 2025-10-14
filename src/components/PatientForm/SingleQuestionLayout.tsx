@@ -141,6 +141,25 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     return true;
   };
 
+  // Reset field when question changes to ensure clean state
+  useEffect(() => {
+    if (!currentQuestion) return;
+    
+    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+    
+    // Check if we have a saved answer for this question from the form's current values
+    const currentValues = form.getValues();
+    const savedAnswer = currentValues[fieldId];
+    
+    // If no saved answer exists, explicitly set field to undefined
+    if (savedAnswer === undefined || savedAnswer === null || savedAnswer === '') {
+      form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
+    } else {
+      // Restore saved answer
+      form.setValue(fieldId, savedAnswer, { shouldValidate: false, shouldDirty: false });
+    }
+  }, [currentQuestionIndex, currentQuestion, form]);
+
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
       setAnimationClass("slide-out-left");

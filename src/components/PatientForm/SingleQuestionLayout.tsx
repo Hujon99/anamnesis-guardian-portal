@@ -212,7 +212,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   return (
     <>
       {/* Header with progress */}
-      <div className="p-6 border-b bg-surface_light">
+      <div className="p-6 border-b bg-background">
         <div className="space-y-4">
           {/* Chapter/Section indicator */}
           <div className="text-center">
@@ -268,7 +268,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
       </CardContent>
 
       {/* Navigation */}
-      <CardFooter className="p-4 md:p-6 border-t bg-surface_light sticky bottom-0">
+      <CardFooter className="p-4 md:p-6 border-t bg-card shadow-lg">
         <div className="w-full space-y-4">
           <div className="flex justify-between items-center gap-2 md:gap-4">
             <Button
@@ -286,7 +286,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
               <Button
                 onClick={handleFormSubmit}
                 disabled={isSubmitting || !isCurrentQuestionAnswered()}
-                className="h-12 px-4 md:px-8 bg-accent-teal hover:bg-accent-teal/90 text-white flex-shrink-0"
+                className="h-12 px-4 md:px-8 !bg-accent-teal hover:!bg-accent-teal/90 text-white disabled:opacity-50 flex-shrink-0 transition-all"
               >
                 <CheckCircle className="w-4 h-4 mr-1 md:mr-2" />
                 {isSubmitting ? "Skickar..." : "Skicka in"}
@@ -306,7 +306,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
           {/* Answer status indicator */}
           <div className="text-center">
             {isCurrentQuestionAnswered() ? (
-              <div className="inline-flex items-center gap-2 text-sm text-accent_teal">
+              <div className="inline-flex items-center gap-2 text-sm text-accent-teal">
                 <CheckCircle className="w-4 h-4" />
                 <span>Besvarat</span>
               </div>

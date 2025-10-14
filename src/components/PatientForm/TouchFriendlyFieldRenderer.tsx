@@ -100,7 +100,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             render={({ field }) => (
               <FormItem className="space-y-4">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed">
+                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -129,7 +129,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             render={({ field }) => (
               <FormItem className="space-y-6">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed">
+                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -153,7 +153,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                             id={`${fieldName}-${optionValue}`}
                             className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                           />
-                          <span className="text-base font-medium leading-relaxed flex-1 select-none">
+                          <span className="text-base font-medium leading-relaxed flex-1 select-none break-words">
                             {optionLabel}
                           </span>
                         </label>
@@ -180,7 +180,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                 return (
                   <FormItem className="space-y-6">
                     {renderFollowUpHeading()}
-                    <FormLabel className="text-lg font-semibold text-foreground leading-relaxed">
+                    <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
                       {question.label}
                       {question.required && <span className="text-destructive ml-1">*</span>}
                     </FormLabel>
@@ -209,7 +209,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                                     className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                   />
                                 </FormControl>
-                                <FormLabel className="text-base font-medium leading-relaxed flex-1 cursor-pointer p-4 rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 transition-all">
+                                <FormLabel className="text-base font-medium leading-relaxed flex-1 cursor-pointer p-4 rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 transition-all break-words">
                                   {optionLabel}
                                 </FormLabel>
                               </FormItem>
@@ -240,7 +240,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                         className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                     </FormControl>
-                    <FormLabel className="text-lg font-semibold text-foreground leading-relaxed cursor-pointer">
+                    <FormLabel className="text-lg font-semibold text-foreground leading-relaxed cursor-pointer break-words">
                       {question.label}
                       {question.required && <span className="text-destructive ml-1">*</span>}
                     </FormLabel>
@@ -260,7 +260,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             render={({ field }) => (
               <FormItem className="space-y-4">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed">
+                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -304,7 +304,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             render={({ field }) => (
               <FormItem className="space-y-4">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed">
+                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -331,7 +331,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             render={({ field }) => (
               <FormItem className="space-y-4">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed">
+                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>

@@ -236,7 +236,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
       </div>
 
       {/* Question content */}
-      <CardContent className="flex-1 p-6 md:p-8">
+      <CardContent className="flex-1 p-4 md:p-8 overflow-x-hidden">
         <div className={`transition-all duration-300 ${animationClass} min-h-[400px] flex flex-col justify-center`}>
           {currentQuestion && (
             <div className="space-y-6">
@@ -251,7 +251,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
               </div>
 
               {/* Question */}
-              <div className="max-w-2xl mx-auto">
+              <div className="w-full max-w-2xl mx-auto px-2">
                 <TouchFriendlyFieldRenderer
                   key={currentQuestionIndex}
                   question={currentQuestion.question}

@@ -98,17 +98,21 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
     const savedAnswer = allAnswers[fieldId];
     
-    // Step 1: Clear ALL values from React Hook Form state
+    // Step 1: COMPLETELY clear ALL fields from React Hook Form
     const currentValues = form.getValues();
     Object.keys(currentValues).forEach(key => {
-      form.setValue(key, undefined, { shouldValidate: false, shouldDirty: false });
+      form.unregister(key);  // Completely remove field from form state
     });
     
-    // Step 2: Set ONLY this question's value (if it exists in our saved answers)
+    // Step 2: Register and set ONLY this question's value
     if (savedAnswer !== undefined && savedAnswer !== null && savedAnswer !== '') {
+      form.register(fieldId);
       form.setValue(fieldId, savedAnswer, { shouldValidate: false, shouldDirty: false });
+    } else {
+      // Register field but leave it empty
+      form.register(fieldId);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestionIndex]);
   
   // Process form sections for proper submission handling

@@ -280,14 +280,14 @@ export function AdvancedFilters({
             return (
               <Button
                 key={option.value}
-                variant={isActive ? "default" : "ghost"}
+                variant="ghost"
                 size="sm"
                 onClick={() => onAssignmentFilterChange(option.value as 'all' | 'assigned' | 'unassigned')}
                 className={cn(
-                  "h-8 px-3 text-xs transition-all",
+                  "h-8 px-3 text-xs transition-all duration-300",
                   isActive 
-                    ? "bg-accent_teal text-white shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/80"
                 )}
               >
                 <Icon className="h-3.5 w-3.5 mr-1.5" />

@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
 import { FieldError } from "react-hook-form";
-import { validateFieldValue } from "@/utils/fieldValidation";
+
 
 interface TouchFriendlyFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
@@ -132,7 +132,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                          shouldTouch: true
                        });
                      }}
-                     value={validateFieldValue(field.value, question) ? field.value : undefined}
+                     value={field.value || undefined}
                      className="space-y-3"
                    >
                     {question.options?.map(option => {
@@ -288,7 +288,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                      shouldTouch: true
                    });
                  }}
-                 value={validateFieldValue(field.value, question) ? field.value || "" : ""}
+                 value={field.value || ""}
                  name={fieldName}
                >
                   <FormControl>

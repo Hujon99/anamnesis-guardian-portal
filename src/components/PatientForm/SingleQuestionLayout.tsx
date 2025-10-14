@@ -112,22 +112,27 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, currentFormValues, processSectionsWithDebounce]);
 
-  // Function to clear invalid field values but preserve valid answers
-  const clearInvalidFieldValues = () => {
-    const currentQuestionIds = allQuestions.map(q => 
-      (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
-    );
+  // Synchronous cleanup function that runs BEFORE navigation
+  const cleanupFieldsForQuestion = (targetQuestionIndex: number) => {
+    const targetQuestion = allQuestions[targetQuestionIndex];
+    if (!targetQuestion) return;
     
-    // Only clear fields that don't correspond to any current questions
-    // This preserves answers needed for follow-up question logic
-    Object.keys(currentFormValues).forEach(fieldKey => {
-      if (!currentQuestionIds.includes(fieldKey)) {
-        form.setValue(fieldKey, undefined, { shouldValidate: false, shouldDirty: false });
+    const fieldId = (targetQuestion.question as DynamicFollowupQuestion).runtimeId || targetQuestion.question.id;
+    
+    // CRITICAL: Always reset the target question field to undefined FIRST
+    form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
+    
+    // Then check if we have a valid saved answer
+    const currentValues = form.getValues();
+    const savedValue = currentValues[fieldId];
+    
+    if (savedValue !== undefined && savedValue !== null && savedValue !== '') {
+      const isValidForQuestion = validateAnswerForQuestion(savedValue, targetQuestion.question);
+      
+      if (isValidForQuestion) {
+        form.setValue(fieldId, savedValue, { shouldValidate: false, shouldDirty: true });
       }
-    });
-    
-    // Don't clear the current question field - let TouchFriendlyFieldRenderer handle inappropriate values
-    // This allows follow-up questions to work properly
+    }
   };
 
   // Check if current question is answered
@@ -143,70 +148,52 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     return true;
   };
 
-  // Reset field when question changes to ensure clean state
+  // Cleanup invisible fields only (not the current question)
   useEffect(() => {
     if (!currentQuestion) return;
     
-    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
-    
-    // Get all currently visible question IDs
     const visibleQuestionIds = allQuestions.map(q => 
       (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
     );
     
-    // Get all current form values
     const currentValues = form.getValues();
     
-    // Clear any fields that are NOT in the visible questions list
+    // Only clear fields that are NOT in the visible questions list
     Object.keys(currentValues).forEach(key => {
       if (!visibleQuestionIds.includes(key) && !key.startsWith('_meta_')) {
         form.setValue(key, undefined, { shouldValidate: false, shouldDirty: false });
       }
     });
-    
-    // CRITICAL: For the current question, ALWAYS reset to undefined first
-    // This ensures we start with a clean slate regardless of previous state
-    form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
-    
-    // Then immediately check if we have a VALID saved answer for THIS specific question
-    const savedValue = currentValues[fieldId];
-    if (savedValue !== undefined && savedValue !== null && savedValue !== '') {
-      // Validate that the saved value is actually valid for this question's options
-      const isValidForQuestion = validateAnswerForQuestion(savedValue, currentQuestion.question);
-      
-      if (isValidForQuestion) {
-        // Only restore if the value is valid for THIS question
-        form.setValue(fieldId, savedValue, { shouldValidate: false, shouldDirty: true });
-      }
-    }
-  }, [currentQuestionIndex, currentQuestion, form, allQuestions]);
+  }, [currentQuestion, allQuestions, form]);
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
+      const nextIndex = currentQuestionIndex + 1;
+      
+      // Clean up the NEXT question's field BEFORE navigating
+      cleanupFieldsForQuestion(nextIndex);
+      
       setAnimationClass("slide-out-left");
       setTimeout(() => {
-        setCurrentQuestionIndex(prev => prev + 1);
+        setCurrentQuestionIndex(nextIndex);
         setAnimationClass("slide-in-right");
-        setTimeout(() => {
-          setAnimationClass("");
-          // Clear field values after navigation is complete
-          clearInvalidFieldValues();
-        }, 100);
+        setTimeout(() => setAnimationClass(""), 100);
       }, 200);
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
+      const prevIndex = currentQuestionIndex - 1;
+      
+      // Clean up the PREVIOUS question's field BEFORE navigating
+      cleanupFieldsForQuestion(prevIndex);
+      
       setAnimationClass("slide-out-right");
       setTimeout(() => {
-        setCurrentQuestionIndex(prev => prev - 1);
+        setCurrentQuestionIndex(prevIndex);
         setAnimationClass("slide-in-left");
-        setTimeout(() => {
-          setAnimationClass("");
-          // Clear field values after navigation is complete
-          clearInvalidFieldValues();
-        }, 100);
+        setTimeout(() => setAnimationClass(""), 100);
       }, 200);
     }
   };

@@ -38,6 +38,10 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
+  
+  // CRITICAL: Isolated state for all answers to prevent leakage between questions
+  // Form state will only ever contain the CURRENT question's value
+  const [allAnswers, setAllAnswers] = useState<Record<string, any>>({});
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -85,6 +89,26 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const totalQuestions = allQuestions.length;
   const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
   
+  // CRITICAL: Isolate form state to only the current question
+  // This prevents values from leaking between questions
+  useEffect(() => {
+    if (!currentQuestion) return;
+    
+    const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+    const savedAnswer = allAnswers[fieldId];
+    
+    // Step 1: Clear ALL values from React Hook Form state
+    const currentValues = form.getValues();
+    Object.keys(currentValues).forEach(key => {
+      form.setValue(key, undefined, { shouldValidate: false, shouldDirty: false });
+    });
+    
+    // Step 2: Set ONLY this question's value (if it exists in our saved answers)
+    if (savedAnswer !== undefined && savedAnswer !== null && savedAnswer !== '') {
+      form.setValue(fieldId, savedAnswer, { shouldValidate: false, shouldDirty: false });
+    }
+  }, [currentQuestionIndex, currentQuestion, allAnswers, form]);
+  
   // Process form sections for proper submission handling
   useEffect(() => {
     if (processSectionsWithDebounce && visibleSections.length > 0) {
@@ -93,23 +117,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, watchedValues, processSectionsWithDebounce]);
 
-  // Function to clear invalid field values but preserve valid answers
-  const clearInvalidFieldValues = () => {
-    const currentQuestionIds = allQuestions.map(q => 
-      (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
-    );
-    
-    // Only clear fields that don't correspond to any current questions
-    // This preserves answers needed for follow-up question logic
-    Object.keys(watchedValues).forEach(fieldKey => {
-      if (!currentQuestionIds.includes(fieldKey)) {
-        form.setValue(fieldKey, undefined, { shouldValidate: false, shouldDirty: false });
-      }
-    });
-    
-    // Don't clear the current question field - let TouchFriendlyFieldRenderer handle inappropriate values
-    // This allows follow-up questions to work properly
-  };
 
   // Check if current question is answered
   const isCurrentQuestionAnswered = () => {
@@ -135,6 +142,15 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
+      // CRITICAL: Save the current question's answer before navigating
+      if (currentQuestion) {
+        const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+        const answer = form.watch(fieldId);
+        
+        // Save to our isolated state
+        setAllAnswers(prev => ({ ...prev, [fieldId]: answer }));
+      }
+      
       setAnimationClass("slide-out-left");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev + 1);
@@ -148,6 +164,15 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
+      // CRITICAL: Save the current question's answer before navigating
+      if (currentQuestion) {
+        const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+        const answer = form.watch(fieldId);
+        
+        // Save to our isolated state
+        setAllAnswers(prev => ({ ...prev, [fieldId]: answer }));
+      }
+      
       setAnimationClass("slide-out-right");
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev - 1);
@@ -160,9 +185,19 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   };
 
   const handleFormSubmit = () => {
-    toast.info("Skickar in dina svar...");
-    const submitHandler = contextHandleSubmit();
-    submitHandler(form.getValues());
+    // CRITICAL: Save the final question's answer before submitting
+    if (currentQuestion) {
+      const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
+      const answer = form.watch(fieldId);
+      
+      // Create final answers object with all saved answers plus the current one
+      const finalAnswers = { ...allAnswers, [fieldId]: answer };
+      
+      toast.info("Skickar in dina svar...");
+      const submitHandler = contextHandleSubmit();
+      // Submit the isolated answers state, NOT form.getValues()
+      submitHandler(finalAnswers);
+    }
   };
 
   if (totalQuestions === 0) {

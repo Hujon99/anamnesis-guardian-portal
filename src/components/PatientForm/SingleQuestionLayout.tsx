@@ -147,18 +147,28 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
     
-    // Check if we have a saved answer for this question from the form's current values
-    const currentValues = form.getValues();
-    const savedAnswer = currentValues[fieldId];
+    // Get all currently visible question IDs
+    const visibleQuestionIds = allQuestions.map(q => 
+      (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
+    );
     
-    // If no saved answer exists, explicitly set field to undefined
-    if (savedAnswer === undefined || savedAnswer === null || savedAnswer === '') {
+    // Get all current form values
+    const currentValues = form.getValues();
+    
+    // Clear any fields that are NOT in the visible questions list
+    Object.keys(currentValues).forEach(key => {
+      if (!visibleQuestionIds.includes(key) && !key.startsWith('_meta_')) {
+        form.setValue(key, undefined, { shouldValidate: false, shouldDirty: false });
+      }
+    });
+    
+    // For the current question: only keep value if it was already set in this session
+    // Check if the field has been "touched" or "dirty" - if not, reset it
+    const fieldState = form.getFieldState(fieldId);
+    if (!fieldState.isDirty && !fieldState.isTouched) {
       form.setValue(fieldId, undefined, { shouldValidate: false, shouldDirty: false });
-    } else {
-      // Restore saved answer
-      form.setValue(fieldId, savedAnswer, { shouldValidate: false, shouldDirty: false });
     }
-  }, [currentQuestionIndex, currentQuestion, form]);
+  }, [currentQuestionIndex, currentQuestion, form, allQuestions]);
 
   const handleNext = () => {
     if (currentQuestionIndex < totalQuestions - 1) {

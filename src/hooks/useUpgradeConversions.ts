@@ -7,16 +7,21 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { UpgradeStats, UpgradeStatsTimeRange } from "@/types/upgrade";
 import { subWeeks, subMonths, subYears } from "date-fns";
 
 export const useUpgradeConversions = (options?: UpgradeStatsTimeRange) => {
   const { timeRange = 'month', storeId } = options || {};
+  const { supabase } = useSupabaseClient();
 
   return useQuery({
     queryKey: ['upgrade-conversions', timeRange, storeId],
     queryFn: async (): Promise<UpgradeStats> => {
+      if (!supabase) {
+        throw new Error('Supabase client not initialized');
+      }
+
       let query = supabase
         .from('upgrade_conversions')
         .select('*');

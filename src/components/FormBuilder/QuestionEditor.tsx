@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import ReactMarkdown from 'react-markdown';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   DropdownMenu,
@@ -518,15 +519,34 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                         </div>
                       )}
 
-                      {/* Help text */}
+                      {/* Help text field with Markdown support for rich formatting */}
                       <div className="space-y-2">
-                        <Label>Hjälptext</Label>
+                        <Label htmlFor={`helptext-${question.id}`} className="flex items-center gap-2">
+                          Hjälptext (Markdown-stöd)
+                          <span className="text-xs text-muted-foreground">
+                            Stöder **fetstil**, listor, emojis
+                          </span>
+                        </Label>
                         <Textarea
+                          id={`helptext-${question.id}`}
                           value={question.help_text || ''}
                           onChange={(e) => updateField('help_text', e.target.value)}
-                          placeholder="Ytterligare information om frågan..."
-                          rows={2}
+                          placeholder="**Varför är detta viktigt?**&#10;&#10;Detta hjälper oss att:&#10;- Förstå dina behov&#10;- Ge bättre service"
+                          className="min-h-[100px] font-mono text-sm"
                         />
+                        {question.help_text && (
+                          <div className="mt-2 p-3 rounded-md bg-muted/50 border border-border">
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">Förhandsvisning:</p>
+                            <div className="text-sm text-muted-foreground prose prose-sm max-w-none
+                                       prose-headings:text-foreground prose-headings:font-semibold
+                                       prose-strong:text-foreground prose-strong:font-semibold
+                                       prose-ul:my-2 prose-li:my-0">
+                              <ReactMarkdown>
+                                {question.help_text}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Show in mode - prominent position with help text */}

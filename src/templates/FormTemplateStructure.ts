@@ -35,6 +35,16 @@ export const ConciseFormTemplateExample: FormTemplate = {
           required: true,
         },
         {
+          // Example of upgrade tracking question with rich-text help_text (Markdown support)
+          id: "upgrade_eye_health_examination",
+          label: "Vill du uppgradera till en ögonhälsoundersökning?",
+          type: "radio",
+          required: false,
+          options: ["Ja", "Nej tack"],
+          // Help text with Markdown formatting for rich display
+          help_text: "**Varför välja ögonhälsoundersökning?**\n\nEn ögonhälsoundersökning ger dig:\n\n- 🔍 **Djupgående analys** av dina ögons hälsa\n- 👁️ **Tidig upptäckt** av ögonsjukdomar\n- 📊 **Fotografering av ögonbotten** för framtida jämförelser\n\nRekommenderas om du är över 40 år eller har hereditet för ögonsjukdomar."
+        },
+        {
           id: "contact_preference",
           label: "Preferred Contact Method?",
           // Input type - radio buttons, only one option can be selected

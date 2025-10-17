@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
 import { FieldError } from "react-hook-form";
+import ReactMarkdown from 'react-markdown';
 
 export interface FormFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
@@ -113,6 +114,24 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
     }
     return null;
   };
+
+  // Helper function to render help text with Markdown support
+  const renderHelpText = () => {
+    if (!question.help_text) return null;
+    
+    return (
+      <div className="mb-3 pl-4 border-l-2 border-accent_teal/30 py-2">
+        <div className="text-sm text-muted-foreground prose prose-sm max-w-none
+                   prose-headings:text-foreground prose-headings:font-semibold
+                   prose-strong:text-foreground prose-strong:font-semibold
+                   prose-ul:my-2 prose-li:my-0 prose-p:my-1">
+          <ReactMarkdown>
+            {question.help_text}
+          </ReactMarkdown>
+        </div>
+      </div>
+    );
+  };
   
   const renderField = () => {
     switch (question.type) {
@@ -130,6 +149,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
                   {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
+                {renderHelpText()}
                 <FormControl>
                   <Textarea 
                     id={fieldId}
@@ -168,6 +188,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
                   {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
+                {renderHelpText()}
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
@@ -222,6 +243,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
                       {question.required && <span className="sr-only">(Obligatoriskt)</span>}
                       {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                     </FormLabel>
+                    {renderHelpText()}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {question.options.map(option => {
                         const optionValue = getOptionValue(option);
@@ -319,6 +341,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
                   {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
+                {renderHelpText()}
                 <Select 
                   onValueChange={field.onChange} 
                   defaultValue={field.value}
@@ -365,6 +388,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
                   {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
+                {renderHelpText()}
                 <FormControl>
                   <Input 
                     id={fieldId}
@@ -398,6 +422,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
                   {question.required && <span className="sr-only">(Obligatoriskt)</span>}
                   {isOpticianField && <span className="text-sm ml-2 text-muted-foreground">(Endast för optiker)</span>}
                 </FormLabel>
+                {renderHelpText()}
                 <FormControl>
                   <Input 
                     id={fieldId}

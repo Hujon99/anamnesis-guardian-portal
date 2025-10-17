@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AnswerDisplayHelper } from "./AnswerDisplayHelper";
 import { MultipleLicenseCategoriesAlert } from "./MultipleLicenseCategoriesAlert";
+import { UpgradeIndicator, hasAcceptedUpgrade } from "@/components/Optician/UpgradeIndicator";
 
 interface FormattedAnswer {
   id: string;
@@ -187,6 +188,11 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
         
         {/* Multiple license categories alert */}
         <MultipleLicenseCategoriesAlert categories={detectMultipleLicenseCategories(answers)} />
+        
+        {/* Upgrade indicator if patient accepted upgrade */}
+        {hasAcceptedUpgrade(answers) && (
+          <UpgradeIndicator variant="alert" className="mb-4" />
+        )}
         
         <div className="space-y-4">
           {formattedAnswersData.answeredSections.map((section, sectionIndex) => (

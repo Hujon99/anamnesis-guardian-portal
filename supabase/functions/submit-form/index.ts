@@ -212,6 +212,32 @@ serve(async (req: Request) => {
       logger.warn('Error while logging anonymized access', logErr);
     }
 
+    // Track upgrade conversions (if any upgrade questions are present in the form)
+    const trackUpgradeConversion = async (): Promise<void> => {
+      try {
+        logger.info("Checking for upgrade questions to track");
+        
+        const { error: trackingError } = await supabase.functions.invoke('track-upgrade-conversion', {
+          body: {
+            entry_id: entry.id,
+            answers: extractedFormData,
+            organization_id: entry.organization_id,
+            form_id: entry.form_id,
+            store_id: entry.store_id,
+            examination_type: entry.anamnes_forms?.examination_type
+          }
+        });
+        
+        if (trackingError) {
+          logger.error("Failed to track upgrade conversion:", trackingError);
+        } else {
+          logger.info("Upgrade conversion tracking completed");
+        }
+      } catch (trackError) {
+        logger.error("Error tracking upgrade conversion:", trackError);
+      }
+    };
+
     // After successful submission with formatted data, trigger AI summary generation with retry
     const triggerAISummaryWithRetry = async (retryCount = 0): Promise<boolean> => {
       const maxRetries = 2;
@@ -254,17 +280,20 @@ serve(async (req: Request) => {
       }
     };
     
-    // Use EdgeRuntime.waitUntil() to ensure the background task completes
-    const backgroundTask = triggerAISummaryWithRetry();
+    // Use EdgeRuntime.waitUntil() to ensure the background tasks complete
+    const backgroundTasks = Promise.all([
+      triggerAISummaryWithRetry(),
+      trackUpgradeConversion()
+    ]);
     
-    // Ensure the edge function waits for the background task
+    // Ensure the edge function waits for the background tasks
     try {
       // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
-      EdgeRuntime.waitUntil(backgroundTask);
+      EdgeRuntime.waitUntil(backgroundTasks);
     } catch (waitUntilError) {
       // Fallback: await directly if waitUntil is not available
       logger.warn("EdgeRuntime.waitUntil not available, falling back to direct await");
-      await backgroundTask;
+      await backgroundTasks;
     }
 
     return new Response(

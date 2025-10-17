@@ -8,6 +8,7 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Car, FileText } from "lucide-react";
+import { UpgradeIndicator, hasAcceptedUpgrade } from "@/components/Optician/UpgradeIndicator";
 
 interface AnamnesCardProps {
   status: "sent" | "pending" | "ready" | "reviewed" | "journaled" | "expiring" | "pending_id_verification";
@@ -17,6 +18,7 @@ interface AnamnesCardProps {
   examinationType?: string;
   isExaminationCompleted?: boolean;
   idVerificationCompleted?: boolean;
+  answers?: Record<string, any> | null;
 }
 
 export const AnamnesCard = ({ 
@@ -26,7 +28,8 @@ export const AnamnesCard = ({
   onClick,
   examinationType,
   isExaminationCompleted,
-  idVerificationCompleted = true
+  idVerificationCompleted = true,
+  answers
 }: AnamnesCardProps) => {
   // Determine the accent color based on status
   const getAccentColor = () => {
@@ -97,7 +100,7 @@ export const AnamnesCard = ({
       }}
     >
       {/* Examination type and completion badges */}
-      {(examinationType || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning')) && (
+      {(examinationType || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning') || hasAcceptedUpgrade(answers)) && (
         <div className="flex justify-start gap-1 mb-1">
           {examinationType && (
             <Badge variant="outline" className="h-5 px-1.5 text-xs bg-white/80 backdrop-blur-sm">
@@ -114,6 +117,9 @@ export const AnamnesCard = ({
             <Badge className="h-5 px-1.5 text-xs bg-amber-100 text-amber-800 border-amber-200">
               ID saknas
             </Badge>
+          )}
+          {hasAcceptedUpgrade(answers) && (
+            <UpgradeIndicator variant="badge" />
           )}
         </div>
       )}

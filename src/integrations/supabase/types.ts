@@ -830,6 +830,71 @@ export type Database = {
           },
         ]
       }
+      upgrade_conversions: {
+        Row: {
+          created_at: string
+          entry_id: string
+          examination_type: string | null
+          form_id: string | null
+          id: string
+          organization_id: string
+          store_id: string | null
+          upgrade_accepted: boolean
+          upgrade_question_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_id: string
+          examination_type?: string | null
+          form_id?: string | null
+          id?: string
+          organization_id: string
+          store_id?: string | null
+          upgrade_accepted: boolean
+          upgrade_question_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_id?: string
+          examination_type?: string | null
+          form_id?: string | null
+          id?: string
+          organization_id?: string
+          store_id?: string | null
+          upgrade_accepted?: boolean
+          upgrade_question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upgrade_conversions_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "anamnes_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_conversions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "anamnes_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_conversions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upgrade_conversions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           clerk_user_id: string

@@ -10,7 +10,7 @@ import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Building2, AlertTriangle, Settings, Plus, FileText, Bug } from "lucide-react";
+import { Building2, AlertTriangle, Settings, Plus, FileText, Bug, TrendingUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -27,6 +27,8 @@ import { FormManagementGrid } from "@/components/FormBuilder/FormManagementGrid"
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useSystemAdmin } from "@/contexts/SystemAdminContext";
 import { FormSessionDebugView } from "@/components/AdminPanel/FormSessionDebugView";
+import { UpgradeStatsCards } from "@/components/AdminPanel/UpgradeStatsCards";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Store = Tables<"stores">;
 
@@ -36,6 +38,7 @@ const AdminPanel = () => {
   const { isSystemAdmin } = useSystemAdmin();
   const [activeTab, setActiveTab] = useState("stores");
   const { error: supabaseError } = useSupabaseClient();
+  const [statsTimeRange, setStatsTimeRange] = useState<'week' | 'month' | 'year' | 'all'>('month');
   
   // Store management state
   const [showStoreForm, setShowStoreForm] = useState(false);
@@ -156,6 +159,10 @@ const AdminPanel = () => {
             <Settings className="h-4 w-4" />
             Inställningar
           </TabsTrigger>
+          <TabsTrigger value="statistics" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Statistik
+          </TabsTrigger>
           <TabsTrigger value="debug" className="flex items-center gap-2">
             <Bug className="h-4 w-4" />
             Felsökning
@@ -229,6 +236,38 @@ const AdminPanel = () => {
         
         <TabsContent value="settings" className="mt-0">
           <OrganizationSettings />
+        </TabsContent>
+        
+        <TabsContent value="statistics" className="mt-0">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Uppgraderingsstatistik
+                  </CardTitle>
+                  <CardDescription>
+                    Spårning av accepterade uppgraderingar till ögonhälsoundersökning
+                  </CardDescription>
+                </div>
+                <Select value={statsTimeRange} onValueChange={(value: any) => setStatsTimeRange(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Välj tidsperiod" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Senaste veckan</SelectItem>
+                    <SelectItem value="month">Senaste månaden</SelectItem>
+                    <SelectItem value="year">Senaste året</SelectItem>
+                    <SelectItem value="all">Sedan start</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <UpgradeStatsCards timeRange={statsTimeRange} />
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="debug" className="mt-0">

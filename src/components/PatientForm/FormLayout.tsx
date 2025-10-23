@@ -16,7 +16,9 @@ import FormNavigation from "@/components/PatientForm/FormNavigation";
 import FormStepContent from "@/components/PatientForm/FormStepContent";
 import { SingleQuestionLayout } from "@/components/PatientForm/SingleQuestionLayout";
 import { LegalConsentStep } from "@/components/Legal/LegalConsentStep";
+import { ScoringDisplay } from "@/components/PatientForm/ScoringDisplay";
 import { useFormContext } from "@/contexts/FormContext";
+import { useFormScoring } from "@/hooks/useFormScoring";
 import { toast } from "sonner";
 import { FieldError } from "react-hook-form";
 
@@ -45,8 +47,12 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     showConsentStep,
     consentGiven,
     onConsentChange,
-    setShowConsentStep
+    setShowConsentStep,
+    formTemplate
   } = useFormContext();
+
+  // Calculate scoring in real-time
+  const scoringResult = useFormScoring(formTemplate, watchedValues || {});
 
   // Detect if user is on mobile/iPad (screens smaller than 1024px)
   const [isMobileView, setIsMobileView] = useState(false);
@@ -251,6 +257,21 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
               />
             )}
           </div>
+
+          {/* Show scoring display on last step if scoring is enabled */}
+          {isLastStep && scoringResult && (
+            <div className="mt-6">
+              <ScoringDisplay
+                totalScore={scoringResult.totalScore}
+                maxPossibleScore={scoringResult.maxPossibleScore}
+                percentage={scoringResult.percentage}
+                thresholdExceeded={scoringResult.thresholdExceeded}
+                flaggedQuestions={scoringResult.flaggedQuestions}
+                thresholdMessage={formTemplate.scoring_config?.threshold_message}
+                showToPatient={formTemplate.scoring_config?.show_score_to_patient || false}
+              />
+            </div>
+          )}
         </form>
       </CardContent>
       

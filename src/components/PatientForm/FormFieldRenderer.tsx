@@ -98,6 +98,31 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
     return typeof option === 'string' ? option : option.value;
   };
 
+  // Helper function to add score labels to options for scoring questions
+  const addScoreLabelsToOptions = (
+    options: FormQuestionOption[] | undefined,
+    scoring?: FormQuestion['scoring']
+  ): FormQuestionOption[] => {
+    if (!options || !scoring?.enabled) {
+      return options || [];
+    }
+
+    return options.map((option, index) => {
+      const optionValue = getOptionValue(option);
+      
+      // Check if the option already has a score label (format: "Text (X)")
+      if (optionValue.match(/\(\d+\)$/)) {
+        return option;
+      }
+
+      // Add score label based on index
+      const score = scoring.min_value + index;
+      const newLabel = `${optionValue} (${score})`;
+      
+      return typeof option === 'string' ? newLabel : { ...option, value: newLabel };
+    });
+  };
+
   const isDynamicQuestion = 'runtimeId' in question;
 
   const dynamicQuestionClass = isDynamicQuestion 
@@ -175,6 +200,8 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
         );
         
       case "radio":
+        const radioOptions = addScoreLabelsToOptions(question.options, question.scoring);
+        
         return (
           <FormField
             control={control}
@@ -199,7 +226,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
                     aria-invalid={hasError}
                     aria-describedby={hasError ? errorId : undefined}
                   >
-                    {question.options?.map(option => {
+                    {radioOptions.map(option => {
                       const optionValue = getOptionValue(option);
                       const optionLabel = getOptionLabel(option);
                       const optionId = `${fieldId}-${optionValue.replace(/\s+/g, '-').toLowerCase()}`;

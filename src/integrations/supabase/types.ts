@@ -49,6 +49,7 @@ export type Database = {
           personal_number: string | null
           privacy_policy_version: string | null
           redacted_at: string | null
+          scoring_result: Json | null
           sent_at: string | null
           status: string | null
           store_id: string | null
@@ -91,6 +92,7 @@ export type Database = {
           personal_number?: string | null
           privacy_policy_version?: string | null
           redacted_at?: string | null
+          scoring_result?: Json | null
           sent_at?: string | null
           status?: string | null
           store_id?: string | null
@@ -133,6 +135,7 @@ export type Database = {
           personal_number?: string | null
           privacy_policy_version?: string | null
           redacted_at?: string | null
+          scoring_result?: Json | null
           sent_at?: string | null
           status?: string | null
           store_id?: string | null
@@ -947,12 +950,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_submission_logs_table_function: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      create_submission_logs_table_function: { Args: never; Returns: boolean }
       debug_current_form_id: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           current_form_id: string
           is_valid_uuid: boolean
@@ -983,14 +983,8 @@ export type Database = {
         }
         Returns: undefined
       }
-      set_access_token: {
-        Args: { token: string }
-        Returns: undefined
-      }
-      set_current_form_id: {
-        Args: { form_id: string }
-        Returns: undefined
-      }
+      set_access_token: { Args: { token: string }; Returns: undefined }
+      set_current_form_id: { Args: { form_id: string }; Returns: undefined }
     }
     Enums: {
       correction_type: "glasses" | "contact_lenses" | "both" | "none"

@@ -7,7 +7,8 @@ export const EXAMINATION_TYPES = {
   SYNUNDERSÖKNING: 'synundersökning',
   LINSUNDERSÖKNING: 'linsundersökning', 
   KÖRKORTSUNDERSÖKNING: 'körkortsundersökning',
-  ALLMÄN: 'allmän'
+  ALLMÄN: 'allmän',
+  CISS: 'ciss'
 } as const;
 
 export type ExaminationType = typeof EXAMINATION_TYPES[keyof typeof EXAMINATION_TYPES];
@@ -43,5 +44,11 @@ export const EXAMINATION_TYPE_OPTIONS: ExaminationTypeOption[] = [
     label: 'Allmän undersökning',
     description: 'Standardundersökning för allmänna synproblem',
     icon: 'FileText'
+  },
+  {
+    type: EXAMINATION_TYPES.CISS,
+    label: 'CISS-formulär',
+    description: 'Bedömning av barns skärmvanor och symptom',
+    icon: 'Smartphone'
   }
 ];

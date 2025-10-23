@@ -74,6 +74,19 @@ export interface EntryUpdateData {
   // Optional context fields
   first_name?: string;
   store_id?: string;
+  // Scoring result for CISS and other scoring forms
+  scoring_result?: {
+    total_score: number;
+    max_possible_score: number;
+    percentage: number;
+    threshold_exceeded: boolean;
+    flagged_questions: Array<{
+      question_id: string;
+      label: string;
+      score: number;
+      warning_message?: string;
+    }>;
+  };
 }
 
 // Result types

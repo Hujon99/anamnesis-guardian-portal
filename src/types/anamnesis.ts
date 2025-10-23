@@ -57,6 +57,19 @@ export type AnamnesesEntry = {
     isCompleted: boolean;
     examination: any;
   };
+  // Scoring result for CISS and other scoring forms
+  scoring_result?: {
+    total_score: number;
+    max_possible_score: number;
+    percentage: number;
+    threshold_exceeded: boolean;
+    flagged_questions: Array<{
+      question_id: string;
+      label: string;
+      score: number;
+      warning_message?: string;
+    }>;
+  };
 };
 
 export type FormQuestionOption = string | {
@@ -80,6 +93,13 @@ export interface FormQuestion {
   is_followup_template?: boolean;
   followup_question_ids?: string[];
   show_in_mode?: 'patient' | 'optician' | 'all';
+  scoring?: {
+    enabled: boolean;
+    min_value: number;
+    max_value: number;
+    flag_threshold?: number;
+    warning_message?: string;
+  };
 }
 
 export type FormSection = {
@@ -95,6 +115,18 @@ export type FormSection = {
 export type FormTemplate = {
   title: string;
   sections: FormSection[];
+  scoring_config?: {
+    enabled: boolean;
+    total_threshold: number;
+    show_score_to_patient: boolean;
+    threshold_message?: string;
+    disable_ai_summary?: boolean;
+  };
+  kiosk_mode?: {
+    enabled: boolean;
+    require_supervisor_code?: boolean;
+    auto_submit?: boolean;
+  };
 };
 
 export type AnamnesForm = {

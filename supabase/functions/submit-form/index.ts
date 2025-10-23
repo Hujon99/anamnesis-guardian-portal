@@ -24,6 +24,84 @@ const createErrorResponse = (message: string, status = 400) => {
   );
 };
 
+// Calculate scoring for CISS and other scoring-enabled forms
+const calculateScoring = (answers: Record<string, any>, formTemplate: any) => {
+  let totalScore = 0;
+  let maxPossibleScore = 0;
+  const flaggedQuestions: Array<{
+    question_id: string;
+    label: string;
+    score: number;
+    warning_message?: string;
+  }> = [];
+
+  // Iterate through all sections and questions
+  formTemplate.sections?.forEach((section: any) => {
+    section.questions?.forEach((question: any) => {
+      if (!question.scoring?.enabled) {
+        return;
+      }
+
+      // Calculate max possible score for this question
+      maxPossibleScore += question.scoring.max_value;
+
+      // Get the answer for this question
+      const answer = answers[question.id];
+
+      if (answer === undefined || answer === null || answer === '') {
+        return;
+      }
+
+      // Extract score from answer
+      let score = 0;
+      
+      // For radio/select options with format "Label (X)" where X is the score
+      if (typeof answer === 'string') {
+        const scoreMatch = answer.match(/\((\d+)\)/);
+        if (scoreMatch) {
+          score = parseInt(scoreMatch[1], 10);
+        }
+      } else if (typeof answer === 'number') {
+        score = answer;
+      }
+
+      // Add to total
+      totalScore += score;
+
+      // Check if this question should be flagged
+      if (
+        question.scoring.flag_threshold !== undefined &&
+        score >= question.scoring.flag_threshold
+      ) {
+        flaggedQuestions.push({
+          question_id: question.id,
+          label: question.label,
+          score,
+          warning_message: question.scoring.warning_message,
+        });
+      }
+    });
+  });
+
+  // Calculate percentage
+  const percentage = maxPossibleScore > 0 
+    ? Math.round((totalScore / maxPossibleScore) * 100) 
+    : 0;
+
+  // Check if threshold is exceeded
+  const thresholdExceeded = formTemplate.scoring_config?.total_threshold !== undefined
+    ? totalScore >= formTemplate.scoring_config.total_threshold
+    : false;
+
+  return {
+    total_score: totalScore,
+    max_possible_score: maxPossibleScore,
+    percentage,
+    threshold_exceeded: thresholdExceeded,
+    flagged_questions: flaggedQuestions,
+  };
+};
+
 // Initialize Supabase client for internal function calls
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -152,6 +230,16 @@ serve(async (req: Request) => {
 
     logger.info("Prepared update data with formatted text");
 
+    // Calculate scoring if enabled in the form template
+    if (formTemplate?.scoring_config?.enabled) {
+      logger.info("Calculating scoring for form");
+      
+      const scoringResult = calculateScoring(extractedFormData, formTemplate);
+      updateData.scoring_result = scoringResult;
+      
+      logger.info(`Scoring calculated: ${scoringResult.total_score}/${scoringResult.max_possible_score}, threshold exceeded: ${scoringResult.threshold_exceeded}`);
+    }
+
     // Update the entry
     const updateResult = await dbOps.updateEntry(entry.id, updateData);
     if (!updateResult.success) {
@@ -239,7 +327,14 @@ serve(async (req: Request) => {
     };
 
     // After successful submission with formatted data, trigger AI summary generation with retry
+    // Skip AI summary if scoring config disables it
     const triggerAISummaryWithRetry = async (retryCount = 0): Promise<boolean> => {
+      // Check if AI summary should be skipped for this form
+      if (formTemplate?.scoring_config?.disable_ai_summary) {
+        logger.info("AI summary generation skipped (disabled in scoring config)");
+        return true;
+      }
+
       const maxRetries = 2;
       
       try {

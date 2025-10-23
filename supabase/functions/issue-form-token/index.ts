@@ -30,7 +30,16 @@ serve(async (req: Request) => {
     console.log("Request received:", req.method);
     
     // Parse the request body
-    const { bookingId, firstName, storeId, storeName: inputStoreName, bookingDate, formId } = await req.json();
+    const { 
+      bookingId, 
+      firstName, 
+      storeId, 
+      storeName: inputStoreName, 
+      bookingDate, 
+      formId,
+      isKioskMode = false,
+      requireSupervisorCode = false
+    } = await req.json();
     
     // Create mutable variable for store name
     let effectiveStoreName = inputStoreName;
@@ -153,9 +162,15 @@ serve(async (req: Request) => {
     // Generate access token
     const accessToken = uuidv4();
     
-    // Set expiry date to 7 days from now
+    // Set expiry date based on kiosk mode
+    // Kiosk mode: 24 hours, Normal mode: 7 days
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    if (isKioskMode) {
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours for kiosk
+      console.log("Creating kiosk mode entry with 24h expiry");
+    } else {
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days for normal
+    }
     
     // Create new entry in anamnes_entries
     const { data: entry, error: entryError } = await supabase
@@ -169,6 +184,8 @@ serve(async (req: Request) => {
         store_id: finalStoreId,
         booking_date: bookingDate ? new Date(bookingDate).toISOString() : null,
         is_magic_link: true,
+        is_kiosk_mode: isKioskMode,
+        require_supervisor_code: isKioskMode && requireSupervisorCode,
         status: 'sent',
         sent_at: new Date().toISOString(),
         expires_at: expiresAt.toISOString()

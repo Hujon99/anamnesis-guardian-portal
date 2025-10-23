@@ -1,0 +1,176 @@
+/**
+ * Kiosk Form Page - Full-screen form interface optimized for kiosk display.
+ * Features: Large touch-friendly UI, optional supervisor PIN, auto-submit & reload.
+ * Designed for self-service patient form filling in clinic waiting areas.
+ * Uses custom kiosk.css for enlarged UI elements and simplified navigation.
+ */
+
+import React, { useEffect, useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { BaseFormPage } from "@/components/Forms/BaseFormPage";
+import { toast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Shield } from "lucide-react";
+
+const SUPERVISOR_PIN = "1234"; // In production, fetch from organization settings
+
+const KioskFormPage = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = searchParams.get("token");
+  const requireCode = searchParams.get("code") === "required";
+  
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  
+  // Log token for debugging
+  useEffect(() => {
+    if (token) {
+      console.log("KioskFormPage: Rendering with token", token.substring(0, 6) + "...");
+    } else {
+      console.log("KioskFormPage: No token in URL");
+      toast.error("Ingen åtkomsttoken hittades");
+    }
+  }, [token]);
+
+  // Handle successful form submission
+  const handleFormSubmit = () => {
+    console.log("KioskFormPage: Form submitted successfully");
+    
+    if (requireCode) {
+      // Show PIN dialog before auto-reload
+      setShowPinDialog(true);
+    } else {
+      // Auto-reload after 5 seconds
+      startCountdown();
+    }
+  };
+
+  // Start countdown and reload
+  const startCountdown = () => {
+    setIsSubmitted(true);
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // Reload to show new blank form (in production, generate new token)
+          window.location.reload();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Validate supervisor PIN
+  const validatePin = () => {
+    if (pinInput === SUPERVISOR_PIN) {
+      setPinError("");
+      setShowPinDialog(false);
+      toast.success("PIN verifierad", {
+        description: "Formulär godkänt av handledare"
+      });
+      startCountdown();
+    } else {
+      setPinError("Felaktig PIN-kod");
+      setPinInput("");
+    }
+  };
+  
+  return (
+    <div className="kiosk-container">
+      <div className="kiosk-header">
+        <h1 className="kiosk-title">Patientformulär</h1>
+        <p className="kiosk-subtitle">Fyll i formuläret nedan</p>
+      </div>
+
+      {isSubmitted ? (
+        <div className="kiosk-success">
+          <div className="kiosk-success-icon">✓</div>
+          <h2 className="kiosk-success-title">Tack för ditt svar!</h2>
+          <p className="kiosk-success-message">
+            Nytt formulär laddas om {countdown} sekunder...
+          </p>
+        </div>
+      ) : (
+        <BaseFormPage 
+          token={token}
+          mode="patient"
+          showBookingInfo={false}
+          onSubmitSuccess={handleFormSubmit}
+        />
+      )}
+
+      {/* Supervisor PIN Dialog */}
+      <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
+        <DialogContent className="kiosk-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              <Shield className="h-6 w-6" />
+              Handledare-verifiering
+            </DialogTitle>
+            <DialogDescription className="text-lg">
+              Ange handledarkod för att godkänna inskickat formulär
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="pin" className="text-lg">PIN-kod</Label>
+              <Input
+                id="pin"
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={pinInput}
+                onChange={(e) => {
+                  setPinInput(e.target.value);
+                  setPinError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") validatePin();
+                }}
+                className="kiosk-input text-center text-2xl tracking-widest"
+                placeholder="••••"
+                autoFocus
+              />
+              {pinError && (
+                <p className="text-destructive text-sm mt-2">{pinError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => {
+                  setShowPinDialog(false);
+                  setPinInput("");
+                  setPinError("");
+                }}
+                className="flex-1 text-lg h-14"
+              >
+                Avbryt
+              </Button>
+              <Button
+                size="lg"
+                onClick={validatePin}
+                className="flex-1 text-lg h-14"
+              >
+                Verifiera
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default KioskFormPage;

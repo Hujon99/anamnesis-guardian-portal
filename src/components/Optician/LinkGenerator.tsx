@@ -21,11 +21,15 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { AlertCircle, Link, Loader2, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Link, Loader2, Plus, RefreshCw, QrCode } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useFormTemplate } from "@/hooks/useFormTemplate";
 import { useUserSyncStore } from "@/hooks/useUserSyncStore";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { QRCodeSVG } from "qrcode.react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Form schema with validation for patient info
 const formSchema = z.object({
@@ -51,6 +55,9 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSyncingUsers, setIsSyncingUsers] = useState(false);
+  const [isKioskMode, setIsKioskMode] = useState(false);
+  const [requireSupervisorCode, setRequireSupervisorCode] = useState(false);
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const { getSyncStatus } = useUserSyncStore();
   const { syncUsersWithToast } = useSyncClerkUsers();
 
@@ -72,8 +79,11 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
   });
 
   useEffect(() => {
-    // Reset error message when dialog opens/closes
+    // Reset error message and kiosk settings when dialog opens/closes
     setErrorMessage(null);
+    setGeneratedUrl(null);
+    setIsKioskMode(false);
+    setRequireSupervisorCode(false);
   }, [open]);
 
   // Check user sync status for current organization
@@ -107,6 +117,10 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
       // We use the Clerk user ID as the optician_id
       const opticianId = userId || null;
       console.log("Auto-assigning optician ID:", opticianId);
+      
+      // Calculate expiry based on kiosk mode
+      const expiryHours = isKioskMode ? 24 : 7 * 24;
+      
       const {
         data,
         error
@@ -114,14 +128,15 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
         organization_id: organization.id,
         access_token: accessToken,
         status: "sent",
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        // 7 days from now
+        expires_at: new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString(),
         form_id: formTemplate.id,
         patient_identifier: patientIdentifier,
         created_by: userId || null,
         created_by_name: creatorName,
         sent_at: new Date().toISOString(),
-        optician_id: opticianId // Auto-assign the creating optician
+        optician_id: opticianId,
+        is_kiosk_mode: isKioskMode,
+        require_supervisor_code: isKioskMode && requireSupervisorCode
       }).select().single();
       
       if (error) {
@@ -136,19 +151,33 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
         throw error;
       }
 
-      // Log the URL that will be generated for debugging
+      // Generate the appropriate URL based on mode
       const baseUrl = window.location.origin;
-      console.log("Patient form URL will be:", `${baseUrl}/patient-form?token=${accessToken}`);
-      return data;
+      const formPath = isKioskMode ? "/kiosk-form" : "/patient-form";
+      const codeParam = isKioskMode && requireSupervisorCode ? "&code=required" : "";
+      const fullUrl = `${baseUrl}${formPath}?token=${accessToken}${codeParam}`;
+      
+      console.log("Generated form URL:", fullUrl);
+      return { ...data, generatedUrl: fullUrl };
     },
     onSuccess: data => {
       console.log("Anamnesis entry created successfully:", data);
+      
+      if (data.generatedUrl) {
+        setGeneratedUrl(data.generatedUrl);
+      }
+      
       toast({
         title: "Formulär skapat",
-        description: "Formuläret har skapats, tilldelats till dig, och kan nu skickas till patienten"
+        description: isKioskMode 
+          ? "Kiosk-formulär skapat med 24h giltighet. QR-kod genererad."
+          : "Formuläret har skapats, tilldelats till dig, och kan nu skickas till patienten"
       });
-      form.reset();
-      setOpen(false);
+      
+      if (!isKioskMode) {
+        form.reset();
+        setOpen(false);
+      }
     },
     onError: (error: any) => {
       console.error("Error creating anamnesis entry:", error);
@@ -240,7 +269,50 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
         
         {isLoadingTemplate ? <div className="flex justify-center py-4">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div> : <Form {...form}>
+          </div> : generatedUrl ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                {isKioskMode ? "Kiosk QR-kod" : "Länk skapad"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-center p-4 bg-white rounded-lg">
+                <QRCodeSVG 
+                  value={generatedUrl} 
+                  size={256}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+              <div className="text-sm text-center space-y-2">
+                <p className="font-medium">Scanna QR-koden för att öppna formuläret</p>
+                <p className="text-xs text-muted-foreground break-all">{generatedUrl}</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedUrl);
+                  toast({ title: "Kopierad!", description: "Länken har kopierats till urklipp" });
+                }}
+              >
+                Kopiera länk
+              </Button>
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  setGeneratedUrl(null);
+                  form.reset();
+                  setOpen(false);
+                }}
+              >
+                Stäng
+              </Button>
+            </CardContent>
+          </Card>
+        ) : <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="patientIdentifier" render={({
             field
@@ -252,6 +324,35 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
                     <FormMessage />
                   </FormItem>} />
               
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="kioskMode" 
+                    checked={isKioskMode}
+                    onCheckedChange={(checked) => {
+                      setIsKioskMode(checked === true);
+                      if (!checked) setRequireSupervisorCode(false);
+                    }}
+                  />
+                  <Label htmlFor="kioskMode" className="cursor-pointer">
+                    Kioskläge (24h giltighet, fullskärm)
+                  </Label>
+                </div>
+                
+                {isKioskMode && (
+                  <div className="flex items-center space-x-2 ml-6">
+                    <Checkbox 
+                      id="requireCode" 
+                      checked={requireSupervisorCode}
+                      onCheckedChange={(checked) => setRequireSupervisorCode(checked === true)}
+                    />
+                    <Label htmlFor="requireCode" className="cursor-pointer text-sm">
+                      Kräv handledarkod vid inskickning
+                    </Label>
+                  </div>
+                )}
+              </div>
+              
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Avbryt
@@ -261,8 +362,8 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Skapar...
                     </> : <>
-                      <Link className="h-4 w-4" />
-                      Skapa länk
+                      {isKioskMode ? <QrCode className="h-4 w-4" /> : <Link className="h-4 w-4" />}
+                      {isKioskMode ? "Skapa kiosk-formulär" : "Skapa länk"}
                     </>}
                 </Button>
               </div>

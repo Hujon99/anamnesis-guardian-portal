@@ -32,12 +32,14 @@ interface FormSubmissionManagerProps {
   token: string | null;
   mode: SubmissionMode;
   onSubmissionError?: (error: SubmissionError) => void;
+  onSubmitSuccess?: () => void;
 }
 
 export function useFormSubmissionManager({ 
   token, 
   mode,
-  onSubmissionError
+  onSubmissionError,
+  onSubmitSuccess
 }: FormSubmissionManagerProps) {
   const [localSubmitted, setLocalSubmitted] = useState(false);
   const { supabase, refreshClient } = useSupabaseClient();
@@ -140,6 +142,11 @@ export function useFormSubmissionManager({
     
     if (result?.success) {
       setLocalSubmitted(true);
+      
+      // Call success callback if provided
+      if (onSubmitSuccess) {
+        onSubmitSuccess();
+      }
     }
     
     return result;

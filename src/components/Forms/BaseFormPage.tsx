@@ -82,6 +82,7 @@ interface BaseFormPageProps {
   hideCopyLink?: boolean;
   showBookingInfo?: boolean;
   onError?: (error: SubmissionError) => void;
+  onSubmitSuccess?: () => void;
 }
 
 export const BaseFormPage: React.FC<BaseFormPageProps> = ({
@@ -93,7 +94,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   hideAutoSave = false,
   hideCopyLink = false,
   showBookingInfo = false,
-  onError
+  onError,
+  onSubmitSuccess
 }) => {
   // Safari detection and optimized config
   const safariConfig = getSafariOptimizedConfig();
@@ -157,7 +159,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   } = useFormSubmissionManager({ 
     token: effectiveToken, 
     mode,
-    onSubmissionError: onError
+    onSubmissionError: onError,
+    onSubmitSuccess
   });
   
   // Use form state manager with Safari-optimized delays

@@ -20,6 +20,7 @@ import AdminPanel from "@/pages/AdminPanel";
 import NotFound from "@/pages/NotFound";
 import PatientFormPage from "@/pages/PatientFormPage";
 import OpticianFormPage from "@/pages/OpticianFormPage";
+import KioskFormPage from "@/pages/KioskFormPage";
 import LinkPage from "@/pages/LinkPage";
 import ConsentPage from "@/pages/ConsentPage";
 import StoreSelectionPage from "@/pages/StoreSelectionPage";
@@ -60,6 +61,7 @@ function App() {
             {/* Form pages - accessed via token, no auth required */}
             <Route path="/patient-form" element={<PatientFormPage />} />
             <Route path="/optician-form" element={<OpticianFormPage />} /> {/* Moved outside ProtectedRoute */}
+            <Route path="/kiosk-form" element={<KioskFormPage />} />
             <Route path="/link" element={<LinkPage />} />
             <Route path="/consent" element={<ConsentPage />} />
             <Route path="/store-selection" element={<StoreSelectionPage />} />

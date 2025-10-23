@@ -41,6 +41,7 @@ export type Database = {
           id_type: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed: boolean | null
           internal_notes: string | null
+          is_kiosk_mode: boolean | null
           is_magic_link: boolean | null
           is_redacted: boolean
           optician_id: string | null
@@ -49,6 +50,7 @@ export type Database = {
           personal_number: string | null
           privacy_policy_version: string | null
           redacted_at: string | null
+          require_supervisor_code: boolean | null
           scoring_result: Json | null
           sent_at: string | null
           status: string | null
@@ -84,6 +86,7 @@ export type Database = {
           id_type?: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed?: boolean | null
           internal_notes?: string | null
+          is_kiosk_mode?: boolean | null
           is_magic_link?: boolean | null
           is_redacted?: boolean
           optician_id?: string | null
@@ -92,6 +95,7 @@ export type Database = {
           personal_number?: string | null
           privacy_policy_version?: string | null
           redacted_at?: string | null
+          require_supervisor_code?: boolean | null
           scoring_result?: Json | null
           sent_at?: string | null
           status?: string | null
@@ -127,6 +131,7 @@ export type Database = {
           id_type?: Database["public"]["Enums"]["id_verification_type"] | null
           id_verification_completed?: boolean | null
           internal_notes?: string | null
+          is_kiosk_mode?: boolean | null
           is_magic_link?: boolean | null
           is_redacted?: boolean
           optician_id?: string | null
@@ -135,6 +140,7 @@ export type Database = {
           personal_number?: string | null
           privacy_policy_version?: string | null
           redacted_at?: string | null
+          require_supervisor_code?: boolean | null
           scoring_result?: Json | null
           sent_at?: string | null
           status?: string | null

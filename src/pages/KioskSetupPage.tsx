@@ -20,14 +20,17 @@ import { useSafeUser } from "@/hooks/useSafeUser";
 import { useSafeAuth } from "@/hooks/useSafeAuth";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useFormTemplate } from "@/hooks/useFormTemplate";
+import { useKioskSession } from "@/hooks/useKioskSession";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { QrCode, Loader2, Maximize2, RefreshCw, Printer } from "lucide-react";
+import { QrCode, Loader2, Maximize2, RefreshCw, Printer, Activity, Clock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
 
 export default function KioskSetupPage() {
   const { organization } = useSafeOrganization();
@@ -35,13 +38,27 @@ export default function KioskSetupPage() {
   const { userId } = useSafeAuth();
   const { supabase } = useSupabaseClient();
   const { data: formTemplate, isLoading: isLoadingTemplate } = useFormTemplate();
+  const { createKioskSession } = useKioskSession();
   
+  const [kioskMode, setKioskMode] = useState<"single-use" | "reusable">("reusable");
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [requireSupervisorCode, setRequireSupervisorCode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   const creatorName = user?.fullName || user?.id || "Kiosk";
+
+  // Get the correct public URL - avoid internal Lovable URLs
+  const getPublicUrl = () => {
+    const hostname = window.location.hostname;
+    
+    if (hostname.includes('lovableproject.com')) {
+      return window.location.origin.replace('lovableproject.com', 'lovable.app');
+    }
+    
+    return window.location.origin;
+  };
 
   const handleGenerateQR = async () => {
     if (!organization?.id || !formTemplate) {
@@ -56,54 +73,64 @@ export default function KioskSetupPage() {
     setIsGenerating(true);
 
     try {
-      const accessToken = crypto.randomUUID();
-      const expiryHours = 24; // Kiosk mode always 24h
+      if (kioskMode === "reusable") {
+        // Create reusable kiosk session
+        const session = await createKioskSession({
+          formId: formTemplate.id,
+          requireSupervisorCode,
+        });
 
-      const { data, error } = await supabase
-        .from("anamnes_entries")
-        .insert({
-          organization_id: organization.id,
-          access_token: accessToken,
-          status: "sent",
-          expires_at: new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString(),
-          form_id: formTemplate.id,
-          patient_identifier: "Kiosk-patient",
-          created_by: userId || null,
-          created_by_name: creatorName,
-          sent_at: new Date().toISOString(),
-          optician_id: userId || null,
-          is_kiosk_mode: true,
-          require_supervisor_code: requireSupervisorCode
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Get the correct public URL - avoid internal Lovable URLs
-      const getPublicUrl = () => {
-        const hostname = window.location.hostname;
-        
-        // If it's an internal lovableproject.com URL, use the production lovable.app domain
-        if (hostname.includes('lovableproject.com')) {
-          // Extract project ID from hostname if possible, or use the deployed URL
-          return window.location.origin.replace('lovableproject.com', 'lovable.app');
+        if (!session) {
+          throw new Error("Kunde inte skapa kiosk-session");
         }
-        
-        // Otherwise use the current origin (works for custom domains and deployed apps)
-        return window.location.origin;
-      };
-      
-      const baseUrl = getPublicUrl();
-      const codeParam = requireSupervisorCode ? "&code=required" : "";
-      const fullUrl = `${baseUrl}/kiosk-form?token=${accessToken}${codeParam}`;
 
-      setGeneratedUrl(fullUrl);
+        setCurrentSessionId(session.id);
+        const baseUrl = getPublicUrl();
+        const fullUrl = `${baseUrl}/kiosk?session=${session.persistent_token}`;
+        setGeneratedUrl(fullUrl);
 
-      toast({
-        title: "QR-kod genererad",
-        description: "Patienter kan nu scanna koden för att öppna formuläret"
-      });
+        toast({
+          title: "Återanvändbar kiosk-session skapad",
+          description: "Samma QR-kod kan användas av flera patienter"
+        });
+
+      } else {
+        // Create single-use entry (old behavior)
+        const accessToken = crypto.randomUUID();
+        const expiryHours = 24;
+
+        const { data, error } = await supabase
+          .from("anamnes_entries")
+          .insert({
+            organization_id: organization.id,
+            access_token: accessToken,
+            status: "sent",
+            expires_at: new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString(),
+            form_id: formTemplate.id,
+            patient_identifier: "Kiosk-patient",
+            created_by: userId || null,
+            created_by_name: creatorName,
+            sent_at: new Date().toISOString(),
+            optician_id: userId || null,
+            is_kiosk_mode: true,
+            require_supervisor_code: requireSupervisorCode
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const baseUrl = getPublicUrl();
+        const codeParam = requireSupervisorCode ? "&code=required" : "";
+        const fullUrl = `${baseUrl}/kiosk-form?token=${accessToken}${codeParam}`;
+        setGeneratedUrl(fullUrl);
+
+        toast({
+          title: "Engångs-QR-kod genererad",
+          description: "Denna QR-kod kan användas en gång"
+        });
+      }
+
     } catch (error: any) {
       console.error("Error generating kiosk QR:", error);
       toast({
@@ -193,10 +220,33 @@ export default function KioskSetupPage() {
                   />
                 </div>
                 
-                <div className="text-center space-y-2">
+                <div className="text-center space-y-3">
+                  <div className="flex items-center justify-center gap-2">
+                    <Badge variant={kioskMode === "reusable" ? "default" : "secondary"}>
+                      {kioskMode === "reusable" ? (
+                        <>
+                          <Activity className="h-3 w-3 mr-1" />
+                          Återanvändbar session
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="h-3 w-3 mr-1" />
+                          Engångs-token
+                        </>
+                      )}
+                    </Badge>
+                  </div>
+                  
                   <p className="font-semibold text-lg">
                     Scanna QR-koden med din telefon för att öppna formuläret
                   </p>
+                  
+                  {kioskMode === "reusable" && (
+                    <p className="text-sm text-accent-teal font-medium">
+                      ♻️ Denna QR-kod kan användas av flera patienter
+                    </p>
+                  )}
+                  
                   {requireSupervisorCode && (
                     <p className="text-sm text-muted-foreground">
                       ⚠️ Handledarkod krävs vid inskickning
@@ -266,21 +316,56 @@ export default function KioskSetupPage() {
               Anpassa kiosk-sessionen efter dina behov
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="requireCode" 
-                checked={requireSupervisorCode}
-                onCheckedChange={(checked) => setRequireSupervisorCode(checked === true)}
-              />
-              <Label htmlFor="requireCode" className="cursor-pointer">
-                Kräv handledarkod vid inskickning
-              </Label>
+          <CardContent className="space-y-6">
+            {/* Kiosk Mode Selection */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Kiosk-läge</Label>
+              <RadioGroup value={kioskMode} onValueChange={(value) => setKioskMode(value as any)}>
+                <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors">
+                  <RadioGroupItem value="reusable" id="reusable" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="reusable" className="cursor-pointer font-medium">
+                      Återanvändbar kiosk-session
+                      <Badge variant="default" className="ml-2">Rekommenderas</Badge>
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      En QR-kod som kan scannas av flera patienter. Efter inskickning återgår formuläret automatiskt till startsidan.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors">
+                  <RadioGroupItem value="single-use" id="single-use" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="single-use" className="cursor-pointer font-medium">
+                      Engångs-token
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      QR-koden kan endast användas en gång. En ny QR-kod måste genereras för varje patient.
+                    </p>
+                  </div>
+                </div>
+              </RadioGroup>
             </div>
-            <p className="text-sm text-muted-foreground">
-              När detta är aktiverat måste en handledare ange en PIN-kod innan formuläret kan skickas in.
-            </p>
 
+            {/* Supervisor Code Checkbox */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="requireCode" 
+                  checked={requireSupervisorCode}
+                  onCheckedChange={(checked) => setRequireSupervisorCode(checked === true)}
+                />
+                <Label htmlFor="requireCode" className="cursor-pointer">
+                  Kräv handledarkod vid inskickning
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground pl-6">
+                När detta är aktiverat måste en handledare ange en PIN-kod innan formuläret kan skickas in.
+              </p>
+            </div>
+
+            {/* Generate Button */}
             {!generatedUrl && (
               <Button 
                 onClick={handleGenerateQR}
@@ -296,7 +381,7 @@ export default function KioskSetupPage() {
                 ) : (
                   <>
                     <QrCode className="h-5 w-5 mr-2" />
-                    Generera QR-kod
+                    {kioskMode === "reusable" ? "Skapa kiosk-session" : "Generera QR-kod"}
                   </>
                 )}
               </Button>
@@ -310,11 +395,23 @@ export default function KioskSetupPage() {
             <CardTitle className="text-base">💡 Tips för kiosk-läge</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>• QR-koden gäller i 24 timmar från skapandet</p>
-            <p>• Patienter kan scanna koden med sin telefon eller surfplatta</p>
-            <p>• Använd helskärmsläge för att visa QR-koden på en dedikerad skärm i väntrummet</p>
-            <p>• Skriv ut QR-koden för att placera vid receptionen</p>
-            <p>• Generera en ny QR-kod för varje ny patient eller session</p>
+            {kioskMode === "reusable" ? (
+              <>
+                <p>• <strong>Återanvändbar session:</strong> Samma QR-kod används av alla patienter</p>
+                <p>• Efter inskickning återgår formuläret automatiskt till startsidan</p>
+                <p>• Perfekt för en dedikerad iPad/surfplatta i väntrummet</p>
+                <p>• Ingen manuell återställning behövs mellan patienter</p>
+                <p>• Använd helskärmsläge för bästa upplevelse</p>
+              </>
+            ) : (
+              <>
+                <p>• <strong>Engångs-token:</strong> QR-koden gäller för en patient</p>
+                <p>• Generera en ny QR-kod för varje ny patient</p>
+                <p>• QR-koden gäller i 24 timmar från skapandet</p>
+                <p>• Bra för enskilda patienter som scannar med sin egen telefon</p>
+                <p>• Skriv ut QR-koden för att placera vid receptionen</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

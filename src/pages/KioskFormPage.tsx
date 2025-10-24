@@ -47,20 +47,26 @@ const KioskFormPage = () => {
       // Show PIN dialog before auto-reload
       setShowPinDialog(true);
     } else {
-      // Auto-reload after 5 seconds
+      // Auto-redirect back to welcome page
       startCountdown();
     }
   };
 
-  // Start countdown and reload
+  // Start countdown and redirect back to welcome page
   const startCountdown = () => {
     setIsSubmitted(true);
     const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          // Reload to show new blank form (in production, generate new token)
-          window.location.reload();
+          // Redirect back to kiosk welcome page for next patient
+          const sessionToken = localStorage.getItem('kiosk_session_token');
+          if (sessionToken) {
+            window.location.href = `/kiosk?session=${sessionToken}`;
+          } else {
+            // Fallback: reload if no session token (shouldn't happen in normal flow)
+            window.location.reload();
+          }
           return 0;
         }
         return prev - 1;
@@ -95,8 +101,19 @@ const KioskFormPage = () => {
           <div className="kiosk-success-icon">✓</div>
           <h2 className="kiosk-success-title">Tack för ditt svar!</h2>
           <p className="kiosk-success-message">
-            Nytt formulär laddas om {countdown} sekunder...
+            Återgår till startsidan om {countdown} sekunder...
           </p>
+          <button 
+            onClick={() => {
+              const sessionToken = localStorage.getItem('kiosk_session_token');
+              if (sessionToken) {
+                window.location.href = `/kiosk?session=${sessionToken}`;
+              }
+            }}
+            className="kiosk-button mt-6"
+          >
+            Återgå nu
+          </button>
         </div>
       ) : (
         <BaseFormPage 

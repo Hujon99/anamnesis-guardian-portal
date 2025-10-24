@@ -18,6 +18,7 @@ import MyAnamnesisPage from "@/pages/MyAnamnesisPage";
 import OpticianView from "@/pages/OpticianView";
 import AdminPanel from "@/pages/AdminPanel";
 import KioskSetupPage from "@/pages/KioskSetupPage";
+import KioskWelcomePage from "@/pages/KioskWelcomePage";
 import NotFound from "@/pages/NotFound";
 import PatientFormPage from "@/pages/PatientFormPage";
 import OpticianFormPage from "@/pages/OpticianFormPage";
@@ -62,6 +63,7 @@ function App() {
             {/* Form pages - accessed via token, no auth required */}
             <Route path="/patient-form" element={<PatientFormPage />} />
             <Route path="/optician-form" element={<OpticianFormPage />} /> {/* Moved outside ProtectedRoute */}
+            <Route path="/kiosk" element={<KioskWelcomePage />} />
             <Route path="/kiosk-form" element={<KioskFormPage />} />
             <Route path="/link" element={<LinkPage />} />
             <Route path="/consent" element={<ConsentPage />} />

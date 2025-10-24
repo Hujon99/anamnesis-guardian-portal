@@ -152,6 +152,25 @@
   color: hsl(var(--muted-foreground));
 }
 
+.kiosk-button {
+  font-size: 1.5rem !important;
+  min-height: 4rem !important;
+  padding: 1rem 2rem !important;
+  border-radius: 0.75rem !important;
+  font-weight: 600;
+  background: hsl(var(--primary));
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.kiosk-button:hover {
+  background: hsl(var(--primary-glow));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+}
+
 /* Dialog adjustments for kiosk */
 .kiosk-dialog {
   max-width: 600px !important;

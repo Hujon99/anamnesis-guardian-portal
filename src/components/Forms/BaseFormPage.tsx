@@ -84,6 +84,10 @@ interface BaseFormPageProps {
   onError?: (error: SubmissionError) => void;
   onSubmitSuccess?: () => void;
   useTouchFriendly?: boolean;
+  kioskCustomerData?: {
+    personalNumber: string;
+    fullName: string;
+  } | null;
 }
 
 export const BaseFormPage: React.FC<BaseFormPageProps> = ({
@@ -97,7 +101,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   showBookingInfo = false,
   onError,
   onSubmitSuccess,
-  useTouchFriendly = false
+  useTouchFriendly = false,
+  kioskCustomerData = null
 }) => {
   // Safari detection and optimized config
   const safariConfig = getSafariOptimizedConfig();
@@ -450,6 +455,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
                     token={effectiveToken}
                     organizationId={formTemplate?.organization_id || entryData?.organization_id}
                     useTouchFriendly={useTouchFriendly}
+                    kioskCustomerData={kioskCustomerData}
                   />
                 </CardContent>
                 

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Shield } from "lucide-react";
+import { KioskCustomerInfoStep } from "@/components/Kiosk/KioskCustomerInfoStep";
 
 const SUPERVISOR_PIN = "1234"; // In production, fetch from organization settings
 
@@ -28,6 +29,11 @@ const KioskFormPage = () => {
   const [pinError, setPinError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [showCustomerInfo, setShowCustomerInfo] = useState(true);
+  const [customerData, setCustomerData] = useState<{
+    personalNumber: string;
+    fullName: string;
+  } | null>(null);
   
   // Log token for debugging
   useEffect(() => {
@@ -74,6 +80,16 @@ const KioskFormPage = () => {
     }, 1000);
   };
 
+  // Handle customer info completion
+  const handleCustomerInfoComplete = (data: { personalNumber: string; fullName: string }) => {
+    console.log("KioskFormPage: Customer info collected", {
+      personalNumber: data.personalNumber.substring(0, 6) + "****",
+      fullName: data.fullName
+    });
+    setCustomerData(data);
+    setShowCustomerInfo(false);
+  };
+
   // Validate supervisor PIN
   const validatePin = () => {
     if (pinInput === SUPERVISOR_PIN) {
@@ -91,12 +107,17 @@ const KioskFormPage = () => {
   
   return (
     <div className="kiosk-container">
-      <div className="kiosk-header">
-        <h1 className="kiosk-title">Patientformulär</h1>
-        <p className="kiosk-subtitle">Fyll i formuläret nedan</p>
-      </div>
+      {/* Show customer info step first */}
+      {showCustomerInfo ? (
+        <KioskCustomerInfoStep onComplete={handleCustomerInfoComplete} />
+      ) : (
+        <>
+          <div className="kiosk-header">
+            <h1 className="kiosk-title">Patientformulär</h1>
+            <p className="kiosk-subtitle">Fyll i formuläret nedan</p>
+          </div>
 
-      {isSubmitted ? (
+          {isSubmitted ? (
         <div className="kiosk-success">
           <div className="kiosk-success-icon">✓</div>
           <h2 className="kiosk-success-title">Tack för ditt svar!</h2>
@@ -115,14 +136,17 @@ const KioskFormPage = () => {
             Återgå nu
           </button>
         </div>
-      ) : (
-        <BaseFormPage 
-          token={token}
-          mode="patient"
-          showBookingInfo={false}
-          onSubmitSuccess={handleFormSubmit}
-          useTouchFriendly={true}
-        />
+          ) : (
+            <BaseFormPage 
+              token={token}
+              mode="patient"
+              showBookingInfo={false}
+              onSubmitSuccess={handleFormSubmit}
+              useTouchFriendly={true}
+              kioskCustomerData={customerData}
+            />
+          )}
+        </>
       )}
 
       {/* Supervisor PIN Dialog */}

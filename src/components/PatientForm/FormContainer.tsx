@@ -28,6 +28,10 @@ interface FormContainerProps {
   token?: string | null;
   organizationId?: string;
   useTouchFriendly?: boolean;
+  kioskCustomerData?: {
+    personalNumber: string;
+    fullName: string;
+  } | null;
 }
 
 const FormContainer: React.FC<FormContainerProps> = ({ 
@@ -41,7 +45,8 @@ const FormContainer: React.FC<FormContainerProps> = ({
   entryId = null,
   token = null,
   organizationId,
-  useTouchFriendly = false
+  useTouchFriendly = false,
+  kioskCustomerData = null
 }) => {
   
   // Validate template once on mount to provide a better user experience
@@ -143,6 +148,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
         token={token}
         organizationId={organizationId}
         useTouchFriendly={useTouchFriendly}
+        kioskCustomerData={kioskCustomerData}
       />
       <Toaster />
       <SonnerToaster position="top-center" />

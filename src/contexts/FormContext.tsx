@@ -36,6 +36,10 @@ interface FormContextProviderProps {
   onFormValuesChange?: (values: Record<string, any>) => void;
   tracking?: FormSessionTracking;
   useTouchFriendly?: boolean;
+  kioskCustomerData?: {
+    personalNumber: string;
+    fullName: string;
+  } | null;
 }
 
 interface FormContextValue {
@@ -78,7 +82,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   isOpticianMode = false,
   onFormValuesChange,
   tracking,
-  useTouchFriendly = false
+  useTouchFriendly = false,
+  kioskCustomerData = null
 }) => {
   // Use state for form values that will be watched
   const [watchedFormValues, setWatchedFormValues] = useState<Record<string, any>>(initialValues || {});
@@ -122,6 +127,47 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   // Get debounced values for auto-save (to reduce API calls)
   const watchedValues = useDebouncedWatch(form.watch, 300);
   
+  // Pre-fill customer data from kiosk if available
+  useEffect(() => {
+    if (kioskCustomerData && formTemplate) {
+      console.log('[FormContext]: Pre-filling kiosk customer data', {
+        personalNumber: kioskCustomerData.personalNumber.substring(0, 6) + "****",
+        fullName: kioskCustomerData.fullName
+      });
+      
+      // Try to find and populate personal_number and name fields
+      formTemplate.sections.forEach((section) => {
+        section.questions.forEach((question) => {
+          const questionId = question.id;
+          
+          // Match personal number field
+          if (questionId === "personal_number" || 
+              questionId === "personnummer" || 
+              questionId === "personNumber") {
+            form.setValue(questionId, kioskCustomerData.personalNumber, {
+              shouldValidate: true,
+              shouldDirty: true
+            });
+            console.log(`[FormContext]: Set ${questionId} = ${kioskCustomerData.personalNumber.substring(0, 6)}****`);
+          }
+          
+          // Match name field
+          if (questionId === "name" || 
+              questionId === "namn" || 
+              questionId === "full_name" || 
+              questionId === "fullName" ||
+              questionId === "patient_name") {
+            form.setValue(questionId, kioskCustomerData.fullName, {
+              shouldValidate: true,
+              shouldDirty: true
+            });
+            console.log(`[FormContext]: Set ${questionId} = ${kioskCustomerData.fullName}`);
+          }
+        });
+      });
+    }
+  }, [kioskCustomerData, formTemplate, form]);
+
   // Log form value changes for debugging
   useEffect(() => {
     console.log('[FormContext]: Form values changed:', immediateValues);

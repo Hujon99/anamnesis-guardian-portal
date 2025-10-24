@@ -42,10 +42,30 @@ export const useKioskSession = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const createKioskSession = async (params: CreateKioskSessionParams): Promise<KioskSession | null> => {
-    if (!organization?.id || !user?.id) {
+    console.log('[useKioskSession] Creating session with params:', {
+      formId: params.formId,
+      storeId: params.storeId,
+      requireSupervisorCode: params.requireSupervisorCode,
+      expiresAt: params.expiresAt,
+      organizationId: organization?.id,
+      userId: user?.id
+    });
+
+    if (!organization?.id) {
+      console.error('[useKioskSession] Missing organization ID');
       toast({
         title: "Fel",
-        description: "Du måste vara inloggad för att skapa en kiosk-session",
+        description: "Organisation saknas. Vänligen logga in igen.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    if (!user?.id) {
+      console.error('[useKioskSession] Missing user ID');
+      toast({
+        title: "Fel",
+        description: "Användare saknas. Vänligen logga in igen.",
         variant: "destructive",
       });
       return null;
@@ -56,23 +76,37 @@ export const useKioskSession = () => {
     try {
       const persistent_token = crypto.randomUUID();
 
+      const insertData = {
+        organization_id: organization.id,
+        store_id: params.storeId || null,
+        form_id: params.formId,
+        persistent_token,
+        require_supervisor_code: params.requireSupervisorCode || false,
+        is_active: true,
+        total_submissions: 0,
+        created_by: user.id,
+        expires_at: params.expiresAt || null,
+      };
+
+      console.log('[useKioskSession] Insert data:', insertData);
+
       const { data, error } = await supabase
         .from('kiosk_sessions')
-        .insert({
-          organization_id: organization.id,
-          store_id: params.storeId,
-          form_id: params.formId,
-          persistent_token,
-          require_supervisor_code: params.requireSupervisorCode,
-          is_active: true,
-          total_submissions: 0,
-          created_by: user.id,
-          expires_at: params.expiresAt,
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useKioskSession] Database error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
+
+      console.log('[useKioskSession] Session created successfully:', data);
 
       toast({
         title: "Kiosk-session skapad",
@@ -81,10 +115,28 @@ export const useKioskSession = () => {
 
       return data;
     } catch (error) {
-      console.error('Error creating kiosk session:', error);
+      console.error('[useKioskSession] Caught error:', {
+        error,
+        errorType: typeof error,
+        errorConstructor: error?.constructor?.name,
+        errorString: String(error),
+        errorMessage: error instanceof Error ? error.message : 'No message',
+        errorStack: error instanceof Error ? error.stack : 'No stack'
+      });
+      
+      let errorMessage = "Ett oväntat fel inträffade";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      } else {
+        errorMessage = String(error);
+      }
+      
       toast({
         title: "Kunde inte skapa kiosk-session",
-        description: error instanceof Error ? error.message : "Ett oväntat fel inträffade",
+        description: errorMessage,
         variant: "destructive",
       });
       return null;

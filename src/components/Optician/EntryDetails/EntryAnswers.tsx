@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnswerDisplayHelper } from "./AnswerDisplayHelper";
 import { MultipleLicenseCategoriesAlert } from "./MultipleLicenseCategoriesAlert";
 import { UpgradeIndicator, hasAcceptedUpgrade } from "@/components/Optician/UpgradeIndicator";
+import { CISSScoringResults } from "./CISSScoringResults";
 
 interface FormattedAnswer {
   id: string;
@@ -55,6 +56,23 @@ interface EntryAnswersProps {
   answers: Record<string, any> | AnswersData;
   hasAnswers: boolean;
   status: string;
+  scoringResult?: {
+    total_score: number;
+    max_possible_score: number;
+    percentage: number;
+    threshold_exceeded: boolean;
+    flagged_questions: Array<{
+      question_id: string;
+      label: string;
+      score: number;
+      warning_message?: string;
+    }>;
+  };
+  formTemplate?: {
+    scoring_config?: {
+      threshold_message?: string;
+    };
+  };
 }
 
 // Function to detect multiple license categories
@@ -113,7 +131,7 @@ const questionLabels: Record<string, string> = {
   huvudvärk: "Huvudvärk"
 };
 
-export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps) => {
+export const EntryAnswers = ({ answers, hasAnswers, status, scoringResult, formTemplate }: EntryAnswersProps) => {
   if (!hasAnswers) {
     return (
       status !== "draft" && (
@@ -192,6 +210,16 @@ export const EntryAnswers = ({ answers, hasAnswers, status }: EntryAnswersProps)
         {/* Upgrade indicator if patient accepted upgrade */}
         {hasAcceptedUpgrade(answers) && (
           <UpgradeIndicator variant="alert" className="mb-4" />
+        )}
+        
+        {/* CISS Scoring Results */}
+        {scoringResult && (
+          <div className="mb-6">
+            <CISSScoringResults 
+              scoringResult={scoringResult}
+              thresholdMessage={formTemplate?.scoring_config?.threshold_message}
+            />
+          </div>
         )}
         
         <div className="space-y-4">

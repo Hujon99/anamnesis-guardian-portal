@@ -7,7 +7,7 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Car, FileText } from "lucide-react";
+import { Eye, Car, FileText, TrendingUp, CheckCircle, ShieldCheck, Smartphone } from "lucide-react";
 import { UpgradeIndicator, hasAcceptedUpgrade } from "@/components/Optician/UpgradeIndicator";
 
 interface AnamnesCardProps {
@@ -62,6 +62,8 @@ export const AnamnesCard = ({
         return <Car className="h-3 w-3" />;
       case 'linsundersökning':
         return <Eye className="h-3 w-3" />;
+      case 'ciss':
+        return <Smartphone className="h-3 w-3" />;
       default:
         return <FileText className="h-3 w-3" />;
     }
@@ -78,10 +80,16 @@ export const AnamnesCard = ({
         return 'Linser';
       case 'allmän':
         return 'Allmän';
+      case 'ciss':
+        return 'CISS';
       default:
         return 'Allmän';
     }
   };
+
+  // Check for scoring result
+  const scoringResult = answers?.scoring_result;
+  const hasHighScore = scoringResult?.threshold_exceeded;
 
   return (
     <div
@@ -100,7 +108,7 @@ export const AnamnesCard = ({
       }}
     >
       {/* Examination type and completion badges */}
-      {(examinationType || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning') || hasAcceptedUpgrade(answers)) && (
+      {(examinationType || scoringResult || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning') || hasAcceptedUpgrade(answers)) && (
         <div className="flex justify-start gap-1 mb-1">
           {examinationType && (
             <Badge variant="outline" className="h-5 px-1.5 text-xs bg-white/80 backdrop-blur-sm">
@@ -108,13 +116,33 @@ export const AnamnesCard = ({
               <span className="ml-1">{getExaminationTypeLabel()}</span>
             </Badge>
           )}
+          
+          {/* Scoring badge for CISS and other scored forms */}
+          {scoringResult && (
+            <Badge 
+              variant="outline" 
+              className={cn(
+                "h-5 px-1.5 text-xs",
+                hasHighScore 
+                  ? "bg-red-50 text-red-700 border-red-200" 
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              )}
+            >
+              <TrendingUp className="h-3 w-3 mr-1" />
+              {scoringResult.total_score}/{scoringResult.max_possible_score}
+              {hasHighScore && " ⚠️"}
+            </Badge>
+          )}
+          
           {isExaminationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning' && (
             <Badge className="h-5 px-1.5 text-xs bg-green-100 text-green-800 border-green-200">
+              <CheckCircle className="h-3 w-3 mr-1" />
               Klar
             </Badge>
           )}
           {!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning' && (
             <Badge className="h-5 px-1.5 text-xs bg-amber-100 text-amber-800 border-amber-200">
+              <ShieldCheck className="h-3 w-3 mr-1" />
               ID saknas
             </Badge>
           )}

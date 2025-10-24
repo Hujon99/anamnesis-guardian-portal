@@ -292,11 +292,15 @@ export const EntryAnswers = ({ answers, hasAnswers, status, scoringResult, formT
           </TableHeader>
           <TableBody>
             {Object.entries(answers)
-              .filter(([key]) => key !== 'formMetadata' && key !== 'formattedAnswers' && key !== 'rawAnswers' && key !== 'metadata')
+              .filter(([key]) => {
+                // Filter out metadata and GDPR fields
+                const excludedKeys = ['formMetadata', 'formattedAnswers', 'rawAnswers', 'metadata', '_metadata', 'consent_given', 'terms_version', 'privacy_policy_version'];
+                return !excludedKeys.includes(key);
+              })
               .map(([questionId, answer]) => (
                 <TableRow key={questionId}>
                   <TableCell className="font-medium py-3">
-                    {questionLabels[questionId] || questionId}
+                    {questionLabels[questionId] || questionId.replace(/_/g, ' ')}
                   </TableCell>
                   <TableCell className="whitespace-pre-wrap break-words py-3">
                     <AnswerDisplayHelper answer={answer} questionId={questionId} />

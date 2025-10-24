@@ -170,6 +170,7 @@ export const OptimizedAnswersView = ({
         <CISSScoringResults 
           scoringResult={scoringResult}
           thresholdMessage={(formTemplate?.schema as any)?.scoring_config?.threshold_message}
+          answers={answers}
         />
       )}
       

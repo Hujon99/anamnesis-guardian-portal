@@ -27,11 +27,13 @@ interface ScoringResult {
 interface CISSScoringResultsProps {
   scoringResult: ScoringResult;
   thresholdMessage?: string;
+  answers?: Record<string, any>;
 }
 
 export const CISSScoringResults = ({ 
   scoringResult, 
-  thresholdMessage 
+  thresholdMessage,
+  answers 
 }: CISSScoringResultsProps) => {
   const { 
     total_score, 
@@ -40,6 +42,24 @@ export const CISSScoringResults = ({
     threshold_exceeded, 
     flagged_questions 
   } = scoringResult;
+
+  // Helper to get patient's answer for a flagged question
+  const getPatientAnswer = (questionId: string): string | null => {
+    if (!answers) return null;
+    
+    // Try to find the answer directly
+    if (answers[questionId]) {
+      const answer = answers[questionId];
+      if (typeof answer === 'string' || typeof answer === 'number') {
+        return String(answer);
+      }
+      if (typeof answer === 'object' && answer.value) {
+        return String(answer.value);
+      }
+    }
+    
+    return null;
+  };
 
   return (
     <Card className="border-l-4" style={{
@@ -115,26 +135,42 @@ export const CISSScoringResults = ({
               Frågor som behöver uppmärksamhet ({flagged_questions.length})
             </h4>
             <div className="space-y-2">
-              {flagged_questions.map((flagged, index) => (
-                <div 
-                  key={`${flagged.question_id}-${index}`}
-                  className="p-3 rounded-md bg-muted/30 border border-border"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="font-medium text-sm">
-                      {flagged.label}
-                    </span>
-                    <Badge variant="outline" className="text-xs">
-                      {flagged.score} poäng
-                    </Badge>
+              {flagged_questions.map((flagged, index) => {
+                const patientAnswer = getPatientAnswer(flagged.question_id);
+                
+                return (
+                  <div 
+                    key={`${flagged.question_id}-${index}`}
+                    className="p-3 rounded-md bg-muted/30 border border-border"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="font-medium text-sm">
+                        {flagged.label}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {flagged.score} poäng
+                      </Badge>
+                    </div>
+                    
+                    {patientAnswer && (
+                      <div className="mb-2 p-2 rounded bg-background/50 border border-border/50">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          Patientens svar:
+                        </p>
+                        <p className="text-sm">
+                          {patientAnswer}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {flagged.warning_message && (
+                      <p className="text-xs text-muted-foreground">
+                        {flagged.warning_message}
+                      </p>
+                    )}
                   </div>
-                  {flagged.warning_message && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {flagged.warning_message}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -1008,6 +1008,8 @@ export type Database = {
         | "Synundersökning"
         | "Körkortsundersökning"
         | "Linsundersökning"
+        | "CISS-formulär"
+        | "ciss"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1152,6 +1154,8 @@ export const Constants = {
         "Synundersökning",
         "Körkortsundersökning",
         "Linsundersökning",
+        "CISS-formulär",
+        "ciss",
       ],
     },
   },

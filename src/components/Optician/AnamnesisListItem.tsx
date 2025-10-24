@@ -204,7 +204,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   const isDrivingLicenseCompleted = entry.driving_license_status?.isCompleted || false;
   
   // Check for CISS scoring that requires follow-up
-  const scoringResult = entry.answers?.scoring_result;
+  const scoringResult = entry.scoring_result || entry.answers?.scoring_result;
   const requiresFollowUp = scoringResult?.threshold_exceeded;
 
   const handleDrivingLicenseExamination = (e: React.MouseEvent) => {
@@ -225,6 +225,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
         isExaminationCompleted={isDrivingLicenseExam && isDrivingLicenseCompleted}
         idVerificationCompleted={entry.id_verification_completed ?? true}
         answers={entry.answers}
+        scoringResult={scoringResult}
       >
         <div className="py-1 px-0">
           <div className="flex items-start justify-between">

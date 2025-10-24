@@ -77,7 +77,7 @@ export function ModalTabContent({
   // Check if this is a CISS form
   const isCISSForm = entry.examination_type?.toLowerCase() === 'ciss' || 
                      entry.examination_type?.toLowerCase() === 'ciss-formulär';
-  const scoringResult = entry.answers?.scoring_result;
+  const scoringResult = entry.scoring_result || entry.answers?.scoring_result;
   const showCISSTab = isCISSForm && scoringResult;
 
   // Fetch form template for CISS threshold message
@@ -173,6 +173,7 @@ export function ModalTabContent({
           isPending={isPending}
           onStatusUpdate={onStatusUpdate}
           examinationType={entry.examination_type}
+          scoringResult={scoringResult}
         />
       </TabsContent>
       

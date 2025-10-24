@@ -20,6 +20,7 @@ interface AnamnesCardProps {
   isExaminationCompleted?: boolean;
   idVerificationCompleted?: boolean;
   answers?: Record<string, any> | null;
+  scoringResult?: any;
 }
 
 export const AnamnesCard = ({ 
@@ -30,7 +31,8 @@ export const AnamnesCard = ({
   examinationType,
   isExaminationCompleted,
   idVerificationCompleted = true,
-  answers
+  answers,
+  scoringResult
 }: AnamnesCardProps) => {
   // Determine the accent color based on status
   const getAccentColor = () => {
@@ -91,7 +93,6 @@ export const AnamnesCard = ({
   };
 
   // Check for scoring result
-  const scoringResult = answers?.scoring_result;
   const hasHighScore = scoringResult?.threshold_exceeded;
 
   return (

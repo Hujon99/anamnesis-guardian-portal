@@ -31,6 +31,7 @@ interface OptimizedAnswersViewProps {
   isPending: boolean;
   onStatusUpdate?: (status: string) => Promise<void>;
   examinationType?: string;
+  scoringResult?: any;
 }
 
 export const OptimizedAnswersView = ({
@@ -45,15 +46,13 @@ export const OptimizedAnswersView = ({
   saveFormattedRawData,
   isPending,
   onStatusUpdate,
-  examinationType
+  examinationType,
+  scoringResult
 }: OptimizedAnswersViewProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
   const { supabase } = useSupabaseClient();
-
-  // Extract scoring result from answers
-  const scoringResult = answers?.scoring_result;
   
   // Fetch form template to get threshold message for CISS scoring
   const { data: formTemplate } = useQuery({

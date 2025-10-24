@@ -80,7 +80,21 @@ export default function KioskSetupPage() {
 
       if (error) throw error;
 
-      const baseUrl = window.location.origin;
+      // Get the correct public URL - avoid internal Lovable URLs
+      const getPublicUrl = () => {
+        const hostname = window.location.hostname;
+        
+        // If it's an internal lovableproject.com URL, use the production lovable.app domain
+        if (hostname.includes('lovableproject.com')) {
+          // Extract project ID from hostname if possible, or use the deployed URL
+          return window.location.origin.replace('lovableproject.com', 'lovable.app');
+        }
+        
+        // Otherwise use the current origin (works for custom domains and deployed apps)
+        return window.location.origin;
+      };
+      
+      const baseUrl = getPublicUrl();
       const codeParam = requireSupervisorCode ? "&code=required" : "";
       const fullUrl = `${baseUrl}/kiosk-form?token=${accessToken}${codeParam}`;
 

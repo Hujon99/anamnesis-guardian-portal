@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { 
@@ -550,7 +552,201 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                       </div>
                     </div>
                   </div>
+
+                  <Separator />
+
+                  {/* Scoring Configuration */}
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Poängsättning</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="scoring-enabled"
+                          checked={currentForm.schema.scoring_config?.enabled || false}
+                          onCheckedChange={(checked) => {
+                            updateSchema({
+                              ...currentForm.schema,
+                              scoring_config: {
+                                ...currentForm.schema.scoring_config,
+                                enabled: checked as boolean,
+                                total_threshold: currentForm.schema.scoring_config?.total_threshold || 0,
+                                show_score_to_patient: currentForm.schema.scoring_config?.show_score_to_patient || false
+                              }
+                            });
+                            addToHistory('Ändrade poängsättningsinställningar');
+                          }}
+                        />
+                        <Label htmlFor="scoring-enabled" className="cursor-pointer">
+                          Aktivera poängsättning
+                        </Label>
+                      </div>
+
+                      {currentForm.schema.scoring_config?.enabled && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="total-threshold">Tröskel för total poäng</Label>
+                            <Input
+                              id="total-threshold"
+                              type="number"
+                              min="0"
+                              value={currentForm.schema.scoring_config.total_threshold || 0}
+                              onChange={(e) => {
+                                updateSchema({
+                                  ...currentForm.schema,
+                                  scoring_config: {
+                                    ...currentForm.schema.scoring_config!,
+                                    total_threshold: parseInt(e.target.value) || 0
+                                  }
+                                });
+                                addToHistory('Ändrade poängtröskeln');
+                              }}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Varning visas när total poäng överstiger detta värde
+                            </p>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Checkbox 
+                              id="show-score-patient"
+                              checked={currentForm.schema.scoring_config.show_score_to_patient || false}
+                              onCheckedChange={(checked) => {
+                                updateSchema({
+                                  ...currentForm.schema,
+                                  scoring_config: {
+                                    ...currentForm.schema.scoring_config!,
+                                    show_score_to_patient: checked as boolean
+                                  }
+                                });
+                                addToHistory('Ändrade visning av poäng till patient');
+                              }}
+                            />
+                            <Label htmlFor="show-score-patient" className="cursor-pointer">
+                              Visa poäng för patient
+                            </Label>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="threshold-message">Tröskelmeddelande</Label>
+                            <Textarea
+                              id="threshold-message"
+                              value={currentForm.schema.scoring_config.threshold_message || ''}
+                              onChange={(e) => {
+                                updateSchema({
+                                  ...currentForm.schema,
+                                  scoring_config: {
+                                    ...currentForm.schema.scoring_config!,
+                                    threshold_message: e.target.value
+                                  }
+                                });
+                                addToHistory('Ändrade tröskelmeddelande');
+                              }}
+                              placeholder="Meddelande som visas när tröskeln överskrids..."
+                              rows={3}
+                            />
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Checkbox 
+                              id="disable-ai-summary"
+                              checked={currentForm.schema.scoring_config.disable_ai_summary || false}
+                              onCheckedChange={(checked) => {
+                                updateSchema({
+                                  ...currentForm.schema,
+                                  scoring_config: {
+                                    ...currentForm.schema.scoring_config!,
+                                    disable_ai_summary: checked as boolean
+                                  }
+                                });
+                                addToHistory('Ändrade AI-sammanfattning');
+                              }}
+                            />
+                            <Label htmlFor="disable-ai-summary" className="cursor-pointer">
+                              Inaktivera AI-sammanfattning
+                            </Label>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Kiosk Mode Configuration */}
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Kioskläge</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="kiosk-enabled"
+                          checked={currentForm.schema.kiosk_mode?.enabled || false}
+                          onCheckedChange={(checked) => {
+                            updateSchema({
+                              ...currentForm.schema,
+                              kiosk_mode: {
+                                ...currentForm.schema.kiosk_mode,
+                                enabled: checked as boolean
+                              }
+                            });
+                            addToHistory('Ändrade kiosklägesinställningar');
+                          }}
+                        />
+                        <Label htmlFor="kiosk-enabled" className="cursor-pointer">
+                          Aktivera kioskläge
+                        </Label>
+                      </div>
+
+                      {currentForm.schema.kiosk_mode?.enabled && (
+                        <>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox 
+                              id="require-supervisor"
+                              checked={currentForm.schema.kiosk_mode.require_supervisor_code || false}
+                              onCheckedChange={(checked) => {
+                                updateSchema({
+                                  ...currentForm.schema,
+                                  kiosk_mode: {
+                                    ...currentForm.schema.kiosk_mode!,
+                                    require_supervisor_code: checked as boolean
+                                  }
+                                });
+                                addToHistory('Ändrade krav på handledarkod');
+                              }}
+                            />
+                            <Label htmlFor="require-supervisor" className="cursor-pointer">
+                              Kräv handledarkod
+                            </Label>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Checkbox 
+                              id="auto-submit"
+                              checked={currentForm.schema.kiosk_mode.auto_submit || false}
+                              onCheckedChange={(checked) => {
+                                updateSchema({
+                                  ...currentForm.schema,
+                                  kiosk_mode: {
+                                    ...currentForm.schema.kiosk_mode!,
+                                    auto_submit: checked as boolean
+                                  }
+                                });
+                                addToHistory('Ändrade auto-submit');
+                              }}
+                            />
+                            <Label htmlFor="auto-submit" className="cursor-pointer">
+                              Automatisk inskickning
+                            </Label>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Formuläret skickas automatiskt och laddar om efter 5 sekunder
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
                   
+                  <Separator />
+
                   {validationErrors.length > 0 && (
                     <div>
                       <h4 className="font-medium mb-2">Validering</h4>

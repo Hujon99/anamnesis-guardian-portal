@@ -129,13 +129,19 @@ const ExaminationTypeSelectionPage = () => {
             return;
           }
 
-          const types: ExaminationType[] = forms.map(form => ({
-            type: form.examination_type || 'allmän',
-            formId: form.id,
-            title: form.title,
-            icon: getExaminationIcon(form.examination_type || 'allmän'),
-            description: getExaminationDescription(form.examination_type || 'allmän'),
-          }));
+          // Filter out CISS forms - they are only for opticians to fill in directly
+          const types: ExaminationType[] = forms
+            .filter(form => {
+              const examType = form.examination_type?.toLowerCase();
+              return examType !== 'ciss' && examType !== 'ciss-formulär';
+            })
+            .map(form => ({
+              type: form.examination_type || 'allmän',
+              formId: form.id,
+              title: form.title,
+              icon: getExaminationIcon(form.examination_type || 'allmän'),
+              description: getExaminationDescription(form.examination_type || 'allmän'),
+            }));
 
           setExaminationTypes(types);
           setIsLoading(false);
@@ -160,13 +166,19 @@ const ExaminationTypeSelectionPage = () => {
     });
 
     if (storeId && storeforms.length > 0) {
-      const types: ExaminationType[] = storeforms.map(form => ({
-        type: form.examination_type || 'allmän',
-        formId: form.id,
-        title: form.title,
-        icon: getExaminationIcon(form.examination_type || 'allmän'),
-        description: getExaminationDescription(form.examination_type || 'allmän'),
-      }));
+      // Filter out CISS forms - they are only for opticians to fill in directly
+      const types: ExaminationType[] = storeforms
+        .filter(form => {
+          const examType = form.examination_type?.toLowerCase();
+          return examType !== 'ciss' && examType !== 'ciss-formulär';
+        })
+        .map(form => ({
+          type: form.examination_type || 'allmän',
+          formId: form.id,
+          title: form.title,
+          icon: getExaminationIcon(form.examination_type || 'allmän'),
+          description: getExaminationDescription(form.examination_type || 'allmän'),
+        }));
 
       console.log("[ExaminationTypeSelectionPage]: Setting examination types:", types);
       setExaminationTypes(types);

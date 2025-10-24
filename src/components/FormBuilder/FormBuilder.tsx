@@ -111,46 +111,65 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
     };
   });
 
-  // Auto-initialize CISS presets when examination type changes to CISS
+  // Auto-initialize CISS presets and first section when examination type changes to CISS
   useEffect(() => {
-    if (currentForm.examination_type === 'CISS-formulär' && 
-        (!currentForm.schema.question_presets || currentForm.schema.question_presets.length === 0)) {
-      const cissPresets = [
-        {
-          name: 'CISS 5-skalig frekvens',
-          type: 'dropdown' as const,
-          options: [
-            'Aldrig (0)',
-            'Sällan (1)',
-            'Ibland (2)',
-            'Ofta (3)',
-            'Mycket ofta (4)'
-          ],
-          scoring: {
-            enabled: true,
-            min_value: 0,
-            max_value: 4
+    if (currentForm.examination_type === 'CISS-formulär') {
+      let needsUpdate = false;
+      const updates: Partial<FormTemplate> = {};
+
+      // Auto-create presets if they don't exist
+      if (!currentForm.schema.question_presets || currentForm.schema.question_presets.length === 0) {
+        updates.question_presets = [
+          {
+            name: 'CISS 5-skalig frekvens',
+            type: 'dropdown' as const,
+            options: [
+              'Aldrig (0)',
+              'Sällan (1)',
+              'Ibland (2)',
+              'Ofta (3)',
+              'Mycket ofta (4)'
+            ],
+            scoring: {
+              enabled: true,
+              min_value: 0,
+              max_value: 4
+            }
+          },
+          {
+            name: 'CISS Ja/Nej',
+            type: 'radio' as const,
+            options: [
+              'Nej (0)',
+              'Ja (1)'
+            ],
+            scoring: {
+              enabled: true,
+              min_value: 0,
+              max_value: 1
+            }
           }
-        },
-        {
-          name: 'CISS Ja/Nej',
-          type: 'radio' as const,
-          options: [
-            'Nej (0)',
-            'Ja (1)'
-          ],
-          scoring: {
-            enabled: true,
-            min_value: 0,
-            max_value: 1
+        ];
+        needsUpdate = true;
+      }
+
+      // Auto-create first section if none exists
+      if (currentForm.schema.sections.length === 0) {
+        updates.sections = [
+          {
+            section_title: 'CISS Bedömning',
+            questions: []
           }
-        }
-      ];
-      
-      updateSchema({
-        ...currentForm.schema,
-        question_presets: cissPresets
-      });
+        ];
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        updateSchema({
+          ...currentForm.schema,
+          ...updates
+        });
+      }
     }
   }, [currentForm.examination_type]);
 
@@ -360,6 +379,28 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
     <div className="h-screen flex flex-col bg-surface-light">
       {/* Header */}
       <div className="border-b bg-background p-4">
+        {/* Validation Error Alert */}
+        {hasErrors(validationErrors) && !canSave && (
+          <div className="mb-4 p-4 rounded-lg border border-destructive bg-destructive/10">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-destructive mb-2">
+                  Formuläret kan inte sparas
+                </h4>
+                <ul className="space-y-1 text-sm">
+                  {validationErrors.filter(e => e.type === 'error').map((error, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="text-destructive">•</span>
+                      <span>{error.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <FileText className="h-6 w-6 text-primary" />

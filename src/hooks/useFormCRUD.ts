@@ -40,6 +40,16 @@ export const useFormCRUD = () => {
         throw new Error("Supabase client eller organisation saknas");
       }
 
+      // Debug logging
+      console.log("[useFormCRUD] Creating form with schema:", {
+        title: formData.title,
+        examination_type: formData.examination_type,
+        sections_count: formData.schema.sections?.length || 0,
+        questions_count: formData.schema.sections?.reduce((acc, s) => acc + (s.questions?.length || 0), 0) || 0,
+        has_presets: !!(formData.schema.question_presets && formData.schema.question_presets.length > 0),
+        presets_count: formData.schema.question_presets?.length || 0,
+      });
+
       const { data, error } = await supabase
         .from('anamnes_forms')
         .insert({
@@ -58,10 +68,23 @@ export const useFormCRUD = () => {
         .single();
 
       if (error) {
-        console.error("[useFormCRUD]: Create error:", error);
+        console.error("[useFormCRUD] Create error:", error);
+        console.error("[useFormCRUD] Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        // Check for RLS errors
+        if (error.code === '42501' || error.message?.includes('row-level security')) {
+          throw new Error("Behörighetsproblem: Du har inte rättigheter att skapa formulär i denna organisation");
+        }
+        
         throw new Error("Kunde inte skapa formulär: " + error.message);
       }
 
+      console.log("[useFormCRUD] Form created successfully:", data.id);
       return data;
     },
     onSuccess: () => {
@@ -93,7 +116,18 @@ export const useFormCRUD = () => {
 
       if (formData.title !== undefined) updateData.title = formData.title;
       if (formData.examination_type !== undefined) updateData.examination_type = formData.examination_type as any;
-      if (formData.schema !== undefined) updateData.schema = formData.schema as any;
+      if (formData.schema !== undefined) {
+        updateData.schema = formData.schema as any;
+        
+        // Debug logging
+        console.log("[useFormCRUD] Updating form schema:", {
+          form_id: formData.id,
+          sections_count: formData.schema.sections?.length || 0,
+          questions_count: formData.schema.sections?.reduce((acc, s) => acc + (s.questions?.length || 0), 0) || 0,
+          has_presets: !!(formData.schema.question_presets && formData.schema.question_presets.length > 0),
+          presets_count: formData.schema.question_presets?.length || 0,
+        });
+      }
       if (formData.is_active !== undefined) updateData.is_active = formData.is_active;
 
       const { data, error } = await supabase
@@ -105,10 +139,23 @@ export const useFormCRUD = () => {
         .single();
 
       if (error) {
-        console.error("[useFormCRUD]: Update error:", error);
+        console.error("[useFormCRUD] Update error:", error);
+        console.error("[useFormCRUD] Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        // Check for RLS errors
+        if (error.code === '42501' || error.message?.includes('row-level security')) {
+          throw new Error("Behörighetsproblem: Du har inte rättigheter att uppdatera detta formulär");
+        }
+        
         throw new Error("Kunde inte uppdatera formulär: " + error.message);
       }
 
+      console.log("[useFormCRUD] Form updated successfully:", data.id);
       return data;
     },
     onSuccess: () => {

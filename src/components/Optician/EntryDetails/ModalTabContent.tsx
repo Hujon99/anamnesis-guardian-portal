@@ -12,10 +12,13 @@ import { EntryAnswers } from "./EntryAnswers";
 import { AssignmentSection } from "./AssignmentSection";
 import { OptimizedAnswersView } from "./OptimizedAnswers/OptimizedAnswersView";
 import { DrivingLicenseResults } from "./DrivingLicenseResults";
+import { CISSScoringResults } from "./CISSScoringResults";
 import { AnamnesesEntry } from "@/types/anamnesis";
 // Removed useDrivingLicenseStatus - now using pre-loaded data for performance
 import { useGdprConfirmation } from "@/hooks/useGdprConfirmation";
 import { IdVerificationQuickUpdate } from "../IdVerificationQuickUpdate";
+import { useQuery } from "@tanstack/react-query";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 interface ModalTabContentProps {
   patientIdentifier: string;
@@ -61,6 +64,8 @@ export function ModalTabContent({
   onStatusUpdate
 }: ModalTabContentProps) {
   
+  const { supabase } = useSupabaseClient();
+  
   // Check if this is a driving license examination
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
   // Use pre-loaded driving license status for better performance
@@ -69,18 +74,73 @@ export function ModalTabContent({
   const isLoading = false; // No loading since data is pre-loaded
   const showDrivingLicenseTab = isDrivingLicenseExam;
 
+  // Check if this is a CISS form
+  const isCISSForm = entry.examination_type?.toLowerCase() === 'ciss' || 
+                     entry.examination_type?.toLowerCase() === 'ciss-formulär';
+  const scoringResult = entry.answers?.scoring_result;
+  const showCISSTab = isCISSForm && scoringResult;
+
+  // Fetch form template for CISS threshold message
+  const { data: formTemplate } = useQuery({
+    queryKey: ['form-template-ciss', entry.answers?.metadata?.formTemplateId],
+    queryFn: async () => {
+      if (!entry.answers?.metadata?.formTemplateId) return null;
+      
+      const { data, error } = await supabase
+        .from('anamnes_forms')
+        .select('schema')
+        .eq('id', entry.answers.metadata.formTemplateId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: showCISSTab && !!entry.answers?.metadata?.formTemplateId
+  });
+
   // Fetch GDPR confirmation data
   const { data: gdprConfirmation, isLoading: gdprLoading } = useGdprConfirmation(entry.id);
   
+  // Determine grid columns based on which tabs are visible
+  const gridCols = showDrivingLicenseTab && showCISSTab ? 'grid-cols-4' :
+                   showDrivingLicenseTab || showCISSTab ? 'grid-cols-3' : 
+                   'grid-cols-2';
+  
+  // Set default tab - prioritize CISS scoring if available
+  const defaultTab = showCISSTab ? "scoring" : 
+                     showDrivingLicenseTab ? "driving" : 
+                     "patient";
+  
   return (
-    <Tabs defaultValue={showDrivingLicenseTab ? "driving" : "patient"} className="w-full">
-      <TabsList className={`grid w-full ${showDrivingLicenseTab ? 'grid-cols-3' : 'grid-cols-2'} mb-4`}>
+    <Tabs defaultValue={defaultTab} className="w-full">
+      <TabsList className={`grid w-full ${gridCols} mb-4`}>
+        {showCISSTab && (
+          <TabsTrigger value="scoring">Bedömning</TabsTrigger>
+        )}
         {showDrivingLicenseTab && (
           <TabsTrigger value="driving">Körkort</TabsTrigger>
         )}
         <TabsTrigger value="patient">Patient</TabsTrigger>
         <TabsTrigger value="assignment">Tilldelning</TabsTrigger>
       </TabsList>
+      
+      {/* CISS Scoring Tab */}
+      {showCISSTab && scoringResult && (
+        <TabsContent value="scoring" className="mt-0">
+          <div className="space-y-4">
+            <CISSScoringResults 
+              scoringResult={scoringResult}
+              thresholdMessage={(formTemplate?.schema as any)?.scoring_config?.threshold_message}
+            />
+            
+            {/* Show raw answers for reference */}
+            <div className="p-4 border rounded-lg bg-background">
+              <h4 className="font-medium mb-3 text-sm">Detaljerade svar</h4>
+              <EntryAnswers answers={answers} hasAnswers={hasAnswers} status={status} />
+            </div>
+          </div>
+        </TabsContent>
+      )}
       
       <TabsContent value="patient" className="mt-0 space-y-6">
         <div className="p-4 border rounded-lg bg-background">

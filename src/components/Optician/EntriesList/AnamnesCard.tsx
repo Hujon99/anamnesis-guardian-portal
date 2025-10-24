@@ -7,6 +7,7 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Eye, Car, FileText, TrendingUp, CheckCircle, ShieldCheck, Smartphone } from "lucide-react";
 import { UpgradeIndicator, hasAcceptedUpgrade } from "@/components/Optician/UpgradeIndicator";
 
@@ -63,6 +64,7 @@ export const AnamnesCard = ({
       case 'linsundersökning':
         return <Eye className="h-3 w-3" />;
       case 'ciss':
+      case 'ciss-formulär':
         return <Smartphone className="h-3 w-3" />;
       default:
         return <FileText className="h-3 w-3" />;
@@ -81,6 +83,7 @@ export const AnamnesCard = ({
       case 'allmän':
         return 'Allmän';
       case 'ciss':
+      case 'ciss-formulär':
         return 'CISS';
       default:
         return 'Allmän';
@@ -119,19 +122,32 @@ export const AnamnesCard = ({
           
           {/* Scoring badge for CISS and other scored forms */}
           {scoringResult && (
-            <Badge 
-              variant="outline" 
-              className={cn(
-                "h-5 px-1.5 text-xs",
-                hasHighScore 
-                  ? "bg-red-50 text-red-700 border-red-200" 
-                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
-              )}
-            >
-              <TrendingUp className="h-3 w-3 mr-1" />
-              {scoringResult.total_score}/{scoringResult.max_possible_score}
-              {hasHighScore && " ⚠️"}
-            </Badge>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "h-5 px-1.5 text-xs font-medium cursor-help",
+                      hasHighScore 
+                        ? "bg-destructive/10 text-destructive border-destructive/30" 
+                        : "bg-accent_teal/10 text-accent_teal border-accent_teal/30"
+                    )}
+                  >
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    {scoringResult.total_score}/{scoringResult.max_possible_score}
+                    {hasHighScore && " ⚠️"}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">
+                    {hasHighScore 
+                      ? `Tröskel överskriden (${Math.round(scoringResult.percentage)}%) - Uppföljning behövs` 
+                      : `Poäng: ${Math.round(scoringResult.percentage)}% - Under tröskel`}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           
           {isExaminationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning' && (

@@ -15,6 +15,8 @@ import { SaveIndicator } from "./SaveIndicator";
 import { ContentTabs } from "./ContentTabs";
 import { useSummaryGenerator } from "./SummaryGenerator";
 import { useRawDataManager } from "./RawDataManager";
+import { CISSScoringResults } from "../CISSScoringResults";
+import { useQuery } from "@tanstack/react-query";
 
 interface OptimizedAnswersViewProps {
   answers: Record<string, any>;
@@ -49,6 +51,27 @@ export const OptimizedAnswersView = ({
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(aiSummary ? "summary" : "raw");
   const { supabase } = useSupabaseClient();
+
+  // Extract scoring result from answers
+  const scoringResult = answers?.scoring_result;
+  
+  // Fetch form template to get threshold message for CISS scoring
+  const { data: formTemplate } = useQuery({
+    queryKey: ['form-template-for-scoring', answers?.metadata?.formTemplateId],
+    queryFn: async () => {
+      if (!answers?.metadata?.formTemplateId) return null;
+      
+      const { data, error } = await supabase
+        .from('anamnes_forms')
+        .select('schema')
+        .eq('id', answers.metadata.formTemplateId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!scoringResult && !!answers?.metadata?.formTemplateId
+  });
 
   // Log access to patient answers when component mounts with answers
   useEffect(() => {
@@ -142,48 +165,58 @@ export const OptimizedAnswersView = ({
   }
 
   return (
-    <div className="border rounded-lg bg-background">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border-b gap-2">
-        <h3 className="text-base sm:text-lg font-medium flex items-center">
-          <FileText className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary" />
-          <span className="text-sm sm:text-base">Patientens svar och anteckningar</span>
-        </h3>
-        
-        <div className="flex gap-2 items-center">
-          <SaveIndicator saveIndicator={saveIndicator} />
-          <ActionButtons
-            isEditing={isEditing}
-            isSaving={isSaving}
-            isPending={isPending}
-            isRegeneratingRawData={isRegeneratingRawData}
-            isGenerating={isGenerating}
-            hasAnswers={hasAnswers}
-            formattedRawData={formattedRawData}
-            summary={aiSummary || ""}
-            onEdit={() => setIsEditing(true)}
-            onSave={handleSaveChanges}
-            onCancel={() => {
-              updateFormattedRawData(initialFormattedRawData || "");
-              setIsEditing(false);
-            }}
-            onRegenerateRawData={regenerateFormattedData}
-            onGenerateSummary={generateSummary}
-          />
-        </div>
-      </div>
+    <div className="space-y-4">
+      {/* CISS Scoring Results - Display prominently before the main content */}
+      {scoringResult && (
+        <CISSScoringResults 
+          scoringResult={scoringResult}
+          thresholdMessage={(formTemplate?.schema as any)?.scoring_config?.threshold_message}
+        />
+      )}
       
-      <ContentTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        isEditing={isEditing}
-        formattedRawData={formattedRawData}
-        onRawDataChange={handleRawDataChange}
-        aiSummary={aiSummary}
-        isCopied={isCopied}
-        onCopy={handleCopySummary}
-        onRegenerateData={regenerateFormattedData}
-        isRegenerating={isRegeneratingRawData}
-      />
+      <div className="border rounded-lg bg-background">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border-b gap-2">
+          <h3 className="text-base sm:text-lg font-medium flex items-center">
+            <FileText className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-primary" />
+            <span className="text-sm sm:text-base">Patientens svar och anteckningar</span>
+          </h3>
+          
+          <div className="flex gap-2 items-center">
+            <SaveIndicator saveIndicator={saveIndicator} />
+            <ActionButtons
+              isEditing={isEditing}
+              isSaving={isSaving}
+              isPending={isPending}
+              isRegeneratingRawData={isRegeneratingRawData}
+              isGenerating={isGenerating}
+              hasAnswers={hasAnswers}
+              formattedRawData={formattedRawData}
+              summary={aiSummary || ""}
+              onEdit={() => setIsEditing(true)}
+              onSave={handleSaveChanges}
+              onCancel={() => {
+                updateFormattedRawData(initialFormattedRawData || "");
+                setIsEditing(false);
+              }}
+              onRegenerateRawData={regenerateFormattedData}
+              onGenerateSummary={generateSummary}
+            />
+          </div>
+        </div>
+        
+        <ContentTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isEditing={isEditing}
+          formattedRawData={formattedRawData}
+          onRawDataChange={handleRawDataChange}
+          aiSummary={aiSummary}
+          isCopied={isCopied}
+          onCopy={handleCopySummary}
+          onRegenerateData={regenerateFormattedData}
+          isRegenerating={isRegeneratingRawData}
+        />
+      </div>
     </div>
   );
 };

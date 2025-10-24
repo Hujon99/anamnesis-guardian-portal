@@ -202,6 +202,10 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
   
   // Get driving license examination status from pre-loaded data (much faster)
   const isDrivingLicenseCompleted = entry.driving_license_status?.isCompleted || false;
+  
+  // Check for CISS scoring that requires follow-up
+  const scoringResult = entry.answers?.scoring_result;
+  const requiresFollowUp = scoringResult?.threshold_exceeded;
 
   const handleDrivingLicenseExamination = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -253,6 +257,14 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                 </TooltipProvider>
               )}
 
+              {/* CISS Follow-up badge - show prominently if threshold exceeded */}
+              {requiresFollowUp && (
+                <Badge variant="destructive" className="flex items-center gap-1 h-6 px-2">
+                  <AlertTriangle className="h-3 w-3" />
+                  Uppföljning behövs
+                </Badge>
+              )}
+              
               <EntryStatusBadge
                 status={entry.status || "sent"}
                 isRedacted={entry.is_redacted}

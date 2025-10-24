@@ -57,6 +57,7 @@ import { SectionEditor } from './SectionEditor';
 import { SortableSectionEditor } from './SortableSectionEditor';
 import { FormPreview } from './FormPreview';
 import { LivePreviewPanel } from './LivePreviewPanel';
+import { QuestionPresetManager } from './QuestionPresetManager';
 
 interface FormBuilderProps {
   formId?: string;
@@ -104,10 +105,54 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
       examination_type: 'Synundersökning',
       schema: {
         title: '',
-        sections: []
+        sections: [],
+        question_presets: []
       }
     };
   });
+
+  // Auto-initialize CISS presets when examination type changes to CISS
+  useEffect(() => {
+    if (currentForm.examination_type === 'CISS-formulär' && 
+        (!currentForm.schema.question_presets || currentForm.schema.question_presets.length === 0)) {
+      const cissPresets = [
+        {
+          name: 'CISS 5-skalig frekvens',
+          type: 'dropdown' as const,
+          options: [
+            'Aldrig (0)',
+            'Sällan (1)',
+            'Ibland (2)',
+            'Ofta (3)',
+            'Mycket ofta (4)'
+          ],
+          scoring: {
+            enabled: true,
+            min_value: 0,
+            max_value: 4
+          }
+        },
+        {
+          name: 'CISS Ja/Nej',
+          type: 'radio' as const,
+          options: [
+            'Nej (0)',
+            'Ja (1)'
+          ],
+          scoring: {
+            enabled: true,
+            min_value: 0,
+            max_value: 1
+          }
+        }
+      ];
+      
+      updateSchema({
+        ...currentForm.schema,
+        question_presets: cissPresets
+      });
+    }
+  }, [currentForm.examination_type]);
 
   const [activeTab, setActiveTab] = useState('sections');
   const [isSaving, setIsSaving] = useState(false);
@@ -746,6 +791,25 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                   </div>
                   
                   <Separator />
+
+                  {/* Question Presets - Only for CISS forms */}
+                  {currentForm.examination_type === 'CISS-formulär' && (
+                    <>
+                      <div>
+                        <QuestionPresetManager
+                          presets={currentForm.schema.question_presets || []}
+                          onUpdate={(presets) => {
+                            updateSchema({
+                              ...currentForm.schema,
+                              question_presets: presets
+                            });
+                            addToHistory('Uppdaterade frågemallar');
+                          }}
+                        />
+                      </div>
+                      <Separator />
+                    </>
+                  )}
 
                   {validationErrors.length > 0 && (
                     <div>

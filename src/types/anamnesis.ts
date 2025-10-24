@@ -112,6 +112,17 @@ export type FormSection = {
   };
 };
 
+export interface QuestionPreset {
+  name: string;
+  type: 'radio' | 'dropdown' | 'checkbox';
+  options: string[];
+  scoring?: {
+    enabled: boolean;
+    min_value: number;
+    max_value: number;
+  };
+}
+
 export type FormTemplate = {
   title: string;
   sections: FormSection[];
@@ -122,6 +133,7 @@ export type FormTemplate = {
     threshold_message?: string;
     disable_ai_summary?: boolean;
   };
+  question_presets?: QuestionPreset[];
   kiosk_mode?: {
     enabled: boolean;
     require_supervisor_code?: boolean;

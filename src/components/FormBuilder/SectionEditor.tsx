@@ -14,11 +14,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { ChevronDown, ChevronRight, Plus, MoreVertical, Trash2, Edit, GripVertical, Move } from 'lucide-react';
-import { FormSection, FormQuestion, FormTemplate } from '@/types/anamnesis';
+import { ChevronDown, ChevronRight, Plus, MoreVertical, Trash2, Edit, GripVertical, Move, Sparkles } from 'lucide-react';
+import { FormSection, FormQuestion, FormTemplate, QuestionPreset } from '@/types/anamnesis';
 import { QuestionEditor } from './QuestionEditor';
 import { generateUniqueQuestionId } from '@/utils/questionIdUtils';
 import { SectionConditionalLogic } from './SectionConditionalLogic';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 interface SectionEditorProps {
   section: FormSection;
   sectionIndex: number;
@@ -44,6 +45,9 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(section.section_title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
+
+  const hasPresets = schema.question_presets && schema.question_presets.length > 0;
   const updateTitle = () => {
     if (editTitle.trim() && editTitle !== section.section_title) {
       onUpdate({
@@ -57,35 +61,55 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
     setEditTitle(section.section_title);
     setIsEditing(false);
   };
-  const addQuestion = (type?: string) => {
+  const addQuestion = (type?: string, preset?: QuestionPreset) => {
     // Use last question type if no type specified, or default to 'text'
     const questionType = type || lastQuestionType;
     setLastQuestionType(questionType);
     
-    const questionTypeLabels: Record<string, string> = {
-      text: 'textfråga',
-      textarea: 'textområde',
-      radio: 'radioknappar',
-      checkbox: 'kryssrutor',
-      dropdown: 'dropdown',
-      date: 'datum',
-      number: 'nummer',
-      email: 'epost',
-      tel: 'telefon',
-      url: 'url'
-    };
-    const questionLabel = `Ny ${questionTypeLabels[questionType] || questionType}`;
-    const generatedId = generateUniqueQuestionId(questionLabel, schema);
-    const newQuestion: FormQuestion = {
-      id: generatedId,
-      label: questionLabel,
-      type: questionType as any,
-      options: questionType === 'radio' || questionType === 'dropdown' || questionType === 'checkbox' ? ['Alternativ 1', 'Alternativ 2'] : undefined
-    };
+    let newQuestion: FormQuestion;
+
+    if (preset) {
+      // Create question from preset
+      const questionLabel = `Ny fråga (${preset.name})`;
+      const generatedId = generateUniqueQuestionId(questionLabel, schema);
+      
+      newQuestion = {
+        id: generatedId,
+        label: questionLabel,
+        type: preset.type,
+        options: [...preset.options],
+        scoring: preset.scoring ? { ...preset.scoring } : undefined
+      };
+    } else {
+      // Regular question creation
+      const questionTypeLabels: Record<string, string> = {
+        text: 'textfråga',
+        textarea: 'textområde',
+        radio: 'radioknappar',
+        checkbox: 'kryssrutor',
+        dropdown: 'dropdown',
+        date: 'datum',
+        number: 'nummer',
+        email: 'epost',
+        tel: 'telefon',
+        url: 'url'
+      };
+      const questionLabel = `Ny ${questionTypeLabels[questionType] || questionType}`;
+      const generatedId = generateUniqueQuestionId(questionLabel, schema);
+      
+      newQuestion = {
+        id: generatedId,
+        label: questionLabel,
+        type: questionType as any,
+        options: questionType === 'radio' || questionType === 'dropdown' || questionType === 'checkbox' ? ['Alternativ 1', 'Alternativ 2'] : undefined
+      };
+    }
+    
     onUpdate({
       ...section,
       questions: [...section.questions, newQuestion]
     });
+    setShowPresetDialog(false);
   };
   const updateQuestion = (questionIndex: number, updatedQuestion: FormQuestion) => {
     const updatedQuestions = [...section.questions];
@@ -181,6 +205,16 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
             )}
 
             <div className="flex items-center gap-1">
+              {hasPresets && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowPresetDialog(true)}
+                  className="gap-2 text-accent"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -189,6 +223,15 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {hasPresets && (
+                    <>
+                      <DropdownMenuItem onClick={() => setShowPresetDialog(true)}>
+                        <Sparkles className="h-4 w-4 mr-2 text-accent" />
+                        Använd mall
+                      </DropdownMenuItem>
+                      <div className="my-1 border-t" />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => addQuestion('text')}>
                     Textfråga
                   </DropdownMenuItem>
@@ -252,73 +295,189 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
 
                 {section.questions.length > 0 && (
                   <div className="flex justify-center pt-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <Plus className="h-4 w-4" />
-                          Lägg till fråga
+                    {hasPresets ? (
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-2"
+                          onClick={() => setShowPresetDialog(true)}
+                        >
+                          <Sparkles className="h-4 w-4 text-accent" />
+                          Använd mall
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => addQuestion('text')}>
-                          Textfråga
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('textarea')}>
-                          Textområde
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                          Radioknappar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
-                          Kryssrutor
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
-                          Dropdown
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('date')}>
-                          Datum
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('number')}>
-                          Nummer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Plus className="h-4 w-4" />
+                              Annan frågetyp
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => addQuestion('text')}>
+                              Textfråga
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                              Textområde
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                              Radioknappar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                              Kryssrutor
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                              Dropdown
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('date')}>
+                              Datum
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('number')}>
+                              Nummer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            Lägg till fråga
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => addQuestion('text')}>
+                            Textfråga
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                            Textområde
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                            Radioknappar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                            Kryssrutor
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                            Dropdown
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('date')}>
+                            Datum
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('number')}>
+                            Nummer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 )}
 
-                {section.questions.length === 0 && <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
+                {section.questions.length === 0 && (
+                  <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
                     <p className="text-muted-foreground mb-4">Inga frågor i denna sektion</p>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2">
-                          <Plus className="h-4 w-4" />
-                          Lägg till första frågan
+                    {hasPresets ? (
+                      <div className="flex gap-2 justify-center">
+                        <Button 
+                          variant="outline" 
+                          className="gap-2"
+                          onClick={() => setShowPresetDialog(true)}
+                        >
+                          <Sparkles className="h-4 w-4 text-accent" />
+                          Använd mall
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => addQuestion('text')}>
-                          Textfråga
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('textarea')}>
-                          Textområde
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                          Radioknappar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
-                          Kryssrutor
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
-                          Dropdown
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                              <Plus className="h-4 w-4" />
+                              Annan typ
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => addQuestion('text')}>
+                              Textfråga
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                              Textområde
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                              Radioknappar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                              Kryssrutor
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                              Dropdown
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            Lägg till första frågan
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => addQuestion('text')}>
+                            Textfråga
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                            Textområde
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                            Radioknappar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                            Kryssrutor
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                            Dropdown
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </CollapsibleContent>
         </Collapsible>
       </Card>
+
+      {/* Preset Selection Dialog */}
+      <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Välj frågemall</DialogTitle>
+            <DialogDescription>
+              Välj en mall att använda för den nya frågan
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            {schema.question_presets?.map((preset, idx) => (
+              <Button
+                key={idx}
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3"
+                onClick={() => addQuestion(undefined, preset)}
+              >
+                <Sparkles className="h-5 w-5 text-accent flex-shrink-0" />
+                <div className="flex-1 text-left">
+                  <div className="font-medium">{preset.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {preset.options.length} alternativ • 
+                    {preset.scoring?.enabled && ` Poäng ${preset.scoring.min_value}-${preset.scoring.max_value}`}
+                  </div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

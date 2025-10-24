@@ -38,7 +38,8 @@ const StoreFormCard: React.FC<StoreFormCardProps> = ({
   
   const getFormStatus = (formId: string): boolean => {
     const assignment = storeAssignments.find(a => a.form_id === formId);
-    return assignment ? assignment.is_active : true; // Default to active if no assignment
+    // With auto-assignment triggers, all form-store combinations have explicit assignments
+    return assignment ? assignment.is_active : false;
   };
 
   const activeFormsCount = forms.filter(form => getFormStatus(form.id)).length;

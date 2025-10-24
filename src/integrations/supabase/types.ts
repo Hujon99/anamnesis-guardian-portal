@@ -1040,6 +1040,10 @@ export type Database = {
           phone: string
         }[]
       }
+      is_organization_member: {
+        Args: { org_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
       log_access: {
         Args: {
           p_purpose?: string

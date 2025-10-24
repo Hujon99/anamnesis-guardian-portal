@@ -280,12 +280,19 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 className="font-medium border-none shadow-none p-0 h-auto text-base bg-transparent"
                 placeholder="Frågetext..."
               />
-              {/* Mode indicator badge */}
-              {question.show_in_mode && question.show_in_mode !== 'all' && (
-                <Badge variant="outline" className="text-xs mt-1">
-                  {question.show_in_mode === 'patient' ? '👤 Patient' : '🔧 Optiker'}
-                </Badge>
-              )}
+              {/* Mode and scoring indicator badges */}
+              <div className="flex gap-1 mt-1">
+                {question.show_in_mode && question.show_in_mode !== 'all' && (
+                  <Badge variant="outline" className="text-xs">
+                    {question.show_in_mode === 'patient' ? '👤 Patient' : '🔧 Optiker'}
+                  </Badge>
+                )}
+                {question.scoring?.enabled && (
+                  <Badge variant="outline" className="text-xs bg-primary/5 border-primary/30">
+                    📊 Poäng ({question.scoring.max_value})
+                  </Badge>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-1">
@@ -595,6 +602,118 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Scoring Configuration */}
+                      {['radio', 'dropdown', 'number'].includes(question.type) && (
+                        <div className="space-y-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="text-sm font-medium">Poängsättning & Flaggning</Label>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Aktivera för att räkna poäng och flagga höga värden (t.ex. CISS-formulär)
+                              </p>
+                            </div>
+                            <Switch
+                              checked={question.scoring?.enabled || false}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  updateField('scoring', {
+                                    enabled: true,
+                                    max_value: 4,
+                                    flag_threshold: undefined,
+                                    warning_message: undefined
+                                  });
+                                } else {
+                                  updateField('scoring', undefined);
+                                }
+                              }}
+                            />
+                          </div>
+
+                          {question.scoring?.enabled && (
+                            <div className="space-y-4 pt-2">
+                              <div className="space-y-2">
+                                <Label htmlFor={`max-value-${question.id}`}>
+                                  Max poäng för denna fråga
+                                </Label>
+                                <Input
+                                  id={`max-value-${question.id}`}
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={question.scoring.max_value || 0}
+                                  onChange={(e) => updateField('scoring', {
+                                    ...question.scoring,
+                                    max_value: parseInt(e.target.value) || 0
+                                  })}
+                                  placeholder="T.ex. 4"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Högsta möjliga poäng för denna fråga
+                                </p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor={`flag-threshold-${question.id}`}>
+                                  Flagga vid värde (valfritt)
+                                </Label>
+                                <Input
+                                  id={`flag-threshold-${question.id}`}
+                                  type="number"
+                                  min="0"
+                                  value={question.scoring.flag_threshold ?? ''}
+                                  onChange={(e) => updateField('scoring', {
+                                    ...question.scoring,
+                                    flag_threshold: e.target.value ? parseInt(e.target.value) : undefined
+                                  })}
+                                  placeholder="T.ex. 2"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Markera frågan om svaret är ≥ detta värde
+                                </p>
+                              </div>
+
+                              {question.scoring.flag_threshold !== undefined && (
+                                <div className="space-y-2">
+                                  <Label htmlFor={`warning-message-${question.id}`}>
+                                    Varningsmeddelande
+                                  </Label>
+                                  <Textarea
+                                    id={`warning-message-${question.id}`}
+                                    value={question.scoring.warning_message || ''}
+                                    onChange={(e) => updateField('scoring', {
+                                      ...question.scoring,
+                                      warning_message: e.target.value
+                                    })}
+                                    placeholder="T.ex. 'Högt värde - behöver uppföljning'"
+                                    className="min-h-[60px]"
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Meddelande som visas när frågan flaggas
+                                  </p>
+                                </div>
+                              )}
+
+                              {question.type === 'radio' || question.type === 'dropdown' ? (
+                                <div className="p-3 bg-muted/50 rounded-md border">
+                                  <p className="text-xs font-medium mb-2">💡 Tips för alternativ:</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Lägg till poäng i alternativtexten inom parentes, t.ex:<br />
+                                    "Aldrig (0)", "Sällan (1)", "Ibland (2)", "Ofta (3)", "Alltid (4)"
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-muted/50 rounded-md border">
+                                  <p className="text-xs font-medium mb-2">💡 Tips för nummer:</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Svaret används direkt som poäng (t.ex. 0-4)
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CollapsibleContent>

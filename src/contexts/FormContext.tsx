@@ -35,6 +35,7 @@ interface FormContextProviderProps {
   isOpticianMode?: boolean;
   onFormValuesChange?: (values: Record<string, any>) => void;
   tracking?: FormSessionTracking;
+  useTouchFriendly?: boolean;
 }
 
 interface FormContextValue {
@@ -49,6 +50,7 @@ interface FormContextValue {
   isLastStep: boolean;
   isSubmitting: boolean;
   isOpticianMode: boolean;
+  useTouchFriendly: boolean;
   completedSteps: number[];
   nextStep: () => void;
   previousStep: () => void;
@@ -75,7 +77,8 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
   initialValues = null,
   isOpticianMode = false,
   onFormValuesChange,
-  tracking
+  tracking,
+  useTouchFriendly = false
 }) => {
   // Use state for form values that will be watched
   const [watchedFormValues, setWatchedFormValues] = useState<Record<string, any>>(initialValues || {});
@@ -344,6 +347,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         isLastStep,
         isSubmitting,
         isOpticianMode,
+        useTouchFriendly,
         completedSteps,
         nextStep,
         previousStep,

@@ -121,6 +121,7 @@ const KioskFormPage = () => {
           mode="patient"
           showBookingInfo={false}
           onSubmitSuccess={handleFormSubmit}
+          useTouchFriendly={true}
         />
       )}
 

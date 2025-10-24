@@ -83,6 +83,7 @@ interface BaseFormPageProps {
   showBookingInfo?: boolean;
   onError?: (error: SubmissionError) => void;
   onSubmitSuccess?: () => void;
+  useTouchFriendly?: boolean;
 }
 
 export const BaseFormPage: React.FC<BaseFormPageProps> = ({
@@ -95,7 +96,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
   hideCopyLink = false,
   showBookingInfo = false,
   onError,
-  onSubmitSuccess
+  onSubmitSuccess,
+  useTouchFriendly = false
 }) => {
   // Safari detection and optimized config
   const safariConfig = getSafariOptimizedConfig();
@@ -434,7 +436,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
                 />
               )}
               
-              <Card className="bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
+                <Card className="bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
                 <CardContent className="p-0">
                   <FormContainer
                     formTemplate={formTemplate.schema}
@@ -447,6 +449,7 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
                     entryId={entryData?.id || null}
                     token={effectiveToken}
                     organizationId={formTemplate?.organization_id || entryData?.organization_id}
+                    useTouchFriendly={useTouchFriendly}
                   />
                 </CardContent>
                 

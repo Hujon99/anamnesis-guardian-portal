@@ -9,6 +9,7 @@
 import React from "react";
 import { FormSection as FormSectionType, DynamicFollowupQuestion } from "@/types/anamnesis";
 import { FormFieldRenderer } from "./FormFieldRenderer";
+import { TouchFriendlyFieldRenderer } from "./TouchFriendlyFieldRenderer";
 import { useFormContext as useHookFormContext } from "react-hook-form";
 import { useFormContext } from "@/contexts/FormContext";
 
@@ -24,8 +25,8 @@ export const FormSection: React.FC<FormSectionProps> = ({
   const { formState } = useHookFormContext();
   const { errors } = formState;
   
-  // Get isOpticianMode from our custom form context
-  const { isOpticianMode } = useFormContext();
+  // Get isOpticianMode and useTouchFriendly from our custom form context
+  const { isOpticianMode, useTouchFriendly } = useFormContext();
 
   // Generate a section ID for accessibility linking
   const sectionId = `section-${section.section_title.toLowerCase().replace(/\s+/g, '-')}`;
@@ -33,6 +34,9 @@ export const FormSection: React.FC<FormSectionProps> = ({
   // All questions are already filtered and processed by useConditionalFields
   // This includes dynamic follow-up questions that have been generated
   const allVisibleQuestions = section.questions;
+  
+  // Choose the appropriate field renderer based on useTouchFriendly flag
+  const FieldRenderer = useTouchFriendly ? TouchFriendlyFieldRenderer : FormFieldRenderer;
 
   return (
     <div className="mb-6" role="region" aria-labelledby={sectionId}>
@@ -53,11 +57,18 @@ export const FormSection: React.FC<FormSectionProps> = ({
               key={fieldId} 
               className={`${hasError ? "animate-shake border-l-2 border-destructive pl-3 rounded" : ""} ${isOpticianField ? "border-l-4 border-primary pl-4" : ""}`}
             >
-              <FormFieldRenderer 
-                question={question} 
-                error={errors[fieldId]} 
-                isOpticianField={isOpticianField}
-              />
+              {useTouchFriendly ? (
+                <TouchFriendlyFieldRenderer 
+                  question={question} 
+                  error={errors[fieldId]} 
+                />
+              ) : (
+                <FormFieldRenderer 
+                  question={question} 
+                  error={errors[fieldId]} 
+                  isOpticianField={isOpticianField}
+                />
+              )}
             </div>
           );
         })}

@@ -24,6 +24,7 @@ interface FormOrchestratorProps {
   entryId?: string | null;
   token?: string | null;
   organizationId?: string;
+  useTouchFriendly?: boolean;
 }
 
 export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
@@ -36,7 +37,8 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
   onFormValuesChange,
   entryId = null,
   token = null,
-  organizationId
+  organizationId,
+  useTouchFriendly = false
 }) => {
   // Initialize form session tracking
   const tracking = useFormSessionTracking({
@@ -54,6 +56,7 @@ export const FormOrchestrator: React.FC<FormOrchestratorProps> = ({
       initialValues={initialValues}
       onFormValuesChange={onFormValuesChange}
       tracking={tracking}
+      useTouchFriendly={useTouchFriendly}
     >
       <Card>
         <FormLayout createdByName={createdByName} />

@@ -80,22 +80,23 @@ export function ModalTabContent({
   const scoringResult = entry.scoring_result || entry.answers?.scoring_result;
   const showCISSTab = isCISSForm && scoringResult;
 
-  // Fetch form template for CISS threshold message
+  // Fetch form template for proper question labels
   const { data: formTemplate } = useQuery({
-    queryKey: ['form-template-ciss', entry.answers?.metadata?.formTemplateId],
+    queryKey: ['form-template', entry.answers?.metadata?.formTemplateId || entry.form_id],
     queryFn: async () => {
-      if (!entry.answers?.metadata?.formTemplateId) return null;
+      const formId = entry.answers?.metadata?.formTemplateId || entry.form_id;
+      if (!formId) return null;
       
       const { data, error } = await supabase
         .from('anamnes_forms')
-        .select('schema')
-        .eq('id', entry.answers.metadata.formTemplateId)
+        .select('*')
+        .eq('id', formId)
         .single();
       
       if (error) throw error;
       return data;
     },
-    enabled: showCISSTab && !!entry.answers?.metadata?.formTemplateId
+    enabled: !!(entry.answers?.metadata?.formTemplateId || entry.form_id)
   });
 
   // Fetch GDPR confirmation data

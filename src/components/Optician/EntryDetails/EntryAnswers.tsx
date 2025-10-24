@@ -69,6 +69,15 @@ interface EntryAnswersProps {
     }>;
   };
   formTemplate?: {
+    schema?: {
+      sections?: Array<{
+        section_title: string;
+        questions: Array<{
+          id: string;
+          label: string;
+        }>;
+      }>;
+    };
     scoring_config?: {
       threshold_message?: string;
     };
@@ -117,7 +126,7 @@ const detectMultipleLicenseCategories = (answersData: any): string[] => {
   return Array.from(new Set(categories));
 };
 
-// Map of question IDs to human-readable labels
+// Map of question IDs to human-readable labels (fallback)
 const questionLabels: Record<string, string> = {
   vision_problem: "Synproblem",
   symptom: "Huvudvärk eller ögontrötthet",
@@ -131,7 +140,32 @@ const questionLabels: Record<string, string> = {
   huvudvärk: "Huvudvärk"
 };
 
+// Build a map of question labels from form template
+const buildQuestionLabelsMap = (formTemplate?: any): Record<string, string> => {
+  const labelsMap: Record<string, string> = { ...questionLabels };
+  
+  if (formTemplate?.schema?.sections) {
+    formTemplate.schema.sections.forEach((section: any) => {
+      if (section.questions) {
+        section.questions.forEach((question: any) => {
+          if (question.id && question.label) {
+            labelsMap[question.id] = question.label;
+            // Also map the "cleaned" version (without special chars) to the original label
+            const cleanedId = question.label.replace(/[åä]/g, 'a').replace(/[ö]/g, 'o').replace(/[ÅÄ]/g, 'A').replace(/[Ö]/g, 'O').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            labelsMap[cleanedId] = question.label;
+          }
+        });
+      }
+    });
+  }
+  
+  return labelsMap;
+};
+
 export const EntryAnswers = ({ answers, hasAnswers, status, scoringResult, formTemplate }: EntryAnswersProps) => {
+  // Build question labels map from template
+  const templateLabels = buildQuestionLabelsMap(formTemplate);
+  
   if (!hasAnswers) {
     return (
       status !== "draft" && (
@@ -249,7 +283,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status, scoringResult, formT
                       >
                         <TableCell className="font-medium py-3 flex items-center">
                           {isOpticianComment && <MessageCircle className="h-4 w-4 mr-2 text-primary" />}
-                          {questionLabels[response.id] || response.id}
+                          {templateLabels[response.id] || response.id}
                           {isOpticianComment && (
                             <Badge variant="outline" className="ml-2 bg-primary/10 text-primary text-xs">
                               Optikernotering
@@ -300,7 +334,7 @@ export const EntryAnswers = ({ answers, hasAnswers, status, scoringResult, formT
               .map(([questionId, answer]) => (
                 <TableRow key={questionId}>
                   <TableCell className="font-medium py-3">
-                    {questionLabels[questionId] || questionId.replace(/_/g, ' ')}
+                    {templateLabels[questionId] || questionId.replace(/_/g, ' ')}
                   </TableCell>
                   <TableCell className="whitespace-pre-wrap break-words py-3">
                     <AnswerDisplayHelper answer={answer} questionId={questionId} />

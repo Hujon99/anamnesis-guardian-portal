@@ -15,7 +15,8 @@ import {
   Users,
   User,
   LayoutDashboard,
-  Clipboard
+  Clipboard,
+  QrCode
 } from "lucide-react";
 import {
   Sidebar,
@@ -77,25 +78,40 @@ export function AppSidebar() {
               </SidebarMenuItem>
               
               {canAccessOpticianFeatures && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location.pathname === '/my-anamneses'}
-                    tooltip="Mina tilldelade anamneser"
-                    data-tour="my-anamnesis"
-                  >
-                    <Link to="/my-anamneses" className="relative">
-                      <Clipboard />
-                      <span>Mina anamneser</span>
-                      <Badge 
-                        variant="outline" 
-                        className="ml-auto bg-accent-1/10 text-accent-1 font-medium"
-                      >
-                        {isAdmin ? "Admin" : "Personlig"}
-                      </Badge>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={location.pathname === '/my-anamneses'}
+                      tooltip="Mina tilldelade anamneser"
+                      data-tour="my-anamnesis"
+                    >
+                      <Link to="/my-anamneses" className="relative">
+                        <Clipboard />
+                        <span>Mina anamneser</span>
+                        <Badge 
+                          variant="outline" 
+                          className="ml-auto bg-accent-1/10 text-accent-1 font-medium"
+                        >
+                          {isAdmin ? "Admin" : "Personlig"}
+                        </Badge>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={location.pathname === '/kiosk-setup'}
+                      tooltip="Kiosk QR-kod generering"
+                    >
+                      <Link to="/kiosk-setup">
+                        <QrCode />
+                        <span>Kiosk</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               )}
               
               {(isAdmin || isClerkAdmin) && (

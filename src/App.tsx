@@ -17,6 +17,7 @@ import Dashboard from "@/pages/Dashboard";
 import MyAnamnesisPage from "@/pages/MyAnamnesisPage";
 import OpticianView from "@/pages/OpticianView";
 import AdminPanel from "@/pages/AdminPanel";
+import KioskSetupPage from "@/pages/KioskSetupPage";
 import NotFound from "@/pages/NotFound";
 import PatientFormPage from "@/pages/PatientFormPage";
 import OpticianFormPage from "@/pages/OpticianFormPage";
@@ -91,6 +92,7 @@ function App() {
                   <MyAnamnesisPage />
                 } 
               />
+              <Route path="/kiosk-setup" element={<KioskSetupPage />} />
               <Route path="/optician" element={<OpticianView />} />
               <Route path="/admin" element={<AdminPanel />} />
             </Route>

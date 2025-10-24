@@ -197,23 +197,20 @@ export const useFormCRUD = () => {
         throw new Error("Formuläret kan inte tas bort eftersom det används av befintliga anamneser. Ta bort eller flytta dessa först.");
       }
 
-      // Check if form is assigned to any stores
-      const { count: storesCount, error: storeCheckError } = await supabase
+      // Automatically remove store assignments before deleting
+      const { error: storeDeleteError } = await supabase
         .from('store_forms')
-        .select('id', { count: 'exact', head: true })
+        .delete()
         .eq('form_id', formId);
 
-      // Ignore 404-like errors for empty results
-      if (storeCheckError && storeCheckError.code !== 'PGRST116') {
-        console.error("[useFormCRUD]: Error checking store assignments:", storeCheckError);
-        throw new Error("Kunde inte kontrollera butikstilldelningar");
+      if (storeDeleteError && storeDeleteError.code !== 'PGRST116') {
+        console.error("[useFormCRUD]: Error removing store assignments:", storeDeleteError);
+        throw new Error("Kunde inte ta bort butikstilldelningar");
       }
 
-      if (storesCount && storesCount > 0) {
-        throw new Error("Formuläret kan inte tas bort eftersom det är tilldelat till butiker. Ta bort dessa tilldelningar först.");
-      }
+      console.log("[useFormCRUD]: Store assignments removed, proceeding with form deletion");
 
-      // Safe to delete
+      // Safe to delete form
       const { error } = await supabase
         .from('anamnes_forms')
         .delete()

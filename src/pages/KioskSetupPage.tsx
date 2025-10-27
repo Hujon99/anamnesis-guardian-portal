@@ -425,7 +425,6 @@ export default function KioskSetupPage() {
                 <p>• Efter inskickning återgår formuläret automatiskt till startsidan</p>
                 <p>• Perfekt för en dedikerad iPad/surfplatta i väntrummet</p>
                 <p>• Ingen manuell återställning behövs mellan patienter</p>
-                <p>• Använd helskärmsläge för bästa upplevelse</p>
               </>
             ) : (
               <>

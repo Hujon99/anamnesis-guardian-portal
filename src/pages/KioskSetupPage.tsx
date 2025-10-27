@@ -196,6 +196,15 @@ export default function KioskSetupPage() {
         </p>
       </div>
 
+      {/* Important Notice */}
+      <Alert className="mb-6 border-accent-teal bg-accent-teal/5">
+        <AlertDescription className="text-sm">
+          <strong>ℹ️ Viktigt:</strong> Kiosk-läget fungerar för närvarande endast med CISS-formuläret. 
+          Om din organisation använder andra formulärtyper (t.ex. körkortsundersökningar), kan dessa inte 
+          användas i kiosk-läge ännu. Vi arbetar på att utöka funktionaliteten framöver.
+        </AlertDescription>
+      </Alert>
+
       <div className="grid gap-6">
         {/* QR Code Display Card */}
         <Card>

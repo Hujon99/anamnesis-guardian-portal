@@ -9,10 +9,10 @@
  */
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useSafeOrganization } from "@/hooks/useSafeOrganization";
 import { useSafeUser } from "@/hooks/useSafeUser";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 interface KioskSession {
   id: string;
@@ -39,6 +39,7 @@ interface CreateKioskSessionParams {
 export const useKioskSession = () => {
   const { organization } = useSafeOrganization();
   const { user } = useSafeUser();
+  const { supabase, isReady, refreshClient } = useSupabaseClient();
   const [isLoading, setIsLoading] = useState(false);
 
   const createKioskSession = async (params: CreateKioskSessionParams): Promise<KioskSession | null> => {
@@ -48,8 +49,19 @@ export const useKioskSession = () => {
       requireSupervisorCode: params.requireSupervisorCode,
       expiresAt: params.expiresAt,
       organizationId: organization?.id,
-      userId: user?.id
+      userId: user?.id,
+      isReady
     });
+
+    if (!isReady) {
+      console.error('[useKioskSession] Supabase client not ready');
+      toast({
+        title: "Vänligen vänta",
+        description: "Systemet förbereder anslutningen...",
+        variant: "destructive",
+      });
+      return null;
+    }
 
     if (!organization?.id) {
       console.error('[useKioskSession] Missing organization ID');
@@ -128,6 +140,13 @@ export const useKioskSession = () => {
       
       if (error instanceof Error) {
         errorMessage = error.message;
+        
+        // Handle JWT-related errors
+        if (errorMessage.includes('JWT') || errorMessage.includes('token') || errorMessage.includes('auth')) {
+          console.log('[useKioskSession] JWT error detected, refreshing client');
+          refreshClient(true);
+          errorMessage = "Autentiseringsfel. Vänligen försök igen.";
+        }
       } else if (typeof error === 'object' && error !== null) {
         errorMessage = JSON.stringify(error);
       } else {
@@ -146,6 +165,11 @@ export const useKioskSession = () => {
   };
 
   const fetchKioskSession = async (sessionId: string): Promise<KioskSession | null> => {
+    if (!isReady) {
+      console.error('[useKioskSession] Client not ready for fetch');
+      return null;
+    }
+
     try {
       const { data, error } = await supabase
         .from('kiosk_sessions')
@@ -165,6 +189,15 @@ export const useKioskSession = () => {
     sessionId: string, 
     updates: Partial<Pick<KioskSession, 'is_active' | 'require_supervisor_code' | 'expires_at'>>
   ): Promise<boolean> => {
+    if (!isReady) {
+      toast({
+        title: "Vänligen vänta",
+        description: "Systemet förbereder anslutningen...",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     setIsLoading(true);
 
     try {
@@ -195,6 +228,15 @@ export const useKioskSession = () => {
   };
 
   const deleteKioskSession = async (sessionId: string): Promise<boolean> => {
+    if (!isReady) {
+      toast({
+        title: "Vänligen vänta",
+        description: "Systemet förbereder anslutningen...",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     setIsLoading(true);
 
     try {

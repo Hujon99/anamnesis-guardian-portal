@@ -25,6 +25,7 @@ let lastSubmissionData: {
   schema?: FormTemplate;
   formattedText?: string;
   isOptician?: boolean;
+  kioskCustomerData?: { personalNumber: string; fullName: string } | null;
 } | null = null;
 
 export function useFormSubmission() {
@@ -46,10 +47,11 @@ export function useFormSubmission() {
     values: Record<string, any>,
     schema?: FormTemplate,
     formattedText?: string,
-    isOptician?: boolean
+    isOptician?: boolean,
+    kioskCustomerData?: { personalNumber: string; fullName: string } | null
   ): Promise<{ success: boolean; entryId?: string }> => {
     // Store submission data for retry
-    lastSubmissionData = { token, values, schema, formattedText, isOptician };
+    lastSubmissionData = { token, values, schema, formattedText, isOptician, kioskCustomerData };
     setSubmissionAttempts(prev => prev + 1);
     
     // If already submitted, just return success
@@ -84,7 +86,13 @@ export function useFormSubmission() {
       const { data, error } = await supabase.functions.invoke('submit-form', {
         body: { 
           token,
-          ...formattedFormData  // Spread the data directly instead of wrapping in "answers"
+          ...formattedFormData,  // Spread the data directly instead of wrapping in "answers"
+          ...(kioskCustomerData && {
+            kiosk_customer_data: {
+              personalNumber: kioskCustomerData.personalNumber,
+              fullName: kioskCustomerData.fullName
+            }
+          })
         }
       });
       
@@ -160,13 +168,13 @@ export function useFormSubmission() {
       return { success: false };
     }
     
-    const { token, values, schema, formattedText, isOptician } = lastSubmissionData;
+    const { token, values, schema, formattedText, isOptician, kioskCustomerData } = lastSubmissionData;
     console.log("[useFormSubmission]: Retrying submission...");
     
     // Clear previous error
     setError(null);
     
-    return await submitForm(token, values, schema, formattedText, isOptician);
+    return await submitForm(token, values, schema, formattedText, isOptician, kioskCustomerData);
   }, [submitForm]);
 
   return {

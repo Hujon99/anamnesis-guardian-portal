@@ -225,8 +225,8 @@ export const BaseFormPage: React.FC<BaseFormPageProps> = ({
     }
     
     setFormPageState("SUBMITTING");
-    await handleFormSubmit(values, formTemplate, formattedAnswers);
-  }, [effectiveToken, handleFormSubmit, formTemplate, setFormPageState]);
+    await handleFormSubmit(values, formTemplate, formattedAnswers, kioskCustomerData);
+  }, [effectiveToken, handleFormSubmit, formTemplate, setFormPageState, kioskCustomerData]);
   
   // Handle retry for submission errors
   const handleSubmissionRetry = useCallback(() => {

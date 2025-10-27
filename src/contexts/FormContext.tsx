@@ -250,19 +250,12 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
       
       const formattedAnswers = formatAnswersForSubmission(data, formTemplate, isOpticianMode);
       
-      // Add consent metadata and kiosk customer data to submission data
+      // Add consent metadata to submission data
       const submissionData = {
         ...data,
         consent_given: consentGiven,
         privacy_policy_version: CURRENT_PRIVACY_POLICY_VERSION,
-        terms_version: CURRENT_TERMS_VERSION,
-        // Include kiosk customer data if available (for kiosk mode submissions)
-        ...(kioskCustomerData && {
-          _kioskCustomerData: {
-            personal_number: kioskCustomerData.personalNumber,
-            first_name: kioskCustomerData.fullName
-          }
-        })
+        terms_version: CURRENT_TERMS_VERSION
       };
       
       // Add circuit breaker

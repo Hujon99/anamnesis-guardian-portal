@@ -93,7 +93,8 @@ export function useFormSubmissionManager({
   const handleFormSubmit = useCallback(async (
     values: Record<string, any>, 
     formTemplate: FormTemplateWithMeta | null,
-    formattedAnswers?: any
+    formattedAnswers?: any,
+    kioskCustomerData?: { personalNumber: string; fullName: string } | null
   ) => {
     if (!token) {
       console.error("[useFormSubmissionManager]: Cannot submit form: No token provided");
@@ -137,7 +138,8 @@ export function useFormSubmissionManager({
       submissionValues, 
       formTemplate?.schema,
       formattedText,
-      mode === 'optician' // Add flag to indicate if it's an optician submission
+      mode === 'optician', // Add flag to indicate if it's an optician submission
+      kioskCustomerData // Pass kiosk customer data if available
     );
     
     if (result?.success) {

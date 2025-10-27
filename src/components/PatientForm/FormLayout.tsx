@@ -48,17 +48,19 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     consentGiven,
     onConsentChange,
     setShowConsentStep,
-    formTemplate
+    formTemplate,
+    useTouchFriendly
   } = useFormContext();
 
   // Calculate scoring in real-time
   const scoringResult = useFormScoring(formTemplate, watchedValues || {});
 
-  // Detect if user is on mobile/iPad (screens smaller than 1024px)
+  // Detect if user is on mobile/iPad (screens smaller than 1024px) OR if kiosk mode is active
   const [isMobileView, setIsMobileView] = useState(false);
 
   useEffect(() => {
     const checkViewport = () => {
+      // Use 1024px as breakpoint to include iPads (which are typically 768-1024px)
       setIsMobileView(window.innerWidth < 1024);
     };
     
@@ -213,8 +215,8 @@ export const FormLayout: React.FC<FormLayoutProps> = ({ createdByName }) => {
     }
   };
 
-  // Use single question layout for mobile/iPad, traditional layout for desktop
-  if (isMobileView) {
+  // Use single question layout for mobile/iPad OR kiosk mode, traditional layout for desktop
+  if (useTouchFriendly || isMobileView) {
     return <SingleQuestionLayout createdByName={createdByName} />;
   }
 

@@ -80,8 +80,8 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
   const renderFollowUpHeading = () => {
     if (isDynamicQuestion && (question as DynamicFollowupQuestion).parentValue) {
       return (
-        <div className="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
-          <p className="text-sm font-medium text-primary">
+        <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 bg-primary/5 rounded-lg border border-primary/20">
+          <p className="text-xs sm:text-sm font-medium text-primary break-words">
             Gällande: {(question as DynamicFollowupQuestion).parentValue}
           </p>
         </div>
@@ -98,9 +98,9 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             control={control}
             name={fieldName}
             render={({ field }) => (
-              <FormItem className="space-y-4">
+              <FormItem className="space-y-3 sm:space-y-4">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
+                <FormLabel className="text-base sm:text-lg md:text-xl font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -109,10 +109,10 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                     placeholder="Skriv ditt svar här..." 
                     {...field} 
                     rows={4}
-                    className="text-base p-4 min-h-[120px] rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    className="text-sm sm:text-base p-3 sm:p-4 min-h-[100px] sm:min-h-[120px] rounded-lg sm:rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </FormControl>
-                <FormDescription className="text-muted-foreground">
+                <FormDescription className="text-xs sm:text-sm text-muted-foreground">
                   Var så detaljerad som möjligt i ditt svar.
                 </FormDescription>
                 <FormMessage />
@@ -127,9 +127,9 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             control={control}
             name={fieldName}
             render={({ field }) => (
-              <FormItem className="space-y-6">
+              <FormItem className="space-y-4 sm:space-y-5 md:space-y-6">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
+                <FormLabel className="text-base sm:text-lg md:text-xl font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -137,7 +137,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                    <RadioGroup
                      onValueChange={field.onChange}
                      value={field.value || ""}
-                     className="space-y-3"
+                     className="grid grid-cols-1 gap-2.5 sm:gap-3"
                    >
                     {question.options?.map(option => {
                       const optionValue = getOptionValue(option);
@@ -146,14 +146,14 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                         <label 
                           key={optionValue}
                           htmlFor={`${fieldName}-${optionValue}`}
-                          className="flex items-center space-x-4 p-4 rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-all group"
+                          className="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-all group min-h-[56px] sm:min-h-[64px]"
                         >
                           <RadioGroupItem 
                             value={optionValue} 
                             id={`${fieldName}-${optionValue}`}
-                            className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            className="w-5 h-5 sm:w-6 sm:h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0"
                           />
-                          <span className="text-base font-medium leading-relaxed flex-1 select-none break-words">
+                          <span className="text-sm sm:text-base md:text-lg font-medium leading-relaxed flex-1 select-none break-words">
                             {optionLabel}
                           </span>
                         </label>
@@ -178,13 +178,13 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                   field.value ? [field.value] : [];
                 
                 return (
-                  <FormItem className="space-y-6">
+                  <FormItem className="space-y-4 sm:space-y-5 md:space-y-6">
                     {renderFollowUpHeading()}
-                    <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
+                    <FormLabel className="text-base sm:text-lg md:text-xl font-semibold text-foreground leading-relaxed break-words">
                       {question.label}
                       {question.required && <span className="text-destructive ml-1">*</span>}
                     </FormLabel>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
                       {question.options.map(option => {
                         const optionValue = getOptionValue(option);
                         const optionLabel = getOptionLabel(option);
@@ -196,7 +196,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                             control={control}
                             name={fieldName}
                             render={() => (
-                              <FormItem className="flex items-center space-x-4 space-y-0">
+                              <FormItem className="flex items-center space-x-3 sm:space-x-4 space-y-0">
                                 <FormControl>
                                   <Checkbox
                                     checked={isChecked}
@@ -206,10 +206,10 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                                         : values.filter(val => val !== optionValue);
                                       field.onChange(newValues.length ? newValues : undefined);
                                     }}
-                                    className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    className="w-5 h-5 sm:w-6 sm:h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0"
                                   />
                                 </FormControl>
-                                <FormLabel className="text-base font-medium leading-relaxed flex-1 cursor-pointer p-4 rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 transition-all break-words">
+                                <FormLabel className="text-sm sm:text-base md:text-lg font-medium leading-relaxed flex-1 cursor-pointer p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-border hover:border-primary/30 hover:bg-primary/5 transition-all break-words min-h-[52px] sm:min-h-[60px] flex items-center">
                                   {optionLabel}
                                 </FormLabel>
                               </FormItem>
@@ -230,17 +230,17 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
               control={control}
               name={fieldName}
               render={({ field }) => (
-                <FormItem className="space-y-4">
+                <FormItem className="space-y-3 sm:space-y-4">
                   {renderFollowUpHeading()}
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-border">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        className="w-5 h-5 sm:w-6 sm:h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0"
                       />
                     </FormControl>
-                    <FormLabel className="text-lg font-semibold text-foreground leading-relaxed cursor-pointer break-words">
+                    <FormLabel className="text-base sm:text-lg md:text-xl font-semibold text-foreground leading-relaxed cursor-pointer break-words flex-1">
                       {question.label}
                       {question.required && <span className="text-destructive ml-1">*</span>}
                     </FormLabel>
@@ -258,9 +258,9 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             control={control}
             name={fieldName}
             render={({ field }) => (
-              <FormItem className="space-y-4">
+              <FormItem className="space-y-3 sm:space-y-4">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
+                <FormLabel className="text-base sm:text-lg md:text-xl font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -270,11 +270,11 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                    name={fieldName}
                  >
                   <FormControl>
-                    <SelectTrigger className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20">
+                    <SelectTrigger className="h-12 sm:h-14 text-sm sm:text-base px-3 sm:px-4 rounded-lg sm:rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20">
                       <SelectValue placeholder="Välj ett alternativ" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent className="rounded-xl border-2">
+                  <SelectContent className="rounded-lg sm:rounded-xl border-2 max-h-[60vh]">
                     {question.options?.map(option => {
                       const optionValue = getOptionValue(option);
                       const optionLabel = getOptionLabel(option);
@@ -282,7 +282,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                         <SelectItem 
                           key={optionValue} 
                           value={optionValue}
-                          className="text-base py-3 px-4 focus:bg-primary/10 focus:text-primary"
+                          className="text-sm sm:text-base py-2.5 sm:py-3 px-3 sm:px-4 focus:bg-primary/10 focus:text-primary min-h-[48px] sm:min-h-[52px]"
                         >
                           {optionLabel}
                         </SelectItem>
@@ -302,9 +302,9 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             control={control}
             name={fieldName}
             render={({ field }) => (
-              <FormItem className="space-y-4">
+              <FormItem className="space-y-3 sm:space-y-4">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
+                <FormLabel className="text-base sm:text-lg md:text-xl font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -314,7 +314,7 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
                     placeholder="0" 
                     {...field} 
                     onChange={e => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                    className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    className="h-12 sm:h-14 text-sm sm:text-base px-3 sm:px-4 rounded-lg sm:rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </FormControl>
                 <FormMessage />
@@ -329,16 +329,16 @@ export const TouchFriendlyFieldRenderer: React.FC<TouchFriendlyFieldRendererProp
             control={control}
             name={fieldName}
             render={({ field }) => (
-              <FormItem className="space-y-4">
+              <FormItem className="space-y-3 sm:space-y-4">
                 {renderFollowUpHeading()}
-                <FormLabel className="text-lg font-semibold text-foreground leading-relaxed break-words">
+                <FormLabel className="text-base sm:text-lg md:text-xl font-semibold text-foreground leading-relaxed break-words">
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
                   <Input 
                     {...field}
-                    className="h-14 text-base px-4 rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    className="h-12 sm:h-14 text-sm sm:text-base px-3 sm:px-4 rounded-lg sm:rounded-xl border-2 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </FormControl>
                 <FormMessage />

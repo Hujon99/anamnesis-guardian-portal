@@ -211,51 +211,52 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   return (
     <>
-      {/* Header with progress */}
-      <div className="p-6 border-b bg-background">
-        <div className="space-y-4">
+      {/* Header with progress - responsive padding */}
+      <div className="p-4 sm:p-6 border-b bg-background sticky top-0 z-10">
+        <div className="space-y-3 sm:space-y-4">
           {/* Chapter/Section indicator */}
           <div className="text-center">
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-              {currentQuestion.sectionTitle}
+            <div className="inline-flex items-center px-3 py-1.5 sm:py-1 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium max-w-full">
+              <span className="truncate">{currentQuestion.sectionTitle}</span>
             </div>
           </div>
 
           {/* Progress bar */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
               <span>Fråga {currentQuestionIndex + 1}</span>
-              <span>{totalQuestions} frågor totalt</span>
+              <span className="hidden xs:inline">{totalQuestions} frågor totalt</span>
+              <span className="xs:hidden">{totalQuestions} tot.</span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress value={progress} className="h-1.5 sm:h-2" />
           </div>
 
           {/* Created by info */}
           {createdByName && (
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-xs sm:text-sm text-muted-foreground truncate">
               Undersökning skapad av {createdByName}
             </p>
           )}
         </div>
       </div>
 
-      {/* Question content */}
-      <CardContent className="flex-1 p-4 md:p-8 overflow-x-hidden">
-        <div className={`transition-all duration-300 ${animationClass} min-h-[400px] flex flex-col justify-center`}>
+      {/* Question content - with responsive padding and sizing */}
+      <CardContent className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden">
+        <div className={`transition-all duration-300 ${animationClass} min-h-[300px] sm:min-h-[400px] flex flex-col justify-start sm:justify-center`}>
           {currentQuestion && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Question number indicator */}
               <div className="text-center">
-                <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-medium">
+                <div className="inline-flex items-center gap-2 text-sm sm:text-base text-muted-foreground">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-medium text-sm sm:text-base">
                     {currentQuestionIndex + 1}
                   </div>
                   <span>av {totalQuestions}</span>
                 </div>
               </div>
 
-              {/* Question */}
-              <div className="w-full max-w-2xl mx-auto px-2">
+              {/* Question - responsive container */}
+              <div className="w-full max-w-3xl mx-auto px-2 sm:px-4">
                 <TouchFriendlyFieldRenderer
                   key={currentQuestionIndex}
                   question={currentQuestion.question}
@@ -267,17 +268,17 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
         </div>
       </CardContent>
 
-      {/* Navigation */}
-      <CardFooter className="p-4 md:p-6 border-t bg-card shadow-lg">
-        <div className="w-full space-y-4">
-          <div className="flex justify-between items-center gap-2 md:gap-4">
+      {/* Navigation - responsive padding and sizing */}
+      <CardFooter className="p-3 sm:p-4 md:p-6 border-t bg-card shadow-lg sticky bottom-0 z-10">
+        <div className="w-full space-y-3 sm:space-y-4">
+          <div className="flex justify-between items-center gap-2 sm:gap-3 md:gap-4">
             <Button
               variant="outline"
               onClick={handlePrevious}
               disabled={currentQuestionIndex === 0}
-              className="h-12 px-4 md:px-6 flex-shrink-0"
+              className="h-11 sm:h-12 px-3 sm:px-4 md:px-6 flex-shrink-0 text-sm sm:text-base"
             >
-              <ChevronLeft className="w-4 h-4 mr-1 md:mr-2" />
+              <ChevronLeft className="w-4 h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Föregående</span>
               <span className="sm:hidden">Föreg.</span>
             </Button>
@@ -286,19 +287,19 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
               <Button
                 onClick={handleFormSubmit}
                 disabled={isSubmitting || !isCurrentQuestionAnswered()}
-                className="h-12 px-4 md:px-8 !bg-accent-teal hover:!bg-accent-teal/90 text-white disabled:opacity-50 flex-shrink-0 transition-all"
+                className="h-11 sm:h-12 px-4 sm:px-6 md:px-8 !bg-accent-teal hover:!bg-accent-teal/90 text-white disabled:opacity-50 flex-shrink-0 transition-all text-sm sm:text-base font-medium"
               >
-                <CheckCircle className="w-4 h-4 mr-1 md:mr-2" />
+                <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
                 {isSubmitting ? "Skickar..." : "Skicka in"}
               </Button>
             ) : (
               <Button
                 onClick={handleNext}
                 disabled={!isCurrentQuestionAnswered()}
-                className="h-12 px-4 md:px-6 flex-shrink-0"
+                className="h-11 sm:h-12 px-3 sm:px-4 md:px-6 flex-shrink-0 text-sm sm:text-base"
               >
                 Nästa
-                <ChevronRight className="w-4 h-4 ml-1 md:ml-2" />
+                <ChevronRight className="w-4 h-4 ml-1 sm:ml-2" />
               </Button>
             )}
           </div>
@@ -306,18 +307,18 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
           {/* Answer status indicator */}
           <div className="text-center">
             {isCurrentQuestionAnswered() ? (
-              <div className="inline-flex items-center gap-2 text-sm text-accent-teal">
-                <CheckCircle className="w-4 h-4" />
+              <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-accent-teal">
+                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>Besvarat</span>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-xs sm:text-sm text-muted-foreground">
                 Besvara frågan för att fortsätta
               </div>
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-xs text-muted-foreground text-center leading-tight">
             All information behandlas konfidentiellt och används endast för din synundersökning.
           </p>
         </div>

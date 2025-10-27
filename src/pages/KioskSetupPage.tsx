@@ -23,7 +23,7 @@ import { useFormTemplate } from "@/hooks/useFormTemplate";
 import { useKioskSession } from "@/hooks/useKioskSession";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { QrCode, Loader2, Maximize2, RefreshCw, Printer, Activity, Clock } from "lucide-react";
+import { QrCode, Loader2, Maximize2, RefreshCw, Printer, Activity, Clock, Check, Copy } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -46,6 +46,7 @@ export default function KioskSetupPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const creatorName = user?.fullName || user?.id || "Kiosk";
 
@@ -160,10 +161,14 @@ export default function KioskSetupPage() {
   const handleCopyLink = () => {
     if (generatedUrl) {
       navigator.clipboard.writeText(generatedUrl);
+      setCopied(true);
       toast({ 
         title: "Kopierad!", 
         description: "Länken har kopierats till urklipp" 
       });
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -268,11 +273,21 @@ export default function KioskSetupPage() {
 
                 <div className="flex flex-wrap gap-2">
                   <Button 
-                    variant="outline" 
-                    className="flex-1"
+                    variant={copied ? "default" : "outline"}
+                    className="flex-1 transition-all duration-300"
                     onClick={handleCopyLink}
                   >
-                    Kopiera länk
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Kopierad!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Kopiera länk
+                      </>
+                    )}
                   </Button>
                   <Button 
                     variant="outline" 

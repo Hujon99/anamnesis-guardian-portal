@@ -12,7 +12,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ClipboardList, Loader2 } from "lucide-react";
+import { ClipboardList, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -23,6 +23,7 @@ const KioskWelcomePage = () => {
   
   const [isCreating, setIsCreating] = useState(false);
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Validate session on mount
   useEffect(() => {
@@ -84,6 +85,16 @@ const KioskWelcomePage = () => {
     validateSession();
   }, [sessionToken]);
 
+  // Handle fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
   const handleStartForm = async () => {
     if (!sessionToken) return;
 
@@ -123,6 +134,15 @@ const KioskWelcomePage = () => {
     }
   };
 
+  // Toggle fullscreen
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   if (sessionValid === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-surface-light to-background p-4">
@@ -151,6 +171,19 @@ const KioskWelcomePage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-surface-light to-background p-4">
+      {/* Fullscreen toggle button */}
+      <div className="fixed top-4 right-4 z-50">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={toggleFullscreen}
+          className="h-12 w-12 rounded-full shadow-lg"
+          title={isFullscreen ? "Avsluta fullskärm" : "Fullskärm"}
+        >
+          {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+        </Button>
+      </div>
+
       <Card className="max-w-2xl w-full p-12 text-center space-y-8 shadow-elegant">
         {/* Icon */}
         <div className="mx-auto w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center shadow-glow">

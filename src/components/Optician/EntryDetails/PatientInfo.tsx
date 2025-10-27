@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit, Save, Hash } from "lucide-react";
+import { Edit, Save, Hash, User, IdCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface PatientInfoProps {
@@ -19,6 +19,9 @@ interface PatientInfoProps {
   setPatientIdentifier: (value: string) => void;
   savePatientIdentifier: () => void;
   status: string;
+  firstName?: string | null;
+  personalNumber?: string | null;
+  isKioskMode?: boolean;
 }
 
 export const PatientInfo = ({
@@ -27,10 +30,52 @@ export const PatientInfo = ({
   toggleEditing,
   setPatientIdentifier,
   savePatientIdentifier,
-  status
+  status,
+  firstName,
+  personalNumber,
+  isKioskMode
 }: PatientInfoProps) => {
   return (
     <div className="space-y-4">
+      {/* Kiosk Customer Information */}
+      {isKioskMode && (firstName || personalNumber) && (
+        <div className="p-4 bg-accent/30 border border-accent rounded-lg space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <IdCard className="h-5 w-5 text-accent-foreground" />
+            <h3 className="text-lg font-medium">Kunduppgifter från kiosk</h3>
+            <Badge variant="secondary" className="bg-accent text-accent-foreground">
+              Kiosk
+            </Badge>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {firstName && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <User className="h-3.5 w-3.5" />
+                  Namn
+                </Label>
+                <div className="p-2 bg-background border rounded-md">
+                  <span className="font-medium">{firstName}</span>
+                </div>
+              </div>
+            )}
+            
+            {personalNumber && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <IdCard className="h-3.5 w-3.5" />
+                  Personnummer
+                </Label>
+                <div className="p-2 bg-background border rounded-md">
+                  <span className="font-mono">{personalNumber}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Hash className="h-5 w-5 text-primary" />

@@ -41,6 +41,8 @@ export type AnamnesesEntry = {
   personal_number?: string | null;
   verified_by?: string | null;
   verified_at?: string | null;
+  // Kiosk mode fields
+  is_kiosk_mode?: boolean;
   // GDPR consent fields
   consent_given?: boolean;
   consent_timestamp?: string | null;

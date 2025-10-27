@@ -153,6 +153,9 @@ export function ModalTabContent({
             setPatientIdentifier={setPatientIdentifier}
             savePatientIdentifier={savePatientIdentifier}
             status={status}
+            firstName={entry.first_name}
+            personalNumber={entry.personal_number}
+            isKioskMode={entry.is_kiosk_mode}
           />
         </div>
 

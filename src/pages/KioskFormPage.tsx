@@ -13,8 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Shield } from "lucide-react";
+import { Shield, Maximize2, Minimize2, Home, AlertTriangle } from "lucide-react";
 import { KioskCustomerInfoStep } from "@/components/Kiosk/KioskCustomerInfoStep";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const SUPERVISOR_PIN = "1234"; // In production, fetch from organization settings
 
@@ -34,6 +35,8 @@ const KioskFormPage = () => {
     personalNumber: string;
     fullName: string;
   } | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   
   // Log token for debugging
   useEffect(() => {
@@ -44,6 +47,16 @@ const KioskFormPage = () => {
       toast.error("Ingen åtkomsttoken hittades");
     }
   }, [token]);
+
+  // Handle fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   // Handle successful form submission
   const handleFormSubmit = () => {
@@ -104,9 +117,56 @@ const KioskFormPage = () => {
       setPinInput("");
     }
   };
+
+  // Toggle fullscreen
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  // Reset to kiosk welcome page
+  const handleResetToStart = () => {
+    const sessionToken = localStorage.getItem('kiosk_session_token');
+    if (sessionToken) {
+      window.location.href = `/kiosk?session=${sessionToken}`;
+    } else {
+      toast({
+        title: "Fel",
+        description: "Ingen session hittades",
+        variant: "destructive"
+      });
+    }
+  };
   
   return (
     <div className="kiosk-container">
+      {/* Floating action buttons */}
+      {!showCustomerInfo && !isSubmitted && (
+        <div className="fixed top-4 right-4 z-50 flex gap-2">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={toggleFullscreen}
+            className="h-12 w-12 rounded-full shadow-lg"
+            title={isFullscreen ? "Avsluta fullskärm" : "Fullskärm"}
+          >
+            {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+          </Button>
+          <Button
+            variant="destructive"
+            size="icon"
+            onClick={() => setShowResetDialog(true)}
+            className="h-12 w-12 rounded-full shadow-lg"
+            title="Tillbaka till start"
+          >
+            <Home className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
+
       {/* Show customer info step first */}
       {showCustomerInfo ? (
         <KioskCustomerInfoStep onComplete={handleCustomerInfoComplete} />
@@ -211,6 +271,33 @@ const KioskFormPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Reset Confirmation Dialog */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent className="kiosk-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-2xl">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+              Avbryt och börja om?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-lg">
+              Är du säker på att du vill avbryta det pågående formuläret och återgå till startsidan? 
+              All ifylld information kommer att förloras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-lg h-14">
+              Fortsätt fylla i
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetToStart}
+              className="text-lg h-14 bg-destructive hover:bg-destructive/90"
+            >
+              Ja, börja om
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -289,7 +289,7 @@ export class DataFormatter {
       // Filter out special properties that aren't actual form answers
       const formData = {};
       for (const key in answers) {
-        if (!['metadata', 'formattedAnswers', 'rawAnswers', '_isOptician', '_metadata'].includes(key)) {
+        if (!['metadata', 'formattedAnswers', 'rawAnswers', '_isOptician', '_metadata', 'kiosk_customer_data'].includes(key)) {
           formData[key] = answers[key];
         }
       }

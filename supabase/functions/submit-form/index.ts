@@ -185,10 +185,10 @@ serve(async (req: Request) => {
                       formData._metadata?.submittedBy === 'optician';
 
     // Extract kiosk customer data if present (for kiosk mode submissions)
-    const kioskCustomerData = formData._kioskCustomerData;
+    const kioskCustomerData = formData.kiosk_customer_data;
     logger.info("Kiosk customer data:", kioskCustomerData ? {
-      hasPersonalNumber: !!kioskCustomerData.personal_number,
-      hasFirstName: !!kioskCustomerData.first_name
+      hasPersonalNumber: !!(kioskCustomerData.personalNumber || kioskCustomerData.personal_number),
+      hasFirstName: !!(kioskCustomerData.fullName || kioskCustomerData.first_name)
     } : "Not present");
 
     // Extract the actual form data
@@ -238,13 +238,17 @@ serve(async (req: Request) => {
     // Include kiosk customer data in update if present
     if (kioskCustomerData) {
       logger.info("Adding kiosk customer data to update");
-      if (kioskCustomerData.personal_number) {
-        updateData.personal_number = kioskCustomerData.personal_number;
-        logger.info(`Set personal_number: ${kioskCustomerData.personal_number.substring(0, 6)}****`);
+      // Handle both camelCase (from frontend) and snake_case formats
+      const personalNumber = kioskCustomerData.personalNumber || kioskCustomerData.personal_number;
+      const fullName = kioskCustomerData.fullName || kioskCustomerData.first_name;
+      
+      if (personalNumber) {
+        updateData.personal_number = personalNumber;
+        logger.info(`Set personal_number: ${personalNumber.substring(0, 6)}****`);
       }
-      if (kioskCustomerData.first_name) {
-        updateData.first_name = kioskCustomerData.first_name;
-        logger.info(`Set first_name: ${kioskCustomerData.first_name}`);
+      if (fullName) {
+        updateData.first_name = fullName;
+        logger.info(`Set first_name: ${fullName}`);
       }
       // Mark as kiosk mode submission
       updateData.is_kiosk_mode = true;

@@ -184,6 +184,13 @@ serve(async (req: Request) => {
     const isOptician = formData._isOptician === true || 
                       formData._metadata?.submittedBy === 'optician';
 
+    // Extract kiosk customer data if present (for kiosk mode submissions)
+    const kioskCustomerData = formData._kioskCustomerData;
+    logger.info("Kiosk customer data:", kioskCustomerData ? {
+      hasPersonalNumber: !!kioskCustomerData.personal_number,
+      hasFirstName: !!kioskCustomerData.first_name
+    } : "Not present");
+
     // Extract the actual form data
     const extractedFormData = dataFormatter.extractFormData(formData);
     
@@ -228,7 +235,22 @@ serve(async (req: Request) => {
       examinationType
     );
 
-    logger.info("Prepared update data with formatted text");
+    // Include kiosk customer data in update if present
+    if (kioskCustomerData) {
+      logger.info("Adding kiosk customer data to update");
+      if (kioskCustomerData.personal_number) {
+        updateData.personal_number = kioskCustomerData.personal_number;
+        logger.info(`Set personal_number: ${kioskCustomerData.personal_number.substring(0, 6)}****`);
+      }
+      if (kioskCustomerData.first_name) {
+        updateData.first_name = kioskCustomerData.first_name;
+        logger.info(`Set first_name: ${kioskCustomerData.first_name}`);
+      }
+      // Mark as kiosk mode submission
+      updateData.is_kiosk_mode = true;
+    }
+
+    logger.info("Prepared update data with formatted text and kiosk customer data if applicable");
 
     // Calculate scoring if enabled in the form template
     if (formTemplate?.scoring_config?.enabled) {

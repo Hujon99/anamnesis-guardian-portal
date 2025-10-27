@@ -145,24 +145,24 @@ const KioskFormPage = () => {
     <div className="kiosk-container">
       {/* Floating action buttons */}
       {!showCustomerInfo && !isSubmitted && (
-        <div className="fixed top-4 right-4 z-50 flex gap-2">
+        <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 flex gap-1.5 sm:gap-2">
           <Button
             variant="secondary"
             size="icon"
             onClick={toggleFullscreen}
-            className="h-12 w-12 rounded-full shadow-lg"
+            className="h-10 w-10 sm:h-12 sm:w-12 rounded-full shadow-lg"
             title={isFullscreen ? "Avsluta fullskärm" : "Fullskärm"}
           >
-            {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+            {isFullscreen ? <Minimize2 className="h-4 w-4 sm:h-5 sm:w-5" /> : <Maximize2 className="h-4 w-4 sm:h-5 sm:w-5" />}
           </Button>
           <Button
             variant="destructive"
             size="icon"
             onClick={() => setShowResetDialog(true)}
-            className="h-12 w-12 rounded-full shadow-lg"
+            className="h-10 w-10 sm:h-12 sm:w-12 rounded-full shadow-lg"
             title="Tillbaka till start"
           >
-            <Home className="h-5 w-5" />
+            <Home className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
         </div>
       )}

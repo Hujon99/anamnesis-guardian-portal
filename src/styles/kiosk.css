@@ -222,3 +222,128 @@
     font-size: 1.25rem !important;
   }
 }
+
+/* Mobile optimizations for phones */
+@media (max-width: 768px) {
+  .kiosk-container {
+    padding: 1rem;
+  }
+
+  .kiosk-header {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 1rem;
+  }
+
+  .kiosk-title {
+    font-size: 2rem;
+  }
+  
+  .kiosk-subtitle {
+    font-size: 1rem;
+  }
+
+  /* Form elements for mobile */
+  .kiosk-container label,
+  .kiosk-container .form-label {
+    font-size: 1.125rem !important;
+    margin-bottom: 0.5rem;
+  }
+
+  .kiosk-container input[type="text"],
+  .kiosk-container input[type="email"],
+  .kiosk-container input[type="tel"],
+  .kiosk-container input[type="number"],
+  .kiosk-container input[type="date"],
+  .kiosk-container textarea,
+  .kiosk-container select {
+    font-size: 1rem !important;
+    min-height: 3rem !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  .kiosk-container textarea {
+    min-height: 6rem !important;
+  }
+
+  /* Buttons for mobile */
+  .kiosk-container button {
+    font-size: 1.125rem !important;
+    min-height: 3rem !important;
+    padding: 0.75rem 1.5rem !important;
+  }
+
+  .kiosk-button {
+    font-size: 1.125rem !important;
+    min-height: 3rem !important;
+    padding: 0.75rem 1.5rem !important;
+  }
+
+  /* Radio and checkbox for mobile */
+  .kiosk-container input[type="radio"],
+  .kiosk-container input[type="checkbox"] {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    margin-right: 0.75rem !important;
+  }
+
+  .kiosk-container .radio-label,
+  .kiosk-container .checkbox-label {
+    font-size: 1.125rem !important;
+    padding: 1rem !important;
+  }
+
+  /* Success screen for mobile */
+  .kiosk-success {
+    padding: 2rem;
+    border-radius: 1.5rem;
+  }
+
+  .kiosk-success-icon {
+    width: 5rem;
+    height: 5rem;
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .kiosk-success-title {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .kiosk-success-message {
+    font-size: 1.25rem;
+  }
+
+  /* Dialog adjustments for mobile */
+  .kiosk-dialog {
+    max-width: 90vw !important;
+    padding: 1.5rem !important;
+  }
+
+  .kiosk-dialog h2 {
+    font-size: 1.5rem !important;
+  }
+
+  .kiosk-dialog p {
+    font-size: 1rem !important;
+  }
+
+  .kiosk-input {
+    font-size: 1.5rem !important;
+    min-height: 3.5rem !important;
+    padding: 1rem !important;
+  }
+
+  /* Progress bar for mobile */
+  .kiosk-container .progress-bar {
+    height: 1rem !important;
+  }
+
+  /* Error messages for mobile */
+  .kiosk-container .error-message,
+  .kiosk-container .form-error {
+    font-size: 1rem !important;
+    padding: 0.75rem !important;
+  }
+}

@@ -66,24 +66,24 @@ export const KioskCustomerInfoStep = ({ onComplete }: KioskCustomerInfoStepProps
 
   return (
     <div className="kiosk-container">
-      <div className="flex items-center justify-center min-h-screen p-8">
+      <div className="flex items-center justify-center min-h-screen p-4 sm:p-6 md:p-8">
         <Card className="w-full max-w-3xl shadow-2xl border-2">
-          <CardHeader className="space-y-4 pb-8">
-            <CardTitle className="text-4xl font-bold text-center flex items-center justify-center gap-4">
-              <User className="h-10 w-10" />
+          <CardHeader className="space-y-3 sm:space-y-4 pb-6 sm:pb-8">
+            <CardTitle className="text-2xl sm:text-3xl md:text-4xl font-bold text-center flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+              <User className="h-8 w-8 sm:h-10 sm:w-10" />
               Välkommen
             </CardTitle>
-            <CardDescription className="text-2xl text-center">
+            <CardDescription className="text-base sm:text-xl md:text-2xl text-center px-2">
               Vänligen ange dina uppgifter för att börja
             </CardDescription>
           </CardHeader>
           
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
               {/* Personal Number Field */}
-              <div className="space-y-3">
-                <Label htmlFor="personalNumber" className="text-2xl font-semibold flex items-center gap-3">
-                  <IdCard className="h-6 w-6" />
+              <div className="space-y-2 sm:space-y-3">
+                <Label htmlFor="personalNumber" className="text-lg sm:text-xl md:text-2xl font-semibold flex items-center gap-2 sm:gap-3">
+                  <IdCard className="h-5 w-5 sm:h-6 sm:w-6" />
                   Personnummer *
                 </Label>
                 <Input
@@ -99,22 +99,22 @@ export const KioskCustomerInfoStep = ({ onComplete }: KioskCustomerInfoStepProps
                     }
                   }}
                   onBlur={() => personalNumber && validatePersonalNumber(personalNumber)}
-                  className="kiosk-input text-3xl h-20 text-center tracking-wider"
+                  className="kiosk-input text-xl sm:text-2xl md:text-3xl h-14 sm:h-16 md:h-20 text-center tracking-wider"
                   required
                   autoFocus
                 />
                 {errors.personalNumber && (
-                  <p className="text-destructive text-xl mt-2">{errors.personalNumber}</p>
+                  <p className="text-destructive text-base sm:text-lg md:text-xl mt-2">{errors.personalNumber}</p>
                 )}
-                <p className="text-muted-foreground text-lg">
+                <p className="text-muted-foreground text-sm sm:text-base md:text-lg">
                   Ange 10 eller 12 siffror (ÅÅÅÅMMDDXXXX)
                 </p>
               </div>
 
               {/* Full Name Field */}
-              <div className="space-y-3">
-                <Label htmlFor="fullName" className="text-2xl font-semibold flex items-center gap-3">
-                  <User className="h-6 w-6" />
+              <div className="space-y-2 sm:space-y-3">
+                <Label htmlFor="fullName" className="text-lg sm:text-xl md:text-2xl font-semibold flex items-center gap-2 sm:gap-3">
+                  <User className="h-5 w-5 sm:h-6 sm:w-6" />
                   Fullständigt namn *
                 </Label>
                 <Input
@@ -129,24 +129,24 @@ export const KioskCustomerInfoStep = ({ onComplete }: KioskCustomerInfoStepProps
                     }
                   }}
                   onBlur={() => fullName && validateFullName(fullName)}
-                  className="kiosk-input text-3xl h-20 text-center"
+                  className="kiosk-input text-xl sm:text-2xl md:text-3xl h-14 sm:h-16 md:h-20 text-center"
                   required
                 />
                 {errors.fullName && (
-                  <p className="text-destructive text-xl mt-2">{errors.fullName}</p>
+                  <p className="text-destructive text-base sm:text-lg md:text-xl mt-2">{errors.fullName}</p>
                 )}
               </div>
 
               {/* Submit Button */}
-              <div className="pt-6">
+              <div className="pt-4 sm:pt-6">
                 <Button
                   type="submit"
                   size="lg"
-                  className="kiosk-button w-full h-20 text-3xl font-bold"
+                  className="kiosk-button w-full h-14 sm:h-16 md:h-20 text-xl sm:text-2xl md:text-3xl font-bold"
                   disabled={!personalNumber || !fullName}
                 >
                   Fortsätt till formulär
-                  <ChevronRight className="ml-3 h-8 w-8" />
+                  <ChevronRight className="ml-2 sm:ml-3 h-6 w-6 sm:h-8 sm:w-8" />
                 </Button>
               </div>
             </form>

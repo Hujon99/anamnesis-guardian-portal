@@ -170,32 +170,32 @@ const KioskWelcomePage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-surface-light to-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-surface-light to-background p-4 sm:p-6 md:p-8">
       {/* Fullscreen toggle button */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50">
         <Button
           variant="secondary"
           size="icon"
           onClick={toggleFullscreen}
-          className="h-12 w-12 rounded-full shadow-lg"
+          className="h-10 w-10 sm:h-12 sm:w-12 rounded-full shadow-lg"
           title={isFullscreen ? "Avsluta fullskärm" : "Fullskärm"}
         >
-          {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+          {isFullscreen ? <Minimize2 className="h-4 w-4 sm:h-5 sm:w-5" /> : <Maximize2 className="h-4 w-4 sm:h-5 sm:w-5" />}
         </Button>
       </div>
 
-      <Card className="max-w-2xl w-full p-12 text-center space-y-8 shadow-elegant">
+      <Card className="max-w-2xl w-full p-6 sm:p-8 md:p-12 text-center space-y-6 sm:space-y-8 shadow-elegant">
         {/* Icon */}
-        <div className="mx-auto w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center shadow-glow">
-          <ClipboardList className="h-12 w-12 text-white" />
+        <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-gradient-primary flex items-center justify-center shadow-glow">
+          <ClipboardList className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 text-white" />
         </div>
 
         {/* Welcome Message */}
-        <div className="space-y-4">
-          <h1 className="text-4xl font-bold text-foreground">
+        <div className="space-y-3 sm:space-y-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
             Välkommen!
           </h1>
-          <p className="text-lg text-muted-foreground max-w-md mx-auto">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto px-2">
             Tryck på knappen nedan för att påbörja ditt formulär
           </p>
         </div>
@@ -205,11 +205,11 @@ const KioskWelcomePage = () => {
           size="lg"
           onClick={handleStartForm}
           disabled={isCreating}
-          className="h-16 px-12 text-xl font-semibold w-full max-w-sm mx-auto transition-all hover:scale-105"
+          className="h-14 sm:h-16 px-8 sm:px-12 text-lg sm:text-xl font-semibold w-full max-w-sm mx-auto transition-all hover:scale-105"
         >
           {isCreating ? (
             <>
-              <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+              <Loader2 className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
               Förbereder...
             </>
           ) : (
@@ -218,7 +218,7 @@ const KioskWelcomePage = () => {
         </Button>
 
         {/* Help Text */}
-        <p className="text-sm text-muted-foreground pt-4">
+        <p className="text-xs sm:text-sm text-muted-foreground pt-2 sm:pt-4">
           Har du frågor? Kontakta personalen vid receptionen
         </p>
       </Card>

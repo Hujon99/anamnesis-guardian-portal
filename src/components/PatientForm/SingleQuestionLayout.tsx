@@ -155,6 +155,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     const nextFieldId = (nextQuestion.question as DynamicFollowupQuestion).runtimeId || nextQuestion.question.id;
     form.setValue(nextFieldId, undefined, { shouldValidate: false, shouldDirty: false });
     
+    // Scrolla till toppen för att se hela nästa fråga
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     // Navigera med animation
     setAnimationClass("slide-out-left");
     setTimeout(() => {
@@ -181,6 +184,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
       form.setValue(prevFieldId, undefined, { shouldValidate: false, shouldDirty: false });
     }
     // Om det finns ett giltigt svar behöver vi inte göra något - det finns redan i form state
+    
+    // Scrolla till toppen för att se hela föregående fråga
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     
     // Navigera med animation
     setAnimationClass("slide-out-right");
@@ -211,9 +217,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   return (
     <>
-      {/* Header with progress - responsive padding */}
-      <div className="p-4 sm:p-6 border-b bg-background sticky top-0 z-10">
-        <div className="space-y-3 sm:space-y-4">
+      {/* Header with progress - compact padding for iPad */}
+      <div className="p-3 sm:p-4 border-b bg-background sticky top-0 z-10">
+        <div className="space-y-2 sm:space-y-3">
           {/* Chapter/Section indicator */}
           <div className="text-center">
             <div className="inline-flex items-center px-3 py-1.5 sm:py-1 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium max-w-full">
@@ -240,9 +246,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
         </div>
       </div>
 
-      {/* Question content - with responsive padding and sizing */}
-      <CardContent className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden">
-        <div className={`transition-all duration-300 ${animationClass} min-h-[300px] sm:min-h-[400px] flex flex-col justify-start sm:justify-center`}>
+      {/* Question content - compact padding for iPad to fit all content */}
+      <CardContent className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto overflow-x-hidden">
+        <div className={`transition-all duration-300 ${animationClass} min-h-[250px] sm:min-h-[350px] flex flex-col justify-center`}>
           {currentQuestion && (
             <div className="space-y-4 sm:space-y-6">
               {/* Question number indicator */}
@@ -268,9 +274,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
         </div>
       </CardContent>
 
-      {/* Navigation - responsive padding and sizing */}
-      <CardFooter className="p-3 sm:p-4 md:p-6 border-t bg-card shadow-lg sticky bottom-0 z-10">
-        <div className="w-full space-y-3 sm:space-y-4">
+      {/* Navigation - compact padding for iPad */}
+      <CardFooter className="p-2.5 sm:p-3 md:p-4 border-t bg-card shadow-lg sticky bottom-0 z-10">
+        <div className="w-full space-y-2 sm:space-y-3">
           <div className="flex justify-between items-center gap-2 sm:gap-3 md:gap-4">
             <Button
               variant="outline"

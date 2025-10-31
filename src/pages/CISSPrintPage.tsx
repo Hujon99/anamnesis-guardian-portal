@@ -104,10 +104,6 @@ export default function CISSPrintPage() {
           </div>
         </div>
 
-        {/* Compact Footer */}
-        <div className="text-center text-xs text-gray-500 mt-2">
-          <p>Genererad från Anamnesportalen · {new Date().toLocaleDateString('sv-SE')}</p>
-        </div>
       </div>
 
       {/* Print-specific styles - optimized for single page */}

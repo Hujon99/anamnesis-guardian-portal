@@ -77,6 +77,18 @@ function App() {
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/terms-of-service" element={<TermsOfServicePage />} />
             
+            {/* CISS Print page - protected but without Layout */}
+            <Route path="/ciss-links/print" element={
+              <ProtectedRoute>
+                <SystemAdminProvider>
+                  <AnamnesisProvider>
+                    <UserSyncManager />
+                    <CISSPrintPage />
+                  </AnamnesisProvider>
+                </SystemAdminProvider>
+              </ProtectedRoute>
+            } />
+            
             {/* Protected routes that require authentication */}
             <Route 
               element={
@@ -99,14 +111,6 @@ function App() {
                 } 
               />
               <Route path="/ciss-links" element={<CISSFormLinkPage />} />
-              <Route path="/ciss-links/print" element={
-                <SystemAdminProvider>
-                  <AnamnesisProvider>
-                    <UserSyncManager />
-                    <CISSPrintPage />
-                  </AnamnesisProvider>
-                </SystemAdminProvider>
-              } />
               <Route path="/optician" element={<OpticianView />} />
               <Route path="/admin" element={<AdminPanel />} />
             </Route>

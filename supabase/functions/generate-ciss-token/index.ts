@@ -34,9 +34,8 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extract organization_id from URL path
-    const url = new URL(req.url);
-    const organizationId = url.pathname.split('/').pop();
+    // Extract organization_id from request body
+    const { organizationId } = await req.json();
 
     if (!organizationId) {
       console.error('No organization ID provided');
@@ -49,11 +48,12 @@ serve(async (req) => {
     console.log(`[CISS Token] Generating token for organization: ${organizationId}`);
 
     // Find the active CISS form for this organization
+    // Note: CISS uses 'Synundersökning' as examination_type with CISS in title
     const { data: forms, error: formError } = await supabase
       .from('anamnes_forms')
       .select('id')
       .eq('organization_id', organizationId)
-      .eq('examination_type', 'CISS')
+      .ilike('title', '%CISS%')
       .eq('is_active', true)
       .limit(1);
 
@@ -97,7 +97,7 @@ serve(async (req) => {
         access_token: accessToken,
         expires_at: expiresAt.toISOString(),
         status: 'sent',
-        examination_type: 'CISS',
+        examination_type: 'Synundersökning',
         is_magic_link: true,
       })
       .select('id')

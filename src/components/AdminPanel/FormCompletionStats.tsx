@@ -39,7 +39,7 @@ import { Label } from "@/components/ui/label";
 
 const FormCompletionStats: React.FC = () => {
   const { organization } = useSafeOrganization();
-  const { isSystemAdmin, isLoading: adminLoading } = useSystemAdmin();
+  const { isSystemAdmin } = useSystemAdmin();
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
 
   // Calculate date range
@@ -62,28 +62,18 @@ const FormCompletionStats: React.FC = () => {
     return { start, end };
   }, [timeRange]);
 
-  const { data, isLoading, error } = useFormCompletionMetrics(
-    {
-      organizationId: isSystemAdmin ? undefined : organization?.id,
-      dateRange,
-    },
-    {
-      enabled: !adminLoading, // Wait until admin status is loaded
-    }
-  );
+  const { data, isLoading, error } = useFormCompletionMetrics({
+    organizationId: isSystemAdmin ? undefined : organization?.id,
+    dateRange,
+  });
 
-  const { data: failureData, isLoading: failureLoading } = useFailureReasons(
-    {
-      organizationId: isSystemAdmin ? undefined : organization?.id,
-      dateRange,
-      limit: 20,
-    },
-    {
-      enabled: !adminLoading, // Wait until admin status is loaded
-    }
-  );
+  const { data: failureData, isLoading: failureLoading } = useFailureReasons({
+    organizationId: isSystemAdmin ? undefined : organization?.id,
+    dateRange,
+    limit: 20,
+  });
 
-  if (isLoading || adminLoading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -27,15 +27,12 @@ interface UseFailureReasonsParams {
   };
 }
 
-export const useFailureReasons = (
-  {
-    organizationId,
-    storeId,
-    limit = 20,
-    dateRange,
-  }: UseFailureReasonsParams = {},
-  options?: { enabled?: boolean }
-) => {
+export const useFailureReasons = ({
+  organizationId,
+  storeId,
+  limit = 20,
+  dateRange,
+}: UseFailureReasonsParams = {}) => {
   return useQuery({
     queryKey: ["failure-reasons", organizationId, storeId, limit, dateRange],
     queryFn: async () => {
@@ -132,6 +129,5 @@ export const useFailureReasons = (
       };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: options?.enabled ?? true, // Allow disabling the query
   });
 };

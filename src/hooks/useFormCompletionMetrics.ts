@@ -37,14 +37,11 @@ interface UseFormCompletionMetricsParams {
   };
 }
 
-export const useFormCompletionMetrics = (
-  {
-    organizationId,
-    storeId,
-    dateRange,
-  }: UseFormCompletionMetricsParams = {},
-  options?: { enabled?: boolean }
-) => {
+export const useFormCompletionMetrics = ({
+  organizationId,
+  storeId,
+  dateRange,
+}: UseFormCompletionMetricsParams = {}) => {
   return useQuery({
     queryKey: ["form-completion-metrics", organizationId, storeId, dateRange],
     queryFn: async () => {
@@ -173,6 +170,5 @@ export const useFormCompletionMetrics = (
       };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: options?.enabled ?? true, // Allow disabling the query
   });
 };

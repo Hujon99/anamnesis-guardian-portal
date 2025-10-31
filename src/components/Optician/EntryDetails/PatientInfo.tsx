@@ -37,38 +37,40 @@ export const PatientInfo = ({
 }: PatientInfoProps) => {
   return (
     <div className="space-y-4">
-      {/* Kiosk Customer Information */}
-      {isKioskMode && (firstName || personalNumber) && (
-        <div className="p-4 bg-accent/30 border border-accent rounded-lg space-y-3">
+      {/* Patient Information */}
+      {(firstName || personalNumber) && (
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <IdCard className="h-5 w-5 text-accent-foreground" />
-            <h3 className="text-lg font-medium">Kunduppgifter från kiosk</h3>
-            <Badge variant="secondary" className="bg-accent text-accent-foreground">
-              Kiosk
-            </Badge>
+            <User className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold text-primary">Patientuppgifter</h3>
+            {isKioskMode && (
+              <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                Kiosk
+              </Badge>
+            )}
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {firstName && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <User className="h-3.5 w-3.5" />
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <User className="h-4 w-4" />
                   Namn
                 </Label>
-                <div className="p-2 bg-background border rounded-md">
-                  <span className="font-medium">{firstName}</span>
+                <div className="p-3 bg-background border border-primary/20 rounded-md">
+                  <span className="font-semibold text-base">{firstName}</span>
                 </div>
               </div>
             )}
             
             {personalNumber && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <IdCard className="h-3.5 w-3.5" />
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <IdCard className="h-4 w-4" />
                   Personnummer
                 </Label>
-                <div className="p-2 bg-background border rounded-md">
-                  <span className="font-mono">{personalNumber}</span>
+                <div className="p-3 bg-background border border-primary/20 rounded-md">
+                  <span className="font-mono font-semibold text-base">{personalNumber}</span>
                 </div>
               </div>
             )}

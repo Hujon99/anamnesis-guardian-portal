@@ -7,6 +7,7 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFormCompletionMetrics } from "@/hooks/useFormCompletionMetrics";
+import { useFailureReasons } from "@/hooks/useFailureReasons";
 import { useSafeOrganization } from "@/hooks/useSafeOrganization";
 import { useSystemAdmin } from "@/contexts/SystemAdminContext";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,8 +18,10 @@ import {
   TrendingUp, 
   Store, 
   AlertTriangle,
-  Calendar
+  Calendar,
+  MessageSquare
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   LineChart,
   Line,
@@ -62,6 +65,12 @@ const FormCompletionStats: React.FC = () => {
   const { data, isLoading, error } = useFormCompletionMetrics({
     organizationId: isSystemAdmin ? undefined : organization?.id,
     dateRange,
+  });
+
+  const { data: failureData, isLoading: failureLoading } = useFailureReasons({
+    organizationId: isSystemAdmin ? undefined : organization?.id,
+    dateRange,
+    limit: 20,
   });
 
   if (isLoading) {
@@ -247,27 +256,149 @@ const FormCompletionStats: React.FC = () => {
         </Card>
       )}
 
-      {/* Common Failure Reasons */}
-      {failureReasons.length > 0 && (
+      {/* Detailed Failure Reasons */}
+      {!failureLoading && failureData && failureData.reasons.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Vanligaste Anledningar till Misslyckande</CardTitle>
-            <CardDescription>
-              Kvalitativ feedback från kunder om varför de inte kunde slutföra formuläret
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Detaljerade Felrapporter
+                </CardTitle>
+                <CardDescription>
+                  Kvalitativ feedback från optiker om varför kunder inte kunde slutföra formuläret
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold">{failureData.stats.totalReports}</div>
+                <div className="text-xs text-muted-foreground">Totalt rapporter</div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {failureReasons.map((reason, index) => (
-                <div key={index} className="flex items-center justify-between border-b pb-2 last:border-0">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium capitalize">{reason.reason}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{reason.count} fall</span>
-                  </div>
+            <div className="space-y-6">
+              {/* Statistics summary */}
+              <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-lg font-semibold">{failureData.stats.uniqueReasons}</div>
+                  <div className="text-xs text-muted-foreground">Unika problem</div>
                 </div>
-              ))}
+                <div className="text-center">
+                  <div className="text-lg font-semibold">{failureData.stats.avgReasonLength}</div>
+                  <div className="text-xs text-muted-foreground">Snitt tecken/rapport</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-semibold">
+                    {Math.round((failureData.stats.totalReports / failureData.stats.uniqueReasons) * 10) / 10}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Rapporter/problem</div>
+                </div>
+              </div>
+
+              {/* Failure reasons list */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-sm text-muted-foreground">
+                  Vanligaste problem (sorterat efter frekvens):
+                </h4>
+                {failureData.reasons.map((reason, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-2 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="font-mono">
+                            #{index + 1}
+                          </Badge>
+                          <Badge variant="outline">
+                            {reason.count} {reason.count === 1 ? "fall" : "fall"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm leading-relaxed">{reason.reason}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Show recent occurrences */}
+                    {reason.entries && reason.entries.length > 0 && (
+                      <div className="pt-2 border-t">
+                        <details className="text-xs text-muted-foreground">
+                          <summary className="cursor-pointer hover:text-foreground">
+                            Visa detaljer ({reason.entries.length} rapporter)
+                          </summary>
+                          <div className="mt-2 space-y-1 pl-4">
+                            {reason.entries.slice(0, 3).map((entry, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span>
+                                  {new Date(entry.created_at).toLocaleDateString("sv-SE", {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                                {entry.store_name && (
+                                  <span className="text-muted-foreground">
+                                    • {entry.store_name}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                            {reason.entries.length > 3 && (
+                              <div className="text-muted-foreground italic">
+                                ... och {reason.entries.length - 3} fler
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Quality assessment */}
+              <Alert>
+                <AlertDescription>
+                  <strong>Kvalitetsbedömning:</strong>{" "}
+                  {failureData.stats.avgReasonLength < 50 && (
+                    <span className="text-amber-600">
+                      Många rapporter är relativt korta (snitt {failureData.stats.avgReasonLength} tecken). 
+                      Uppmuntra optiker att ge mer detaljerade beskrivningar för bättre felsökning.
+                    </span>
+                  )}
+                  {failureData.stats.avgReasonLength >= 50 && failureData.stats.avgReasonLength < 100 && (
+                    <span className="text-blue-600">
+                      Bra nivå av detaljer i rapporterna (snitt {failureData.stats.avgReasonLength} tecken).
+                    </span>
+                  )}
+                  {failureData.stats.avgReasonLength >= 100 && (
+                    <span className="text-green-600">
+                      Utmärkta detaljerade rapporter (snitt {failureData.stats.avgReasonLength} tecken)! 
+                      Detta ger mycket värdefull information för felsökning.
+                    </span>
+                  )}
+                </AlertDescription>
+              </Alert>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No failure reports yet */}
+      {!failureLoading && failureData && failureData.reasons.length === 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Felrapporter
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Inga felrapporter ännu för vald period</p>
+              <p className="text-sm mt-2">
+                När optiker rapporterar misslyckade formulärförsök kommer de att visas här
+              </p>
             </div>
           </CardContent>
         </Card>

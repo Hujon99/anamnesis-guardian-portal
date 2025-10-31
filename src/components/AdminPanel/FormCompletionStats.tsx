@@ -117,6 +117,19 @@ const FormCompletionStats: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Debug info for System Admins */}
+      {isSystemAdmin && (
+        <Alert>
+          <AlertDescription className="flex items-center gap-2">
+            <Badge variant="secondary">System Admin</Badge>
+            <span>
+              Visar data för: <strong>{organization?.name || "Alla organisationer"}</strong>
+              {!organization?.id && " (aggregerad data från alla organisationer)"}
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {/* Time Range Filter */}
       <div className="flex items-center gap-4">
         <Label htmlFor="time-range" className="flex items-center gap-2">

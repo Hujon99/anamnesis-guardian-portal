@@ -8,7 +8,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Plus, Users, Loader2 } from "lucide-react";
 import { useOrganizationForms, OrganizationForm } from "@/hooks/useOrganizationForms";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
@@ -41,6 +41,7 @@ export const DirectFormButton: React.FC = () => {
   const { organization } = useOrganization();
   const { user } = useUser();
   const { supabase, isReady } = useSupabaseClient();
+  const queryClient = useQueryClient();
   
   // Get available forms for the organization
   const { 
@@ -135,7 +136,7 @@ export const DirectFormButton: React.FC = () => {
       // Save attempt report if customer attempted online
       if (attemptData && supabase && organization?.id && user?.id) {
         try {
-          await supabase
+          const { error: reportError } = await supabase
             .from('form_attempt_reports')
             .insert({
               organization_id: organization.id,
@@ -146,9 +147,32 @@ export const DirectFormButton: React.FC = () => {
               reported_by: user.id,
               reported_by_name: user.fullName || user.firstName || "Okänd optiker"
             });
+          
+          if (reportError) {
+            console.error("Error saving attempt report:", reportError);
+            toast({
+              title: "Varning",
+              description: "Formuläret skapades men felrapporten kunde inte sparas.",
+              variant: "destructive",
+            });
+          } else {
+            console.log("Form attempt report saved successfully:", {
+              entryId,
+              attempted: attemptData.attempted,
+              hasDescription: !!attemptData.description
+            });
+            
+            // Invalidate completion metrics query to show updated statistics
+            queryClient.invalidateQueries({ queryKey: ['form-completion-metrics'] });
+            queryClient.invalidateQueries({ queryKey: ['failure-reasons'] });
+          }
         } catch (error) {
           console.error("Error saving attempt report:", error);
-          // Don't fail the entire operation for this
+          toast({
+            title: "Varning",
+            description: "Formuläret skapades men felrapporten kunde inte sparas.",
+            variant: "destructive",
+          });
         }
       }
       
@@ -315,7 +339,7 @@ export const DirectFormButton: React.FC = () => {
         // Save attempt report if customer attempted online (deferred ID verification case)
         if (attemptData && organization?.id && user?.id) {
           try {
-            await supabase
+            const { error: reportError } = await supabase
               .from('form_attempt_reports')
               .insert({
                 organization_id: organization.id,
@@ -326,6 +350,16 @@ export const DirectFormButton: React.FC = () => {
                 reported_by: user.id,
                 reported_by_name: user.fullName || user.firstName || "Okänd optiker"
               });
+            
+            if (reportError) {
+              console.error("Error saving attempt report:", reportError);
+            } else {
+              console.log("Form attempt report saved successfully (deferred ID)");
+              
+              // Invalidate completion metrics query
+              queryClient.invalidateQueries({ queryKey: ['form-completion-metrics'] });
+              queryClient.invalidateQueries({ queryKey: ['failure-reasons'] });
+            }
           } catch (error) {
             console.error("Error saving attempt report:", error);
           }

@@ -28,6 +28,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useSystemAdmin } from "@/contexts/SystemAdminContext";
 import { FormSessionDebugView } from "@/components/AdminPanel/FormSessionDebugView";
 import { UpgradeStatsCards } from "@/components/AdminPanel/UpgradeStatsCards";
+import FormCompletionStats from "@/components/AdminPanel/FormCompletionStats";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Store = Tables<"stores">;
@@ -161,7 +162,11 @@ const AdminPanel = () => {
           </TabsTrigger>
           <TabsTrigger value="statistics" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Statistik
+            Uppgraderingar
+          </TabsTrigger>
+          <TabsTrigger value="completion" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Formulär-completion
           </TabsTrigger>
           <TabsTrigger value="debug" className="flex items-center gap-2">
             <Bug className="h-4 w-4" />
@@ -266,6 +271,23 @@ const AdminPanel = () => {
             </CardHeader>
             <CardContent>
               <UpgradeStatsCards timeRange={statsTimeRange} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="completion" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Formulär Slutförandestatistik
+              </CardTitle>
+              <CardDescription>
+                Spårning av misslyckade formulärförsök och completion rates
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormCompletionStats />
             </CardContent>
           </Card>
         </TabsContent>

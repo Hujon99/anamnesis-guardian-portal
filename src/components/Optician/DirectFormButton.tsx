@@ -21,6 +21,7 @@ import { ExaminationTypeSelector } from "./ExaminationTypeSelector";
 import { GdprInformationDialog } from "./GdprInformationDialog";
 import { CustomerNameDialog } from "./CustomerNameDialog";
 import { IdVerificationDialog } from "./IdVerificationDialog";
+import FormAttemptDialog from "./FormAttemptDialog";
 import { DIRECT_FORM_TOKEN_KEY, DIRECT_FORM_MODE_KEY } from "@/utils/opticianFormTokenUtils";
 
 export const DirectFormButton: React.FC = () => {
@@ -28,11 +29,13 @@ export const DirectFormButton: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [showGdprDialog, setShowGdprDialog] = useState(false);
+  const [showAttemptDialog, setShowAttemptDialog] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [showIdVerificationDialog, setShowIdVerificationDialog] = useState(false);
   const [selectedForm, setSelectedForm] = useState<OrganizationForm | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [gdprData, setGdprData] = useState<{ infoType: 'full' | 'short'; notes?: string } | null>(null);
+  const [attemptData, setAttemptData] = useState<{ attempted: boolean; description?: string } | null>(null);
   
   const navigate = useNavigate();
   const { organization } = useOrganization();
@@ -126,9 +129,29 @@ export const DirectFormButton: React.FC = () => {
         // Don't fail the entire operation for this
       }
 
-      return { entry: data, token: accessToken };
+      return { entry: data, token: accessToken, entryId: data.id };
     },
-    onSuccess: ({ entry, token }) => {
+    onSuccess: async ({ entry, token, entryId }) => {
+      // Save attempt report if customer attempted online
+      if (attemptData && supabase && organization?.id && user?.id) {
+        try {
+          await supabase
+            .from('form_attempt_reports')
+            .insert({
+              organization_id: organization.id,
+              store_id: entry.store_id,
+              entry_id: entryId,
+              customer_attempted_online: attemptData.attempted,
+              failure_description: attemptData.description || null,
+              reported_by: user.id,
+              reported_by_name: user.fullName || user.firstName || "Okänd optiker"
+            });
+        } catch (error) {
+          console.error("Error saving attempt report:", error);
+          // Don't fail the entire operation for this
+        }
+      }
+      
       // Store token and mode in localStorage for form access
       localStorage.setItem(DIRECT_FORM_TOKEN_KEY, token);
       localStorage.setItem(DIRECT_FORM_MODE_KEY, "optician");
@@ -144,11 +167,13 @@ export const DirectFormButton: React.FC = () => {
       // Reset all dialog states
       setShowTypeSelector(false);
       setShowGdprDialog(false);
+      setShowAttemptDialog(false);
       setShowNameDialog(false);
       setShowIdVerificationDialog(false);
       setSelectedForm(null);
       setCustomerName("");
       setGdprData(null);
+      setAttemptData(null);
       setIsCreating(false);
     },
     onError: (error: Error) => {
@@ -209,6 +234,12 @@ export const DirectFormButton: React.FC = () => {
   const handleGdprConfirm = (data: { infoType: 'full' | 'short'; notes?: string }) => {
     setGdprData(data);
     setShowGdprDialog(false);
+    setShowAttemptDialog(true); // Show attempt dialog next
+  };
+
+  const handleAttemptConfirm = (data: { attempted: boolean; description?: string }) => {
+    setAttemptData(data);
+    setShowAttemptDialog(false);
     setShowNameDialog(true);
   };
 
@@ -280,6 +311,25 @@ export const DirectFormButton: React.FC = () => {
             console.error("Error updating GDPR confirmation:", gdprError);
           }
         }
+
+        // Save attempt report if customer attempted online (deferred ID verification case)
+        if (attemptData && organization?.id && user?.id) {
+          try {
+            await supabase
+              .from('form_attempt_reports')
+              .insert({
+                organization_id: organization.id,
+                store_id: data.store_id,
+                entry_id: data.id,
+                customer_attempted_online: attemptData.attempted,
+                failure_description: attemptData.description || null,
+                reported_by: user.id,
+                reported_by_name: user.fullName || user.firstName || "Okänd optiker"
+              });
+          } catch (error) {
+            console.error("Error saving attempt report:", error);
+          }
+        }
         
         localStorage.setItem(DIRECT_FORM_TOKEN_KEY, accessToken);
         localStorage.setItem(DIRECT_FORM_MODE_KEY, "optician");
@@ -292,11 +342,13 @@ export const DirectFormButton: React.FC = () => {
         
         setShowTypeSelector(false);
         setShowGdprDialog(false);
+        setShowAttemptDialog(false);
         setShowNameDialog(false);
         setShowIdVerificationDialog(false);
         setSelectedForm(null);
         setCustomerName("");
         setGdprData(null);
+        setAttemptData(null);
         setIsCreating(false);
       } catch (error: any) {
         console.error("Failed to create form:", error);
@@ -400,6 +452,12 @@ export const DirectFormButton: React.FC = () => {
         onConfirm={handleGdprConfirm}
         isProcessing={isCreating}
         examinationType={selectedForm?.title || ""}
+      />
+      
+      <FormAttemptDialog
+        open={showAttemptDialog}
+        onOpenChange={setShowAttemptDialog}
+        onConfirm={handleAttemptConfirm}
       />
       
       <CustomerNameDialog

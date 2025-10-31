@@ -549,6 +549,64 @@ export type Database = {
         }
         Relationships: []
       }
+      form_attempt_reports: {
+        Row: {
+          created_at: string
+          customer_attempted_online: boolean
+          entry_id: string
+          failure_description: string | null
+          id: string
+          organization_id: string
+          reported_by: string
+          reported_by_name: string
+          store_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_attempted_online: boolean
+          entry_id: string
+          failure_description?: string | null
+          id?: string
+          organization_id: string
+          reported_by: string
+          reported_by_name: string
+          store_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_attempted_online?: boolean
+          entry_id?: string
+          failure_description?: string | null
+          id?: string
+          organization_id?: string
+          reported_by?: string
+          reported_by_name?: string
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_attempt_reports_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: true
+            referencedRelation: "anamnes_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_attempt_reports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_attempt_reports_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_session_logs: {
         Row: {
           browser: string | null

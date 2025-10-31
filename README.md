@@ -33,7 +33,7 @@ This application provides:
 - **Supabase** - PostgreSQL database with real-time subscriptions
 - **Edge Functions** (Deno) - Serverless backend logic
 - **Row Level Security (RLS)** - Database-level access control
-- **Azure OpenAI** - AI-powered anamnesis summaries
+- **Azure OpenAI (Europe)** - AI-powered anamnesis summaries
 
 ### Authentication & Authorization
 - **Clerk** - User authentication and organization management

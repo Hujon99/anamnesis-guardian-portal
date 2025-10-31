@@ -87,17 +87,17 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-8">
-        <DialogHeader className="space-y-3">
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
           <DialogTitle>Formulärförsök</DialogTitle>
-          <DialogDescription className="text-base">
+          <DialogDescription>
             Har kunden försökt fylla i formuläret hemma/online?
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-8 py-6 px-2">
+        <div className="space-y-6 py-4">
           {/* Selection Buttons */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-4">
             <Button
               type="button"
               variant={attempted === true ? "default" : "outline"}
@@ -123,21 +123,21 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
 
           {/* Detailed failure information - only shown if attempted */}
           {attempted === true && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-200">
-              <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 mx-2">
+            <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
+              <Alert>
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="leading-relaxed">
+                <AlertDescription>
                   <strong>Viktigt för felsökning:</strong> Ju mer detaljerad information du ger, desto bättre kan vi förbättra systemet.
                   Försök att inkludera specifika detaljer om vad som hände.
                 </AlertDescription>
               </Alert>
 
               {/* Common Issues Checkboxes */}
-              <div className="space-y-4 px-2">
+              <div className="space-y-3">
                 <Label className="text-base font-semibold">
                   Välj vanliga problem (valfritt, välj alla som passar):
                 </Label>
-                <div className="space-y-3 pl-2">
+                <div className="space-y-2">
                   {commonProblems.map((problem) => (
                     <div key={problem.id} className="flex items-center space-x-2">
                       <Checkbox
@@ -157,14 +157,14 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
               </div>
 
               {/* Detailed Description */}
-              <div className="space-y-4 px-2">
+              <div className="space-y-2">
                 <Label htmlFor="failure-description" className="text-base font-semibold">
                   Detaljerad beskrivning: <span className="text-red-500">*</span>
                 </Label>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-sm text-muted-foreground mb-2">
                   Beskriv så specifikt som möjligt vad som gick fel. Inkludera gärna:
                 </p>
-                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-2 ml-4">
+                <ul className="text-xs text-muted-foreground list-disc list-inside mb-2 space-y-1">
                   <li>Vilken enhet använde kunden? (iPhone, Android, dator)</li>
                   <li>Vad hände exakt? (kraschade appen, frös sidan, felmeddelande visades?)</li>
                   <li>Vid vilket steg i formuläret hände problemet?</li>
@@ -177,23 +177,21 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Exempel: 'Kunden använde iPhone 12. När hon försökte öppna länken i SMS så öppnades appen men den visade bara en vit skärm. Hon försökte starta om telefonen men samma problem. Ingen felkod visades.'"
                   rows={6}
-                  className="resize-none mt-3"
+                  className="resize-none"
                 />
-                <p className="text-sm font-medium text-amber-600 flex items-start gap-2 mt-3">
-                  <span className="flex-shrink-0">⚠️</span>
-                  <span>Undvik generella beskrivningar som "fungerade inte" - var så specifik som möjligt!</span>
+                <p className="text-xs font-medium text-amber-600">
+                  ⚠️ Undvik generella beskrivningar som "fungerade inte" - var så specifik som möjligt!
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        <DialogFooter className="pt-8 gap-3">
+        <DialogFooter>
           <Button
             type="button"
             variant="outline"
             onClick={handleCancel}
-            className="min-w-[100px]"
           >
             Tillbaka
           </Button>
@@ -204,7 +202,6 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
               attempted === null || 
               (attempted === true && !description.trim() && commonIssues.length === 0)
             }
-            className="min-w-[140px]"
           >
             {attempted === true && !description.trim() && commonIssues.length === 0 
               ? "Vänligen beskriv problemet" 

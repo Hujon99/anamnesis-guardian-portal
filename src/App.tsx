@@ -26,6 +26,7 @@ import StoreSelectionPage from "@/pages/StoreSelectionPage";
 import CustomerInfoPage from "@/pages/CustomerInfoPage";
 import ExaminationTypeSelectionPage from "@/pages/ExaminationTypeSelectionPage";
 import CISSFormLinkPage from "@/pages/CISSFormLinkPage";
+import CISSPrintPage from "@/pages/CISSPrintPage";
 import CISSEntryPage from "@/pages/CISSEntryPage";
 import CISSCustomerInfoPage from "@/pages/CISSCustomerInfoPage";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
@@ -98,6 +99,14 @@ function App() {
                 } 
               />
               <Route path="/ciss-links" element={<CISSFormLinkPage />} />
+              <Route path="/ciss-links/print" element={
+                <SystemAdminProvider>
+                  <AnamnesisProvider>
+                    <UserSyncManager />
+                    <CISSPrintPage />
+                  </AnamnesisProvider>
+                </SystemAdminProvider>
+              } />
               <Route path="/optician" element={<OpticianView />} />
               <Route path="/admin" element={<AdminPanel />} />
             </Route>

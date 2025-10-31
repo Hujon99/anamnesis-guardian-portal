@@ -46,7 +46,8 @@ export default function CISSFormLinkPage() {
   }
 
   const handlePrint = () => {
-    window.print();
+    // Open print page in new window
+    window.open('/ciss-links/print', '_blank');
   };
 
   const handleCopyLink = async () => {
@@ -163,105 +164,6 @@ export default function CISSFormLinkPage() {
         </CardContent>
       </Card>
 
-      {/* Print-only section */}
-      <div className="hidden print:block print-content">
-        <div className="flex flex-col items-center justify-center min-h-screen p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-3">CISS-formulär</h1>
-            <p className="text-xl text-gray-700 mb-2">Skanna QR-koden för att komma igång</p>
-            <p className="text-lg text-gray-600">{organization?.name || 'Anamnesportalen'}</p>
-          </div>
-
-          <div className="mb-8">
-            <CISSQRCodeDisplay url={cissUrl} size={320} />
-          </div>
-
-          <div className="max-w-2xl">
-            <h2 className="text-2xl font-semibold mb-4 text-center">Instruktioner</h2>
-            <div className="space-y-4 text-lg">
-              <div className="flex gap-4 items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold">
-                  1
-                </div>
-                <div>
-                  <strong>Skanna QR-koden</strong> med patientens mobiltelefon
-                </div>
-              </div>
-              <div className="flex gap-4 items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold">
-                  2
-                </div>
-                <div>
-                  <strong>Fyll i namn och personnummer</strong> när du blir ombedd
-                </div>
-              </div>
-              <div className="flex gap-4 items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold">
-                  3
-                </div>
-                <div>
-                  <strong>Besvara frågorna</strong> i formuläret på din enhet
-                </div>
-              </div>
-              <div className="flex gap-4 items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold">
-                  4
-                </div>
-                <div>
-                  <strong>Svaren skickas säkert</strong> till din optiker när du är klar
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 p-4 bg-gray-100 rounded-lg text-center">
-              <p className="text-sm text-gray-700">
-                <strong>GDPR-säkert:</strong> Varje skanning skapar en unik, säker session som automatiskt upphör efter 24 timmar.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Print styles */}
-      <style>{`
-        @media print {
-          @page {
-            margin: 1cm;
-            size: A4 portrait;
-          }
-          
-          body {
-            margin: 0;
-            padding: 0;
-          }
-          
-          /* Hide everything by default */
-          body > * {
-            display: none !important;
-          }
-          
-          /* Show only the print content */
-          .print-content {
-            display: block !important;
-            visibility: visible !important;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-          }
-          
-          .print-content * {
-            visibility: visible !important;
-          }
-          
-          /* Ensure QR code prints well */
-          .print-content canvas,
-          .print-content svg {
-            max-width: 100% !important;
-            height: auto !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

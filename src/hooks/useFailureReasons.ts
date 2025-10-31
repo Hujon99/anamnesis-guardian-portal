@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 export interface FailureReason {
   reason: string;
@@ -33,9 +33,13 @@ export const useFailureReasons = ({
   limit = 20,
   dateRange,
 }: UseFailureReasonsParams = {}) => {
+  const { supabase, isReady } = useSupabaseClient();
+  
   return useQuery({
     queryKey: ["failure-reasons", organizationId, storeId, limit, dateRange],
     queryFn: async () => {
+      if (!supabase) throw new Error("Supabase client not ready");
+      
       // Build query
       let query = supabase
         .from("form_attempt_reports")
@@ -129,5 +133,6 @@ export const useFailureReasons = ({
       };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: isReady, // Only run when authenticated client is ready
   });
 };

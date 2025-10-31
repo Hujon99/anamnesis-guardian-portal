@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 export interface CompletionMetrics {
   total_online_completions: number;
@@ -42,9 +42,13 @@ export const useFormCompletionMetrics = ({
   storeId,
   dateRange,
 }: UseFormCompletionMetricsParams = {}) => {
+  const { supabase, isReady } = useSupabaseClient();
+  
   return useQuery({
     queryKey: ["form-completion-metrics", organizationId, storeId, dateRange],
     queryFn: async () => {
+      if (!supabase) throw new Error("Supabase client not ready");
+      
       // Build base queries with filters
       let entriesQuery = supabase
         .from("anamnes_entries")
@@ -170,5 +174,6 @@ export const useFormCompletionMetrics = ({
       };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: isReady, // Only run when authenticated client is ready
   });
 };

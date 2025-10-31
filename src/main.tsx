@@ -5,7 +5,6 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
 import "./index.css";
 import "./styles/animations.css";
-import "./styles/kiosk.css";
 
 const PUBLISHABLE_KEY = "pk_test_dG9nZXRoZXItbGFkeWJ1Zy05NC5jbGVyay5hY2NvdW50cy5kZXYk";
 

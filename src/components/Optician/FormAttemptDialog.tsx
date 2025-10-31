@@ -87,17 +87,17 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-6 sm:p-8">
+        <DialogHeader className="px-2">
           <DialogTitle>Formulärförsök</DialogTitle>
           <DialogDescription>
             Har kunden försökt fylla i formuläret hemma/online?
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 px-2">
           {/* Selection Buttons */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 px-2">
             <Button
               type="button"
               variant={attempted === true ? "default" : "outline"}
@@ -123,8 +123,8 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
 
           {/* Detailed failure information - only shown if attempted */}
           {attempted === true && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
-              <Alert>
+            <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-200 px-2">
+              <Alert className="mx-2">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   <strong>Viktigt för felsökning:</strong> Ju mer detaljerad information du ger, desto bättre kan vi förbättra systemet.
@@ -133,11 +133,11 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
               </Alert>
 
               {/* Common Issues Checkboxes */}
-              <div className="space-y-3">
+              <div className="space-y-3 px-2">
                 <Label className="text-base font-semibold">
                   Välj vanliga problem (valfritt, välj alla som passar):
                 </Label>
-                <div className="space-y-2">
+                <div className="space-y-2 pl-2">
                   {commonProblems.map((problem) => (
                     <div key={problem.id} className="flex items-center space-x-2">
                       <Checkbox
@@ -157,14 +157,14 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
               </div>
 
               {/* Detailed Description */}
-              <div className="space-y-2">
+              <div className="space-y-2 px-2">
                 <Label htmlFor="failure-description" className="text-base font-semibold">
                   Detaljerad beskrivning: <span className="text-red-500">*</span>
                 </Label>
                 <p className="text-sm text-muted-foreground mb-2">
                   Beskriv så specifikt som möjligt vad som gick fel. Inkludera gärna:
                 </p>
-                <ul className="text-xs text-muted-foreground list-disc list-inside mb-2 space-y-1">
+                <ul className="text-xs text-muted-foreground list-disc list-inside mb-2 space-y-1 ml-4">
                   <li>Vilken enhet använde kunden? (iPhone, Android, dator)</li>
                   <li>Vad hände exakt? (kraschade appen, frös sidan, felmeddelande visades?)</li>
                   <li>Vid vilket steg i formuläret hände problemet?</li>
@@ -187,7 +187,7 @@ const FormAttemptDialog: React.FC<FormAttemptDialogProps> = ({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="pt-6 px-2">
           <Button
             type="button"
             variant="outline"

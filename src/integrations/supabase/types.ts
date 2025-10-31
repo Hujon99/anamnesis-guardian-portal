@@ -620,66 +620,6 @@ export type Database = {
           },
         ]
       }
-      kiosk_sessions: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          expires_at: string | null
-          form_id: string
-          id: string
-          is_active: boolean | null
-          last_used_at: string | null
-          organization_id: string
-          persistent_token: string
-          require_supervisor_code: boolean | null
-          store_id: string | null
-          total_submissions: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          expires_at?: string | null
-          form_id: string
-          id?: string
-          is_active?: boolean | null
-          last_used_at?: string | null
-          organization_id: string
-          persistent_token: string
-          require_supervisor_code?: boolean | null
-          store_id?: string | null
-          total_submissions?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          expires_at?: string | null
-          form_id?: string
-          id?: string
-          is_active?: boolean | null
-          last_used_at?: string | null
-          organization_id?: string
-          persistent_token?: string
-          require_supervisor_code?: boolean | null
-          store_id?: string | null
-          total_submissions?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kiosk_sessions_form_id_fkey"
-            columns: ["form_id"]
-            isOneToOne: false
-            referencedRelation: "anamnes_forms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "kiosk_sessions_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       organization_settings: {
         Row: {
           ai_prompt_driving_license: string | null

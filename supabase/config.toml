@@ -55,6 +55,3 @@ verify_jwt = false
 
 [functions.track-upgrade-conversion]
 verify_jwt = false
-
-[functions.create-kiosk-entry]
-verify_jwt = false

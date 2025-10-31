@@ -42,78 +42,79 @@ export default function CISSPrintPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white print:bg-white">
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 text-gray-900">CISS-formulär</h1>
-          <p className="text-2xl text-gray-700 mb-3">Skanna QR-koden för att komma igång</p>
-          <p className="text-xl text-gray-600">{organization.name}</p>
+    <div className="bg-white print:bg-white">
+      <div className="flex flex-col items-center p-6">
+        {/* Compact Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold mb-2 text-gray-900">CISS-formulär</h1>
+          <p className="text-lg text-gray-700 mb-1">Skanna QR-koden för att komma igång</p>
+          <p className="text-base text-gray-600">{organization.name}</p>
         </div>
 
-        {/* QR Code */}
-        <div className="mb-12">
-          <CISSQRCodeDisplay url={cissUrl} size={320} />
+        {/* QR Code - centered and optimized size */}
+        <div className="mb-6">
+          <CISSQRCodeDisplay url={cissUrl} size={240} />
         </div>
 
-        {/* Instructions */}
-        <div className="max-w-2xl w-full">
-          <h2 className="text-3xl font-semibold mb-6 text-center text-gray-900">Instruktioner</h2>
-          <div className="space-y-6 text-lg">
-            <div className="flex gap-4 items-start">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
+        {/* Compact Instructions */}
+        <div className="max-w-xl w-full mb-6">
+          <h2 className="text-xl font-semibold mb-3 text-center text-gray-900">Så här gör du</h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-3 items-start">
+              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[hsl(210,100%,40%)] text-white flex items-center justify-center font-bold text-xs">
                 1
               </div>
-              <div className="pt-1">
+              <div className="pt-0.5">
                 <strong>Skanna QR-koden</strong> med patientens mobiltelefon
               </div>
             </div>
-            <div className="flex gap-4 items-start">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
+            <div className="flex gap-3 items-start">
+              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[hsl(210,100%,40%)] text-white flex items-center justify-center font-bold text-xs">
                 2
               </div>
-              <div className="pt-1">
+              <div className="pt-0.5">
                 <strong>Fyll i namn och personnummer</strong> när du blir ombedd
               </div>
             </div>
-            <div className="flex gap-4 items-start">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
+            <div className="flex gap-3 items-start">
+              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[hsl(210,100%,40%)] text-white flex items-center justify-center font-bold text-xs">
                 3
               </div>
-              <div className="pt-1">
+              <div className="pt-0.5">
                 <strong>Besvara frågorna</strong> i formuläret på din enhet
               </div>
             </div>
-            <div className="flex gap-4 items-start">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
+            <div className="flex gap-3 items-start">
+              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[hsl(210,100%,40%)] text-white flex items-center justify-center font-bold text-xs">
                 4
               </div>
-              <div className="pt-1">
+              <div className="pt-0.5">
                 <strong>Svaren skickas säkert</strong> till din optiker när du är klar
               </div>
             </div>
           </div>
+        </div>
 
-          {/* GDPR Notice */}
-          <div className="mt-10 p-6 bg-gray-100 rounded-lg">
-            <p className="text-base text-gray-800 text-center">
+        {/* Compact GDPR Notice */}
+        <div className="max-w-xl w-full mb-4">
+          <div className="p-4 bg-gray-50 rounded border border-gray-200">
+            <p className="text-xs text-gray-700 text-center leading-relaxed">
               <strong>GDPR-säkert:</strong> Varje skanning skapar en unik, säker session som automatiskt upphör efter 24 timmar.
             </p>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-12 text-center text-sm text-gray-500">
-          <p>Genererad från Anamnesportalen</p>
-          <p className="mt-1">{new Date().toLocaleDateString('sv-SE')}</p>
+        {/* Compact Footer */}
+        <div className="text-center text-xs text-gray-500 mt-2">
+          <p>Genererad från Anamnesportalen · {new Date().toLocaleDateString('sv-SE')}</p>
         </div>
       </div>
 
-      {/* Print-specific styles */}
+      {/* Print-specific styles - optimized for single page */}
       <style>{`
         @media print {
           @page {
-            margin: 1.5cm;
+            margin: 1cm;
             size: A4 portrait;
           }
           
@@ -126,6 +127,22 @@ export default function CISSPrintPage() {
           * {
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
+          }
+          
+          /* Ensure compact spacing in print */
+          .space-y-3 > * + * {
+            margin-top: 0.5rem !important;
+          }
+        }
+        
+        @media screen {
+          /* Center content on screen preview */
+          body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f5f5f5;
           }
         }
       `}</style>

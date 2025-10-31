@@ -102,12 +102,12 @@ export function AppSidebar() {
                   <SidebarMenuItem>
                     <SidebarMenuButton 
                       asChild 
-                      isActive={location.pathname === '/kiosk-setup'}
-                      tooltip="Kiosk QR-kod generering"
+                      isActive={location.pathname === '/ciss-links'}
+                      tooltip="CISS-formulär QR-kod"
                     >
-                      <Link to="/kiosk-setup">
+                      <Link to="/ciss-links">
                         <QrCode />
-                        <span>Kiosk</span>
+                        <span>CISS-formulär</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

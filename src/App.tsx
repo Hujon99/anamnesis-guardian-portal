@@ -25,6 +25,8 @@ import ConsentPage from "@/pages/ConsentPage";
 import StoreSelectionPage from "@/pages/StoreSelectionPage";
 import CustomerInfoPage from "@/pages/CustomerInfoPage";
 import ExaminationTypeSelectionPage from "@/pages/ExaminationTypeSelectionPage";
+import CISSFormLinkPage from "@/pages/CISSFormLinkPage";
+import CISSEntryPage from "@/pages/CISSEntryPage";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import TermsOfServicePage from "@/pages/TermsOfServicePage";
 
@@ -65,6 +67,10 @@ function App() {
             <Route path="/store-selection" element={<StoreSelectionPage />} />
             <Route path="/customer-info" element={<CustomerInfoPage />} />
             <Route path="/examination-type-selection" element={<ExaminationTypeSelectionPage />} />
+            
+            {/* CISS entry point - generates token and redirects */}
+            <Route path="/ciss/:organizationId" element={<CISSEntryPage />} />
+            
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/terms-of-service" element={<TermsOfServicePage />} />
             
@@ -89,6 +95,7 @@ function App() {
                   <MyAnamnesisPage />
                 } 
               />
+              <Route path="/ciss-links" element={<CISSFormLinkPage />} />
               <Route path="/optician" element={<OpticianView />} />
               <Route path="/admin" element={<AdminPanel />} />
             </Route>

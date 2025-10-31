@@ -33,8 +33,9 @@ export default function CISSEntryPage() {
       return;
     }
 
-    generateTokenAndRedirect();
-  }, [organizationId]);
+    // Redirect to customer info page to collect name and personal number
+    navigate(`/ciss/${organizationId}/customer-info`, { replace: true });
+  }, [organizationId, navigate]);
 
   const generateTokenAndRedirect = async () => {
     try {
@@ -81,13 +82,10 @@ export default function CISSEntryPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-surface-light to-white p-4">
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader>
-            <CardTitle className="text-center">Förbereder formulär...</CardTitle>
+            <CardTitle className="text-center">Omdirigerar...</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground text-center">
-              Skapar en säker session för ditt CISS-formulär
-            </p>
           </CardContent>
         </Card>
       </div>

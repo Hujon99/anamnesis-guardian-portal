@@ -34,11 +34,11 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extract organization_id from request body
-    const { organizationId } = await req.json();
+    // Extract data from request body
+    const { organizationId, firstName, personalNumber } = await req.json();
 
     if (!organizationId) {
-      console.error('No organization ID provided');
+      console.error('[CISS Token] No organization ID provided');
       return new Response(
         JSON.stringify({ error: 'Organization ID is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -88,18 +88,28 @@ serve(async (req) => {
 
     console.log(`[CISS Token] Creating entry with token expiry: ${expiresAt.toISOString()}`);
 
-    // Create new anamnes_entries record
+    // Create new anamnes_entries record with customer info
+    const entryData: any = {
+      form_id: formId,
+      organization_id: organizationId,
+      access_token: accessToken,
+      expires_at: expiresAt.toISOString(),
+      status: 'sent',
+      examination_type: 'Synundersökning',
+      is_magic_link: true,
+    };
+
+    // Add customer info if provided
+    if (firstName) {
+      entryData.first_name = firstName;
+    }
+    if (personalNumber) {
+      entryData.personal_number = personalNumber;
+    }
+
     const { data: entry, error: entryError } = await supabase
       .from('anamnes_entries')
-      .insert({
-        form_id: formId,
-        organization_id: organizationId,
-        access_token: accessToken,
-        expires_at: expiresAt.toISOString(),
-        status: 'sent',
-        examination_type: 'Synundersökning',
-        is_magic_link: true,
-      })
+      .insert(entryData)
       .select('id')
       .single();
 

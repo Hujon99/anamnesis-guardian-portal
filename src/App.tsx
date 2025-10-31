@@ -27,6 +27,7 @@ import CustomerInfoPage from "@/pages/CustomerInfoPage";
 import ExaminationTypeSelectionPage from "@/pages/ExaminationTypeSelectionPage";
 import CISSFormLinkPage from "@/pages/CISSFormLinkPage";
 import CISSEntryPage from "@/pages/CISSEntryPage";
+import CISSCustomerInfoPage from "@/pages/CISSCustomerInfoPage";
 import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import TermsOfServicePage from "@/pages/TermsOfServicePage";
 
@@ -70,6 +71,7 @@ function App() {
             
             {/* CISS entry point - generates token and redirects */}
             <Route path="/ciss/:organizationId" element={<CISSEntryPage />} />
+            <Route path="/ciss/:organizationId/customer-info" element={<CISSCustomerInfoPage />} />
             
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/terms-of-service" element={<TermsOfServicePage />} />

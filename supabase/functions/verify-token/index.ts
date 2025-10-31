@@ -168,13 +168,13 @@ serve(async (req: Request) => {
       );
     }
 
-    // Fetch the form template for this entry - FIXED: Use correct table name 'anamnes_forms'
-    const { data: formTemplates, error: formError } = await supabase
+    // Fetch the specific form template for this entry using form_id
+    // This ensures we get the correct form even if it's a global template with NULL organization_id
+    const { data: formTemplate, error: formError } = await supabase
       .from('anamnes_forms')
       .select('*')
-      .eq('organization_id', entry.organization_id)
-      .order('created_at', { ascending: false })
-      .limit(1);
+      .eq('id', entry.form_id)
+      .maybeSingle();
 
     if (formError) {
       console.error(`[verify-token/${requestId}]: Form template error:`, formError);
@@ -191,13 +191,13 @@ serve(async (req: Request) => {
       );
     }
 
-    if (!formTemplates || formTemplates.length === 0) {
-      console.error(`[verify-token/${requestId}]: Form template not found for organization: ${entry.organization_id}`);
+    if (!formTemplate) {
+      console.error(`[verify-token/${requestId}]: Form template not found with id: ${entry.form_id}`);
       return new Response(
         JSON.stringify({ 
           error: 'Form template not found',
           requestId,
-          details: `No form template found for organization: ${entry.organization_id}`
+          details: `No form template found with id: ${entry.form_id}`
         }),
         { 
           status: 404, 
@@ -205,9 +205,8 @@ serve(async (req: Request) => {
         }
       );
     }
-    
-    // Get most recent form template
-    const formTemplate = formTemplates[0];
+
+    console.log(`[verify-token/${requestId}]: Found form template: ${formTemplate.title}`);
 
     // Extract entry data to return (only necessary fields for security)
     const entryData = {

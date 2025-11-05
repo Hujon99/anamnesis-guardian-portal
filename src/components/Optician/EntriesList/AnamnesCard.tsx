@@ -123,7 +123,7 @@ export const AnamnesCard = ({
           {storeName && (
             <Badge 
               variant="outline" 
-              className="h-5 px-1.5 text-xs font-medium border"
+              className="h-5 px-1.5 text-xs font-medium border transition-all duration-500 ease-in-out"
               style={{
                 backgroundColor: getStoreColor(storeName, storeId || undefined).backgroundColor,
                 color: getStoreColor(storeName, storeId || undefined).color,

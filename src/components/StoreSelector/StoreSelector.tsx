@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/command';
 import { Store, Check, ChevronDown, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getStoreColor } from '@/utils/storeColorUtils';
 
 export const StoreSelector: React.FC = () => {
   const { activeStore, setActiveStore, availableStores, hasMultipleStores, isLoading } = useActiveStore();
@@ -104,29 +105,35 @@ export const StoreSelector: React.FC = () => {
           <CommandList>
             <CommandEmpty>Ingen butik hittades.</CommandEmpty>
             <CommandGroup heading="Butiker">
-              {availableStores.map((store) => (
-                <CommandItem
-                  key={store.id}
-                  value={store.name}
-                  onSelect={() => handleSelectStore(store)}
-                  className="flex items-center justify-between cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Store className="h-4 w-4 shrink-0" />
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-medium truncate">{store.name}</span>
-                      {store.address && (
-                        <span className="text-xs text-muted-foreground truncate">
-                          {store.address}
-                        </span>
-                      )}
+              {availableStores.map((store) => {
+                const { backgroundColor, color } = getStoreColor(store.name, store.id);
+                return (
+                  <CommandItem
+                    key={store.id}
+                    value={store.name}
+                    onSelect={() => handleSelectStore(store)}
+                    className="flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div 
+                        className="h-3 w-3 rounded-full shrink-0 ring-2 ring-background transition-all duration-300"
+                        style={{ backgroundColor: color }}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate">{store.name}</span>
+                        {store.address && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            {store.address}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  {activeStore?.id === store.id && (
-                    <Check className="h-4 w-4 shrink-0 text-primary" />
-                  )}
-                </CommandItem>
-              ))}
+                    {activeStore?.id === store.id && (
+                      <Check className="h-4 w-4 shrink-0" style={{ color }} />
+                    )}
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>

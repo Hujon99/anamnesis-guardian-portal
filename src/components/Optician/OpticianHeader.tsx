@@ -21,7 +21,7 @@ export const OpticianHeader = () => {
         <h1 className="text-3xl font-bold tracking-tight">Optikervy</h1>
         {activeStore && (
           <Badge 
-            className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium border transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium border transition-all duration-500 ease-in-out hover-scale"
             style={{
               backgroundColor: getStoreColor(activeStore.name, activeStore.id).backgroundColor,
               color: getStoreColor(activeStore.name, activeStore.id).color,

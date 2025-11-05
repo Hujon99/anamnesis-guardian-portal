@@ -3,6 +3,9 @@
  * This hook provides functionality to filter anamnesis entries assigned to the current user.
  * It leverages the useAnamnesisList hook and filters the results based on the logged-in user.
  * Uses Clerk user IDs for filtering as optician_id references users.clerk_user_id.
+ * 
+ * IMPORTANT: This hook now automatically filters by the active store from ActiveStoreContext.
+ * The store filtering happens in useAnamnesisList, so entries here are already filtered.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -10,10 +13,12 @@ import { useUser } from '@clerk/clerk-react';
 import { useAnamnesisList } from './useAnamnesisList';
 import { AnamnesesEntry } from '@/types/anamnesis';
 import { useSupabaseClient } from './useSupabaseClient';
+import { useActiveStore } from '@/contexts/ActiveStoreContext';
 
 export const useCurrentOpticianEntries = () => {
   const { user } = useUser();
   const { supabase, isReady, refreshClient } = useSupabaseClient();
+  const { activeStore } = useActiveStore(); // Get active store
   const { entries, filteredEntries, filters, updateFilter, resetFilters, isLoading, error, refetch, isFetching, dataLastUpdated, handleRetry } = useAnamnesisList();
   
   // Filter entries assigned to the current optician using the Clerk user ID

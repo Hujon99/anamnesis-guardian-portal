@@ -4,6 +4,10 @@
  * It provides a unified interface for retrieving, filtering, and sorting
  * anamnesis entries with loading states and error handling.
  * It uses Supabase Realtime for live updates when entries change.
+ * 
+ * IMPORTANT: This hook now automatically filters entries by the active store
+ * when a store is selected in the ActiveStoreContext. This eliminates the need
+ * for manual store filtering in the UI.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -15,6 +19,7 @@ import { subDays } from "date-fns";
 import { useAnamnesis } from "@/contexts/AnamnesisContext";
 import { toast } from "@/hooks/use-toast";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
 
 export interface AnamnesisFilters {
   searchQuery: string;
@@ -31,6 +36,7 @@ export const useAnamnesisList = () => {
   const { organization } = useOrganization();
   const { supabase, isReady, refreshClient } = useSupabaseClient();
   const queryClient = useQueryClient();
+  const { activeStore } = useActiveStore(); // Get active store for automatic filtering
   
   // Add safe access to AnamnesisContext - prevent errors if used outside context
   let contextValues;
@@ -403,6 +409,11 @@ export const useAnamnesisList = () => {
 
   // Filter and sort the entries based on current filters
   const filteredEntries = entries.filter(entry => {
+    // AUTOMATIC STORE FILTERING: Filter by active store if one is selected
+    if (activeStore && entry.store_id !== activeStore.id) {
+      return false;
+    }
+
     // Filter by search query - now includes patient_identifier, first name, and booking ID
     if (filters.searchQuery) {
       const searchLower = filters.searchQuery.toLowerCase();

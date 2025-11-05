@@ -57,7 +57,7 @@ export function AnamnesisListView({
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
   const [drivingLicenseEntry, setDrivingLicenseEntry] = useState<AnamnesesEntry | null>(null);
   const [isDrivingLicenseOpen, setIsDrivingLicenseOpen] = useState(false);
-  const [storeFilter, setStoreFilter] = useState<string | null>(null);
+  // Store filter removed - now handled by ActiveStoreContext
   const [opticianFilter, setOpticianFilter] = useState<string | null>(null);
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [isAssigningStore, setIsAssigningStore] = useState(false);
@@ -234,10 +234,7 @@ export function AnamnesisListView({
   
   // Apply additional filters (store, optician, assignment)
   const advancedFilteredEntries = filteredEntries.filter(entry => {
-    // Filter by store
-    if (storeFilter && entry.store_id !== storeFilter) {
-      return false;
-    }
+    // Note: Store filter removed - handled automatically by ActiveStoreContext in useAnamnesisList
     
     // Filter by optician
     if (opticianFilter && entry.optician_id !== opticianFilter) {
@@ -342,8 +339,8 @@ export function AnamnesisListView({
       {/* Advanced Filters Section */}
       {showAdvancedFilters && (
         <AdvancedFilters 
-          storeFilter={storeFilter}
-          onStoreFilterChange={setStoreFilter}
+          storeFilter={null}
+          onStoreFilterChange={() => {}}
           opticianFilter={opticianFilter}
           onOpticianFilterChange={setOpticianFilter}
           assignmentFilter={assignmentFilter}

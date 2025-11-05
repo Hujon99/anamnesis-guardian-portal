@@ -8,7 +8,7 @@
 import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, LayoutDashboard, Loader2 } from "lucide-react";
+import { AlertCircle, LayoutDashboard, Loader2, Store } from "lucide-react";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
@@ -17,8 +17,11 @@ import { useEffect } from "react";
 import { MyAnamnesisView } from "@/components/Optician/MyAnamnesisView";
 import { DirectFormButton } from "@/components/Optician/DirectFormButton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
+import { getStoreColor, getStoreAccentColor } from "@/utils/storeColorUtils";
 
 // Error fallback component 
 const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => {
@@ -48,6 +51,7 @@ const MyAnamnesisPage = () => {
   const { user } = useUser();
   const { isReady, refreshClient } = useSupabaseClient();
   const { has } = useAuth();
+  const { activeStore } = useActiveStore();
   
   // Check if user is admin
   const isAdmin = has({ role: "org:admin" });
@@ -81,8 +85,33 @@ const MyAnamnesisPage = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Mina anamneser</h1>
-            <p className="text-muted-foreground mt-2">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold">Mina anamneser</h1>
+              {activeStore ? (
+                <Badge 
+                  className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium border transition-colors"
+                  style={{
+                    backgroundColor: getStoreColor(activeStore.name, activeStore.id).backgroundColor,
+                    color: getStoreColor(activeStore.name, activeStore.id).color,
+                    borderColor: getStoreColor(activeStore.name, activeStore.id).borderColor,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = getStoreAccentColor(activeStore.name, activeStore.id).backgroundColor;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = getStoreColor(activeStore.name, activeStore.id).backgroundColor;
+                  }}
+                >
+                  <Store className="h-3.5 w-3.5" strokeWidth={2} />
+                  {activeStore.name}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground">
+                  Ingen butik vald
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground">
               {isAdmin 
                 ? "Hantering av alla anamneser med administratörsbehörighet" 
                 : "Hantering av anamneser tilldelade till dig"}

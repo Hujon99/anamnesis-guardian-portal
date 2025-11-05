@@ -8,8 +8,9 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Eye, Car, FileText, TrendingUp, CheckCircle, ShieldCheck, Smartphone } from "lucide-react";
+import { Eye, Car, FileText, TrendingUp, CheckCircle, ShieldCheck, Smartphone, Store } from "lucide-react";
 import { UpgradeIndicator, hasAcceptedUpgrade } from "@/components/Optician/UpgradeIndicator";
+import { getStoreColor } from "@/utils/storeColorUtils";
 
 interface AnamnesCardProps {
   status: "sent" | "pending" | "ready" | "reviewed" | "journaled" | "expiring" | "pending_id_verification";
@@ -21,6 +22,8 @@ interface AnamnesCardProps {
   idVerificationCompleted?: boolean;
   answers?: Record<string, any> | null;
   scoringResult?: any;
+  storeName?: string | null;
+  storeId?: string | null;
 }
 
 export const AnamnesCard = ({ 
@@ -32,7 +35,9 @@ export const AnamnesCard = ({
   isExaminationCompleted,
   idVerificationCompleted = true,
   answers,
-  scoringResult
+  scoringResult,
+  storeName,
+  storeId
 }: AnamnesCardProps) => {
   // Determine the accent color based on status
   const getAccentColor = () => {
@@ -112,8 +117,24 @@ export const AnamnesCard = ({
       }}
     >
       {/* Examination type and completion badges */}
-      {(examinationType || scoringResult || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning') || hasAcceptedUpgrade(answers)) && (
+      {(examinationType || scoringResult || isExaminationCompleted || (!idVerificationCompleted && examinationType?.toLowerCase() === 'körkortsundersökning') || hasAcceptedUpgrade(answers) || storeName) && (
         <div className="flex justify-start gap-1 mb-1">
+          {/* Store badge - shown first for visual hierarchy */}
+          {storeName && (
+            <Badge 
+              variant="outline" 
+              className="h-5 px-1.5 text-xs font-medium border"
+              style={{
+                backgroundColor: getStoreColor(storeName, storeId || undefined).backgroundColor,
+                color: getStoreColor(storeName, storeId || undefined).color,
+                borderColor: getStoreColor(storeName, storeId || undefined).borderColor,
+              }}
+            >
+              <Store className="h-3 w-3 mr-0.5" strokeWidth={2} />
+              <span>{storeName}</span>
+            </Badge>
+          )}
+          
           {examinationType && (
             <Badge variant="outline" className="h-5 px-1.5 text-xs bg-white/80 backdrop-blur-sm">
               {getExaminationTypeIcon()}

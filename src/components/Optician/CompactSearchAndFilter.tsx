@@ -14,7 +14,7 @@
  */
 
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw, Hash } from "lucide-react";
+import { Search, RefreshCw, Hash, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFormsByStore } from "@/hooks/useFormsByStore";
 import { useActiveStore } from "@/contexts/ActiveStoreContext";
@@ -22,6 +22,7 @@ import { EXAMINATION_TYPE_OPTIONS } from "@/types/examinationType";
 import { useMemo } from "react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CompactSearchAndFilterProps {
   searchQuery: string;
@@ -31,6 +32,9 @@ interface CompactSearchAndFilterProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   children?: React.ReactNode; // For the create form button
+  searchInAllStores?: boolean;
+  onSearchInAllStoresChange?: (value: boolean) => void;
+  hasSearchResults?: boolean;
 }
 
 export const CompactSearchAndFilter = ({ 
@@ -40,7 +44,10 @@ export const CompactSearchAndFilter = ({
   onExaminationTypeChange,
   onRefresh,
   isRefreshing,
-  children
+  children,
+  searchInAllStores,
+  onSearchInAllStoresChange,
+  hasSearchResults
 }: CompactSearchAndFilterProps) => {
   const { activeStore } = useActiveStore();
   const { data: forms, isLoading: isLoadingForms } = useFormsByStore(activeStore?.id);
@@ -115,6 +122,46 @@ export const CompactSearchAndFilter = ({
 
           {children}
         </div>
+
+        {/* Expandable search to all stores alert */}
+        {searchQuery && !hasSearchResults && !searchInAllStores && onSearchInAllStoresChange && (
+          <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+            <Store className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="flex items-center justify-between">
+              <span className="text-sm text-amber-800 dark:text-amber-200">
+                Inga resultat i nuvarande butik. Vill du söka i alla butiker?
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onSearchInAllStoresChange(true)}
+                className="ml-2 border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/20"
+              >
+                Sök i alla butiker
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Active global search indicator */}
+        {searchInAllStores && onSearchInAllStoresChange && (
+          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+            <Store className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="flex items-center justify-between">
+              <span className="text-sm text-blue-800 dark:text-blue-200">
+                Söker i alla butiker
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onSearchInAllStoresChange(false)}
+                className="ml-2 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/20"
+              >
+                Sök endast i nuvarande butik
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
       {/* Examination type filter buttons */}
         <div className="flex flex-wrap gap-2">

@@ -63,6 +63,7 @@ export function AnamnesisListView({
   const [isDrivingLicenseOpen, setIsDrivingLicenseOpen] = useState(false);
   const [isAssigningStore, setIsAssigningStore] = useState(false);
   const [isAssigningOptician, setIsAssigningOptician] = useState(false);
+  const [searchInAllStores, setSearchInAllStores] = useState(false);
   
   const isMobile = useIsMobile();
   const { supabase } = useSupabaseClient();
@@ -238,8 +239,43 @@ export function AnamnesisListView({
   // Get the store map for lookup
   const storeMap = getStoreMap();
   
+  // Apply additional filtering based on searchInAllStores flag
+  const finalFilteredEntries = searchInAllStores 
+    ? entries.filter(entry => {
+        // When searching in all stores, apply all filters except store filter
+        // Search filter
+        if (filters.searchQuery) {
+          const searchLower = filters.searchQuery.toLowerCase();
+          const matchesPatientIdentifier = entry.patient_identifier?.toLowerCase().includes(searchLower);
+          const matchesFirstName = entry.first_name?.toLowerCase().includes(searchLower);
+          const matchesBookingId = entry.booking_id?.toLowerCase().includes(searchLower);
+          const matchesCreatedByName = entry.created_by_name?.toLowerCase().includes(searchLower);
+          
+          if (!matchesPatientIdentifier && !matchesFirstName && !matchesBookingId && !matchesCreatedByName) {
+            return false;
+          }
+        }
+        
+        // Status filter
+        if (filters.statusFilter && entry.status !== filters.statusFilter) {
+          return false;
+        }
+        
+        // Examination type filter
+        if (filters.examinationTypeFilter) {
+          const entryType = entry.examination_type?.toLowerCase();
+          const filterType = filters.examinationTypeFilter.toLowerCase();
+          if (entryType !== filterType) {
+            return false;
+          }
+        }
+        
+        return true;
+      })
+    : filteredEntries;
+  
   // Enhance entries with store information
-  const enhancedEntries = filteredEntries.map(entry => {
+  const enhancedEntries = finalFilteredEntries.map(entry => {
     // Get store name using our reliable getStoreName function
     const storeName = entry.store_id ? getStoreName(entry.store_id) : null;
     
@@ -298,6 +334,9 @@ export function AnamnesisListView({
         onExaminationTypeChange={(value) => updateFilter("examinationTypeFilter", value)}
         onRefresh={handleManualRefresh}
         isRefreshing={isFetching || isLoadingStores}
+        searchInAllStores={searchInAllStores}
+        onSearchInAllStoresChange={setSearchInAllStores}
+        hasSearchResults={filteredEntries.length > 0}
       >
         <DirectFormButton />
       </CompactSearchAndFilter>

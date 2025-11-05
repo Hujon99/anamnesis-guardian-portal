@@ -198,7 +198,15 @@ export const ActiveStoreProvider: React.FC<{ children: ReactNode }> = ({ childre
 export const useActiveStore = () => {
   const context = useContext(ActiveStoreContext);
   if (context === undefined) {
-    throw new Error('useActiveStore must be used within an ActiveStoreProvider');
+    // Return safe defaults for public pages without ActiveStoreProvider
+    // This prevents errors on customer-facing pages that don't need store selection
+    return {
+      activeStore: null,
+      setActiveStore: () => {},
+      isLoading: false,
+      hasMultipleStores: false,
+      availableStores: [],
+    };
   }
   return context;
 };

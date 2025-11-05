@@ -28,6 +28,7 @@ import { useActiveStore } from "@/contexts/ActiveStoreContext";
 import { useEntriesWithoutStore } from "@/hooks/useEntriesWithoutStore";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { toast } from "@/components/ui/use-toast";
+import { NoStoreSelectedAlert } from "./NoStoreSelectedAlert";
 
 export function MyAnamnesisView() {
   const {
@@ -52,7 +53,7 @@ export function MyAnamnesisView() {
   const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
   const { refreshClient } = useSupabaseClient();
-  const { activeStore } = useActiveStore();
+  const { activeStore, hasMultipleStores } = useActiveStore();
   const { entriesWithoutStore, count: withoutStoreCount } = useEntriesWithoutStore();
   
   // Fetch stores for enhancing display
@@ -241,6 +242,9 @@ export function MyAnamnesisView() {
 
   return (
     <div className="space-y-6">
+      {/* No Store Selected Alert */}
+      {!activeStore && hasMultipleStores && <NoStoreSelectedAlert />}
+
       <ExaminationTypeStatsCards stats={stats} />
 
       {/* Search and Filters Section */}

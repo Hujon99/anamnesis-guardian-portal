@@ -21,6 +21,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { OnboardingTour } from "@/components/Onboarding/OnboardingTour";
 import { useActiveStore } from "@/contexts/ActiveStoreContext";
+import { Badge } from "@/components/ui/badge";
+import { Store } from "lucide-react";
 // Import debug utility for testing (remove after testing)
 import { debugSummaryRepair } from "@/utils/debugSummaryRepair";
 
@@ -138,8 +140,20 @@ const Dashboard = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Översikt – {activeStore?.name || "Ingen butik vald"}</h1>
-            <p className="text-muted-foreground mt-2">Hantering av anamneser för vald butik</p>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold">Översikt</h1>
+              {activeStore ? (
+                <Badge className="bg-accent-1/15 text-accent-1 border-accent-1/30 hover:bg-accent-1/25 flex items-center gap-1.5 px-3 py-1 text-sm font-medium">
+                  <Store className="h-3.5 w-3.5" strokeWidth={2} />
+                  {activeStore.name}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground">
+                  Ingen butik vald
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground">Hantering av anamneser för vald butik</p>
           </div>
           {canAccessOpticianFeatures && (
             <Button 

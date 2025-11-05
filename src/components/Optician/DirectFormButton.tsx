@@ -465,8 +465,8 @@ export const DirectFormButton: React.FC = () => {
         data-tour="direct-form"
         onClick={handleCreateDirectForm}
         disabled={isCreating || createDirectFormEntry.isPending}
-        className="w-full"
-        size="lg"
+        className="shrink-0"
+        size="sm"
       >
           {isCreating || createDirectFormEntry.isPending ? (
             <>

@@ -105,7 +105,7 @@ export const CompactSearchAndFilter = ({
               onClick={onRefresh} 
               disabled={isRefreshing}
               title="Uppdatera listan"
-              className="rounded-xl"
+              className="rounded-xl shrink-0"
             >
               <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
             </Button>
@@ -138,8 +138,6 @@ export const CompactSearchAndFilter = ({
               </Button>
             );
           })}
-          
-          {children}
         </div>
       </div>
     </div>

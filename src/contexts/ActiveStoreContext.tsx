@@ -89,8 +89,8 @@ export const ActiveStoreProvider: React.FC<{ children: ReactNode }> = ({ childre
           }
         }
 
-        // If no saved store or it doesn't exist, auto-select if only one store
-        if (stores.length === 1) {
+        // If no saved store or it doesn't exist, auto-select first available store
+        if (stores.length > 0) {
           setActiveStoreState(stores[0]);
           // Save to database
           await supabase

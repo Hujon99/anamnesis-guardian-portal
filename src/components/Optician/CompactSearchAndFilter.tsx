@@ -16,7 +16,8 @@
 import { Input } from "@/components/ui/input";
 import { Search, RefreshCw, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useOrganizationForms } from "@/hooks/useOrganizationForms";
+import { useFormsByStore } from "@/hooks/useFormsByStore";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
 import { EXAMINATION_TYPE_OPTIONS } from "@/types/examinationType";
 import { useMemo } from "react";
 import * as LucideIcons from "lucide-react";
@@ -41,7 +42,8 @@ export const CompactSearchAndFilter = ({
   isRefreshing,
   children
 }: CompactSearchAndFilterProps) => {
-  const { data: forms } = useOrganizationForms();
+  const { activeStore } = useActiveStore();
+  const { data: forms, isLoading: isLoadingForms } = useFormsByStore(activeStore?.id);
 
   // Build examination type options from available forms
   const examinationTypeOptions = useMemo(() => {

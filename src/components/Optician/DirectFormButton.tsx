@@ -6,10 +6,11 @@
  * UPDATED: Now automatically includes the activeStore.id when creating new entries.
  */
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Plus, Users, Loader2 } from "lucide-react";
-import { useOrganizationForms, OrganizationForm } from "@/hooks/useOrganizationForms";
+import { useFormsByStore } from "@/hooks/useFormsByStore";
+import { EXAMINATION_TYPE_OPTIONS } from "@/types/examinationType";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -26,6 +27,14 @@ import { IdVerificationDialog } from "./IdVerificationDialog";
 import FormAttemptDialog from "./FormAttemptDialog";
 import { DIRECT_FORM_TOKEN_KEY, DIRECT_FORM_MODE_KEY } from "@/utils/opticianFormTokenUtils";
 import { useActiveStore } from "@/contexts/ActiveStoreContext";
+
+// Define OrganizationForm interface locally since we're using useFormsByStore
+export interface OrganizationForm {
+  id: string;
+  title: string;
+  examination_type?: string;
+  organization_id: string | null;
+}
 
 export const DirectFormButton: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -47,12 +56,23 @@ export const DirectFormButton: React.FC = () => {
   const queryClient = useQueryClient();
   const { activeStore } = useActiveStore(); // Get active store for automatic assignment
   
-  // Get available forms for the organization
+  // Get available forms for the active store
   const { 
-    data: forms, 
+    data: storeForms, 
     isLoading: formsLoading, 
     error: formsError 
-  } = useOrganizationForms();
+  } = useFormsByStore(activeStore?.id);
+  
+  // Convert to OrganizationForm format
+  const forms: OrganizationForm[] = useMemo(() => {
+    if (!storeForms) return [];
+    return storeForms.map(form => ({
+      id: form.id,
+      title: form.title,
+      examination_type: form.examination_type,
+      organization_id: form.organization_id,
+    }));
+  }, [storeForms]);
   
   // User sync functionality
   const { syncUsers, isSyncing } = useSyncClerkUsers();

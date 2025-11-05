@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { OnboardingTour } from "@/components/Onboarding/OnboardingTour";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
 // Import debug utility for testing (remove after testing)
 import { debugSummaryRepair } from "@/utils/debugSummaryRepair";
 
@@ -52,6 +53,7 @@ const Dashboard = () => {
   const { userId, has } = useAuth();
   const { user } = useUser();
   const { isReady, refreshClient, supabase } = useSupabaseClient();
+  const { activeStore } = useActiveStore();
   const [isUserOptician, setIsUserOptician] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -136,8 +138,8 @@ const Dashboard = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Översikt</h1>
-            <p className="text-muted-foreground mt-2">Hantering av samtliga anamneser i organisationen</p>
+            <h1 className="text-3xl font-bold">Översikt – {activeStore?.name || "Ingen butik vald"}</h1>
+            <p className="text-muted-foreground mt-2">Hantering av anamneser för vald butik</p>
           </div>
           {canAccessOpticianFeatures && (
             <Button 

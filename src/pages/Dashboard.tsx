@@ -139,22 +139,19 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold">Översikt</h1>
             <p className="text-muted-foreground mt-2">Hantering av samtliga anamneser i organisationen</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            {canAccessOpticianFeatures && (
-              <Button 
-                data-tour="my-anamnesis"
-                variant="outline" 
-                asChild 
-                className="flex items-center gap-2 font-medium border-accent-1/30 hover:bg-accent-1/10 hover:text-accent-1 hover:border-accent-1"
-              >
-                <Link to="/my-anamneses">
-                  <Clipboard className="h-4 w-4" />
-                  <span>Till mina anamneser</span>
-                </Link>
-              </Button>
-            )}
-            <DirectFormButton />
-          </div>
+          {canAccessOpticianFeatures && (
+            <Button 
+              data-tour="my-anamnesis"
+              variant="outline" 
+              asChild 
+              className="flex items-center gap-2 font-medium border-accent-1/30 hover:bg-accent-1/10 hover:text-accent-1 hover:border-accent-1"
+            >
+              <Link to="/my-anamneses">
+                <Clipboard className="h-4 w-4" />
+                <span>Till mina anamneser</span>
+              </Link>
+            </Button>
+          )}
         </div>
 
       <QueryErrorResetBoundary>

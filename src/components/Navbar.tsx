@@ -9,6 +9,7 @@ import { UserButton, OrganizationSwitcher } from "@clerk/clerk-react";
 import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { User } from "lucide-react";
+import { StoreSelector } from "@/components/StoreSelector/StoreSelector";
 
 const Navbar = () => {
   const { userId } = useAuth();
@@ -16,8 +17,14 @@ const Navbar = () => {
   const firstName = user?.firstName || "";
 
   return (
-    <header className="border-b">
-      <div className="container mx-auto px-4 flex items-center justify-end h-16">
+    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto px-4 flex items-center justify-between h-16">
+        {/* Left side - Store selector */}
+        <div className="flex items-center gap-4">
+          <StoreSelector />
+        </div>
+
+        {/* Right side - Org switcher and user */}
         <div className="flex items-center gap-4">
           <OrganizationSwitcher 
             hidePersonal={true}

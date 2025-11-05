@@ -40,6 +40,7 @@ import Index from "./pages/Index";
 import { AnamnesisProvider } from "@/contexts/AnamnesisContext";
 import { UserSyncManager } from "./components/UserSyncManager";
 import { SystemAdminProvider } from "@/contexts/SystemAdminContext";
+import { ActiveStoreProvider } from "@/contexts/ActiveStoreContext";
 
 // Create a query client instance
 const queryClient = new QueryClient({
@@ -82,8 +83,10 @@ function App() {
               <ProtectedRoute>
                 <SystemAdminProvider>
                   <AnamnesisProvider>
-                    <UserSyncManager />
-                    <CISSPrintPage />
+                    <ActiveStoreProvider>
+                      <UserSyncManager />
+                      <CISSPrintPage />
+                    </ActiveStoreProvider>
                   </AnamnesisProvider>
                 </SystemAdminProvider>
               </ProtectedRoute>
@@ -95,9 +98,11 @@ function App() {
                 <ProtectedRoute>
                   <SystemAdminProvider>
                     <AnamnesisProvider>
-                      {/* UserSyncManager runs here to ensure it's active for all authenticated routes */}
-                      <UserSyncManager />
-                      <Layout />
+                      <ActiveStoreProvider>
+                        {/* UserSyncManager runs here to ensure it's active for all authenticated routes */}
+                        <UserSyncManager />
+                        <Layout />
+                      </ActiveStoreProvider>
                     </AnamnesisProvider>
                   </SystemAdminProvider>
                 </ProtectedRoute>

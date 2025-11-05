@@ -9,10 +9,9 @@ import { useState, useEffect, useCallback } from "react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { AnamnesisDetailModal } from "./AnamnesisDetailModal";
 import { DrivingLicenseExamination } from "./DrivingLicense/DrivingLicenseExamination";
-import { AnamnesisFilters } from "./AnamnesisFilters";
+import { CompactSearchAndFilter } from "./CompactSearchAndFilter";
 import { ErrorState } from "./EntriesList/ErrorState";
 import { LoadingState } from "./EntriesList/LoadingState";
-import { SearchInput } from "./EntriesList/SearchInput";
 import { EntriesSummary } from "./EntriesList/EntriesSummary";
 import { EntriesList } from "./EntriesList/EntriesList";
 import { TodayBookingsSection } from "./TodayBookingsSection";
@@ -27,11 +26,11 @@ import { useStores } from "@/hooks/useStores";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useActiveStore } from "@/contexts/ActiveStoreContext";
 import { useEntriesWithoutStore } from "@/hooks/useEntriesWithoutStore";
-import { AdvancedFilters } from "./AdvancedFilters";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { assignOpticianToEntry, assignStoreToEntry } from "@/utils/entryMutationUtils";
 import { toast } from "@/components/ui/use-toast";
 import { NoStoreSelectedAlert } from "./NoStoreSelectedAlert";
+import { DirectFormButton } from "./DirectFormButton";
 
 interface AnamnesisListViewProps {
   showAdvancedFilters?: boolean;
@@ -58,13 +57,10 @@ export function AnamnesisListView({
     dataLastUpdated
   } = useAnamnesisList();
   
-  // State for selected entry and advanced filters
+  // State for selected entry
   const [selectedEntry, setSelectedEntry] = useState<AnamnesesEntry | null>(null);
   const [drivingLicenseEntry, setDrivingLicenseEntry] = useState<AnamnesesEntry | null>(null);
   const [isDrivingLicenseOpen, setIsDrivingLicenseOpen] = useState(false);
-  // Store filter removed - now handled by ActiveStoreContext
-  const [opticianFilter, setOpticianFilter] = useState<string | null>(null);
-  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [isAssigningStore, setIsAssigningStore] = useState(false);
   const [isAssigningOptician, setIsAssigningOptician] = useState(false);
   
@@ -239,32 +235,11 @@ export function AnamnesisListView({
     return { isExpired, daysUntilExpiration };
   }
   
-  // Apply additional filters (store, optician, assignment)
-  const advancedFilteredEntries = filteredEntries.filter(entry => {
-    // Note: Store filter removed - handled automatically by ActiveStoreContext in useAnamnesisList
-    
-    // Filter by optician
-    if (opticianFilter && entry.optician_id !== opticianFilter) {
-      return false;
-    }
-    
-    // Filter by assignment status
-    if (assignmentFilter === 'assigned' && !entry.optician_id) {
-      return false;
-    }
-    
-    if (assignmentFilter === 'unassigned' && entry.optician_id) {
-      return false;
-    }
-    
-    return true;
-  });
-  
   // Get the store map for lookup
   const storeMap = getStoreMap();
   
   // Enhance entries with store information
-  const enhancedEntries = advancedFilteredEntries.map(entry => {
+  const enhancedEntries = filteredEntries.map(entry => {
     // Get store name using our reliable getStoreName function
     const storeName = entry.store_id ? getStoreName(entry.store_id) : null;
     
@@ -315,49 +290,17 @@ export function AnamnesisListView({
       {/* No Store Selected Alert */}
       {!activeStore && hasMultipleStores && <NoStoreSelectedAlert />}
 
-      {/* Search Section */}
-      <Card className="p-6 bg-white rounded-2xl shadow-sm border border-muted/30">
-        <SearchInput
-          searchQuery={filters.searchQuery}
-          onSearchChange={(value) => updateFilter("searchQuery", value)}
-          onRefresh={handleManualRefresh}
-          isRefreshing={isFetching || isLoadingStores}
-        />
-      </Card>
-
-      {/* Filters Section */}
-      <div data-tour="filters">
-        <AnamnesisFilters
-          statusFilter={filters.statusFilter}
-          onStatusFilterChange={(value) => updateFilter("statusFilter", value)}
-          timeFilter={filters.timeFilter}
-          onTimeFilterChange={(value) => updateFilter("timeFilter", value)}
-          showOnlyUnanswered={filters.showOnlyUnanswered}
-          onUnansweredFilterChange={(value) => updateFilter("showOnlyUnanswered", value)}
-          sortDescending={filters.sortDescending}
-          onSortDirectionChange={(value) => updateFilter("sortDescending", value)}
-          showOnlyBookings={filters.showOnlyBookings}
-          onBookingFilterChange={(value) => updateFilter("showOnlyBookings", value)}
-          idVerificationFilter={filters.idVerificationFilter}
-          onIDVerificationFilterChange={(value) => updateFilter("idVerificationFilter", value)}
-          examinationTypeFilter={filters.examinationTypeFilter}
-          onExaminationTypeFilterChange={(value) => updateFilter("examinationTypeFilter", value)}
-          onResetFilters={resetFilters}
-        />
-      </div>
-      
-      {/* Advanced Filters Section */}
-      {showAdvancedFilters && (
-        <AdvancedFilters 
-          storeFilter={null}
-          onStoreFilterChange={() => {}}
-          opticianFilter={opticianFilter}
-          onOpticianFilterChange={setOpticianFilter}
-          assignmentFilter={assignmentFilter}
-          onAssignmentFilterChange={setAssignmentFilter}
-        />
-      )}
-      
+      {/* Compact Search and Filter Section - Sticky */}
+      <CompactSearchAndFilter
+        searchQuery={filters.searchQuery}
+        onSearchChange={(value) => updateFilter("searchQuery", value)}
+        examinationTypeFilter={filters.examinationTypeFilter}
+        onExaminationTypeChange={(value) => updateFilter("examinationTypeFilter", value)}
+        onRefresh={handleManualRefresh}
+        isRefreshing={isFetching || isLoadingStores}
+      >
+        <DirectFormButton />
+      </CompactSearchAndFilter>
       {/* Tabs for Active Store vs Without Store */}
       <Tabs defaultValue="active" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">

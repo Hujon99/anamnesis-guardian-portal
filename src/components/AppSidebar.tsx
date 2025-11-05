@@ -30,6 +30,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { FeedbackButton } from "@/components/Feedback/FeedbackButton";
@@ -42,6 +43,7 @@ export function AppSidebar() {
   const { user } = useUser();
   const location = useLocation();
   const { role, isAdmin, isOptician } = useUserRole();
+  const { state } = useSidebar();
   
   // Check organization roles from Clerk
   const isClerkAdmin = has({ role: "org:admin" });
@@ -56,7 +58,9 @@ export function AppSidebar() {
           <div className="group-data-[collapsible=icon]:hidden">
             <Logo size="sm" />
           </div>
-          <SidebarTrigger className="-mr-1" />
+          <SidebarMenuButton asChild tooltip="Fäll in/ut meny">
+            <SidebarTrigger className="-mr-1" />
+          </SidebarMenuButton>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -120,6 +124,7 @@ export function AppSidebar() {
                     asChild 
                     isActive={location.pathname === '/admin'}
                     data-tour="admin-panel"
+                    tooltip="Administrationspanel"
                   >
                     <Link to="/admin">
                       <Settings />
@@ -146,13 +151,17 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Guide</SidebarGroupLabel>
           <SidebarGroupContent>
-            <div className="px-3 py-2">
-              <RestartTourButton variant="ghost" size="sm" />
-            </div>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Starta om guiden">
+                  <RestartTourButton variant="ghost" size="sm" className="w-full justify-start" />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-4 group-data-[collapsible=icon]:hidden">
         <div className="text-xs text-muted-foreground space-y-2">
           <div className="flex justify-center space-x-4">
             <Link 

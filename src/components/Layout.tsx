@@ -52,7 +52,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="flex w-full min-h-screen">
         <AppSidebar />
         <SidebarInset>

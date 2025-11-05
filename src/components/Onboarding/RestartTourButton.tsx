@@ -12,11 +12,13 @@ import { useNavigate } from 'react-router-dom';
 interface RestartTourButtonProps {
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  className?: string;
 }
 
 export const RestartTourButton: React.FC<RestartTourButtonProps> = ({ 
   variant = 'outline', 
-  size = 'default' 
+  size = 'default',
+  className
 }) => {
   const { restartOnboarding } = useOnboarding();
   const navigate = useNavigate();
@@ -36,10 +38,10 @@ export const RestartTourButton: React.FC<RestartTourButtonProps> = ({
       variant={variant} 
       size={size}
       onClick={handleClick}
-      className="gap-2"
+      className={className || "gap-2 w-full justify-start"}
     >
       <Play className="h-4 w-4" />
-      Visa guide igen
+      <span className="group-data-[collapsible=icon]:hidden">Visa guide igen</span>
     </Button>
   );
 };

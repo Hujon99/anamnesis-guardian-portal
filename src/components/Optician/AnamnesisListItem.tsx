@@ -226,6 +226,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
         idVerificationCompleted={entry.id_verification_completed ?? true}
         answers={entry.answers}
         scoringResult={scoringResult}
+        storeName={displayStoreName}
       >
         <div className="py-1 px-0">
           <div className="flex items-start justify-between">

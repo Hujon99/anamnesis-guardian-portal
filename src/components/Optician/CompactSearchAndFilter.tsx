@@ -114,7 +114,7 @@ export const CompactSearchAndFilter = ({
           {children}
         </div>
 
-        {/* Examination type filter buttons */}
+      {/* Examination type filter buttons */}
         <div className="flex flex-wrap gap-2">
           {examinationTypeOptions.map((option) => {
             const Icon = getIconComponent(option.icon);
@@ -138,6 +138,8 @@ export const CompactSearchAndFilter = ({
               </Button>
             );
           })}
+          
+          {children}
         </div>
       </div>
     </div>

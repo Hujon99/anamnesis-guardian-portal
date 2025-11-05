@@ -1,7 +1,7 @@
 /**
  * ExaminationTypeSelector provides a modal dialog for selecting examination types
- * when creating direct in-store forms. It displays all available form types for
- * the organization with icons, descriptions, and selection buttons. Used by
+ * when creating direct in-store forms. It displays only forms available for the
+ * active store with icons, descriptions, and selection buttons. Used by
  * DirectFormButton to allow opticians to choose the appropriate examination type.
  */
 
@@ -10,23 +10,35 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { OrganizationForm, useOrganizationForms } from "@/hooks/useOrganizationForms";
 import * as LucideIcons from "lucide-react";
+
+// Define the form interface locally to avoid circular dependencies
+export interface OrganizationForm {
+  id: string;
+  title: string;
+  examination_type?: string;
+  organization_id: string | null;
+  icon?: string;
+  description?: string;
+}
 
 interface ExaminationTypeSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (form: OrganizationForm) => void;
   isCreating?: boolean;
+  forms: OrganizationForm[];
+  isLoading: boolean;
 }
 
 export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = ({
   open,
   onOpenChange,
   onSelect,
-  isCreating = false
+  isCreating = false,
+  forms,
+  isLoading
 }) => {
-  const { data: forms, isLoading, error } = useOrganizationForms();
 
   const getIcon = (iconName: string) => {
     const IconComponent = (LucideIcons as any)[iconName];
@@ -48,7 +60,7 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
     );
   }
 
-  if (error || !forms || forms.length === 0) {
+  if (!forms || forms.length === 0) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-2xl">
@@ -57,7 +69,7 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
           </DialogHeader>
           <div className="text-center py-16">
             <p className="text-muted-foreground mb-6">
-              {error ? "Kunde inte ladda formulär" : "Inga formulär tillgängliga"}
+              Inga formulär tillgängliga för den aktiva butiken
             </p>
             <Button 
               variant="outline" 
@@ -81,7 +93,7 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {forms.map((form) => {
-            const IconComponent = getIcon(form.icon);
+            const IconComponent = getIcon(form.icon || 'FileText');
             
             return (
               <Card 
@@ -98,7 +110,7 @@ export const ExaminationTypeSelector: React.FC<ExaminationTypeSelectorProps> = (
                         {form.title}
                       </CardTitle>
                       <CardDescription className="text-sm text-muted-foreground leading-relaxed">
-                        {form.description}
+                        {form.description || 'Inget beskrivning'}
                       </CardDescription>
                     </div>
                   </div>

@@ -506,6 +506,8 @@ export const DirectFormButton: React.FC = () => {
         onOpenChange={setShowTypeSelector}
         onSelect={handleFormTypeSelect}
         isCreating={isCreating}
+        forms={forms}
+        isLoading={formsLoading}
       />
       
       <GdprInformationDialog

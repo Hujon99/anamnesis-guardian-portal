@@ -25,13 +25,15 @@ import { useSafeOrganization } from "@/hooks/useSafeOrganization";
 import { CISSQRCodeDisplay } from "@/components/CISS/CISSQRCodeDisplay";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
 
 export default function CISSFormLinkPage() {
   const { organization } = useSafeOrganization();
+  const { activeStore } = useActiveStore();
   const [copied, setCopied] = useState(false);
 
-  // Generate CISS entry URL
-  const cissUrl = `${window.location.origin}/ciss/${organization?.id || ''}`;
+  // Generate CISS entry URL with store_id parameter if a store is selected
+  const cissUrl = `${window.location.origin}/ciss/${organization?.id || ''}${activeStore ? `?store_id=${activeStore.id}` : ''}`;
 
   if (!organization?.id) {
     return (

@@ -4,12 +4,13 @@
  * Purpose: Entry point for CISS form access via QR code scan
  * 
  * Flow:
- * 1. Patient scans QR code → lands on /ciss/:organizationId
- * 2. This page calls generate-ciss-token edge function
- * 3. Edge function creates unique token + anamnes_entries record
- * 4. Page redirects to /patient-form?token=...
+ * 1. Patient scans QR code → lands on /ciss/:organizationId?store_id=...
+ * 2. This page redirects to customer info page with store_id preserved in URL
+ * 3. Customer info page calls generate-ciss-token with store_id
+ * 4. Edge function creates unique token + anamnes_entries record with store assignment
+ * 5. Page redirects to /patient-form?token=...
  * 
- * This ensures each scan creates a unique, secure session.
+ * This ensures each scan creates a unique, secure session with correct store assignment.
  */
 
 import { useEffect, useState } from "react";
@@ -33,8 +34,13 @@ export default function CISSEntryPage() {
       return;
     }
 
-    // Redirect to customer info page to collect name and personal number
-    navigate(`/ciss/${organizationId}/customer-info`, { replace: true });
+    // Extract store_id from URL if provided
+    const urlParams = new URLSearchParams(window.location.search);
+    const storeId = urlParams.get('store_id');
+
+    // Redirect to customer info page with store_id preserved in URL
+    const targetUrl = `/ciss/${organizationId}/customer-info${storeId ? `?store_id=${storeId}` : ''}`;
+    navigate(targetUrl, { replace: true });
   }, [organizationId, navigate]);
 
   const generateTokenAndRedirect = async () => {

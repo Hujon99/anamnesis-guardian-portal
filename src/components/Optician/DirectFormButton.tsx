@@ -2,6 +2,8 @@
  * This component provides a button for opticians to create direct in-store anamnesis forms,
  * generating a form for walk-in customers without requiring prior patient record creation.
  * It allows opticians to select from available examination types and auto-assigns the creating optician.
+ * 
+ * UPDATED: Now automatically includes the activeStore.id when creating new entries.
  */
 
 import React, { useState } from "react";
@@ -23,6 +25,7 @@ import { CustomerNameDialog } from "./CustomerNameDialog";
 import { IdVerificationDialog } from "./IdVerificationDialog";
 import FormAttemptDialog from "./FormAttemptDialog";
 import { DIRECT_FORM_TOKEN_KEY, DIRECT_FORM_MODE_KEY } from "@/utils/opticianFormTokenUtils";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
 
 export const DirectFormButton: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -42,6 +45,7 @@ export const DirectFormButton: React.FC = () => {
   const { user } = useUser();
   const { supabase, isReady } = useSupabaseClient();
   const queryClient = useQueryClient();
+  const { activeStore } = useActiveStore(); // Get active store for automatic assignment
   
   // Get available forms for the organization
   const { 
@@ -79,7 +83,7 @@ export const DirectFormButton: React.FC = () => {
       // Create patient identifier from name
       const patientIdentifier = `${name} (Direkt ifyllning i butik)`;
 
-      // Create entry in anamnes_entries with ID verification data
+      // Create entry in anamnes_entries with ID verification data and store assignment
           const { data, error } = await supabase
             .from("anamnes_entries")
             .insert({
@@ -102,6 +106,8 @@ export const DirectFormButton: React.FC = () => {
               personal_number: personalNumber,
               verified_by: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.fullName || 'Unknown',
               verified_at: new Date().toISOString(),
+              // AUTOMATIC STORE ASSIGNMENT from ActiveStoreContext
+              store_id: activeStore?.id || null,
             })
         .select("*")
         .single();
@@ -308,6 +314,8 @@ export const DirectFormButton: React.FC = () => {
             booking_date: new Date().toISOString(),
             answers: {},
             id_verification_completed: false,
+            // AUTOMATIC STORE ASSIGNMENT from ActiveStoreContext
+            store_id: activeStore?.id || null,
           })
           .select("*")
           .single();

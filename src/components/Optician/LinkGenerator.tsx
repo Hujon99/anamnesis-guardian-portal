@@ -5,6 +5,8 @@
  * form creation, and notification to users about the process status.
  * It ensures that the generated links are associated with the correct organization
  * and automatically assigns the creating optician to the entry.
+ * 
+ * UPDATED: Now automatically includes the activeStore.id when creating new entries.
  */
 
 import React, { useState, useEffect } from "react";
@@ -30,6 +32,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
 
 // Form schema with validation for patient info
 const formSchema = z.object({
@@ -60,6 +63,7 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const { getSyncStatus } = useUserSyncStore();
   const { syncUsersWithToast } = useSyncClerkUsers();
+  const { activeStore } = useActiveStore(); // Get active store for automatic assignment
 
   // Get the organization's form template
   const {
@@ -136,7 +140,9 @@ export function LinkGenerator({ children }: { children?: React.ReactNode }) {
         sent_at: new Date().toISOString(),
         optician_id: opticianId,
         is_kiosk_mode: isKioskMode,
-        require_supervisor_code: isKioskMode && requireSupervisorCode
+        require_supervisor_code: isKioskMode && requireSupervisorCode,
+        // AUTOMATIC STORE ASSIGNMENT from ActiveStoreContext
+        store_id: activeStore?.id || null,
       }).select().single();
       
       if (error) {

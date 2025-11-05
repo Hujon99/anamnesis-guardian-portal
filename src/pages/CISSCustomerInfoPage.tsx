@@ -6,10 +6,12 @@
  * Flow:
  * 1. Patient scans QR → /ciss/:orgId → redirects here
  * 2. Patient enters name and personal number
- * 3. On submit → calls generate-ciss-token with customer info
+ * 3. On submit → calls generate-ciss-token with customer info + store_id from URL
  * 4. Redirects to patient form with token
  * 
  * This ensures we have patient identification before form submission.
+ * 
+ * UPDATED: Now extracts store_id from URL parameters and passes it to generate-ciss-token
  */
 
 import { useState } from "react";
@@ -25,6 +27,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export default function CISSCustomerInfoPage() {
   const { organizationId } = useParams<{ organizationId: string }>();
   const navigate = useNavigate();
+  
+  // Extract store_id from URL parameters if provided (from activeStore context)
+  const urlParams = new URLSearchParams(window.location.search);
+  const storeId = urlParams.get('store_id');
   
   const [firstName, setFirstName] = useState("");
   const [personalNumber, setPersonalNumber] = useState("");
@@ -55,9 +61,9 @@ export default function CISSCustomerInfoPage() {
       setIsSubmitting(true);
       setError(null);
 
-      console.log(`[CISS Customer Info] Submitting for organization: ${organizationId}`);
+      console.log(`[CISS Customer Info] Submitting for organization: ${organizationId}${storeId ? `, store: ${storeId}` : ''}`);
 
-      // Call edge function to generate token with customer info
+      // Call edge function to generate token with customer info and store_id
       const { data, error: functionError } = await supabase.functions.invoke(
         'generate-ciss-token',
         {
@@ -65,6 +71,7 @@ export default function CISSCustomerInfoPage() {
             organizationId,
             firstName: firstName.trim(),
             personalNumber: personalNumber.trim(),
+            storeId: storeId || null, // Include store_id from URL if available
           },
         }
       );

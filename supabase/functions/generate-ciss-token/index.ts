@@ -4,14 +4,17 @@
  * Purpose: Generate a unique, temporary access token for CISS form access
  * 
  * Flow:
- * 1. Receives organization_id from URL path
+ * 1. Receives organization_id (and optional store_id) from URL path/params
  * 2. Finds the active CISS form for that organization
  * 3. Generates a unique access token (UUID)
  * 4. Creates a new anamnes_entries record with 24h expiry
- * 5. Returns the token for redirect to patient form
+ * 5. Assigns store_id if provided (from activeStore context)
+ * 6. Returns the token for redirect to patient form
  * 
  * Security: Public endpoint (no JWT verification) - token-based access control
  * GDPR: Each scan creates a unique entry with automatic expiration
+ * 
+ * UPDATED: Now accepts store_id parameter for automatic store assignment
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -35,7 +38,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Extract data from request body
-    const { organizationId, firstName, personalNumber } = await req.json();
+    const { organizationId, firstName, personalNumber, storeId } = await req.json();
 
     if (!organizationId) {
       console.error('[CISS Token] No organization ID provided');
@@ -45,7 +48,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[CISS Token] Generating token for organization: ${organizationId}`);
+    console.log(`[CISS Token] Generating token for organization: ${organizationId}${storeId ? `, store: ${storeId}` : ''}`);
 
     // Find the active CISS form for this organization
     // Note: CISS uses 'Synundersökning' as examination_type with CISS in title
@@ -105,6 +108,11 @@ serve(async (req) => {
     }
     if (personalNumber) {
       entryData.personal_number = personalNumber;
+    }
+    // Add store assignment if provided (from activeStore context)
+    if (storeId) {
+      entryData.store_id = storeId;
+      console.log(`[CISS Token] Assigning to store: ${storeId}`);
     }
 
     const { data: entry, error: entryError } = await supabase

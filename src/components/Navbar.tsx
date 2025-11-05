@@ -10,7 +10,6 @@ import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
 import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { User } from "lucide-react";
 import { StoreSelector } from "@/components/StoreSelector/StoreSelector";
-import { QuickStoreSwitcher } from "@/components/StoreSelector/QuickStoreSwitcher";
 
 const Navbar = () => {
   const { userId } = useAuth();
@@ -21,9 +20,8 @@ const Navbar = () => {
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 flex items-center justify-between h-16">
         {/* Left side - Store selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <StoreSelector />
-          <QuickStoreSwitcher />
         </div>
 
         {/* Right side - Org switcher and user */}

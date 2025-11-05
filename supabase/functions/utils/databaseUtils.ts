@@ -421,6 +421,74 @@ export async function logRedactionResult(
   }
 }
 
+/**
+ * Automatically updates old 'ready' entries to 'journaled' status
+ * after their booking date has passed by 7 days.
+ * This triggers the auto_deletion_timestamp and subsequent redaction workflow.
+ */
+export async function runAutoJournaling(supabase: SupabaseClient): Promise<{
+  journaledEntries: number;
+  organizationsAffected?: string[];
+  error?: any;
+}> {
+  try {
+    console.log('Starting auto journaling for old ready entries...');
+    
+    // Calculate cutoff: booking_date + 7 days < now
+    const cutoffDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Find entries with status='ready' where booking_date is older than 7 days
+    const { data: entriesToJournal, error: fetchError } = await supabase
+      .from('anamnes_entries')
+      .select('id, organization_id, booking_date, status')
+      .eq('status', 'ready')
+      .not('booking_date', 'is', null)
+      .lt('booking_date', cutoffDate);
+
+    if (fetchError) {
+      console.error('Error fetching entries to auto-journal:', fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Found ${entriesToJournal?.length || 0} ready entries to auto-journal`);
+
+    if (!entriesToJournal || entriesToJournal.length === 0) {
+      return { journaledEntries: 0 };
+    }
+
+    const ids = entriesToJournal.map(e => e.id);
+    const organizationIds = [...new Set(entriesToJournal.map(e => e.organization_id))];
+    
+    console.log('Organizations affected by auto-journaling:', organizationIds);
+    console.log('Sample entries being journaled:', entriesToJournal.slice(0, 3).map(e => ({
+      id: e.id,
+      booking_date: e.booking_date,
+      status: e.status
+    })));
+
+    // Update status to 'journaled' - this will trigger the set_auto_deletion_timestamp() trigger
+    const { error: updateError } = await supabase
+      .from('anamnes_entries')
+      .update({ status: 'journaled' })
+      .in('id', ids);
+
+    if (updateError) {
+      console.error('Error updating entries to journaled:', updateError);
+      throw updateError;
+    }
+
+    console.log(`Successfully auto-journaled ${ids.length} entries`);
+
+    return {
+      journaledEntries: ids.length,
+      organizationsAffected: organizationIds,
+    };
+  } catch (error) {
+    console.error('Error in runAutoJournaling:', error);
+    return { journaledEntries: 0, error };
+  }
+}
+
 // New function for cleaning up normal journaled entries that are redacted and past booking date
 export async function runJournaledEntriesCleanup(supabase: SupabaseClient): Promise<{ deletedEntries: number; organizationsAffected?: string[]; error?: any; }> {
   try {

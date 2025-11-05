@@ -7,7 +7,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { Database } from '../utils/database.types.ts'
-import { createSupabaseClient, runAutoRedaction, runStuckFormsCleanup, runPlaceholderCleanup, runJournaledMagicLinkCleanup, runJournaledEntriesCleanup, logDeletionResult, logRedactionResult } from '../utils/databaseUtils.ts'
+import { createSupabaseClient, runAutoJournaling, runAutoRedaction, runStuckFormsCleanup, runPlaceholderCleanup, runJournaledMagicLinkCleanup, runJournaledEntriesCleanup, logDeletionResult, logRedactionResult } from '../utils/databaseUtils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,10 +29,16 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create Supabase client - missing credentials');
     }
 
-    // Run auto redaction first to avoid race conditions, then run deletions in parallel
-    console.log('Running auto redaction first to avoid race conditions...');
+    // Run auto journaling first to transition old 'ready' entries to 'journaled'
+    console.log('Running auto journaling for old ready entries...');
+    const autoJournalingResult = await runAutoJournaling(supabase);
+    console.log('Auto journaling completed. Running auto redaction...');
+    
+    // Run auto redaction to clear medical content from journaled entries
     const autoRedactionResult = await runAutoRedaction(supabase);
     console.log('Auto redaction completed. Proceeding with cleanup steps...');
+    
+    // Run all cleanup steps in parallel
     const [stuckFormsResult, placeholderCleanupResult, journaledPlaceholderResult, journaledEntriesResult] = await Promise.all([
       runStuckFormsCleanup(supabase),
       runPlaceholderCleanup(supabase),
@@ -40,8 +46,9 @@ Deno.serve(async (req) => {
       runJournaledEntriesCleanup(supabase)
     ]);
     
-    const totalProcessed = autoRedactionResult.redactedEntries + stuckFormsResult.deletedEntries + placeholderCleanupResult.deletedEntries + journaledPlaceholderResult.deletedEntries + journaledEntriesResult.deletedEntries;
+    const totalProcessed = autoJournalingResult.journaledEntries + autoRedactionResult.redactedEntries + stuckFormsResult.deletedEntries + placeholderCleanupResult.deletedEntries + journaledPlaceholderResult.deletedEntries + journaledEntriesResult.deletedEntries;
     const allOrganizations = [
+      ...(autoJournalingResult.organizationsAffected || []),
       ...(autoRedactionResult.organizationsAffected || []),
       ...(stuckFormsResult.organizationsAffected || []),
       ...(placeholderCleanupResult.organizationsAffected || []),
@@ -52,6 +59,12 @@ Deno.serve(async (req) => {
     
     // Log all results separately for audit trail
     await Promise.all([
+      logDeletionResult(supabase, {
+        deletedEntries: autoJournalingResult.journaledEntries,
+        organizationsAffected: autoJournalingResult.organizationsAffected,
+        error: autoJournalingResult.error,
+        status: 'auto_journaling'
+      }),
       logRedactionResult(supabase, {
         redactedEntries: autoRedactionResult.redactedEntries,
         organizationsAffected: autoRedactionResult.organizationsAffected,
@@ -87,6 +100,7 @@ Deno.serve(async (req) => {
       console.log('No entries to process from any step');
       return new Response(JSON.stringify({ 
         message: 'No entries to process',
+        autoJournaling: autoJournalingResult.journaledEntries,
         autoRedaction: autoRedactionResult.redactedEntries,
         stuckFormsCleanup: stuckFormsResult.deletedEntries,
         placeholderCleanup: placeholderCleanupResult.deletedEntries,
@@ -99,10 +113,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Successfully processed ${totalProcessed} total entries (redacted: ${autoRedactionResult.redactedEntries}, stuck deleted: ${stuckFormsResult.deletedEntries}, placeholders deleted: ${placeholderCleanupResult.deletedEntries}, journaled placeholders deleted: ${journaledPlaceholderResult.deletedEntries}, journaled entries deleted: ${journaledEntriesResult.deletedEntries})`);
+    console.log(`Successfully processed ${totalProcessed} total entries (auto-journaled: ${autoJournalingResult.journaledEntries}, redacted: ${autoRedactionResult.redactedEntries}, stuck deleted: ${stuckFormsResult.deletedEntries}, placeholders deleted: ${placeholderCleanupResult.deletedEntries}, journaled placeholders deleted: ${journaledPlaceholderResult.deletedEntries}, journaled entries deleted: ${journaledEntriesResult.deletedEntries})`);
 
     return new Response(JSON.stringify({ 
-      message: 'Redaction and cleanup completed successfully',
+      message: 'Auto-journaling, redaction and cleanup completed successfully',
+      autoJournaling: autoJournalingResult.journaledEntries,
       autoRedaction: autoRedactionResult.redactedEntries,
       stuckFormsCleanup: stuckFormsResult.deletedEntries,
       placeholderCleanup: placeholderCleanupResult.deletedEntries,

@@ -89,8 +89,8 @@ export const useSummaryGenerator = ({
         description: "AI-sammanfattningen har kopierats till urklipp",
       });
       
-      // For visual examinations (not driving license), mark as journaled when AI summary is copied
-      if (onStatusUpdate && examinationType?.toLowerCase() !== 'körkortsundersökning') {
+      // Mark as journaled when AI summary is copied (all examination types)
+      if (onStatusUpdate) {
         try {
           await onStatusUpdate('journaled');
           console.log('Entry marked as journaled after copying AI summary');

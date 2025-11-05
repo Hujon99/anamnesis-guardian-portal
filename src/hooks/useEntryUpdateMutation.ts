@@ -125,17 +125,17 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
   return {
     updateEntryMutation,
     updateStatus: (newStatus: string, formattedRawData?: string) => {
-      updateEntryMutation.mutate({ status: newStatus, formattedRawData });
+      return updateEntryMutation.mutateAsync({ status: newStatus, formattedRawData });
     },
     saveFormattedRawData: (formattedRawData: string) => {
       console.log("saveFormattedRawData called with data of length:", formattedRawData.length);
-      updateEntryMutation.mutate({ formattedRawData });
+      return updateEntryMutation.mutateAsync({ formattedRawData });
     },
     savePatientIdentifier: (identifier: string) => {
-      updateEntryMutation.mutate({ identifier });
+      return updateEntryMutation.mutateAsync({ identifier });
     },
     saveAiSummary: (aiSummary: string) => {
-      updateEntryMutation.mutate({ aiSummary });
+      return updateEntryMutation.mutateAsync({ aiSummary });
     }
   };
 };

@@ -90,7 +90,7 @@ export const CompactSearchAndFilter = ({
   };
 
   return (
-    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-6 px-1 border-b border-border/40">
+    <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-6 px-1 border-b border-border/40">
       <div className="space-y-4">
         {/* Search and refresh row */}
         <div className="flex gap-2 items-center">

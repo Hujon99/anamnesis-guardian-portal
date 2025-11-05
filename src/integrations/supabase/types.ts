@@ -973,6 +973,7 @@ export type Database = {
           onboarding_completed: boolean | null
           onboarding_step: number | null
           organization_id: string
+          preferred_store_id: string | null
           role: string
         }
         Insert: {
@@ -985,6 +986,7 @@ export type Database = {
           onboarding_completed?: boolean | null
           onboarding_step?: number | null
           organization_id: string
+          preferred_store_id?: string | null
           role?: string
         }
         Update: {
@@ -997,6 +999,7 @@ export type Database = {
           onboarding_completed?: boolean | null
           onboarding_step?: number | null
           organization_id?: string
+          preferred_store_id?: string | null
           role?: string
         }
         Relationships: [
@@ -1005,6 +1008,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_preferred_store_id_fkey"
+            columns: ["preferred_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]

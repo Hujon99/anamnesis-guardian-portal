@@ -3,19 +3,22 @@
  * 
  * This context provides a way to track which store a user is currently working with,
  * which is essential for multi-store organizations. The selected store is persisted
- * in localStorage and automatically restored on subsequent visits.
+ * in the database (users.preferred_store_id) with localStorage as fallback.
  * 
  * Key features:
- * - Persists active store selection in localStorage (org + user specific)
- * - Automatically loads user's last selected store on mount
+ * - Persists active store selection in database (preferred_store_id column)
+ * - Falls back to localStorage for resilience
+ * - Automatically loads user's preferred store on mount
  * - Validates that the selected store still exists and is active
  * - Provides helper to check if user has multiple stores
+ * - Auto-selects single store for single-store organizations
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useStores } from '@/hooks/useStores';
 import { useSafeAuth } from '@/hooks/useSafeAuth';
 import { useSafeOrganization } from '@/hooks/useSafeOrganization';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Store {
   id: string;
@@ -50,54 +53,85 @@ export const ActiveStoreProvider: React.FC<{ children: ReactNode }> = ({ childre
     return `binokel_active_store_${organization.id}_${userId}`;
   };
 
-  // Load active store from localStorage on mount
+  // Load active store from database (with localStorage fallback) on mount
   useEffect(() => {
     if (!userId || !organization?.id || stores.length === 0 || isInitialized) return;
 
-    const storageKey = getStorageKey();
-    if (!storageKey) return;
+    const loadPreferredStore = async () => {
+      try {
+        // First, try to load from database
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('preferred_store_id')
+          .eq('clerk_user_id', userId)
+          .single();
 
-    try {
-      const savedStoreId = localStorage.getItem(storageKey);
-      
-      if (savedStoreId) {
-        // Validate that the saved store still exists
-        const savedStore = stores.find(s => s.id === savedStoreId);
-        if (savedStore) {
-          setActiveStoreState(savedStore);
-          setIsInitialized(true);
-          return;
+        let savedStoreId: string | null = null;
+
+        if (!error && userData?.preferred_store_id) {
+          savedStoreId = userData.preferred_store_id;
+        } else {
+          // Fallback to localStorage if database fails or no value
+          const storageKey = getStorageKey();
+          if (storageKey) {
+            savedStoreId = localStorage.getItem(storageKey);
+          }
         }
-      }
 
-      // If no saved store or it doesn't exist, auto-select if only one store
-      if (stores.length === 1) {
-        setActiveStoreState(stores[0]);
-        localStorage.setItem(storageKey, stores[0].id);
+        if (savedStoreId) {
+          // Validate that the saved store still exists
+          const savedStore = stores.find(s => s.id === savedStoreId);
+          if (savedStore) {
+            setActiveStoreState(savedStore);
+            setIsInitialized(true);
+            return;
+          }
+        }
+
+        // If no saved store or it doesn't exist, auto-select if only one store
+        if (stores.length === 1) {
+          setActiveStoreState(stores[0]);
+          // Save to database
+          await supabase
+            .from('users')
+            .update({ preferred_store_id: stores[0].id })
+            .eq('clerk_user_id', userId);
+        }
+        
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Error loading preferred store:', error);
+        setIsInitialized(true);
       }
-      
-      setIsInitialized(true);
-    } catch (error) {
-      console.error('Error loading active store from localStorage:', error);
-      setIsInitialized(true);
-    }
+    };
+
+    loadPreferredStore();
   }, [userId, organization?.id, stores, isInitialized]);
 
-  // Update active store and persist to localStorage
-  const setActiveStore = (store: Store | null) => {
+  // Update active store and persist to database (with localStorage fallback)
+  const setActiveStore = async (store: Store | null) => {
     setActiveStoreState(store);
     
-    const storageKey = getStorageKey();
-    if (!storageKey) return;
+    if (!userId) return;
 
     try {
-      if (store) {
-        localStorage.setItem(storageKey, store.id);
-      } else {
-        localStorage.removeItem(storageKey);
+      // Save to database
+      await supabase
+        .from('users')
+        .update({ preferred_store_id: store?.id || null })
+        .eq('clerk_user_id', userId);
+
+      // Also save to localStorage as fallback
+      const storageKey = getStorageKey();
+      if (storageKey) {
+        if (store) {
+          localStorage.setItem(storageKey, store.id);
+        } else {
+          localStorage.removeItem(storageKey);
+        }
       }
     } catch (error) {
-      console.error('Error saving active store to localStorage:', error);
+      console.error('Error saving preferred store:', error);
     }
   };
 

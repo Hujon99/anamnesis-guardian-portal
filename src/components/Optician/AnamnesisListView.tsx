@@ -342,19 +342,19 @@ export function AnamnesisListView({
       </CompactSearchAndFilter>
       {/* Tabs for Active Store vs Without Store */}
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="active">
-            {activeStore ? activeStore.name : "Aktuella undersökningar"}
-          </TabsTrigger>
-          <TabsTrigger value="without-store">
-            Utan butik
-            {withoutStoreCount > 0 && (
+        {withoutStoreCount > 0 && (
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="active">
+              {activeStore ? activeStore.name : "Aktuella undersökningar"}
+            </TabsTrigger>
+            <TabsTrigger value="without-store">
+              Utan butik
               <Badge variant="secondary" className="ml-2">
                 {withoutStoreCount}
               </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+            </TabsTrigger>
+          </TabsList>
+        )}
 
         <TabsContent value="active" className="space-y-6">
           <div data-tour="stats-cards">

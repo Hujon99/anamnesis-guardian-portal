@@ -169,19 +169,6 @@ const Dashboard = () => {
             </div>
             <p className="text-muted-foreground">Hantering av anamneser för vald butik</p>
           </div>
-          {canAccessOpticianFeatures && (
-            <Button 
-              data-tour="my-anamnesis"
-              variant="outline" 
-              asChild 
-              className="flex items-center gap-2 font-medium border-accent-1/30 hover:bg-accent-1/10 hover:text-accent-1 hover:border-accent-1"
-            >
-              <Link to="/my-anamneses">
-                <Clipboard className="h-4 w-4" />
-                <span>Till mina anamneser</span>
-              </Link>
-            </Button>
-          )}
         </div>
 
       <QueryErrorResetBoundary>

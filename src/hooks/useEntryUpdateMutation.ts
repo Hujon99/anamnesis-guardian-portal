@@ -72,24 +72,11 @@ export const useEntryUpdateMutation = (entryId: string, onSuccess?: () => void) 
     onSuccess: (data) => {
       console.log("Entry updated successfully:", data);
       
-      // Update status in the cache immediately in a more selective way
-      queryClient.setQueryData(
-        ["anamnes-entries", undefined, data.status],
-        (oldData: AnamnesesEntry[] | undefined) => {
-          if (!oldData) return undefined;
-          
-          return oldData.map(entry => 
-            entry.id === entryId ? { ...entry, ...data } : entry
-          );
-        }
-      );
-      
-      // Only invalidate the specific status query that was affected
-      setTimeout(() => {
-        queryClient.invalidateQueries({ 
-          queryKey: ["anamnes-entries", undefined, data.status] 
-        });
-      }, 100);
+      // Invalidate ALL anamnes-entries queries to ensure UI updates everywhere
+      // This is necessary because an entry might move between different status lists
+      queryClient.invalidateQueries({ 
+        queryKey: ["anamnes-entries"] 
+      });
       
       toast({
         title: "Anamnesen uppdaterad",

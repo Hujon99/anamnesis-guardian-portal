@@ -19,6 +19,7 @@ import { useStores } from '@/hooks/useStores';
 import { useSafeAuth } from '@/hooks/useSafeAuth';
 import { useSafeOrganization } from '@/hooks/useSafeOrganization';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Store {
   id: string;
@@ -145,6 +146,36 @@ export const ActiveStoreProvider: React.FC<{ children: ReactNode }> = ({ childre
       setActiveStore(null);
     }
   }, [stores, activeStore, isInitialized]);
+
+  // Multi-tab synchronization via localStorage events
+  useEffect(() => {
+    const storageKey = getStorageKey();
+    if (!storageKey || !isInitialized) return;
+
+    const handleStorageChange = (e: StorageEvent) => {
+      // Only react to changes in our specific localStorage key
+      if (e.key !== storageKey) return;
+      
+      const newStoreId = e.newValue;
+      
+      // If store was cleared in another tab
+      if (!newStoreId) {
+        setActiveStoreState(null);
+        toast.info('Butiksvalet rensades i en annan flik');
+        return;
+      }
+
+      // Find the new store and update
+      const newStore = stores.find(s => s.id === newStoreId);
+      if (newStore && newStore.id !== activeStore?.id) {
+        setActiveStoreState(newStore);
+        toast.info(`Bytte till ${newStore.name} (synkroniserat från annan flik)`);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [stores, activeStore, isInitialized, getStorageKey]);
 
   const hasMultipleStores = stores.length > 1;
   const isLoading = storesLoading || !isInitialized;

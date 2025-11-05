@@ -18,10 +18,14 @@ import { ExaminationTypeStatsCards } from "./ExaminationTypeStatsCards";
 import { useCurrentOpticianEntries } from "@/hooks/useCurrentOpticianEntries";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Store } from "@/types/anamnesis";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
+import { useEntriesWithoutStore } from "@/hooks/useEntriesWithoutStore";
 import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { toast } from "@/components/ui/use-toast";
 
@@ -48,6 +52,8 @@ export function MyAnamnesisView() {
   const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
   const { refreshClient } = useSupabaseClient();
+  const { activeStore } = useActiveStore();
+  const { entriesWithoutStore, count: withoutStoreCount } = useEntriesWithoutStore();
   
   // Fetch stores for enhancing display
   const { data: stores = [] } = useQuery({
@@ -265,34 +271,83 @@ export function MyAnamnesisView() {
         onResetFilters={resetFilters}
       />
 
-      {enhancedTodayBookings.length > 0 && (
-        <TodayBookingsSection
-          todayBookings={enhancedTodayBookings}
-          onSelectEntry={setSelectedEntry}
-          onEntryDeleted={refetch}
-          onEntryAssigned={handleEntryAssigned}
-          onStoreAssigned={handleStoreAssigned}
-        />
-      )}
-      
-      <div>
-        <EntriesSummary
-          filteredCount={enhancedEntries.length}
-          totalCount={myEntries.length}
-          statusFilter={filters.statusFilter}
-          isFetching={isFetching}
-          lastUpdated={dataLastUpdated}
-        />
-        
-        <EntriesList
-          entries={enhancedEntries.filter(entry => !enhancedTodayBookings.some(tb => tb.id === entry.id))}
-          onSelectEntry={setSelectedEntry}
-          onEntryDeleted={refetch}
-          onEntryUpdated={handleEntryUpdated}
-          onEntryAssigned={handleEntryAssigned}
-          onStoreAssigned={handleStoreAssigned}
-        />
-      </div>
+      {/* Tabs for Active Store vs Without Store */}
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="active">
+            {activeStore ? activeStore.name : "Mina undersökningar"}
+          </TabsTrigger>
+          <TabsTrigger value="without-store">
+            Utan butik
+            {withoutStoreCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {withoutStoreCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="space-y-6">
+          {enhancedTodayBookings.length > 0 && (
+            <TodayBookingsSection
+              todayBookings={enhancedTodayBookings}
+              onSelectEntry={setSelectedEntry}
+              onEntryDeleted={refetch}
+              onEntryAssigned={handleEntryAssigned}
+              onStoreAssigned={handleStoreAssigned}
+            />
+          )}
+          
+          <div>
+            <EntriesSummary
+              filteredCount={enhancedEntries.length}
+              totalCount={myEntries.length}
+              statusFilter={filters.statusFilter}
+              isFetching={isFetching}
+              lastUpdated={dataLastUpdated}
+            />
+            
+            <EntriesList
+              entries={enhancedEntries.filter(entry => !enhancedTodayBookings.some(tb => tb.id === entry.id))}
+              onSelectEntry={setSelectedEntry}
+              onEntryDeleted={refetch}
+              onEntryUpdated={handleEntryUpdated}
+              onEntryAssigned={handleEntryAssigned}
+              onStoreAssigned={handleStoreAssigned}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="without-store" className="space-y-6">
+          <EntriesSummary
+            filteredCount={entriesWithoutStore.length}
+            totalCount={entriesWithoutStore.length}
+            statusFilter="all"
+            isFetching={isFetching}
+            lastUpdated={dataLastUpdated}
+          />
+          
+          {entriesWithoutStore.length > 0 ? (
+            <EntriesList
+              entries={entriesWithoutStore.map(entry => ({
+                ...entry,
+                ...getEntryExpirationInfo(entry),
+                storeName: null,
+                isBookingWithoutStore: false
+              }))}
+              onSelectEntry={setSelectedEntry}
+              onEntryDeleted={refetch}
+              onEntryUpdated={handleEntryUpdated}
+              onEntryAssigned={handleEntryAssigned}
+              onStoreAssigned={handleStoreAssigned}
+            />
+          ) : (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">Inga undersökningar utan butikstillhörighet.</p>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
       
       {selectedEntry && (
         <AnamnesisDetailModal

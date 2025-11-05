@@ -20,9 +20,13 @@ import { useAnamnesisList } from "@/hooks/useAnamnesisList";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useStores } from "@/hooks/useStores";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
+import { useActiveStore } from "@/contexts/ActiveStoreContext";
+import { useEntriesWithoutStore } from "@/hooks/useEntriesWithoutStore";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { useSyncClerkUsers } from "@/hooks/useSyncClerkUsers";
 import { assignOpticianToEntry, assignStoreToEntry } from "@/utils/entryMutationUtils";
@@ -67,6 +71,8 @@ export function AnamnesisListView({
   const { supabase } = useSupabaseClient();
   const { organization } = useOrganization();
   const { syncUsersWithToast } = useSyncClerkUsers();
+  const { activeStore } = useActiveStore();
+  const { entriesWithoutStore, count: withoutStoreCount } = useEntriesWithoutStore();
   
   // Use the useStores hook with improved store handling
   const { 
@@ -348,53 +354,100 @@ export function AnamnesisListView({
         />
       )}
       
-      {/* Results Section */}
-      <div className="space-y-6">
-        <div data-tour="stats-cards">
-          <EntriesSummary
-            filteredCount={enhancedEntries.length}
-            totalCount={entries.length}
-            statusFilter={filters.statusFilter}
-            isFetching={isFetching || isLoadingStores}
-            lastUpdated={dataLastUpdated}
-            todayBookingsCount={todayBookings.length}
-          />
-        </div>
-        
-        {/* Today's Bookings Section */}
-        {todayBookings.length > 0 && filters.timeFilter !== "today_bookings" && (
-          <TodayBookingsSection
-            todayBookings={todayBookings}
-            onSelectEntry={setSelectedEntry}
-            onEntryDeleted={refetch}
-            onEntryAssigned={handleEntryAssigned}
-            onStoreAssigned={handleStoreAssigned}
-            onDrivingLicenseExamination={handleDrivingLicenseExamination}
-          />
-        )}
-        
-        {/* Other Entries */}
-        {(filters.timeFilter !== "today_bookings" ? otherEntries : enhancedEntries).length > 0 && (
-          <div data-tour="entries-list">
-            {todayBookings.length > 0 && filters.timeFilter !== "today_bookings" && (
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-px bg-muted flex-1"></div>
-                <span className="text-sm text-muted-foreground px-3">Övriga anamnesdformulär</span>
-                <div className="h-px bg-muted flex-1"></div>
-              </div>
+      {/* Tabs for Active Store vs Without Store */}
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="active">
+            {activeStore ? activeStore.name : "Aktuella undersökningar"}
+          </TabsTrigger>
+          <TabsTrigger value="without-store">
+            Utan butik
+            {withoutStoreCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {withoutStoreCount}
+              </Badge>
             )}
-            
-            <EntriesList
-              entries={filters.timeFilter === "today_bookings" ? enhancedEntries : otherEntries}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="space-y-6">
+          <div data-tour="stats-cards">
+            <EntriesSummary
+              filteredCount={enhancedEntries.length}
+              totalCount={entries.length}
+              statusFilter={filters.statusFilter}
+              isFetching={isFetching || isLoadingStores}
+              lastUpdated={dataLastUpdated}
+              todayBookingsCount={todayBookings.length}
+            />
+          </div>
+          
+          {/* Today's Bookings Section */}
+          {todayBookings.length > 0 && filters.timeFilter !== "today_bookings" && (
+            <TodayBookingsSection
+              todayBookings={todayBookings}
               onSelectEntry={setSelectedEntry}
               onEntryDeleted={refetch}
               onEntryAssigned={handleEntryAssigned}
               onStoreAssigned={handleStoreAssigned}
               onDrivingLicenseExamination={handleDrivingLicenseExamination}
             />
-          </div>
-        )}
-      </div>
+          )}
+          
+          {/* Other Entries */}
+          {(filters.timeFilter !== "today_bookings" ? otherEntries : enhancedEntries).length > 0 && (
+            <div data-tour="entries-list">
+              {todayBookings.length > 0 && filters.timeFilter !== "today_bookings" && (
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-px bg-muted flex-1"></div>
+                  <span className="text-sm text-muted-foreground px-3">Övriga anamnesdformulär</span>
+                  <div className="h-px bg-muted flex-1"></div>
+                </div>
+              )}
+              
+              <EntriesList
+                entries={filters.timeFilter === "today_bookings" ? enhancedEntries : otherEntries}
+                onSelectEntry={setSelectedEntry}
+                onEntryDeleted={refetch}
+                onEntryAssigned={handleEntryAssigned}
+                onStoreAssigned={handleStoreAssigned}
+                onDrivingLicenseExamination={handleDrivingLicenseExamination}
+              />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="without-store" className="space-y-6">
+          <EntriesSummary
+            filteredCount={entriesWithoutStore.length}
+            totalCount={entriesWithoutStore.length}
+            statusFilter="all"
+            isFetching={isFetching}
+            lastUpdated={dataLastUpdated}
+            todayBookingsCount={0}
+          />
+          
+          {entriesWithoutStore.length > 0 ? (
+            <EntriesList
+              entries={entriesWithoutStore.map(entry => ({
+                ...entry,
+                ...getEntryExpirationInfo(entry),
+                storeName: null,
+                isBookingWithoutStore: false
+              }))}
+              onSelectEntry={setSelectedEntry}
+              onEntryDeleted={refetch}
+              onEntryAssigned={handleEntryAssigned}
+              onStoreAssigned={handleStoreAssigned}
+              onDrivingLicenseExamination={handleDrivingLicenseExamination}
+            />
+          ) : (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">Inga undersökningar utan butikstillhörighet.</p>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
       
       {selectedEntry && (
         <AnamnesisDetailModal

@@ -23,6 +23,7 @@ import { OnboardingTour } from "@/components/Onboarding/OnboardingTour";
 import { useActiveStore } from "@/contexts/ActiveStoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Store } from "lucide-react";
+import { getStoreColor, getStoreAccentColor } from "@/utils/storeColorUtils";
 // Import debug utility for testing (remove after testing)
 import { debugSummaryRepair } from "@/utils/debugSummaryRepair";
 
@@ -143,7 +144,20 @@ const Dashboard = () => {
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold">Översikt</h1>
               {activeStore ? (
-                <Badge className="bg-accent-1/15 text-accent-1 border-accent-1/30 hover:bg-accent-1/25 flex items-center gap-1.5 px-3 py-1 text-sm font-medium">
+                <Badge 
+                  className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium border transition-colors"
+                  style={{
+                    backgroundColor: getStoreColor(activeStore.name, activeStore.id).backgroundColor,
+                    color: getStoreColor(activeStore.name, activeStore.id).color,
+                    borderColor: getStoreColor(activeStore.name, activeStore.id).borderColor,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = getStoreAccentColor(activeStore.name, activeStore.id).backgroundColor;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = getStoreColor(activeStore.name, activeStore.id).backgroundColor;
+                  }}
+                >
                   <Store className="h-3.5 w-3.5" strokeWidth={2} />
                   {activeStore.name}
                 </Badge>

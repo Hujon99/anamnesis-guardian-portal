@@ -31,6 +31,7 @@ const CustomerInfoPage = () => {
   
   // Form state
   const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [personalNumber, setPersonalNumber] = useState("");
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
   const [bookingDate, setBookingDate] = useState<Date>();
@@ -197,8 +198,8 @@ const CustomerInfoPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!firstName.trim()) {
-      setError("Vänligen ange ditt namn");
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Vänligen ange både för- och efternamn");
       return;
     }
     
@@ -224,10 +225,11 @@ const CustomerInfoPage = () => {
       // Use existing booking_id if provided from URL, otherwise generate new one
       const orderNumber = urlBookingId || generateOrderNumber();
       const selectedStore = stores.find(store => store.id === selectedStoreId);
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
       
       console.log("CustomerInfoPage: Navigating to examination type selection with data:", {
         orderNumber,
-        firstName: firstName.trim(),
+        fullName,
         selectedStoreId,
         selectedStoreName: selectedStore?.name,
         bookingDate: bookingDate.toISOString(),
@@ -246,10 +248,10 @@ const CustomerInfoPage = () => {
       
       // Include form_id if present
       if (formId) {
-        params.set("form_id", formId);
+      params.set("form_id", formId);
       }
       
-      params.set("first_name", firstName.trim());
+      params.set("first_name", fullName);
       if (personalNumber.trim()) {
         params.set("personal_number", personalNumber.trim());
       }
@@ -322,28 +324,43 @@ const CustomerInfoPage = () => {
               </span>
             )}
           </CardDescription>
+          <div className="mt-3 p-3 bg-accent-1/5 border border-accent-1/20 rounded-lg">
+            <p className="text-sm text-foreground/80">
+              💡 Fyll i dina uppgifter noggrant för korrekt hantering av din undersökning.
+            </p>
+          </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {/* Name field */}
-            <div className="space-y-2">
-              <Label htmlFor="firstName" className="flex items-center">
-                <UserIcon className="h-4 w-4 mr-2" />
-                Fullt namn *
-                {urlFirstName && (
-                  <span className="ml-2 text-xs text-accent-1 bg-accent-1/10 px-2 py-1 rounded">
-                    Förifyllt
-                  </span>
-                )}
-              </Label>
-              <Input
-                id="firstName"
-                type="text"
-                placeholder="Ange ditt fullständiga namn"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-              />
+            {/* Name fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName" className="flex items-center">
+                  <UserIcon className="h-4 w-4 mr-2" />
+                  Förnamn *
+                </Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="Förnamn"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName" className="flex items-center">
+                  Efternamn *
+                </Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Efternamn"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
             </div>
             
             {/* Personal number field */}
@@ -451,7 +468,7 @@ const CustomerInfoPage = () => {
           <CardFooter>
             <Button 
               type="submit" 
-              disabled={isSubmitting || !firstName.trim() || !bookingDate}
+              disabled={isSubmitting || !firstName.trim() || !lastName.trim() || !bookingDate}
               className="w-full"
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

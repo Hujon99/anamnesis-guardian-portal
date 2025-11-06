@@ -29,6 +29,7 @@ const LinkPage = () => {
   // Extract params from URL
   const bookingId = searchParams.get("booking_id");
   const firstName = searchParams.get("first_name");
+  const personalNumber = searchParams.get("personal_number");
   const storeId = searchParams.get("store_id");
   const storeName = searchParams.get("store_name"); // Add explicit store_name parameter
   const bookingDate = searchParams.get("booking_date");
@@ -47,6 +48,7 @@ const LinkPage = () => {
         // Add any existing parameters
         if (bookingId) params.set("booking_id", bookingId);
         if (firstName) params.set("first_name", firstName);
+        if (personalNumber) params.set("personal_number", personalNumber);
         if (storeId) params.set("store_id", storeId);
         if (storeName) params.set("store_name", storeName);
         if (bookingDate) params.set("booking_date", bookingDate);
@@ -99,6 +101,7 @@ const LinkPage = () => {
             if (storeId) params.set('store_id', storeId);
             if (storeName) params.set('store_name', storeName);
             if (firstName) params.set('first_name', firstName);
+            if (personalNumber) params.set('personal_number', personalNumber);
             if (bookingId) params.set('booking_id', bookingId);
             
             navigate(`/consent?${params.toString()}`);
@@ -115,7 +118,7 @@ const LinkPage = () => {
     };
     
     validateAndRedirect();
-  }, [bookingId, formId, orgId, firstName, bookingDate, storeId, storeName, navigate]);
+  }, [bookingId, formId, orgId, firstName, personalNumber, bookingDate, storeId, storeName, navigate]);
   
   const handleGenerateForm = async () => {
     try {
@@ -126,6 +129,7 @@ const LinkPage = () => {
         body: {
           bookingId,
           firstName,
+          personalNumber,
           storeId,
           storeName, // Pass both storeId and storeName to the edge function
           bookingDate,
@@ -239,6 +243,16 @@ const LinkPage = () => {
               <div>
                 <p className="font-medium">Förnamn:</p>
                 <p className="text-muted-foreground">{firstName}</p>
+              </div>
+            </div>
+          )}
+
+          {personalNumber && (
+            <div className="flex items-start space-x-2 text-sm">
+              <UserIcon className="h-4 w-4 mt-0.5" />
+              <div>
+                <p className="font-medium">Personnummer:</p>
+                <p className="text-muted-foreground">{personalNumber}</p>
               </div>
             </div>
           )}

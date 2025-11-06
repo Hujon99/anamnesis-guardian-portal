@@ -32,7 +32,8 @@ serve(async (req: Request) => {
     // Parse the request body
     const { 
       bookingId, 
-      firstName, 
+      firstName,
+      personalNumber,
       storeId, 
       storeName: inputStoreName, 
       bookingDate, 
@@ -58,7 +59,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("Parameters received:", { bookingId, firstName, storeId, storeName: inputStoreName, bookingDate, formId });
+    console.log("Parameters received:", { bookingId, firstName, personalNumber, storeId, storeName: inputStoreName, bookingDate, formId });
     
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -181,6 +182,7 @@ serve(async (req: Request) => {
         access_token: accessToken,
         booking_id: bookingId,
         first_name: firstName || null,
+        personal_number: personalNumber || null,
         store_id: finalStoreId,
         booking_date: bookingDate ? new Date(bookingDate).toISOString() : null,
         is_magic_link: true,

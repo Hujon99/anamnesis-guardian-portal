@@ -38,6 +38,7 @@ const ExaminationTypeSelectionPage = () => {
   const preservedParams = {
     booking_id: searchParams.get("booking_id"),
     first_name: searchParams.get("first_name"),
+    personal_number: searchParams.get("personal_number"),
     store_id: searchParams.get("store_id"),
     store_name: searchParams.get("store_name"),
     booking_date: searchParams.get("booking_date"),
@@ -229,6 +230,7 @@ const ExaminationTypeSelectionPage = () => {
         body: {
           bookingId: preservedParams.booking_id,
           firstName: preservedParams.first_name,
+          personalNumber: preservedParams.personal_number,
           storeId: preservedParams.store_id || null,
           storeName: preservedParams.store_name || null,
           bookingDate: preservedParams.booking_date,

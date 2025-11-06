@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, CalendarIcon, AlertCircle, UserIcon, MapPinIcon } from "lucide-react";
+import { Loader2, CalendarIcon, AlertCircle, UserIcon, MapPinIcon, IdCard } from "lucide-react";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ const CustomerInfoPage = () => {
   
   // Form state
   const [firstName, setFirstName] = useState("");
+  const [personalNumber, setPersonalNumber] = useState("");
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
   const [bookingDate, setBookingDate] = useState<Date>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -48,6 +49,7 @@ const CustomerInfoPage = () => {
   const urlStoreId = searchParams.get("store_id");
   const urlStoreName = searchParams.get("store_name");
   const urlFirstName = searchParams.get("first_name");
+  const urlPersonalNumber = searchParams.get("personal_number");
   const urlBookingId = searchParams.get("booking_id");
   
   // Generate random order number
@@ -55,11 +57,28 @@ const CustomerInfoPage = () => {
     return `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
   };
   
+  // Format personal number - accept YY and YYYY formats
+  const formatPersonalNumber = (value: string): string => {
+    // Remove everything except digits and hyphens
+    const cleaned = value.replace(/[^\d-]/g, '');
+    // Truncate to max 13 characters
+    return cleaned.slice(0, 13);
+  };
+  
+  const handlePersonalNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPersonalNumber(formatPersonalNumber(e.target.value));
+  };
+  
   // Pre-fill form fields from URL parameters
   useEffect(() => {
     // Pre-fill first name if provided
     if (urlFirstName && !firstName) {
       setFirstName(urlFirstName);
+    }
+    
+    // Pre-fill personal number if provided
+    if (urlPersonalNumber && !personalNumber) {
+      setPersonalNumber(urlPersonalNumber);
     }
     
     // Pre-fill store if provided and valid
@@ -81,7 +100,7 @@ const CustomerInfoPage = () => {
         console.warn("Could not parse booking date from URL:", urlBookingDate);
       }
     }
-  }, [urlFirstName, urlStoreId, urlBookingDate, firstName, stores, bookingDate]);
+  }, [urlFirstName, urlPersonalNumber, urlStoreId, urlBookingDate, firstName, personalNumber, stores, bookingDate]);
   
   // Validate and fetch data
   useEffect(() => {
@@ -183,6 +202,16 @@ const CustomerInfoPage = () => {
       return;
     }
     
+    // Validate personal number if provided
+    if (personalNumber.trim()) {
+      const cleaned = personalNumber.replace(/[^\d]/g, '');
+      // Accept both 10 digits (YYMMDDXXXX) and 12 digits (YYYYMMDDXXXX)
+      if (cleaned.length !== 10 && cleaned.length !== 12) {
+        setError("Personnummer ska vara 10 eller 12 siffror (ÅÅMMDDXXXX eller ÅÅÅÅMMDDXXXX)");
+        return;
+      }
+    }
+    
     if (!bookingDate) {
       setError("Vänligen välj ett bokningsdatum");
       return;
@@ -221,6 +250,9 @@ const CustomerInfoPage = () => {
       }
       
       params.set("first_name", firstName.trim());
+      if (personalNumber.trim()) {
+        params.set("personal_number", personalNumber.trim());
+      }
       params.set("booking_date", bookingDate.toISOString());
       params.set("booking_id", orderNumber);
       
@@ -312,6 +344,31 @@ const CustomerInfoPage = () => {
                 onChange={(e) => setFirstName(e.target.value)}
                 required
               />
+            </div>
+            
+            {/* Personal number field */}
+            <div className="space-y-2">
+              <Label htmlFor="personalNumber" className="flex items-center">
+                <IdCard className="h-4 w-4 mr-2" />
+                Personnummer (valfritt)
+                {urlPersonalNumber && (
+                  <span className="ml-2 text-xs text-accent-1 bg-accent-1/10 px-2 py-1 rounded">
+                    Förifyllt
+                  </span>
+                )}
+              </Label>
+              <Input
+                id="personalNumber"
+                type="text"
+                placeholder="ÅÅMMDD-XXXX eller ÅÅÅÅMMDD-XXXX"
+                value={personalNumber}
+                onChange={handlePersonalNumberChange}
+              />
+              {!urlPersonalNumber && (
+                <p className="text-xs text-muted-foreground">
+                  Hjälper oss att identifiera dig korrekt vid undersökningen
+                </p>
+              )}
             </div>
             
             {/* Store selection */}

@@ -436,6 +436,11 @@ export const DirectFormButton: React.FC = () => {
   };
 
   // User sync check - remove this section since needsSync doesn't exist
+  // If no active store, don't show error - just don't render anything
+  if (!activeStore) {
+    return null;
+  }
+
   // Loading state
   if (formsLoading) {
     return (
@@ -448,13 +453,13 @@ export const DirectFormButton: React.FC = () => {
     );
   }
 
-  // Error state
-  if (formsError || !forms || forms.length === 0) {
+  // Error state - only show if we actually got an error or no forms after loading
+  if (formsError || (!formsLoading && (!forms || forms.length === 0))) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Kunde inte ladda formulär. Kontrollera att det finns formulär för din organisation.
+          Kunde inte ladda formulär. Kontrollera att det finns formulär för denna butik.
         </AlertDescription>
       </Alert>
     );

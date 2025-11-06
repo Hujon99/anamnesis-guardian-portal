@@ -410,8 +410,8 @@ export const useAnamnesisList = () => {
   // Filter and sort the entries based on current filters
   const filteredEntries = entries.filter(entry => {
     // AUTOMATIC STORE FILTERING: Filter by active store if one is selected
-    // BUT: also include entries without store_id (null) to show orphaned entries
-    if (activeStore && entry.store_id !== activeStore.id && entry.store_id !== null) {
+    // ONLY show entries that belong to the active store (not entries without store_id)
+    if (activeStore && entry.store_id !== activeStore.id) {
       return false;
     }
 

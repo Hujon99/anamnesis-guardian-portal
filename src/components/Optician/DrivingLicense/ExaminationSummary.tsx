@@ -183,28 +183,28 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                        examination?.uses_glasses ? 'Glasögon' : 'Linser'}
                     </Badge>
                   </h5>
-                  <p>Båda ögon: <span className="font-mono">
-                    {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_both)}
-                  </span></p>
                   <p>Höger öga: <span className="font-mono">
                     {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_right)}
                   </span></p>
                   <p>Vänster öga: <span className="font-mono">
                     {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_left)}
                   </span></p>
+                  <p>Båda ögon: <span className="font-mono">
+                    {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_both)}
+                  </span></p>
                 </div>
                 
                 {/* Without correction values */}
                 <div className="space-y-1">
                   <h5 className="font-medium text-sm">Utan korrektion</h5>
-                  <p>Båda ögon: <span className="font-mono">
-                    {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)}
-                  </span></p>
                   <p>Höger öga: <span className="font-mono">
                     {formatVisualAcuityDisplay(examination?.visual_acuity_right_eye)}
                   </span></p>
                   <p>Vänster öga: <span className="font-mono">
                     {formatVisualAcuityDisplay(examination?.visual_acuity_left_eye)}
+                  </span></p>
+                  <p>Båda ögon: <span className="font-mono">
+                    {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)}
                   </span></p>
                 </div>
               </>
@@ -212,14 +212,14 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               /* Without correction only */
               <div className="space-y-1">
                 <h5 className="font-medium text-sm">Utan korrektion</h5>
-                <p>Båda ögon: <span className="font-mono">
-                  {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)}
-                </span></p>
                 <p>Höger öga: <span className="font-mono">
                   {formatVisualAcuityDisplay(examination?.visual_acuity_right_eye)}
                 </span></p>
                 <p>Vänster öga: <span className="font-mono">
                   {formatVisualAcuityDisplay(examination?.visual_acuity_left_eye)}
+                </span></p>
+                <p>Båda ögon: <span className="font-mono">
+                  {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)}
                 </span></p>
               </div>
             )}

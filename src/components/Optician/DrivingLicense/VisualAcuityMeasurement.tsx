@@ -323,27 +323,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           </AlertDescription>
         </Alert>
 
-        {/* Main measurements */}
+        {/* Main measurements - order: Right eye, Left eye, Both eyes (as opticians are trained) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="both-eyes">Båda ögon</Label>
-            <Select 
-              value={measurements.visual_acuity_both_eyes.toString()} 
-              onValueChange={(value) => handleInputChange('visual_acuity_both_eyes', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Välj VISUS-värde" />
-              </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
-                {VISUS_SCALE.map((visus) => (
-                  <SelectItem key={visus} value={visus}>
-                    {visus.replace('.', ',')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
           <div className="space-y-2">
             <Label htmlFor="right-eye">Höger öga (OD)</Label>
             <Select 
@@ -368,6 +349,25 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
             <Select 
               value={measurements.visual_acuity_left_eye.toString()} 
               onValueChange={(value) => handleInputChange('visual_acuity_left_eye', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Välj VISUS-värde" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {VISUS_SCALE.map((visus) => (
+                  <SelectItem key={visus} value={visus}>
+                    {visus.replace('.', ',')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="both-eyes">Båda ögon</Label>
+            <Select 
+              value={measurements.visual_acuity_both_eyes.toString()} 
+              onValueChange={(value) => handleInputChange('visual_acuity_both_eyes', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Välj VISUS-värde" />

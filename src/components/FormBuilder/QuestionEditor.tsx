@@ -67,6 +67,8 @@ import { FormQuestion, FormTemplate } from '@/types/anamnesis';
 import { generateUniqueQuestionId, validateQuestionId, suggestAlternativeIds, isIdUnique } from '@/utils/questionIdUtils';
 import { InlineConditionalLogic } from './InlineConditionalLogic';
 import { QuestionTypeSelector } from './QuestionTypeSelector';
+import { useQuestionHierarchy, getQuestionHierarchy } from '@/hooks/useQuestionHierarchy';
+import { ConditionalBadge } from './ConditionalBadge';
 
 interface QuestionEditorProps {
   question: FormQuestion;
@@ -109,6 +111,19 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [isExpanded, setIsExpanded] = useState(isNewlyAdded);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Get hierarchy information
+  const hierarchyMap = useQuestionHierarchy(schema);
+  const hierarchyInfo = getQuestionHierarchy(question.id, hierarchyMap);
+  const depth = hierarchyInfo?.depth || 0;
+  const childrenCount = hierarchyInfo?.childrenCount || 0;
+  const isConditional = !!question.show_if;
+  const parentQuestion = hierarchyInfo?.parentId 
+    ? schema.sections
+        .flatMap(s => s.questions)
+        .find(q => q.id === hierarchyInfo.parentId)
+    : undefined;
   const [showIdSuggestions, setShowIdSuggestions] = useState(false);
 
   // Sensors for drag and drop
@@ -249,12 +264,29 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   const requiresOptions = ['radio', 'dropdown', 'checkbox'].includes(question.type);
 
+  // Indentation based on depth and visual hierarchy
+  const borderColorClass = isConditional 
+    ? 'border-l-accent' 
+    : childrenCount > 0 
+    ? 'border-l-primary'
+    : 'border-l-border';
+
   return (
     <>
       <Card 
         ref={setNodeRef}
-        style={style}
-        className={`border-l-4 border-l-primary/20 ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
+        style={{
+          ...style,
+          marginLeft: `${depth * 2}rem`,
+        }}
+        className={`
+          border-l-4 ${borderColorClass}
+          transition-all duration-200 
+          ${isDragging ? 'opacity-50 shadow-lg' : ''} 
+          ${isHovered && childrenCount > 0 ? 'shadow-md ring-2 ring-primary/20' : ''}
+        `}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -281,8 +313,8 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 className="font-medium border-none shadow-none p-0 h-auto text-base bg-transparent"
                 placeholder="Frågetext..."
               />
-              {/* Mode and scoring indicator badges */}
-              <div className="flex gap-1 mt-1">
+              {/* Mode, scoring, and hierarchy indicator badges */}
+              <div className="flex gap-1 mt-1 flex-wrap">
                 {question.show_in_mode && question.show_in_mode !== 'all' && (
                   <Badge variant="outline" className="text-xs">
                     {question.show_in_mode === 'patient' ? '👤 Patient' : '🔧 Optiker'}
@@ -293,6 +325,12 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     📊 Poäng ({question.scoring.max_value})
                   </Badge>
                 )}
+                {isConditional && parentQuestion && (
+                  <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30">
+                    Villkorlig → {parentQuestion.label.substring(0, 30)}{parentQuestion.label.length > 30 ? '...' : ''}
+                  </Badge>
+                )}
+                <ConditionalBadge childrenCount={childrenCount} />
               </div>
             </div>
 

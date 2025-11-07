@@ -170,4 +170,24 @@
     from { transform: translateX(50px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
   }
+
+  /* Form Builder Hierarchy Styles */
+  .question-hierarchy-line {
+    position: absolute;
+    left: -2rem;
+    top: 50%;
+    width: 2rem;
+    height: 2px;
+    background: hsl(var(--accent) / 0.3);
+  }
+
+  .question-hierarchy-line::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -50%;
+    width: 2px;
+    height: 100%;
+    background: hsl(var(--accent) / 0.3);
+  }
 }

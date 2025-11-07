@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -48,6 +49,14 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [showPresetDialog, setShowPresetDialog] = useState(false);
 
   const hasPresets = schema.question_presets && schema.question_presets.length > 0;
+  
+  // Check if section is conditional and find parent question
+  const isConditional = !!section.show_if;
+  const parentQuestion = isConditional && section.show_if?.question
+    ? schema.sections
+        .flatMap(s => s.questions)
+        .find(q => q.id === section.show_if?.question)
+    : undefined;
   const updateTitle = () => {
     if (editTitle.trim() && editTitle !== section.section_title) {
       onUpdate({
@@ -155,8 +164,13 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
       }
     }
   };
+  // Visual styling based on conditional status
+  const borderColorClass = isConditional 
+    ? 'border-l-accent' 
+    : 'border-l-primary';
+
   return <>
-      <Card>
+      <Card className={`border-l-4 ${borderColorClass} transition-all duration-200`}>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
@@ -191,7 +205,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 flex-1">
+              <div className="flex items-center gap-2 flex-1 flex-wrap">
                 <h3 
                   className="font-semibold text-lg cursor-pointer hover:text-primary transition-colors" 
                   onClick={() => setIsEditing(true)}
@@ -201,6 +215,11 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 <span className="text-sm text-muted-foreground">
                   {section.questions.length} frågor
                 </span>
+                {isConditional && parentQuestion && (
+                  <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30">
+                    Villkorlig sektion → {parentQuestion.label.substring(0, 30)}{parentQuestion.label.length > 30 ? '...' : ''}
+                  </Badge>
+                )}
               </div>
             )}
 

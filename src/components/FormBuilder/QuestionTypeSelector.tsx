@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Type, 
   AlignLeft, 
@@ -64,19 +64,23 @@ export const QuestionTypeSelector: React.FC<QuestionTypeSelectorProps> = ({
   className
 }) => {
   const selectedType = QUESTION_TYPES.find(t => t.value === value);
-  const Icon = selectedType?.icon || Type;
 
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={className}>
-        <div className="flex items-center gap-2">
-          <Icon className={`h-4 w-4 flex-shrink-0 ${selectedType?.color || 'text-muted-foreground'}`} />
-          <span className="truncate">{selectedType?.label || 'Välj typ'}</span>
-        </div>
+      <SelectTrigger className={`${className} bg-background`}>
+        <SelectValue>
+          {selectedType && (
+            <div className="flex items-center gap-2">
+              {React.createElement(selectedType.icon, { 
+                className: `h-4 w-4 flex-shrink-0 ${selectedType.color}` 
+              })}
+              <span className="truncate">{selectedType.label}</span>
+            </div>
+          )}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent className="bg-background z-50 shadow-lg border min-w-[280px] max-h-[400px]">
         {QUESTION_TYPES.map((type) => {
-          const TypeIcon = type.icon;
           return (
             <SelectItem 
               key={type.value} 
@@ -84,7 +88,9 @@ export const QuestionTypeSelector: React.FC<QuestionTypeSelectorProps> = ({
               className="cursor-pointer hover:bg-accent/50 transition-colors py-3"
             >
               <div className="flex items-center gap-3 w-full">
-                <TypeIcon className={`h-4 w-4 flex-shrink-0 ${type.color}`} />
+                {React.createElement(type.icon, { 
+                  className: `h-4 w-4 flex-shrink-0 ${type.color}` 
+                })}
                 <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
                   <span className="font-medium text-sm">{type.label}</span>
                   <span className="text-xs text-muted-foreground leading-tight">

@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { 
   Type, 
   AlignLeft, 
@@ -70,32 +70,32 @@ export const QuestionTypeSelector: React.FC<QuestionTypeSelectorProps> = ({
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger className={className}>
         <div className="flex items-center gap-2">
-          <Icon className={`h-4 w-4 ${selectedType?.color || 'text-muted-foreground'}`} />
-          <SelectValue />
+          <Icon className={`h-4 w-4 flex-shrink-0 ${selectedType?.color || 'text-muted-foreground'}`} />
+          <span className="truncate">{selectedType?.label || 'Välj typ'}</span>
         </div>
       </SelectTrigger>
-        <SelectContent className="bg-background z-50 shadow-lg border min-w-[320px] max-h-[400px]">
-          {QUESTION_TYPES.map((type) => {
-            const TypeIcon = type.icon;
-            return (
-              <SelectItem 
-                key={type.value} 
-                value={type.value}
-                className="cursor-pointer hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-center gap-3 w-full py-2">
-                  <TypeIcon className={`h-5 w-5 flex-shrink-0 ${type.color}`} />
-                  <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
-                    <span className="font-medium text-sm">{type.label}</span>
-                    <span className="text-xs text-muted-foreground leading-snug whitespace-normal">
-                      {type.description}
-                    </span>
-                  </div>
+      <SelectContent className="bg-background z-50 shadow-lg border min-w-[280px] max-h-[400px]">
+        {QUESTION_TYPES.map((type) => {
+          const TypeIcon = type.icon;
+          return (
+            <SelectItem 
+              key={type.value} 
+              value={type.value}
+              className="cursor-pointer hover:bg-accent/50 transition-colors py-3"
+            >
+              <div className="flex items-center gap-3 w-full">
+                <TypeIcon className={`h-4 w-4 flex-shrink-0 ${type.color}`} />
+                <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
+                  <span className="font-medium text-sm">{type.label}</span>
+                  <span className="text-xs text-muted-foreground leading-tight">
+                    {type.description}
+                  </span>
                 </div>
-              </SelectItem>
-            );
-          })}
-        </SelectContent>
+              </div>
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
     </Select>
   );
 };

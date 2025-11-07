@@ -57,8 +57,6 @@ import {
   Plus,
   X,
   GripVertical,
-  ArrowUp,
-  ArrowDown,
   Settings,
   Lightbulb
 } from 'lucide-react';
@@ -344,7 +342,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
               <QuestionTypeSelector 
                 value={question.type} 
                 onValueChange={changeQuestionType}
-                className="w-36"
+                className="min-w-[180px]"
               />
               
               {/* Status indicators */}
@@ -359,26 +357,6 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" title="Styr andra frågor" />
                 )}
               </div>
-
-              {questionIndex > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onMove(questionIndex, questionIndex - 1)}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-              )}
-
-              {questionIndex < totalQuestions - 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onMove(questionIndex, questionIndex + 1)}
-                >
-                  <ArrowDown className="h-4 w-4" />
-                </Button>
-              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -11,96 +11,44 @@ import {
   AlignLeft, 
   Circle, 
   CheckSquare, 
-  ChevronDown, 
-  Calendar, 
-  Hash, 
-  Mail, 
-  Phone, 
-  Link as LinkIcon
+  ChevronDown
 } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
 
 const QUESTION_TYPES = [
   { 
     value: 'text', 
-    label: 'Textfråga',
+    label: 'Textfält',
     icon: Type,
-    description: 'Kort fritext',
-    example: 'T.ex. namn, adress',
+    description: 'Kort fritext för namn, adress etc.',
     color: 'text-blue-500'
   },
   { 
     value: 'textarea', 
     label: 'Textområde',
     icon: AlignLeft,
-    description: 'Längre fritext',
-    example: 'T.ex. beskrivning, kommentarer',
+    description: 'Längre fritext för beskrivningar',
     color: 'text-blue-600'
-  },
-  { 
-    value: 'radio', 
-    label: 'Radioknappar',
-    icon: Circle,
-    description: 'Välj ETT alternativ',
-    example: 'T.ex. kön, ja/nej',
-    color: 'text-teal-500'
   },
   { 
     value: 'checkbox', 
     label: 'Kryssrutor',
     icon: CheckSquare,
-    description: 'Välj FLERA alternativ',
-    example: 'T.ex. symptom, allergier',
+    description: 'Välj flera alternativ (t.ex. symptom)',
     color: 'text-teal-600'
+  },
+  { 
+    value: 'radio', 
+    label: 'Radioknappar',
+    icon: Circle,
+    description: 'Välj ett alternativ (t.ex. kön)',
+    color: 'text-teal-500'
   },
   { 
     value: 'dropdown', 
     label: 'Dropdown',
     icon: ChevronDown,
-    description: 'Sparar plats',
-    example: 'T.ex. lista med många alternativ',
+    description: 'Som radioknappar men sparar plats',
     color: 'text-teal-700'
-  },
-  { 
-    value: 'date', 
-    label: 'Datum',
-    icon: Calendar,
-    description: 'Datumväljare',
-    example: 'T.ex. födelsedatum',
-    color: 'text-coral-500'
-  },
-  { 
-    value: 'number', 
-    label: 'Nummer',
-    icon: Hash,
-    description: 'Endast siffror',
-    example: 'T.ex. ålder, blodtryck',
-    color: 'text-coral-600'
-  },
-  { 
-    value: 'email', 
-    label: 'E-post',
-    icon: Mail,
-    description: 'E-postadress',
-    example: 'T.ex. kontakt@example.com',
-    color: 'text-primary'
-  },
-  { 
-    value: 'tel', 
-    label: 'Telefon',
-    icon: Phone,
-    description: 'Telefonnummer',
-    example: 'T.ex. +46 70 123 45 67',
-    color: 'text-primary'
-  },
-  { 
-    value: 'url', 
-    label: 'URL',
-    icon: LinkIcon,
-    description: 'Webbadress',
-    example: 'T.ex. https://example.com',
-    color: 'text-primary'
   }
 ];
 
@@ -119,53 +67,35 @@ export const QuestionTypeSelector: React.FC<QuestionTypeSelectorProps> = ({
   const Icon = selectedType?.icon || Type;
 
   return (
-    <TooltipProvider>
-      <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger className={className}>
-          <div className="flex items-center gap-2">
-            <Icon className={`h-4 w-4 ${selectedType?.color || 'text-muted-foreground'}`} />
-            <SelectValue />
-          </div>
-        </SelectTrigger>
-        <SelectContent className="bg-background min-w-[320px]">
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className={className}>
+        <div className="flex items-center gap-2">
+          <Icon className={`h-4 w-4 ${selectedType?.color || 'text-muted-foreground'}`} />
+          <SelectValue />
+        </div>
+      </SelectTrigger>
+        <SelectContent className="bg-background z-50 shadow-lg border min-w-[320px] max-h-[400px]">
           {QUESTION_TYPES.map((type) => {
             const TypeIcon = type.icon;
             return (
-              <Tooltip key={type.value} delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <SelectItem value={type.value}>
-                    <div className="flex items-center gap-3 w-full py-1">
-                      <TypeIcon className={`h-4 w-4 flex-shrink-0 ${type.color}`} />
-                      <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
-                        <span className="font-medium text-sm">{type.label}</span>
-                        <span className="text-xs text-muted-foreground truncate max-w-full">
-                          {type.description}
-                        </span>
-                      </div>
-                    </div>
-                  </SelectItem>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-[240px]">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <TypeIcon className={`h-4 w-4 ${type.color}`} />
-                      <span className="font-semibold text-sm">{type.label}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
+              <SelectItem 
+                key={type.value} 
+                value={type.value}
+                className="cursor-pointer hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center gap-3 w-full py-2">
+                  <TypeIcon className={`h-5 w-5 flex-shrink-0 ${type.color}`} />
+                  <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+                    <span className="font-medium text-sm">{type.label}</span>
+                    <span className="text-xs text-muted-foreground leading-snug whitespace-normal">
                       {type.description}
-                    </p>
-                    <div className="pt-1 border-t">
-                      <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                        {type.example}
-                      </Badge>
-                    </div>
+                    </span>
                   </div>
-                </TooltipContent>
-              </Tooltip>
+                </div>
+              </SelectItem>
             );
           })}
         </SelectContent>
-      </Select>
-    </TooltipProvider>
+    </Select>
   );
 };

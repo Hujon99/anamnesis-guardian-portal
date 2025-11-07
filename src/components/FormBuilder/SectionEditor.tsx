@@ -92,16 +92,11 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
     } else {
       // Regular question creation
       const questionTypeLabels: Record<string, string> = {
-        text: 'textfråga',
+        text: 'textfält',
         textarea: 'textområde',
         radio: 'radioknappar',
         checkbox: 'kryssrutor',
-        dropdown: 'dropdown',
-        date: 'datum',
-        number: 'nummer',
-        email: 'epost',
-        tel: 'telefon',
-        url: 'url'
+        dropdown: 'dropdown'
       };
       const questionLabel = `Ny ${questionTypeLabels[questionType] || questionType}`;
       const generatedId = generateUniqueQuestionId(questionLabel, schema);
@@ -261,25 +256,19 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                     </>
                   )}
                   <DropdownMenuItem onClick={() => addQuestion('text')}>
-                    Textfråga
+                    Textfält
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => addQuestion('textarea')}>
                     Textområde
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                    Radioknappar
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
                     Kryssrutor
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                    Radioknappar
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
                     Dropdown
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('date')}>
-                    Datum
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('number')}>
-                    Nummer
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -343,25 +332,19 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
                             <DropdownMenuItem onClick={() => addQuestion('text')}>
-                              Textfråga
+                              Textfält
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => addQuestion('textarea')}>
                               Textområde
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                              Radioknappar
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
                               Kryssrutor
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                              Radioknappar
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
                               Dropdown
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('date')}>
-                              Datum
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('number')}>
-                              Nummer
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -376,25 +359,19 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           <DropdownMenuItem onClick={() => addQuestion('text')}>
-                            Textfråga
+                            Textfält
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => addQuestion('textarea')}>
                             Textområde
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                            Radioknappar
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
                             Kryssrutor
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                            Radioknappar
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
                             Dropdown
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('date')}>
-                            Datum
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('number')}>
-                            Nummer
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

@@ -85,16 +85,11 @@ interface QuestionEditorProps {
 }
 
 const QUESTION_TYPES = [
-  { value: 'text', label: 'Textfråga' },
+  { value: 'text', label: 'Textfält' },
   { value: 'textarea', label: 'Textområde' },
-  { value: 'radio', label: 'Radioknappar' },
   { value: 'checkbox', label: 'Kryssrutor' },
-  { value: 'dropdown', label: 'Dropdown' },
-  { value: 'date', label: 'Datum' },
-  { value: 'number', label: 'Nummer' },
-  { value: 'email', label: 'E-post' },
-  { value: 'tel', label: 'Telefon' },
-  { value: 'url', label: 'URL' }
+  { value: 'radio', label: 'Radioknappar' },
+  { value: 'dropdown', label: 'Dropdown' }
 ];
 
 export const QuestionEditor: React.FC<QuestionEditorProps> = ({
@@ -590,7 +585,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                        </div>
 
                       {/* Placeholder */}
-                      {['text', 'textarea', 'email', 'tel', 'url', 'number'].includes(question.type) && (
+                      {['text', 'textarea'].includes(question.type) && (
                         <div className="space-y-2">
                           <Label>Placeholder-text</Label>
                           <Input
@@ -679,7 +674,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                       </div>
 
                       {/* Scoring Configuration */}
-                      {['radio', 'dropdown', 'number'].includes(question.type) && (
+                      {['radio', 'dropdown'].includes(question.type) && (
                         <div className="space-y-4 p-4 bg-gradient-to-br from-[hsl(12_90%_55%)]/10 to-[hsl(12_90%_55%)]/5 rounded-lg border border-[hsl(12_90%_55%)]/20 transition-all duration-300">
                           <div className="flex items-center justify-between">
                             <div>

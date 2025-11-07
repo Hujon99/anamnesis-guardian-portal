@@ -15,7 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { ChevronDown, ChevronRight, Plus, MoreVertical, Trash2, Edit, GripVertical, Move, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, MoreVertical, Trash2, Edit, GripVertical, Move, Sparkles, Lightbulb } from 'lucide-react';
 import { FormSection, FormQuestion, FormTemplate, QuestionPreset } from '@/types/anamnesis';
 import { QuestionEditor } from './QuestionEditor';
 import { generateUniqueQuestionId } from '@/utils/questionIdUtils';
@@ -168,9 +168,18 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const borderColorClass = isConditional 
     ? 'border-l-accent' 
     : 'border-l-primary';
+  
+  const glowClass = isConditional 
+    ? 'shadow-accent/10'
+    : '';
 
   return <>
-      <Card className={`border-l-4 ${borderColorClass} transition-all duration-200`}>
+      <Card className={`
+        border-l-4 ${borderColorClass} 
+        transition-all duration-300 ease-out
+        ${glowClass}
+        ${isExpanded ? 'shadow-sm' : 'hover:shadow-sm'}
+      `}>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
@@ -297,7 +306,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
         </CardHeader>
 
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-          <CollapsibleContent>
+          <CollapsibleContent className="transition-all duration-300 ease-out data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
             <CardContent className="pt-0">
               <div className="space-y-4">
                 <SectionConditionalLogic
@@ -313,7 +322,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </DndContext>
 
                 {section.questions.length > 0 && (
-                  <div className="flex justify-center pt-4">
+                  <div className="flex justify-center pt-4 border-t border-dashed border-border/50 mt-4">
                     {hasPresets ? (
                       <div className="flex gap-2">
                         <Button 
@@ -394,8 +403,10 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 )}
 
                 {section.questions.length === 0 && (
-                  <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
-                    <p className="text-muted-foreground mb-4">Inga frågor i denna sektion</p>
+                  <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg bg-muted/20 animate-fade-in">
+                    <Lightbulb className="h-8 w-8 text-primary mx-auto mb-3 opacity-50" />
+                    <p className="font-medium mb-1">Börja med att lägga till en fråga här 👇</p>
+                    <p className="text-sm text-muted-foreground mb-4">Bygg ditt formulär genom att lägga till olika typer av frågor</p>
                     {hasPresets ? (
                       <div className="flex gap-2 justify-center">
                         <Button 

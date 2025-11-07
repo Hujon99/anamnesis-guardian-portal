@@ -59,7 +59,8 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
-  Settings
+  Settings,
+  Lightbulb
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -264,12 +265,20 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   const requiresOptions = ['radio', 'dropdown', 'checkbox'].includes(question.type);
 
-  // Indentation based on depth and visual hierarchy
-  const borderColorClass = isConditional 
-    ? 'border-l-accent' 
-    : childrenCount > 0 
-    ? 'border-l-primary'
-    : 'border-l-border';
+  // Color coding based on question status
+  const getBorderColor = () => {
+    if (question.scoring?.enabled) return 'border-l-[hsl(12_90%_55%)]'; // Korall för scoring
+    if (isConditional) return 'border-l-accent'; // Turkos för villkorlig
+    if (childrenCount > 0) return 'border-l-primary'; // Blå för parent
+    return 'border-l-border'; // Standard grå
+  };
+
+  const getBackgroundGlow = () => {
+    if (question.scoring?.enabled) return 'bg-[hsl(12_90%_55%)]/3';
+    if (isConditional) return 'bg-accent/3';
+    if (childrenCount > 0) return 'bg-primary/3';
+    return '';
+  };
 
   return (
     <>
@@ -280,10 +289,12 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
           marginLeft: `${depth * 2}rem`,
         }}
         className={`
-          border-l-4 ${borderColorClass}
-          transition-all duration-200 
-          ${isDragging ? 'opacity-50 shadow-lg' : ''} 
+          border-l-4 ${getBorderColor()}
+          ${getBackgroundGlow()}
+          transition-all duration-300 ease-out
+          ${isDragging ? 'opacity-50 shadow-lg scale-105' : ''} 
           ${isHovered && childrenCount > 0 ? 'shadow-md ring-2 ring-primary/20' : ''}
+          ${isExpanded ? 'shadow-sm' : 'hover:shadow-sm'}
         `}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -334,12 +345,25 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <QuestionTypeSelector 
                 value={question.type} 
                 onValueChange={changeQuestionType}
                 className="w-36"
               />
+              
+              {/* Status indicators */}
+              <div className="flex items-center gap-1">
+                {question.scoring?.enabled && (
+                  <div className="w-2 h-2 rounded-full bg-[hsl(12_90%_55%)] animate-pulse" title="Poäng aktiverad" />
+                )}
+                {isConditional && (
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" title="Villkorlig fråga" />
+                )}
+                {childrenCount > 0 && (
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" title="Styr andra frågor" />
+                )}
+              </div>
 
               {questionIndex > 0 && (
                 <Button
@@ -383,7 +407,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
         </CardHeader>
 
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-          <CollapsibleContent>
+          <CollapsibleContent className="transition-all duration-300 ease-out data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
             <CardContent className="pt-0 space-y-4">
 
               {/* Options for radio/dropdown/checkbox */}
@@ -448,11 +472,34 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 onUpdate={onUpdate}
               />
 
+              {/* Advanced settings toggle */}
+              <div className="pt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full justify-between text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span className="text-sm">Avancerade inställningar</span>
+                  <div className="flex items-center gap-2">
+                    {(question.scoring?.enabled || question.placeholder || question.help_text || question.show_in_mode !== 'all') && (
+                      <Badge variant="secondary" className="text-xs">
+                        Aktiva
+                      </Badge>
+                    )}
+                    <Settings className={`h-4 w-4 transition-transform duration-200 ${showAdvanced ? 'rotate-90' : ''}`} />
+                  </div>
+                </Button>
+              </div>
+
               {/* Advanced settings */}
               <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-                <CollapsibleContent className="space-y-4">
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3">Avancerade inställningar</h4>
+                <CollapsibleContent className="space-y-4 transition-all duration-300 ease-out data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                  <div className="border-t pt-4 space-y-1">
+                    <h4 className="font-medium mb-1">Avancerade inställningar</h4>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      💡 Dessa inställningar är valfria och används för avancerade formulär
+                    </p>
                     
                     <div className="space-y-4">
                       {/* Question ID - Only in advanced mode */}
@@ -528,19 +575,19 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                           </div>
                         )}
                       </div>
-                      {/* Required field */}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label>Obligatorisk fråga</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Användaren måste svara på denna fråga
-                          </p>
-                        </div>
-                        <Switch
-                          checked={question.required || false}
-                          onCheckedChange={(checked) => updateField('required', checked)}
-                        />
-                      </div>
+                       {/* Required field */}
+                       <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30 transition-colors">
+                         <div>
+                           <Label className="cursor-pointer">Obligatorisk fråga</Label>
+                           <p className="text-xs text-muted-foreground">
+                             Användaren måste svara på denna fråga
+                           </p>
+                         </div>
+                         <Switch
+                           checked={question.required || false}
+                           onCheckedChange={(checked) => updateField('required', checked)}
+                         />
+                       </div>
 
                       {/* Placeholder */}
                       {['text', 'textarea', 'email', 'tel', 'url', 'number'].includes(question.type) && (
@@ -633,10 +680,12 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
                       {/* Scoring Configuration */}
                       {['radio', 'dropdown', 'number'].includes(question.type) && (
-                        <div className="space-y-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                        <div className="space-y-4 p-4 bg-gradient-to-br from-[hsl(12_90%_55%)]/10 to-[hsl(12_90%_55%)]/5 rounded-lg border border-[hsl(12_90%_55%)]/20 transition-all duration-300">
                           <div className="flex items-center justify-between">
                             <div>
-                              <Label className="text-sm font-medium">Poängsättning & Flaggning</Label>
+                              <Label className="text-sm font-medium flex items-center gap-2">
+                                📊 Poängsättning & Flaggning
+                              </Label>
                               <p className="text-xs text-muted-foreground mt-1">
                                 Aktivera för att räkna poäng och flagga höga värden (t.ex. CISS-formulär)
                               </p>
@@ -659,9 +708,20 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                           </div>
 
                           {question.scoring?.enabled && (
-                            <div className="space-y-4 pt-2">
+                            <div className="space-y-4 pt-2 animate-fade-in">
+                              <div className="p-3 bg-[hsl(12_90%_55%)]/10 border border-[hsl(12_90%_55%)]/30 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <Lightbulb className="h-4 w-4 text-[hsl(12_90%_55%)] mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-medium">Poängsystem aktiverat</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Svaren kan nu summeras och användas för bedömningar
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
                               <div className="space-y-2">
-                                <Label htmlFor={`max-value-${question.id}`}>
+                                <Label htmlFor={`max-value-${question.id}`} className="text-sm">
                                   Max poäng för denna fråga
                                 </Label>
                                 <Input
@@ -675,6 +735,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                                     max_value: parseInt(e.target.value) || 0
                                   })}
                                   placeholder="T.ex. 4"
+                                  className="bg-background"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                   Högsta möjliga poäng för denna fråga
@@ -682,7 +743,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                               </div>
 
                               <div className="space-y-2">
-                                <Label htmlFor={`flag-threshold-${question.id}`}>
+                                <Label htmlFor={`flag-threshold-${question.id}`} className="text-sm">
                                   Flagga vid värde (valfritt)
                                 </Label>
                                 <Input
@@ -695,6 +756,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                                     flag_threshold: e.target.value ? parseInt(e.target.value) : undefined
                                   })}
                                   placeholder="T.ex. 2"
+                                  className="bg-background"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                   Markera frågan om svaret är ≥ detta värde

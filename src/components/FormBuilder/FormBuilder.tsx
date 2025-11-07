@@ -29,7 +29,8 @@ import {
   Undo2, 
   Redo2,
   FileText,
-  Plus
+  Plus,
+  Lightbulb
 } from 'lucide-react';
 
 import { FormTemplate } from '@/types/anamnesis';
@@ -592,10 +593,36 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
                   )}
                   
                   {currentForm.schema.sections.length === 0 && (
-                    <Card className="p-8 text-center">
-                      <p className="text-muted-foreground mb-4">Inga sektioner än</p>
-                      <Button onClick={addSection}>Lägg till första sektionen</Button>
+                    <Card className="p-12 text-center border-2 border-dashed border-primary/30 bg-primary/5 animate-fade-in">
+                      <Lightbulb className="h-12 w-12 text-primary mx-auto mb-4 opacity-70" />
+                      <h3 className="text-xl font-semibold mb-2">Välkommen till formulärbyggaren! 🎉</h3>
+                      <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                        Börja med att skapa din första sektion. Sektioner hjälper dig att organisera relaterade frågor i logiska grupper.
+                      </p>
+                      <Button onClick={addSection} size="lg" className="gap-2">
+                        <Plus className="h-5 w-5" />
+                        Skapa första sektionen
+                      </Button>
+                      <div className="mt-6 pt-6 border-t">
+                        <p className="text-sm text-muted-foreground">
+                          💡 <strong>Tips:</strong> Du kan dra och släppa för att ändra ordning på sektioner och frågor
+                        </p>
+                      </div>
                     </Card>
+                  )}
+                  
+                  {currentForm.schema.sections.length > 0 && currentForm.schema.sections.every(s => s.questions.length === 0) && (
+                    <div className="mt-4 p-4 bg-accent/5 border border-accent/20 rounded-lg animate-fade-in">
+                      <div className="flex items-start gap-3">
+                        <Lightbulb className="h-5 w-5 text-accent mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-sm">Nästa steg: Lägg till frågor</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Expandera en sektion och klicka på "Lägg till fråga" för att börja bygga ditt formulär
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   {currentForm.schema.sections.length > 0 && (

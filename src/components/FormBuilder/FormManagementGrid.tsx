@@ -273,7 +273,7 @@ export const FormManagementGrid: React.FC<FormManagementGridProps> = ({
 
       {/* Form Builder Modal */}
       {showFormBuilder && (
-        <div className="fixed inset-0 z-50 bg-background">
+        <div className="fixed inset-0 z-[70] bg-background">
           <FormBuilder
             formId={selectedForm?.id}
             initialForm={selectedForm ? {

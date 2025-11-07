@@ -69,10 +69,12 @@ export const QuestionTypeSelector: React.FC<QuestionTypeSelectorProps> = ({
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger className={`${className || ''} bg-background`}>
-        <div className="flex items-center gap-2 w-full">
-          <SelectedIcon className={`h-4 w-4 flex-shrink-0 ${selectedType?.color || 'text-muted-foreground'}`} />
-          <span className="truncate text-sm">{selectedType?.label || 'Välj typ'}</span>
-        </div>
+        <SelectValue>
+          <div className="flex items-center gap-2 w-full">
+            <SelectedIcon className={`h-4 w-4 flex-shrink-0 ${selectedType?.color || 'text-muted-foreground'}`} />
+            <span className="truncate text-sm">{selectedType?.label || 'Välj typ'}</span>
+          </div>
+        </SelectValue>
       </SelectTrigger>
       <SelectContent className="bg-background z-50 shadow-lg border min-w-[280px] max-h-[400px]">
         {QUESTION_TYPES.map((type) => {

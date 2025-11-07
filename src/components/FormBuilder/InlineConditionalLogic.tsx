@@ -6,13 +6,13 @@
 
 import React, { useState } from 'react';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { FormTemplate, FormQuestion } from '@/types/anamnesis';
+import { SearchableQuestionPicker } from './SearchableQuestionPicker';
 
 interface InlineConditionalLogicProps {
   question: FormQuestion;
@@ -39,7 +39,7 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
 
   // Get all questions that appear before this one (can be used as dependencies)
   const availableDependencies = React.useMemo(() => {
-    const deps: Array<{ id: string; label: string; type: string; options?: Array<string | { value: string; triggers_followups: boolean; }> }> = [];
+    const deps: Array<{ id: string; label: string; type: string; options?: Array<string | { value: string; triggers_followups: boolean; }>; sectionTitle?: string; }> = [];
     
     for (let sIdx = 0; sIdx <= sectionIndex; sIdx++) {
       const section = schema.sections[sIdx];
@@ -54,7 +54,8 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
             id: q.id,
             label: q.label,
             type: q.type,
-            options: q.options
+            options: q.options,
+            sectionTitle: section.section_title
           });
         }
       }
@@ -62,6 +63,15 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
     
     return deps;
   }, [schema, sectionIndex, questionIndex, question.id]);
+
+  // Find the suggested question (the one just before current question)
+  const suggestedQuestionId = React.useMemo(() => {
+    if (questionIndex > 0 && schema.sections[sectionIndex]) {
+      const prevQuestion = schema.sections[sectionIndex].questions[questionIndex - 1];
+      return prevQuestion?.id;
+    }
+    return undefined;
+  }, [schema, sectionIndex, questionIndex]);
 
   const selectedDependency = React.useMemo(() => {
     return availableDependencies.find(dep => dep.id === question.show_if?.question);
@@ -185,26 +195,14 @@ export const InlineConditionalLogic: React.FC<InlineConditionalLogicProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Beroende på fråga</Label>
-              <Select
+              <SearchableQuestionPicker
+                questions={availableDependencies}
                 value={question.show_if?.question || ''}
                 onValueChange={handleDependencyChange}
-              >
-                <SelectTrigger className="text-sm">
-                  <SelectValue placeholder="Välj fråga..." />
-                </SelectTrigger>
-                <SelectContent className="bg-background border-border/50 min-w-[400px] max-w-[600px]">
-                  {availableDependencies.map((dep) => (
-                    <SelectItem key={dep.id} value={dep.id}>
-                      <div className="flex items-start gap-2 w-full py-1">
-                        <span className="font-medium leading-tight">{dep.label}</span>
-                        <Badge variant="secondary" className="text-xs px-2 py-0.5 flex-shrink-0">
-                          {dep.id}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Sök fråga..."
+                suggestedQuestionId={suggestedQuestionId}
+                className="text-sm"
+              />
             </div>
 
             <div className="space-y-1">

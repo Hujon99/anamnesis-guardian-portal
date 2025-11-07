@@ -66,6 +66,7 @@ import { Badge } from '@/components/ui/badge';
 import { FormQuestion, FormTemplate } from '@/types/anamnesis';
 import { generateUniqueQuestionId, validateQuestionId, suggestAlternativeIds, isIdUnique } from '@/utils/questionIdUtils';
 import { InlineConditionalLogic } from './InlineConditionalLogic';
+import { QuestionTypeSelector } from './QuestionTypeSelector';
 
 interface QuestionEditorProps {
   question: FormQuestion;
@@ -296,18 +297,11 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              <Select value={question.type} onValueChange={changeQuestionType}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {QUESTION_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <QuestionTypeSelector 
+                value={question.type} 
+                onValueChange={changeQuestionType}
+                className="w-36"
+              />
 
               {questionIndex > 0 && (
                 <Button
@@ -353,83 +347,6 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleContent>
             <CardContent className="pt-0 space-y-4">
-              {/* Question ID */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor={`question-id-${questionIndex}`}>Fråge-ID</Label>
-                    <div className="flex gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={generateIdFromLabel}
-                        className="text-xs h-6 px-2"
-                      >
-                        Auto-generera
-                      </Button>
-                      {idSuggestions.length > 0 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowIdSuggestions(!showIdSuggestions)}
-                          className="text-xs h-6 px-2"
-                        >
-                          Förslag
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <Input
-                    id={`question-id-${questionIndex}`}
-                    value={question.id}
-                    onChange={(e) => handleIdChange(e.target.value)}
-                    placeholder="unik_id"
-                    className={
-                      !idValidation.isValid || !isIdUniqueInForm
-                        ? "border-destructive focus:ring-destructive"
-                        : "border-border"
-                    }
-                  />
-                  {(!idValidation.isValid || !isIdUniqueInForm) && (
-                    <div className="text-sm text-destructive space-y-1">
-                      {idValidation.errors.map((error, idx) => (
-                        <div key={idx}>{error}</div>
-                      ))}
-                      {!isIdUniqueInForm && (
-                        <div>Detta ID används redan av en annan fråga</div>
-                      )}
-                    </div>
-                  )}
-                  {showIdSuggestions && idSuggestions.length > 0 && (
-                    <div className="border rounded p-2 bg-muted/50">
-                      <p className="text-xs text-muted-foreground mb-2">Föreslagna ID:n:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {idSuggestions.map((suggestion, idx) => (
-                          <Button
-                            key={idx}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleIdChange(suggestion)}
-                            className="text-xs h-6 px-2"
-                          >
-                            {suggestion}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Typ</Label>
-                  <p className="text-sm text-muted-foreground py-2">
-                    {QUESTION_TYPES.find(t => t.value === question.type)?.label}
-                  </p>
-                </div>
-              </div>
 
               {/* Options for radio/dropdown/checkbox */}
               {requiresOptions && (
@@ -500,6 +417,79 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     <h4 className="font-medium mb-3">Avancerade inställningar</h4>
                     
                     <div className="space-y-4">
+                      {/* Question ID - Only in advanced mode */}
+                      <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor={`question-id-${questionIndex}`} className="text-sm font-medium">
+                            Fråge-ID (Teknisk identifierare)
+                          </Label>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={generateIdFromLabel}
+                              className="text-xs h-6 px-2"
+                            >
+                              Auto-generera
+                            </Button>
+                            {idSuggestions.length > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowIdSuggestions(!showIdSuggestions)}
+                                className="text-xs h-6 px-2"
+                              >
+                                Förslag
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <Input
+                          id={`question-id-${questionIndex}`}
+                          value={question.id}
+                          onChange={(e) => handleIdChange(e.target.value)}
+                          placeholder="unik_id"
+                          className={
+                            !idValidation.isValid || !isIdUniqueInForm
+                              ? "border-destructive focus:ring-destructive"
+                              : "border-border"
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          💡 ID används för databas och API. Genereras automatiskt från frågetexten.
+                        </p>
+                        {(!idValidation.isValid || !isIdUniqueInForm) && (
+                          <div className="text-sm text-destructive space-y-1">
+                            {idValidation.errors.map((error, idx) => (
+                              <div key={idx}>{error}</div>
+                            ))}
+                            {!isIdUniqueInForm && (
+                              <div>Detta ID används redan av en annan fråga</div>
+                            )}
+                          </div>
+                        )}
+                        {showIdSuggestions && idSuggestions.length > 0 && (
+                          <div className="border rounded p-2 bg-muted/50">
+                            <p className="text-xs text-muted-foreground mb-2">Föreslagna ID:n:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {idSuggestions.map((suggestion, idx) => (
+                                <Button
+                                  key={idx}
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleIdChange(suggestion)}
+                                  className="text-xs h-6 px-2"
+                                >
+                                  {suggestion}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       {/* Required field */}
                       <div className="flex items-center justify-between">
                         <div>

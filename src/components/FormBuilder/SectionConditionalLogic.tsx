@@ -6,13 +6,13 @@
 
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X, Eye, Layers } from 'lucide-react';
 import { FormTemplate, FormSection } from '@/types/anamnesis';
+import { SearchableQuestionPicker } from './SearchableQuestionPicker';
 
 interface SectionConditionalLogicProps {
   section: FormSection;
@@ -168,31 +168,13 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
               <Label className="text-sm font-medium text-foreground">Beroende på fråga</Label>
-              <Select
+              <SearchableQuestionPicker
+                questions={availableDependencies}
                 value={section.show_if?.question || ''}
                 onValueChange={handleDependencyChange}
-              >
-                <SelectTrigger className="text-sm bg-background border-border/50 hover:border-border transition-colors h-12 px-4">
-                  <SelectValue placeholder="Välj fråga..." />
-                </SelectTrigger>
-                <SelectContent className="bg-background border-border/50 min-w-[400px] max-w-[600px]">
-                  {availableDependencies.map((dep) => (
-                    <SelectItem key={dep.id} value={dep.id}>
-                      <div className="flex flex-col items-start gap-1.5 py-1 w-full">
-                        <div className="flex items-start gap-2 w-full">
-                          <span className="font-medium leading-tight">{dep.label}</span>
-                          <Badge variant="secondary" className="text-xs px-2 py-0.5 flex-shrink-0">
-                            {dep.id}
-                          </Badge>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          från "{dep.sectionTitle}"
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Sök fråga från tidigare sektioner..."
+                className="h-12"
+              />
             </div>
 
             <div className="space-y-3">

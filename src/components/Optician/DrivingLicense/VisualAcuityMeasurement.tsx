@@ -405,25 +405,6 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
               <h5 className="font-medium text-sm">Visus med korrektion</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="with-correction-both">Båda ögon (OU)</Label>
-                  <Select 
-                    value={measurements.visual_acuity_with_correction_both.toString()} 
-                    onValueChange={(value) => handleInputChange('visual_acuity_with_correction_both', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Välj VISUS-värde" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border z-50">
-                      {VISUS_SCALE.map((visus) => (
-                        <SelectItem key={visus} value={visus}>
-                          {visus.replace('.', ',')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
                   <Label htmlFor="with-correction-right">Höger öga (OD)</Label>
                   <Select 
                     value={measurements.visual_acuity_with_correction_right.toString()} 
@@ -447,6 +428,25 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                   <Select 
                     value={measurements.visual_acuity_with_correction_left.toString()} 
                     onValueChange={(value) => handleInputChange('visual_acuity_with_correction_left', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Välj VISUS-värde" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border z-50">
+                      {VISUS_SCALE.map((visus) => (
+                        <SelectItem key={visus} value={visus}>
+                          {visus.replace('.', ',')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="with-correction-both">Båda ögon (OU)</Label>
+                  <Select 
+                    value={measurements.visual_acuity_with_correction_both.toString()} 
+                    onValueChange={(value) => handleInputChange('visual_acuity_with_correction_both', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Välj VISUS-värde" />

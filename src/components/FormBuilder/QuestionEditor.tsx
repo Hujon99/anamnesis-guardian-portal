@@ -122,7 +122,11 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   // Sensors for drag and drop
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement before drag starts
+      },
+    }),
     useSensor(KeyboardSensor)
   );
 

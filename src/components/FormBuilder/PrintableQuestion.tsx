@@ -126,7 +126,7 @@ export const PrintableQuestion: React.FC<PrintableQuestionProps> = ({
           </span>
           <div className="flex-1">
             <span className="font-semibold text-base">
-              {'label' in question ? question.label : (question as any).question_text}
+              {question.label}
               {question.required && <span className="text-red-600 ml-1">*</span>}
             </span>
             {question.help_text && (

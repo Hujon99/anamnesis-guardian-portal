@@ -21,6 +21,19 @@ interface FormPrintPreviewProps {
 }
 
 export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, onClose }) => {
+  // Build a map of question IDs to labels for easy lookup
+  const buildQuestionMap = () => {
+    const map = new Map<string, string>();
+    template.sections.forEach(section => {
+      section.questions.forEach(q => {
+        map.set(q.id, q.label);
+      });
+    });
+    return map;
+  };
+
+  const questionMap = buildQuestionMap();
+
   // Build dependency tree to identify conditional questions
   const buildDependencyMap = () => {
     const map = new Map<string, { parentQuestion: string; condition: any }>();
@@ -43,17 +56,18 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
     if (!condition) return '';
     
     const { question: parentId, equals, contains } = condition;
+    const parentLabel = questionMap.get(parentId) || parentId;
     
     if (equals) {
       const values = Array.isArray(equals) ? equals.join('" eller "') : equals;
-      return `Besvara endast om du valde "${values}" på fråga ${parentId}`;
+      return `Besvara endast om du valde "${values}" på "${parentLabel}"`;
     }
     
     if (contains) {
-      return `Besvara endast om ditt svar på fråga ${parentId} innehåller "${contains}"`;
+      return `Besvara endast om ditt svar på "${parentLabel}" innehåller "${contains}"`;
     }
     
-    return `Besvara endast om villkoret för fråga ${parentId} uppfylls`;
+    return `Besvara endast om villkoret för "${parentLabel}" uppfylls`;
   };
 
   const dependencyMap = buildDependencyMap();

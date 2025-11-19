@@ -35,7 +35,8 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -122,9 +123,15 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
   // Sensors for drag and drop
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8, // Require 8px movement before drag starts
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // Require 250ms press for mobile drag
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor)

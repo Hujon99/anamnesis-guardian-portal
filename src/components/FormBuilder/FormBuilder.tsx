@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { 
   Save, 
@@ -30,7 +31,8 @@ import {
   Redo2,
   FileText,
   Plus,
-  Lightbulb
+  Lightbulb,
+  Keyboard
 } from 'lucide-react';
 
 import { FormTemplate } from '@/types/anamnesis';
@@ -179,6 +181,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [lastExpandedSectionIndex, setLastExpandedSectionIndex] = useState<number | null>(null);
   
   // History management for undo/redo
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -311,31 +314,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
     onClose?.();
   };
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey)) {
-        switch (e.key) {
-          case 's':
-            e.preventDefault();
-            if (canSave) handleSave();
-            break;
-          case 'z':
-            e.preventDefault();
-            if (e.shiftKey) {
-              redo();
-            } else {
-              undo();
-            }
-            break;
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canSave, handleSave, undo, redo]);
-
   // Add new section
   const addSection = useCallback(() => {
     const newSection = {
@@ -345,6 +323,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
     
     const newIndex = currentForm.schema.sections.length;
     setNewSectionIndex(newIndex);
+    setLastExpandedSectionIndex(newIndex);
     
     updateSchema({
       ...currentForm.schema,
@@ -353,9 +332,117 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
     
     addToHistory('Lade till sektion');
     
+    toast.success('Sektion tillagd', {
+      description: `Ny sektion "${newSection.section_title}" har skapats`,
+      duration: 2000,
+    });
+    
     // Clear the flag after a short delay
     setTimeout(() => setNewSectionIndex(undefined), 100);
   }, [currentForm.schema, updateSchema, addToHistory]);
+
+  // Add new question to a specific section
+  const addQuestionToSection = useCallback((sectionIndex: number) => {
+    if (sectionIndex < 0 || sectionIndex >= currentForm.schema.sections.length) {
+      toast.error('Kunde inte lägga till fråga', {
+        description: 'Ingen giltig sektion hittades',
+        duration: 3000,
+      });
+      return;
+    }
+
+    const section = currentForm.schema.sections[sectionIndex];
+    const newQuestion = {
+      id: `temp_${Date.now()}`,
+      label: 'Ny fråga',
+      type: 'text' as const
+    };
+
+    const updatedSections = [...currentForm.schema.sections];
+    updatedSections[sectionIndex] = {
+      ...section,
+      questions: [...section.questions, newQuestion]
+    };
+
+    updateSchema({
+      ...currentForm.schema,
+      sections: updatedSections
+    });
+
+    addToHistory('Lade till fråga');
+    setLastExpandedSectionIndex(sectionIndex);
+    
+    // Set new question info to auto-expand it
+    setNewQuestionInfo({
+      sectionIndex,
+      questionIndex: updatedSections[sectionIndex].questions.length - 1
+    });
+    setTimeout(() => setNewQuestionInfo(undefined), 100);
+    
+    toast.success('Fråga tillagd', {
+      description: `Fråga tillagd i "${section.section_title}"`,
+      duration: 2000,
+    });
+  }, [currentForm.schema, updateSchema, addToHistory]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if user is typing in an input field
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || 
+                      target.tagName === 'TEXTAREA' || 
+                      target.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey)) {
+        switch (e.key.toLowerCase()) {
+          case 's':
+            e.preventDefault();
+            if (e.shiftKey && !isTyping) {
+              // Ctrl+Shift+S: Add new section
+              addSection();
+            } else if (canSave) {
+              // Ctrl+S: Save
+              handleSave();
+            }
+            break;
+          
+          case 'z':
+            e.preventDefault();
+            if (e.shiftKey) {
+              redo();
+            } else {
+              undo();
+            }
+            break;
+          
+          case 'k':
+            // Ctrl+K: Add question to last expanded section or first section
+            if (!e.shiftKey && !isTyping) {
+              e.preventDefault();
+              if (currentForm.schema.sections.length === 0) {
+                toast.error('Lägg till en sektion först', {
+                  description: 'Du måste skapa en sektion innan du kan lägga till frågor',
+                  duration: 3000,
+                });
+              } else {
+                const targetSection = lastExpandedSectionIndex !== null 
+                  ? lastExpandedSectionIndex 
+                  : 0;
+                addQuestionToSection(targetSection);
+              }
+            }
+            break;
+        }
+      } else if (e.key === 'Escape' && !isTyping) {
+        // Escape: Close dialogs (handled by dialog components automatically)
+        // This is here for documentation purposes
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canSave, handleSave, undo, redo, addSection, addQuestionToSection, currentForm.schema.sections.length, lastExpandedSectionIndex]);
 
   // Handle section drag end
   const handleSectionDragEnd = (event: DragEndEvent) => {
@@ -434,22 +521,41 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             )}
             
             {/* Undo/Redo */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={undo} 
-              disabled={historyIndex <= 0}
-            >
-              <Undo2 className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={redo} 
-              disabled={historyIndex >= history.length - 1}
-            >
-              <Redo2 className="h-4 w-4" />
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={undo} 
+                    disabled={historyIndex <= 0}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Ångra (Ctrl+Z)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={redo} 
+                    disabled={historyIndex >= history.length - 1}
+                  >
+                    <Redo2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Gör om (Ctrl+Shift+Z)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
             <Separator orientation="vertical" className="h-6" />
             
@@ -467,16 +573,41 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             <Separator orientation="vertical" className="h-6" />
             
             {/* Save */}
-            <Button onClick={handleSave} disabled={!canSave} className="gap-2">
-              <Save className="h-4 w-4" />
-              {isSaving ? 'Sparar...' : 'Spara'}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={handleSave} disabled={!canSave} className="gap-2">
+                    <Save className="h-4 w-4" />
+                    {isSaving ? 'Sparar...' : 'Spara'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Spara formulär (Ctrl+S)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
             {onClose && (
               <Button variant="outline" onClick={handleClose}>
                 Stäng
               </Button>
             )}
+          </div>
+        </div>
+
+        {/* Keyboard shortcuts help banner */}
+        <div className="mb-4 p-3 rounded-lg bg-accent/10 border border-accent/30">
+          <div className="flex items-start gap-3">
+            <Keyboard className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-sm mb-1">Tangentbordsgenvägar</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <div><kbd className="px-1.5 py-0.5 rounded bg-background border text-foreground">Ctrl+S</kbd> Spara</div>
+                <div><kbd className="px-1.5 py-0.5 rounded bg-background border text-foreground">Ctrl+Shift+S</kbd> Ny sektion</div>
+                <div><kbd className="px-1.5 py-0.5 rounded bg-background border text-foreground">Ctrl+K</kbd> Ny fråga</div>
+                <div><kbd className="px-1.5 py-0.5 rounded bg-background border text-foreground">Esc</kbd> Stäng dialog</div>
+              </div>
+            </div>
           </div>
         </div>
 

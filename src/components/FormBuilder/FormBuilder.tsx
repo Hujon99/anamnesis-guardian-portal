@@ -32,7 +32,8 @@ import {
   FileText,
   Plus,
   Lightbulb,
-  Keyboard
+  Keyboard,
+  Printer
 } from 'lucide-react';
 
 import { FormTemplate } from '@/types/anamnesis';
@@ -62,6 +63,7 @@ import { SortableSectionEditor } from './SortableSectionEditor';
 import { FormPreview } from './FormPreview';
 import { LivePreviewPanel } from './LivePreviewPanel';
 import { QuestionPresetManager } from './QuestionPresetManager';
+import { FormPrintPreview } from './FormPrintPreview';
 
 interface FormBuilderProps {
   formId?: string;
@@ -182,6 +184,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [lastExpandedSectionIndex, setLastExpandedSectionIndex] = useState<number | null>(null);
   
   // History management for undo/redo
@@ -575,6 +578,17 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             >
               {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               {showPreview ? 'Dölj förhandsgranskning' : 'Visa förhandsgranskning'}
+            </Button>
+            
+            {/* Print Preview */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowPrintPreview(true)}
+              className="gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              Förhandsgranska utskrift
             </Button>
             
             <Separator orientation="vertical" className="h-6" />
@@ -1069,6 +1083,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
           </div>
         )}
       </div>
+
+      {/* Print Preview Modal */}
+      {showPrintPreview && (
+        <div className="fixed inset-0 bg-background z-50 overflow-auto">
+          <FormPrintPreview 
+            template={currentForm.schema} 
+            onClose={() => setShowPrintPreview(false)} 
+          />
+        </div>
+      )}
 
       {/* Unsaved changes confirmation dialog */}
       <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>

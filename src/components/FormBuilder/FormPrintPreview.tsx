@@ -11,9 +11,14 @@
  * Opens in a new window optimized for printing or PDF export.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FormTemplate, FormSection as FormSectionType } from '@/types/anamnesis';
 import { PrintableQuestion } from './PrintableQuestion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Settings } from 'lucide-react';
 
 interface FormPrintPreviewProps {
   template: FormTemplate;
@@ -21,6 +26,12 @@ interface FormPrintPreviewProps {
 }
 
 export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, onClose }) => {
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedSections, setSelectedSections] = useState<string[]>(
+    template.sections.map((_, idx) => idx.toString())
+  );
+  const [includeInternalNotes, setIncludeInternalNotes] = useState(false);
+
   // Build a map of question IDs to labels for easy lookup
   const buildQuestionMap = () => {
     const map = new Map<string, string>();
@@ -83,6 +94,18 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
     if (onClose) onClose();
   };
 
+  const toggleSection = (sectionIdx: string) => {
+    setSelectedSections(prev => 
+      prev.includes(sectionIdx) 
+        ? prev.filter(idx => idx !== sectionIdx)
+        : [...prev, sectionIdx]
+    );
+  };
+
+  const filteredSections = template.sections.filter((_, idx) => 
+    selectedSections.includes(idx.toString())
+  );
+
   return (
     <div className="print-preview-container">
       {/* Print-only styles */}
@@ -135,18 +158,24 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
 
       {/* Screen-only controls */}
       <div className="no-print mb-6 flex justify-end gap-4 print:hidden">
-        <button
+        <Button
+          onClick={() => setShowSettings(true)}
+          variant="outline"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Inställningar
+        </Button>
+        <Button
           onClick={onClose}
-          className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+          variant="outline"
         >
           Stäng
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handlePrint}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded hover:opacity-90"
         >
           Skriv ut / Spara som PDF
-        </button>
+        </Button>
       </div>
 
       {/* Print content */}
@@ -178,7 +207,7 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
         </div>
 
         {/* Form sections and questions */}
-        {template.sections.map((section: FormSectionType, sectionIdx: number) => (
+        {filteredSections.map((section: FormSectionType, sectionIdx: number) => (
           <div key={sectionIdx} className="print-section mb-8">
             <h2 className="text-xl font-bold mb-4 pb-2 border-b border-gray-400">
               {section.section_title}
@@ -208,12 +237,80 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
           </div>
         ))}
 
+        {/* Internal Notes Section */}
+        {includeInternalNotes && (
+          <div className="print-section mb-8">
+            <h2 className="text-xl font-bold mb-4 pb-2 border-b border-gray-400">
+              Optikerns anteckningar
+            </h2>
+            <div className="space-y-4">
+              <div className="min-h-[100px] border border-gray-300 rounded p-3">
+                <p className="text-sm text-gray-500 italic">Fyll i under undersökningen...</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="print-footer mt-12 pt-4 border-t-2 border-gray-300 text-center text-xs text-gray-600">
           <p className="font-medium">⚠️ Konfidentiell medicinsk information</p>
           <p className="mt-1">Detta dokument innehåller känslig patientinformation och ska hanteras enligt GDPR</p>
         </div>
       </div>
+
+      {/* Settings Dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Inställningar för utskrift</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Section Selection */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm">Välj sektioner att inkludera:</h3>
+              {template.sections.map((section, idx) => (
+                <div key={idx} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`section-${idx}`}
+                    checked={selectedSections.includes(idx.toString())}
+                    onCheckedChange={() => toggleSection(idx.toString())}
+                  />
+                  <Label
+                    htmlFor={`section-${idx}`}
+                    className="text-sm cursor-pointer"
+                  >
+                    {section.section_title}
+                  </Label>
+                </div>
+              ))}
+            </div>
+
+            {/* Internal Notes Toggle */}
+            <div className="pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="internal-notes"
+                  checked={includeInternalNotes}
+                  onCheckedChange={(checked) => setIncludeInternalNotes(checked as boolean)}
+                />
+                <Label
+                  htmlFor="internal-notes"
+                  className="text-sm cursor-pointer"
+                >
+                  Inkludera utrymme för optikerns anteckningar
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setShowSettings(false)}>
+              Klar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

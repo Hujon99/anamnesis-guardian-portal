@@ -166,23 +166,25 @@ const AdminPanel = () => {
             <TrendingUp className="h-4 w-4" />
             Uppgraderingar
           </TabsTrigger>
-          <TabsTrigger value="completion" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Formulär-completion
-          </TabsTrigger>
-          <TabsTrigger value="started" className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Påbörjade Formulär
-          </TabsTrigger>
-          <TabsTrigger value="debug" className="flex items-center gap-2">
-            <Bug className="h-4 w-4" />
-            Felsökning
-          </TabsTrigger>
           {isSystemAdmin && (
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              System
-            </TabsTrigger>
+            <>
+              <TabsTrigger value="completion" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Formulär-completion
+              </TabsTrigger>
+              <TabsTrigger value="started" className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Påbörjade Formulär
+              </TabsTrigger>
+              <TabsTrigger value="debug" className="flex items-center gap-2">
+                <Bug className="h-4 w-4" />
+                Felsökning
+              </TabsTrigger>
+              <TabsTrigger value="system" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                System
+              </TabsTrigger>
+            </>
           )}
         </TabsList>
         
@@ -281,38 +283,40 @@ const AdminPanel = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="completion" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Formulär Slutförandestatistik
-              </CardTitle>
-              <CardDescription>
-                Spårning av misslyckade formulärförsök och completion rates
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FormCompletionStats />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="started" className="mt-0">
-          <div className="space-y-6">
-            <FormAbandonmentHeatmap />
-            <StartedFormsAnalysis />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="debug" className="mt-0">
-          <FormSessionDebugView />
-        </TabsContent>
-        
         {isSystemAdmin && (
-          <TabsContent value="system" className="mt-0">
-            <SystemSettings />
-          </TabsContent>
+          <>
+            <TabsContent value="completion" className="mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Formulär Slutförandestatistik
+                  </CardTitle>
+                  <CardDescription>
+                    Spårning av misslyckade formulärförsök och completion rates
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormCompletionStats />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="started" className="mt-0">
+              <div className="space-y-6">
+                <FormAbandonmentHeatmap />
+                <StartedFormsAnalysis />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="debug" className="mt-0">
+              <FormSessionDebugView />
+            </TabsContent>
+            
+            <TabsContent value="system" className="mt-0">
+              <SystemSettings />
+            </TabsContent>
+          </>
         )}
       </Tabs>
 

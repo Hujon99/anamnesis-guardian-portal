@@ -906,7 +906,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
       </Card>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[9999]">
           <AlertDialogHeader>
             <AlertDialogTitle>Ta bort fråga</AlertDialogTitle>
             <AlertDialogDescription>
@@ -915,9 +915,18 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => {
+              console.log('Cancel clicked');
+              setShowDeleteDialog(false);
+            }}>
+              Avbryt
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={onDelete}
+              onClick={() => {
+                console.log('Confirm delete clicked');
+                onDelete();
+                setShowDeleteDialog(false);
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Ta bort fråga

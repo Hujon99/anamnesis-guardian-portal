@@ -4,7 +4,7 @@
  * title editing, question management, and drag-and-drop reordering.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +54,27 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [showAddQuestionMenuEmpty, setShowAddQuestionMenuEmpty] = useState(false);
 
   const hasPresets = schema.question_presets && schema.question_presets.length > 0;
+  
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showAddQuestionMenu && !target.closest('.add-question-menu-top')) {
+        setShowAddQuestionMenu(false);
+      }
+      if (showAddQuestionMenuBottom && !target.closest('.add-question-menu-bottom')) {
+        setShowAddQuestionMenuBottom(false);
+      }
+      if (showAddQuestionMenuEmpty && !target.closest('.add-question-menu-empty')) {
+        setShowAddQuestionMenuEmpty(false);
+      }
+    };
+
+    if (showAddQuestionMenu || showAddQuestionMenuBottom || showAddQuestionMenuEmpty) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showAddQuestionMenu, showAddQuestionMenuBottom, showAddQuestionMenuEmpty]);
   
   // Check if section is conditional and find parent question
   const isConditional = !!section.show_if;
@@ -266,7 +287,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Button>
               )}
 
-              <div className="relative">
+              <div className="relative add-question-menu-top">
                 <Button 
                   variant="ghost" 
                   size="sm"
@@ -280,63 +301,25 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                   <Plus className="h-4 w-4" />
                 </Button>
                 {showAddQuestionMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-56 p-2 bg-background border border-border rounded-lg shadow-lg z-50">
+                  <div className="absolute right-0 top-full mt-1 w-56 p-2 bg-popover border border-border rounded-lg shadow-lg z-50">
                     <div className="space-y-1">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addQuestion('text');
-                          setShowAddQuestionMenu(false);
-                        }}
-                      >
-                        Textfält
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addQuestion('textarea');
-                          setShowAddQuestionMenu(false);
-                        }}
-                      >
-                        Textområde
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addQuestion('radio');
-                          setShowAddQuestionMenu(false);
-                        }}
-                      >
-                        Radioknappar
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addQuestion('checkbox');
-                          setShowAddQuestionMenu(false);
-                        }}
-                      >
-                        Kryssrutor
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addQuestion('dropdown');
-                          setShowAddQuestionMenu(false);
-                        }}
-                      >
-                        Dropdown
-                      </Button>
+                      {['text', 'textarea', 'radio', 'checkbox', 'dropdown'].map((type) => (
+                        <button
+                          key={type}
+                          className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent/50 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addQuestion(type as any);
+                            setShowAddQuestionMenu(false);
+                          }}
+                        >
+                          {type === 'text' && 'Textfält'}
+                          {type === 'textarea' && 'Textområde'}
+                          {type === 'radio' && 'Radioknappar'}
+                          {type === 'checkbox' && 'Kryssrutor'}
+                          {type === 'dropdown' && 'Dropdown'}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -408,7 +391,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Använd mall
                         </Button>
                       )}
-                      <div className="relative">
+                      <div className="relative add-question-menu-bottom">
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -423,63 +406,25 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Lägg till fråga
                         </Button>
                         {showAddQuestionMenuBottom && (
-                          <div className="absolute left-0 top-full mt-1 w-56 p-2 bg-background border border-border rounded-lg shadow-lg z-50">
+                          <div className="absolute left-0 top-full mt-1 w-56 p-2 bg-popover border border-border rounded-lg shadow-lg z-50">
                             <div className="space-y-1">
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('text');
-                                  setShowAddQuestionMenuBottom(false);
-                                }}
-                              >
-                                Textfält
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('textarea');
-                                  setShowAddQuestionMenuBottom(false);
-                                }}
-                              >
-                                Textområde
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('radio');
-                                  setShowAddQuestionMenuBottom(false);
-                                }}
-                              >
-                                Radioknappar
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('checkbox');
-                                  setShowAddQuestionMenuBottom(false);
-                                }}
-                              >
-                                Kryssrutor
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('dropdown');
-                                  setShowAddQuestionMenuBottom(false);
-                                }}
-                              >
-                                Dropdown
-                              </Button>
+                              {['text', 'textarea', 'radio', 'checkbox', 'dropdown'].map((type) => (
+                                <button
+                                  key={type}
+                                  className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent/50 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    addQuestion(type as any);
+                                    setShowAddQuestionMenuBottom(false);
+                                  }}
+                                >
+                                  {type === 'text' && 'Textfält'}
+                                  {type === 'textarea' && 'Textområde'}
+                                  {type === 'radio' && 'Radioknappar'}
+                                  {type === 'checkbox' && 'Kryssrutor'}
+                                  {type === 'dropdown' && 'Dropdown'}
+                                </button>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -513,7 +458,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Använd mall
                         </Button>
                       )}
-                      <div className="relative">
+                      <div className="relative add-question-menu-empty">
                         <Button 
                           variant="outline" 
                           className="gap-2"
@@ -527,63 +472,25 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Lägg till första frågan
                         </Button>
                         {showAddQuestionMenuEmpty && (
-                          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-56 p-2 bg-background border border-border rounded-lg shadow-lg z-50">
+                          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-56 p-2 bg-popover border border-border rounded-lg shadow-lg z-50">
                             <div className="space-y-1">
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('text');
-                                  setShowAddQuestionMenuEmpty(false);
-                                }}
-                              >
-                                Textfält
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('textarea');
-                                  setShowAddQuestionMenuEmpty(false);
-                                }}
-                              >
-                                Textområde
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('radio');
-                                  setShowAddQuestionMenuEmpty(false);
-                                }}
-                              >
-                                Radioknappar
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('checkbox');
-                                  setShowAddQuestionMenuEmpty(false);
-                                }}
-                              >
-                                Kryssrutor
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addQuestion('dropdown');
-                                  setShowAddQuestionMenuEmpty(false);
-                                }}
-                              >
-                                Dropdown
-                              </Button>
+                              {['text', 'textarea', 'radio', 'checkbox', 'dropdown'].map((type) => (
+                                <button
+                                  key={type}
+                                  className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent/50 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    addQuestion(type as any);
+                                    setShowAddQuestionMenuEmpty(false);
+                                  }}
+                                >
+                                  {type === 'text' && 'Textfält'}
+                                  {type === 'textarea' && 'Textområde'}
+                                  {type === 'radio' && 'Radioknappar'}
+                                  {type === 'checkbox' && 'Kryssrutor'}
+                                  {type === 'dropdown' && 'Dropdown'}
+                                </button>
+                              ))}
                             </div>
                           </div>
                         )}

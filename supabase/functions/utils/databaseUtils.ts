@@ -100,7 +100,8 @@ export async function runAutoDeletion(supabase: SupabaseClient): Promise<{
 }
 
 /**
- * Runs cleanup for stuck forms (status='sent' older than 2 hours)
+ * Runs cleanup for stuck forms (status='sent' older than 120 days)
+ * These are kept for debugging purposes but removed after 120 days.
  * @returns Object containing information about the cleanup process
  */
 export async function runStuckFormsCleanup(supabase: SupabaseClient): Promise<{
@@ -109,18 +110,18 @@ export async function runStuckFormsCleanup(supabase: SupabaseClient): Promise<{
   error?: any;
 }> {
   try {
-    console.log('Starting stuck forms cleanup process...');
+    console.log('Starting stuck forms cleanup process (120 days retention)...');
     
-    // Calculate 2 hours ago timestamp
-    const twoHoursAgo = new Date();
-    twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
+    // Calculate 120 days ago timestamp
+    const oneHundredTwentyDaysAgo = new Date();
+    oneHundredTwentyDaysAgo.setDate(oneHundredTwentyDaysAgo.getDate() - 120);
     
-    // Find stuck forms (status='sent' and older than 2 hours) in batches
+    // Find stuck forms (status='sent' and older than 120 days) in batches
     const { data: stuckForms, error: fetchError } = await supabase
       .from('anamnes_entries')
       .select('id, organization_id, status, created_at')
       .eq('status', 'sent')
-      .lt('created_at', twoHoursAgo.toISOString())
+      .lt('created_at', oneHundredTwentyDaysAgo.toISOString())
       .limit(500); // Process in batches to avoid timeouts
 
     if (fetchError) {
@@ -128,7 +129,7 @@ export async function runStuckFormsCleanup(supabase: SupabaseClient): Promise<{
       throw fetchError;
     }
 
-    console.log(`Found ${stuckForms?.length || 0} stuck forms to delete`);
+    console.log(`Found ${stuckForms?.length || 0} stuck forms (>120 days old) to delete`);
 
     if (!stuckForms || stuckForms.length === 0) {
       return { deletedEntries: 0 };

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -47,6 +48,8 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [editTitle, setEditTitle] = useState(section.section_title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPresetDialog, setShowPresetDialog] = useState(false);
+  const [showAddQuestionDialog, setShowAddQuestionDialog] = useState(false);
+  const [selectedQuestionType, setSelectedQuestionType] = useState<string>('text');
 
   const hasPresets = schema.question_presets && schema.question_presets.length > 0;
   
@@ -114,6 +117,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
       questions: [...section.questions, newQuestion]
     });
     setShowPresetDialog(false);
+    setShowAddQuestionDialog(false);
   };
   const updateQuestion = (questionIndex: number, updatedQuestion: FormQuestion) => {
     const updatedQuestions = [...section.questions];
@@ -252,39 +256,13 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Button>
               )}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {hasPresets && (
-                    <>
-                      <DropdownMenuItem onClick={() => setShowPresetDialog(true)}>
-                        <Sparkles className="h-4 w-4 mr-2 text-accent" />
-                        Använd mall
-                      </DropdownMenuItem>
-                      <div className="my-1 border-t" />
-                    </>
-                  )}
-                  <DropdownMenuItem onClick={() => addQuestion('text')}>
-                    Textfält
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('textarea')}>
-                    Textområde
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
-                    Kryssrutor
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                    Radioknappar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
-                    Dropdown
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowAddQuestionDialog(true)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -325,8 +303,8 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
 
                 {section.questions.length > 0 && (
                   <div className="flex justify-center pt-4 border-t border-dashed border-border/50 mt-4">
-                    {hasPresets ? (
-                      <div className="flex gap-2">
+                    <div className="flex gap-2">
+                      {hasPresets && (
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -336,59 +314,17 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           <Sparkles className="h-4 w-4 text-accent" />
                           Använd mall
                         </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <Plus className="h-4 w-4" />
-                              Annan frågetyp
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => addQuestion('text')}>
-                              Textfält
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('textarea')}>
-                              Textområde
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
-                              Kryssrutor
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                              Radioknappar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
-                              Dropdown
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            Lägg till fråga
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => addQuestion('text')}>
-                            Textfält
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('textarea')}>
-                            Textområde
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
-                            Kryssrutor
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                            Radioknappar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
-                            Dropdown
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-2"
+                        onClick={() => setShowAddQuestionDialog(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        {hasPresets ? 'Annan frågetyp' : 'Lägg till fråga'}
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -397,8 +333,8 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                     <Lightbulb className="h-8 w-8 text-primary mx-auto mb-3 opacity-50" />
                     <p className="font-medium mb-1">Börja med att lägga till en fråga här 👇</p>
                     <p className="text-sm text-muted-foreground mb-4">Bygg ditt formulär genom att lägga till olika typer av frågor</p>
-                    {hasPresets ? (
-                      <div className="flex gap-2 justify-center">
+                    <div className="flex gap-2 justify-center">
+                      {hasPresets && (
                         <Button 
                           variant="outline" 
                           className="gap-2"
@@ -407,59 +343,16 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           <Sparkles className="h-4 w-4 text-accent" />
                           Använd mall
                         </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="gap-2">
-                              <Plus className="h-4 w-4" />
-                              Annan typ
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => addQuestion('text')}>
-                              Textfråga
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('textarea')}>
-                              Textområde
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                              Radioknappar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
-                              Kryssrutor
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
-                              Dropdown
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            Lägg till första frågan
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => addQuestion('text')}>
-                            Textfråga
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('textarea')}>
-                            Textområde
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
-                            Radioknappar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
-                            Kryssrutor
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
-                            Dropdown
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                      )}
+                      <Button 
+                        variant="outline" 
+                        className="gap-2"
+                        onClick={() => setShowAddQuestionDialog(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        {hasPresets ? 'Annan frågetyp' : 'Lägg till första frågan'}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -495,6 +388,60 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </div>
               </Button>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Question Dialog */}
+      <Dialog open={showAddQuestionDialog} onOpenChange={setShowAddQuestionDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Välj frågetyp</DialogTitle>
+            <DialogDescription>
+              Välj vilken typ av fråga du vill lägga till i sektionen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <RadioGroup value={selectedQuestionType} onValueChange={setSelectedQuestionType}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="text" id="type-text" />
+                <Label htmlFor="type-text" className="cursor-pointer flex-1">
+                  Textfält
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="textarea" id="type-textarea" />
+                <Label htmlFor="type-textarea" className="cursor-pointer flex-1">
+                  Textområde
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="checkbox" id="type-checkbox" />
+                <Label htmlFor="type-checkbox" className="cursor-pointer flex-1">
+                  Kryssrutor
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="radio" id="type-radio" />
+                <Label htmlFor="type-radio" className="cursor-pointer flex-1">
+                  Radioknappar
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="dropdown" id="type-dropdown" />
+                <Label htmlFor="type-dropdown" className="cursor-pointer flex-1">
+                  Dropdown
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowAddQuestionDialog(false)}>
+              Avbryt
+            </Button>
+            <Button onClick={() => addQuestion(selectedQuestionType)}>
+              Lägg till
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

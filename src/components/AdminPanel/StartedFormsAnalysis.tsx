@@ -263,6 +263,7 @@ export const StartedFormsAnalysis = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Patient</TableHead>
+                  <TableHead>Formulär</TableHead>
                   <TableHead>Stannade vid</TableHead>
                   <TableHead>Progress</TableHead>
                   <TableHead>Enhet</TableHead>
@@ -292,6 +293,13 @@ export const StartedFormsAnalysis = () => {
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {format(new Date(entry.created_at), 'PPp', { locale: sv })}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[150px]">
+                            <p className="text-sm font-medium truncate" title={entry.form_title || 'Okänt formulär'}>
+                              {entry.form_title || 'Okänt formulär'}
                             </p>
                           </div>
                         </TableCell>
@@ -343,7 +351,7 @@ export const StartedFormsAnalysis = () => {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       <div className="flex flex-col items-center gap-2">
                         <TrendingDown className="h-12 w-12 opacity-20" />
                         <p>Inga påbörjade formulär hittades med dessa filter</p>

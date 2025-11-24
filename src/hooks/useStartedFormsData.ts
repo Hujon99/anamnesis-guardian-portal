@@ -14,6 +14,7 @@ export interface StartedFormEntry {
   created_at: string;
   organization_id: string;
   form_id: string;
+  form_title: string | null;
   store_id: string | null;
   examination_type: string | null;
   status: string | null;
@@ -44,10 +45,13 @@ export const useStartedFormsData = ({
     queryFn: async () => {
       if (!supabase) throw new Error("Supabase client not ready");
 
-      // First get all started entries
+      // First get all started entries with form info
       let entriesQuery = supabase
         .from("anamnes_entries")
-        .select("*")
+        .select(`
+          *,
+          anamnes_forms!inner(id, title)
+        `)
         .eq("status", "sent")
         .gte("created_at", new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString())
         .order("created_at", { ascending: false });
@@ -94,6 +98,7 @@ export const useStartedFormsData = ({
       // Combine data
       const startedForms: StartedFormEntry[] = entries.map(entry => {
         const lastLog = logsByEntry.get(entry.id);
+        const formInfo = (entry as any).anamnes_forms;
         return {
           id: entry.id,
           first_name: entry.first_name,
@@ -101,6 +106,7 @@ export const useStartedFormsData = ({
           created_at: entry.created_at,
           organization_id: entry.organization_id,
           form_id: entry.form_id,
+          form_title: formInfo?.title || null,
           store_id: entry.store_id,
           examination_type: entry.examination_type,
           status: entry.status,

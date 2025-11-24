@@ -30,6 +30,7 @@ import { FormSessionDebugView } from "@/components/AdminPanel/FormSessionDebugVi
 import { UpgradeStatsCards } from "@/components/AdminPanel/UpgradeStatsCards";
 import FormCompletionStats from "@/components/AdminPanel/FormCompletionStats";
 import { StartedFormsAnalysis } from "@/components/AdminPanel/StartedFormsAnalysis";
+import { FormAbandonmentHeatmap } from "@/components/AdminPanel/FormAbandonmentHeatmap";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Store = Tables<"stores">;
@@ -298,7 +299,10 @@ const AdminPanel = () => {
         </TabsContent>
         
         <TabsContent value="started" className="mt-0">
-          <StartedFormsAnalysis />
+          <div className="space-y-6">
+            <FormAbandonmentHeatmap />
+            <StartedFormsAnalysis />
+          </div>
         </TabsContent>
         
         <TabsContent value="debug" className="mt-0">

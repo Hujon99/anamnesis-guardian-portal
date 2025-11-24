@@ -48,70 +48,93 @@ export const useFormAbandonmentData = ({
     queryFn: async () => {
       if (!supabase) throw new Error("Supabase client not ready");
 
-      // Get all form session logs for abandoned sessions
+      // Get entries with status 'sent' (abandoned) instead of relying on session logs
+      let entriesQuery = supabase
+        .from("anamnes_entries")
+        .select("id, form_id, access_token, created_at")
+        .eq("status", "sent")
+        .gte("created_at", new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString());
+
+      if (organizationId && !isSystemAdmin) {
+        entriesQuery = entriesQuery.eq("organization_id", organizationId);
+      }
+
+      const { data: entries, error: entriesError } = await entriesQuery;
+      if (entriesError) throw entriesError;
+
+      if (!entries || entries.length === 0) {
+        return { summaries: [] };
+      }
+
+      // Get session logs for these entries (match by entry_id OR token)
+      const entryIds = entries.map(e => e.id);
+      const tokens = entries.map(e => e.access_token).filter(Boolean);
+
+      if (entryIds.length === 0) {
+        return { summaries: [] };
+      }
+
       let logsQuery = supabase
         .from("form_session_logs")
         .select("*")
-        .gte("created_at", new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString())
         .order("created_at", { ascending: false });
 
-      if (organizationId && !isSystemAdmin) {
-        logsQuery = logsQuery.eq("organization_id", organizationId);
+      // Build OR condition for entry_id or token match
+      if (tokens.length > 0) {
+        logsQuery = logsQuery.or(`entry_id.in.(${entryIds.join(',')}),token.in.(${tokens.join(',')})`);
+      } else {
+        logsQuery = logsQuery.in("entry_id", entryIds);
       }
 
       const { data: logs, error: logsError } = await logsQuery;
       if (logsError) throw logsError;
 
-      if (!logs || logs.length === 0) {
-        return { summaries: [] };
-      }
+      // Create a map to link tokens to entries
+      const tokenToEntryMap = new Map(entries.map(e => [e.access_token, e]));
+      const entryFormMap = new Map(entries.map(e => [e.id, e.form_id]));
 
-      // Group by session and find last event per session
+      // Group logs by session
       const sessionMap = new Map<string, any[]>();
-      logs.forEach(log => {
+      (logs || []).forEach(log => {
         if (!sessionMap.has(log.session_id)) {
           sessionMap.set(log.session_id, []);
         }
         sessionMap.get(log.session_id)!.push(log);
       });
 
-      // Find sessions that were abandoned (no submission_success)
-      const abandonedSessions: Array<{
-        sessionId: string;
-        lastLog: any;
-        wasCompleted: boolean;
-      }> = [];
+      // Find last meaningful log per entry (with position data)
+      const entryAbandonmentMap = new Map<string, any>();
 
-      sessionMap.forEach((sessionLogs, sessionId) => {
-        const sortedLogs = sessionLogs.sort((a, b) => 
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      // Process each entry
+      entries.forEach(entry => {
+        // Find logs for this entry (by entry_id or token)
+        const entryLogs = (logs || []).filter(log => 
+          log.entry_id === entry.id || log.token === entry.access_token
         );
-        const wasCompleted = sessionLogs.some(l => l.event_type === 'submission_success');
-        const lastLog = sortedLogs[sortedLogs.length - 1];
 
-        if (!wasCompleted && lastLog.current_question_id && lastLog.current_section_index !== null) {
-          abandonedSessions.push({
-            sessionId,
-            lastLog,
-            wasCompleted: false,
+        if (entryLogs.length === 0) return;
+
+        // Sort by created_at
+        const sortedLogs = entryLogs.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        // Find the last log with position data (section and question)
+        const lastLogWithPosition = sortedLogs.find(log => 
+          log.current_section_index !== null && log.current_question_id
+        );
+
+        if (lastLogWithPosition) {
+          entryAbandonmentMap.set(entry.id, {
+            entry,
+            lastLog: lastLogWithPosition,
+            sessionId: lastLogWithPosition.session_id,
           });
         }
       });
 
-      // Get unique entry IDs to fetch form information
-      const entryIds = abandonedSessions
-        .map(s => s.lastLog.entry_id)
-        .filter(Boolean);
-
-      const { data: entries } = await supabase
-        .from("anamnes_entries")
-        .select("id, form_id")
-        .in("id", entryIds);
-
-      const entryFormMap = new Map(entries?.map(e => [e.id, e.form_id]) || []);
-
       // Get form schemas
-      const formIds = Array.from(new Set(entries?.map(e => e.form_id) || []));
+      const formIds = Array.from(new Set(entries.map(e => e.form_id)));
       const { data: forms } = await supabase
         .from("anamnes_forms")
         .select("id, title, schema")
@@ -122,12 +145,8 @@ export const useFormAbandonmentData = ({
       // Aggregate abandonment data by form and question
       const formAbandonments = new Map<string, Map<string, QuestionAbandonmentData>>();
 
-      abandonedSessions.forEach(session => {
-        const { lastLog } = session;
-        const formId = lastLog.entry_id ? entryFormMap.get(lastLog.entry_id) : null;
-        
-        if (!formId) return;
-
+      entryAbandonmentMap.forEach(({ entry, lastLog, sessionId }) => {
+        const formId = entry.form_id;
         const form = formMap.get(formId);
         if (!form) return;
 
@@ -164,8 +183,8 @@ export const useFormAbandonmentData = ({
         data.abandonmentCount++;
         data.avgProgress = (data.avgProgress * (data.abandonmentCount - 1) + (lastLog.form_progress_percent || 0)) / data.abandonmentCount;
         data.sessions.push({
-          sessionId: session.sessionId,
-          entryId: lastLog.entry_id,
+          sessionId,
+          entryId: entry.id,
           deviceType: lastLog.device_type,
           lastActivity: lastLog.created_at,
         });

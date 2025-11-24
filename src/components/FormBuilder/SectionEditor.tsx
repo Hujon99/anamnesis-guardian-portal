@@ -48,8 +48,6 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [editTitle, setEditTitle] = useState(section.section_title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPresetDialog, setShowPresetDialog] = useState(false);
-  const [showAddQuestionDialog, setShowAddQuestionDialog] = useState(false);
-  const [selectedQuestionType, setSelectedQuestionType] = useState<string>('text');
 
   const hasPresets = schema.question_presets && schema.question_presets.length > 0;
   
@@ -117,7 +115,6 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
       questions: [...section.questions, newQuestion]
     });
     setShowPresetDialog(false);
-    setShowAddQuestionDialog(false);
   };
   const updateQuestion = (questionIndex: number, updatedQuestion: FormQuestion) => {
     const updatedQuestions = [...section.questions];
@@ -249,8 +246,12 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => setShowPresetDialog(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPresetDialog(true);
+                  }}
                   className="gap-2 text-accent"
+                  type="button"
                 >
                   <Sparkles className="h-4 w-4" />
                 </Button>
@@ -259,7 +260,12 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => setShowAddQuestionDialog(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addQuestion('text');
+                }}
+                type="button"
+                title="Lägg till fråga"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -309,7 +315,11 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           variant="outline" 
                           size="sm" 
                           className="gap-2"
-                          onClick={() => setShowPresetDialog(true)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowPresetDialog(true);
+                          }}
+                          type="button"
                         >
                           <Sparkles className="h-4 w-4 text-accent" />
                           Använd mall
@@ -319,10 +329,14 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                         variant="outline" 
                         size="sm" 
                         className="gap-2"
-                        onClick={() => setShowAddQuestionDialog(true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addQuestion('text');
+                        }}
+                        type="button"
                       >
                         <Plus className="h-4 w-4" />
-                        {hasPresets ? 'Annan frågetyp' : 'Lägg till fråga'}
+                        Lägg till fråga
                       </Button>
                     </div>
                   </div>
@@ -338,7 +352,11 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                         <Button 
                           variant="outline" 
                           className="gap-2"
-                          onClick={() => setShowPresetDialog(true)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowPresetDialog(true);
+                          }}
+                          type="button"
                         >
                           <Sparkles className="h-4 w-4 text-accent" />
                           Använd mall
@@ -347,10 +365,14 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                       <Button 
                         variant="outline" 
                         className="gap-2"
-                        onClick={() => setShowAddQuestionDialog(true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addQuestion('text');
+                        }}
+                        type="button"
                       >
                         <Plus className="h-4 w-4" />
-                        {hasPresets ? 'Annan frågetyp' : 'Lägg till första frågan'}
+                        Lägg till första frågan
                       </Button>
                     </div>
                   </div>
@@ -392,59 +414,6 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Add Question Dialog */}
-      <Dialog open={showAddQuestionDialog} onOpenChange={setShowAddQuestionDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Välj frågetyp</DialogTitle>
-            <DialogDescription>
-              Välj vilken typ av fråga du vill lägga till i sektionen.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <RadioGroup value={selectedQuestionType} onValueChange={setSelectedQuestionType}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="text" id="type-text" />
-                <Label htmlFor="type-text" className="cursor-pointer flex-1">
-                  Textfält
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="textarea" id="type-textarea" />
-                <Label htmlFor="type-textarea" className="cursor-pointer flex-1">
-                  Textområde
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="checkbox" id="type-checkbox" />
-                <Label htmlFor="type-checkbox" className="cursor-pointer flex-1">
-                  Kryssrutor
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="radio" id="type-radio" />
-                <Label htmlFor="type-radio" className="cursor-pointer flex-1">
-                  Radioknappar
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="dropdown" id="type-dropdown" />
-                <Label htmlFor="type-dropdown" className="cursor-pointer flex-1">
-                  Dropdown
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAddQuestionDialog(false)}>
-              Avbryt
-            </Button>
-            <Button onClick={() => addQuestion(selectedQuestionType)}>
-              Lägg till
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

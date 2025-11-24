@@ -228,6 +228,62 @@ export type Database = {
         }
         Relationships: []
       }
+      api_keys: {
+        Row: {
+          api_key: string
+          api_secret_hash: string
+          created_at: string | null
+          created_by: string | null
+          environment: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          key_name: string
+          last_used_at: string | null
+          organization_id: string
+          permissions: Json
+          updated_at: string | null
+        }
+        Insert: {
+          api_key: string
+          api_secret_hash: string
+          created_at?: string | null
+          created_by?: string | null
+          environment?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_name: string
+          last_used_at?: string | null
+          organization_id: string
+          permissions?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          api_key?: string
+          api_secret_hash?: string
+          created_at?: string | null
+          created_by?: string | null
+          environment?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_name?: string
+          last_used_at?: string | null
+          organization_id?: string
+          permissions?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_auth_logs: {
         Row: {
           clerk_user_id: string | null

@@ -32,7 +32,9 @@ import FormCompletionStats from "@/components/AdminPanel/FormCompletionStats";
 import { StartedFormsAnalysis } from "@/components/AdminPanel/StartedFormsAnalysis";
 import { FormAbandonmentHeatmap } from "@/components/AdminPanel/FormAbandonmentHeatmap";
 import { SentEntriesAnalysis } from "@/components/AdminPanel/SentEntriesAnalysis";
+import { ApiKeysManager } from "@/components/AdminPanel/ApiKeysManager";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Key } from "lucide-react";
 
 type Store = Tables<"stores">;
 
@@ -167,6 +169,10 @@ const AdminPanel = () => {
             <TrendingUp className="h-4 w-4" />
             Uppgraderingar
           </TabsTrigger>
+          <TabsTrigger value="api" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            API-integration
+          </TabsTrigger>
           {isSystemAdmin && (
             <>
               <TabsTrigger value="sent-analysis" className="flex items-center gap-2">
@@ -284,6 +290,23 @@ const AdminPanel = () => {
             </CardHeader>
             <CardContent>
               <UpgradeStatsCards timeRange={statsTimeRange} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="api" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                API-integration
+              </CardTitle>
+              <CardDescription>
+                Hantera API-nycklar för integration med externa bokningssystem som ServeIT
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ApiKeysManager />
             </CardContent>
           </Card>
         </TabsContent>

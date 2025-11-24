@@ -471,12 +471,21 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                       Avancerade inställningar
                     </button>
                     <button
+                      type="button"
                       className="w-full justify-start text-sm px-3 py-2 h-auto rounded text-destructive hover:bg-destructive/10 flex items-center transition-colors"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
+                        console.log('Delete button clicked');
                         setShowOptionsMenu(false);
-                        // Small delay to ensure menu closes before dialog opens
-                        setTimeout(() => setShowDeleteDialog(true), 50);
+                        // Longer delay to ensure menu closes and DOM updates
+                        setTimeout(() => {
+                          console.log('Opening delete dialog');
+                          setShowDeleteDialog(true);
+                        }, 150);
                       }}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />

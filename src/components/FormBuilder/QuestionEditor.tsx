@@ -140,6 +140,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   
   // Get hierarchy information
   const hierarchyMap = useQuestionHierarchy(schema);
@@ -430,34 +431,46 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 )}
               </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    data-no-dnd="true"
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setShowAdvanced(!showAdvanced)}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Avancerade inställningar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Ta bort fråga
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="relative">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowOptionsMenu(!showOptionsMenu);
+                  }}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+                {showOptionsMenu && (
+                  <div className="absolute right-0 top-full mt-1 min-w-[200px] p-1 bg-background border border-border rounded-lg shadow-lg z-50">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-sm px-3 py-2 h-auto"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowAdvanced(!showAdvanced);
+                        setShowOptionsMenu(false);
+                      }}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Avancerade inställningar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-sm px-3 py-2 h-auto text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDeleteDialog(true);
+                        setShowOptionsMenu(false);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Ta bort fråga
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>

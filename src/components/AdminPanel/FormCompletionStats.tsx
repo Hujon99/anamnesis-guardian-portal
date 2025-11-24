@@ -93,11 +93,17 @@ const FormCompletionStats: React.FC = () => {
   }
 
   if (error) {
+    console.error("FormCompletionStats error:", error);
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Kunde inte ladda statistik: {error instanceof Error ? error.message : "Okänt fel"}
+          <div className="space-y-2">
+            <div className="font-semibold">Kunde inte ladda statistik</div>
+            <div className="text-sm">
+              {error instanceof Error ? error.message : JSON.stringify(error)}
+            </div>
+          </div>
         </AlertDescription>
       </Alert>
     );

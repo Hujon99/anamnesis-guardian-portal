@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+// Popover removed - using simple dropdown instead to avoid DndContext conflicts
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -49,7 +49,9 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [editTitle, setEditTitle] = useState(section.section_title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPresetDialog, setShowPresetDialog] = useState(false);
-  const [showAddQuestionPopover, setShowAddQuestionPopover] = useState(false);
+  const [showAddQuestionMenu, setShowAddQuestionMenu] = useState(false);
+  const [showAddQuestionMenuBottom, setShowAddQuestionMenuBottom] = useState(false);
+  const [showAddQuestionMenuEmpty, setShowAddQuestionMenuEmpty] = useState(false);
 
   const hasPresets = schema.question_presets && schema.question_presets.length > 0;
   
@@ -264,80 +266,81 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Button>
               )}
 
-              <Popover open={showAddQuestionPopover} onOpenChange={setShowAddQuestionPopover}>
-              <PopoverTrigger asChild>
+              <div className="relative">
                 <Button 
                   variant="ghost" 
                   size="sm"
                   type="button"
                   title="Lägg till fråga"
-                  data-no-dnd="true"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }}
                   onClick={(e) => {
                     e.stopPropagation();
+                    setShowAddQuestionMenu(!showAddQuestionMenu);
                   }}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
-              </PopoverTrigger>
-                <PopoverContent className="w-56 p-2" align="end">
-                  <div className="space-y-1">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        addQuestion('text');
-                        setShowAddQuestionPopover(false);
-                      }}
-                    >
-                      Textfält
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        addQuestion('textarea');
-                        setShowAddQuestionPopover(false);
-                      }}
-                    >
-                      Textområde
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        addQuestion('radio');
-                        setShowAddQuestionPopover(false);
-                      }}
-                    >
-                      Radioknappar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        addQuestion('checkbox');
-                        setShowAddQuestionPopover(false);
-                      }}
-                    >
-                      Kryssrutor
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        addQuestion('dropdown');
-                        setShowAddQuestionPopover(false);
-                      }}
-                    >
-                      Dropdown
-                    </Button>
+                {showAddQuestionMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-56 p-2 bg-background border border-border rounded-lg shadow-lg z-50">
+                    <div className="space-y-1">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addQuestion('text');
+                          setShowAddQuestionMenu(false);
+                        }}
+                      >
+                        Textfält
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addQuestion('textarea');
+                          setShowAddQuestionMenu(false);
+                        }}
+                      >
+                        Textområde
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addQuestion('radio');
+                          setShowAddQuestionMenu(false);
+                        }}
+                      >
+                        Radioknappar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addQuestion('checkbox');
+                          setShowAddQuestionMenu(false);
+                        }}
+                      >
+                        Kryssrutor
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addQuestion('dropdown');
+                          setShowAddQuestionMenu(false);
+                        }}
+                      >
+                        Dropdown
+                      </Button>
+                    </div>
                   </div>
-                </PopoverContent>
-              </Popover>
+                )}
+              </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -405,66 +408,82 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Använd mall
                         </Button>
                       )}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-2"
-                            type="button"
-                            data-no-dnd="true"
-                            onPointerDown={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                            Lägg till fråga
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-2" align="center">
-                          <div className="space-y-1">
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('text')}
-                            >
-                              Textfält
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('textarea')}
-                            >
-                              Textområde
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('radio')}
-                            >
-                              Radioknappar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('checkbox')}
-                            >
-                              Kryssrutor
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('dropdown')}
-                            >
-                              Dropdown
-                            </Button>
+                      <div className="relative">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-2"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowAddQuestionMenuBottom(!showAddQuestionMenuBottom);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Lägg till fråga
+                        </Button>
+                        {showAddQuestionMenuBottom && (
+                          <div className="absolute left-0 top-full mt-1 w-56 p-2 bg-background border border-border rounded-lg shadow-lg z-50">
+                            <div className="space-y-1">
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('text');
+                                  setShowAddQuestionMenuBottom(false);
+                                }}
+                              >
+                                Textfält
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('textarea');
+                                  setShowAddQuestionMenuBottom(false);
+                                }}
+                              >
+                                Textområde
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('radio');
+                                  setShowAddQuestionMenuBottom(false);
+                                }}
+                              >
+                                Radioknappar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('checkbox');
+                                  setShowAddQuestionMenuBottom(false);
+                                }}
+                              >
+                                Kryssrutor
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('dropdown');
+                                  setShowAddQuestionMenuBottom(false);
+                                }}
+                              >
+                                Dropdown
+                              </Button>
+                            </div>
                           </div>
-                        </PopoverContent>
-                      </Popover>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -494,65 +513,81 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Använd mall
                         </Button>
                       )}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="gap-2"
-                            type="button"
-                            data-no-dnd="true"
-                            onPointerDown={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                            Lägg till första frågan
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-2" align="center">
-                          <div className="space-y-1">
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('text')}
-                            >
-                              Textfält
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('textarea')}
-                            >
-                              Textområde
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('radio')}
-                            >
-                              Radioknappar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('checkbox')}
-                            >
-                              Kryssrutor
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              onClick={() => addQuestion('dropdown')}
-                            >
-                              Dropdown
-                            </Button>
+                      <div className="relative">
+                        <Button 
+                          variant="outline" 
+                          className="gap-2"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowAddQuestionMenuEmpty(!showAddQuestionMenuEmpty);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Lägg till första frågan
+                        </Button>
+                        {showAddQuestionMenuEmpty && (
+                          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-56 p-2 bg-background border border-border rounded-lg shadow-lg z-50">
+                            <div className="space-y-1">
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('text');
+                                  setShowAddQuestionMenuEmpty(false);
+                                }}
+                              >
+                                Textfält
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('textarea');
+                                  setShowAddQuestionMenuEmpty(false);
+                                }}
+                              >
+                                Textområde
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('radio');
+                                  setShowAddQuestionMenuEmpty(false);
+                                }}
+                              >
+                                Radioknappar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('checkbox');
+                                  setShowAddQuestionMenuEmpty(false);
+                                }}
+                              >
+                                Kryssrutor
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addQuestion('dropdown');
+                                  setShowAddQuestionMenuEmpty(false);
+                                }}
+                              >
+                                Dropdown
+                              </Button>
+                            </div>
                           </div>
-                        </PopoverContent>
-                      </Popover>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

@@ -77,21 +77,38 @@ export const useStartedFormsData = ({
         };
       }
 
-      // Get the latest session log for each entry
+      // Get the latest session log for each entry (match by entry_id OR token)
       const entryIds = entries.map(e => e.id);
-      const { data: logs, error: logsError } = await supabase
+      const tokens = entries.map(e => (e as any).access_token).filter(Boolean);
+      
+      let logsQuery = supabase
         .from("form_session_logs")
         .select("*")
-        .in("entry_id", entryIds)
         .order("created_at", { ascending: false });
 
+      // Build OR condition for entry_id or token match
+      if (entryIds.length > 0 && tokens.length > 0) {
+        logsQuery = logsQuery.or(`entry_id.in.(${entryIds.join(',')}),token.in.(${tokens.join(',')})`);
+      } else if (entryIds.length > 0) {
+        logsQuery = logsQuery.in("entry_id", entryIds);
+      }
+
+      const { data: logs, error: logsError } = await logsQuery;
       if (logsError) throw logsError;
 
-      // Map logs to entries (get latest log per entry)
+      // Map logs to entries (get latest log per entry, match by entry_id OR token)
       const logsByEntry = new Map<string, any>();
+      const tokenToEntryId = new Map(entries.map(e => [(e as any).access_token, e.id]));
+      
       logs?.forEach(log => {
-        if (log.entry_id && !logsByEntry.has(log.entry_id)) {
-          logsByEntry.set(log.entry_id, log);
+        // Try to find entry by entry_id first, then by token
+        let entryId = log.entry_id;
+        if (!entryId && log.token && tokenToEntryId.has(log.token)) {
+          entryId = tokenToEntryId.get(log.token);
+        }
+        
+        if (entryId && !logsByEntry.has(entryId)) {
+          logsByEntry.set(entryId, log);
         }
       });
 

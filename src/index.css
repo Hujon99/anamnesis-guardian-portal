@@ -190,4 +190,14 @@
     height: 100%;
     background: hsl(var(--accent) / 0.3);
   }
+
+  /* Drag and Drop Protection - Prevent DndContext from interfering with buttons */
+  [data-no-dnd="true"] {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
+
+  [data-no-dnd="true"]:hover {
+    z-index: 10;
+  }
 }

@@ -195,13 +195,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 15, // Öka från 8 till 15 för mindre interferens med clicks
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
+        delay: 300, // Öka från 250 till 300 för tydligare drag-intent
+        tolerance: 8, // Öka från 5 till 8
       },
     }),
     useSensor(KeyboardSensor)

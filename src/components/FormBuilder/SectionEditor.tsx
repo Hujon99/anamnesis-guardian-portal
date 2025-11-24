@@ -145,13 +145,13 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 15, // Öka från 8 till 15 för mindre interferens med clicks
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
+        delay: 300, // Öka från 250 till 300 för tydligare drag-intent
+        tolerance: 8, // Öka från 5 till 8
       },
     }),
     useSensor(KeyboardSensor, {
@@ -254,23 +254,35 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                   }}
                   className="gap-2 text-accent"
                   type="button"
+                  data-no-dnd="true"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
                 >
                   <Sparkles className="h-4 w-4" />
                 </Button>
               )}
 
               <Popover open={showAddQuestionPopover} onOpenChange={setShowAddQuestionPopover}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    type="button"
-                    title="Lägg till fråga"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  type="button"
+                  title="Lägg till fråga"
+                  data-no-dnd="true"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
                 <PopoverContent className="w-56 p-2" align="end">
                   <div className="space-y-1">
                     <Button
@@ -327,12 +339,23 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </PopoverContent>
               </Popover>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  data-no-dnd="true"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setIsEditing(true)}>
                     <Edit className="h-4 w-4 mr-2" />
@@ -389,7 +412,14 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                             size="sm" 
                             className="gap-2"
                             type="button"
-                            onClick={(e) => e.stopPropagation()}
+                            data-no-dnd="true"
+                            onPointerDown={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
                           >
                             <Plus className="h-4 w-4" />
                             Lägg till fråga
@@ -454,6 +484,11 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                             setShowPresetDialog(true);
                           }}
                           type="button"
+                          data-no-dnd="true"
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
                         >
                           <Sparkles className="h-4 w-4 text-accent" />
                           Använd mall
@@ -465,7 +500,14 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                             variant="outline" 
                             className="gap-2"
                             type="button"
-                            onClick={(e) => e.stopPropagation()}
+                            data-no-dnd="true"
+                            onPointerDown={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
                           >
                             <Plus className="h-4 w-4" />
                             Lägg till första frågan

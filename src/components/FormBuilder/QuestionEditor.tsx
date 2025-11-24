@@ -158,13 +158,13 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts
+        distance: 15, // Öka från 8 till 15 för mindre interferens med clicks
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250, // Require 250ms press for mobile drag
-        tolerance: 5,
+        delay: 300, // Öka från 250 till 300 för tydligare drag-intent
+        tolerance: 8, // Öka från 5 till 8
       },
     }),
     useSensor(KeyboardSensor)
@@ -384,7 +384,13 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
             <div className="flex items-center gap-2">
               <Select value={question.type} onValueChange={changeQuestionType}>
-                <SelectTrigger className="min-w-[180px] bg-background">
+                <SelectTrigger 
+                  className="min-w-[180px] bg-background"
+                  data-no-dnd="true"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
                   <SelectValue placeholder="Välj typ" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-[100] shadow-lg border min-w-[280px] max-h-[400px]">
@@ -426,7 +432,18 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    data-no-dnd="true"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>

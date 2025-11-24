@@ -29,6 +29,7 @@ import { useSystemAdmin } from "@/contexts/SystemAdminContext";
 import { FormSessionDebugView } from "@/components/AdminPanel/FormSessionDebugView";
 import { UpgradeStatsCards } from "@/components/AdminPanel/UpgradeStatsCards";
 import FormCompletionStats from "@/components/AdminPanel/FormCompletionStats";
+import { StartedFormsAnalysis } from "@/components/AdminPanel/StartedFormsAnalysis";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Store = Tables<"stores">;
@@ -168,6 +169,10 @@ const AdminPanel = () => {
             <TrendingUp className="h-4 w-4" />
             Formulär-completion
           </TabsTrigger>
+          <TabsTrigger value="started" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Påbörjade Formulär
+          </TabsTrigger>
           <TabsTrigger value="debug" className="flex items-center gap-2">
             <Bug className="h-4 w-4" />
             Felsökning
@@ -290,6 +295,10 @@ const AdminPanel = () => {
               <FormCompletionStats />
             </CardContent>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="started" className="mt-0">
+          <StartedFormsAnalysis />
         </TabsContent>
         
         <TabsContent value="debug" className="mt-0">

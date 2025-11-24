@@ -142,6 +142,21 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showOptionsMenu && !target.closest('.options-menu-container')) {
+        setShowOptionsMenu(false);
+      }
+    };
+
+    if (showOptionsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showOptionsMenu]);
+  
   // Get hierarchy information
   const hierarchyMap = useQuestionHierarchy(schema);
   const hierarchyInfo = getQuestionHierarchy(question.id, hierarchyMap);
@@ -431,7 +446,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                 )}
               </div>
 
-              <div className="relative">
+              <div className="relative options-menu-container">
                 <Button 
                   variant="ghost" 
                   size="sm"
@@ -443,10 +458,9 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   <MoreVertical className="h-4 w-4" />
                 </Button>
                 {showOptionsMenu && (
-                  <div className="absolute right-0 top-full mt-1 min-w-[200px] p-1 bg-background border border-border rounded-lg shadow-lg z-50">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-sm px-3 py-2 h-auto"
+                  <div className="absolute right-0 top-full mt-1 min-w-[200px] p-1 bg-popover border border-border rounded-lg shadow-lg z-50">
+                    <button
+                      className="w-full justify-start text-sm px-3 py-2 h-auto rounded hover:bg-accent/50 flex items-center transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowAdvanced(!showAdvanced);
@@ -455,19 +469,19 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Avancerade inställningar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-sm px-3 py-2 h-auto text-destructive hover:text-destructive"
+                    </button>
+                    <button
+                      className="w-full justify-start text-sm px-3 py-2 h-auto rounded text-destructive hover:bg-destructive/10 flex items-center transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowDeleteDialog(true);
                         setShowOptionsMenu(false);
+                        // Small delay to ensure menu closes before dialog opens
+                        setTimeout(() => setShowDeleteDialog(true), 50);
                       }}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Ta bort fråga
-                    </Button>
+                    </button>
                   </div>
                 )}
               </div>

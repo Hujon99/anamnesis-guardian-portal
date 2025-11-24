@@ -31,6 +31,7 @@ import { UpgradeStatsCards } from "@/components/AdminPanel/UpgradeStatsCards";
 import FormCompletionStats from "@/components/AdminPanel/FormCompletionStats";
 import { StartedFormsAnalysis } from "@/components/AdminPanel/StartedFormsAnalysis";
 import { FormAbandonmentHeatmap } from "@/components/AdminPanel/FormAbandonmentHeatmap";
+import { SentEntriesAnalysis } from "@/components/AdminPanel/SentEntriesAnalysis";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Store = Tables<"stores">;
@@ -168,6 +169,10 @@ const AdminPanel = () => {
           </TabsTrigger>
           {isSystemAdmin && (
             <>
+              <TabsTrigger value="sent-analysis" className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Sent Formulär
+              </TabsTrigger>
               <TabsTrigger value="completion" className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
                 Formulär-completion
@@ -285,6 +290,23 @@ const AdminPanel = () => {
         
         {isSystemAdmin && (
           <>
+            <TabsContent value="sent-analysis" className="mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    'Sent' Formulär Analys
+                  </CardTitle>
+                  <CardDescription>
+                    Statistik över gamla formulär med status 'sent' som aldrig slutfördes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <SentEntriesAnalysis />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="completion" className="mt-0">
               <Card>
                 <CardHeader>

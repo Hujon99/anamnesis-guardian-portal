@@ -10,7 +10,7 @@ Denna guide visar steg-för-steg hur du integrerar ServeIT med Anamnesportalen.
 
 ## Steg 1: Skaffa API-nyckel
 
-1. Logga in på [Anamnesportalen Admin Panel](https://anamnesportalen.se/admin)
+1. Logga in på [Anamnesportalen Admin Panel](https://anamnes.binokeloptik.se/admin)
 2. Navigera till **API Integration**
 3. Klicka **Skapa ny API-nyckel**
 4. Välj miljö: **Sandbox** för testning, **Production** för live
@@ -78,6 +78,12 @@ async function createBooking(bookingData) {
   };
 }
 ```
+
+### Store-Form Validering
+
+API:et validerar automatiskt att formuläret är aktivt för den angivna butiken:
+- Om butiken inte har en koppling till formuläret skapas den automatiskt
+- Om formuläret är inaktiverat för butiken returneras error `FORM_NOT_ACTIVE_FOR_STORE`
 
 ### SMS/Email Template
 
@@ -198,6 +204,7 @@ Innan du går live, testa hela flödet i sandbox:
 - [ ] Öppna länken och fyll i formulär
 - [ ] Verifiera att optikern kan hämta anamnes i journal
 - [ ] Testa felhantering (ogiltig bookingId, ej ifyllt formulär)
+- [ ] Testa `FORM_NOT_ACTIVE_FOR_STORE` error (inaktivera formulär för butik)
 
 ### Vanliga testscenarier
 
@@ -205,6 +212,7 @@ Innan du går live, testa hela flödet i sandbox:
 2. **Patient fyllt ej i:** Hämta före ifyllning (förväntad 409)
 3. **Felaktig bookingId:** Hämta med fel ID (förväntad 404)
 4. **Utgången länk:** Försök fylla i efter 7 dagar
+5. **Inaktiverat formulär:** Skapa länk för butik där formuläret är inaktiverat (förväntad 403)
 
 ## Steg 5: Go Live
 
@@ -231,6 +239,13 @@ När sandbox-tester är godkända:
 - Kontrollera att `formType` stämmer med tillgängliga formulär
 - Verifiera att formuläret är aktivt för er organisation
 
+### Problem: "Form not active for store"
+
+**Lösning:**
+- Gå till Admin Panel → Formulär
+- Kontrollera att formuläret är aktiverat för den specifika butiken
+- Alternativt: skicka utan `storeName` för att hoppa över valideringen
+
 ### Problem: "Anamnesis not ready"
 
 **Normal situation:** Patienten har inte slutfört formuläret än.
@@ -245,4 +260,7 @@ När sandbox-tester är godkända:
 
 ## Changelog
 
-- **2025-11-25:** Initial release v1.0.0
+- **2025-11-25 v1.1.0:** 
+  - Lagt till dokumentation för store-form validering
+  - Uppdaterat URL:er till `anamnes.binokeloptik.se`
+- **2025-11-25 v1.0.0:** Initial release

@@ -1,6 +1,6 @@
 # Anamnesportalen API Dokumentation
 
-Version: 1.0.0  
+Version: 1.1.0  
 Senast uppdaterad: 2025-11-25
 
 ## 📋 OpenAPI Specifikation
@@ -41,6 +41,8 @@ npx @openapitools/openapi-generator-cli generate \
 Anamnesportalen API möjliggör integration med externa bokningssystem som ServeIT. API:et använder REST och JSON för kommunikation.
 
 **Base URL:** `https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1`
+
+**App URL:** `https://anamnes.binokeloptik.se`
 
 ## Autentisering
 
@@ -101,7 +103,8 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
 | bookingId | string | ✅ | Unikt ID från bokningssystemet |
 | formType | string | ✅* | Typ av undersökning (se typer nedan) |
 | formId | uuid | ✅* | Direkt form ID (alternativ till formType) |
-| storeName | string | ✅ | Namn på butik/klinik |
+| storeName | string | ⚪ | Namn på butik/klinik (skapas om den inte finns) |
+| storeId | uuid | ⚪ | UUID för butik (om känt) |
 | firstName | string | ⚪ | Patientens förnamn |
 | personalNumber | string | ⚪ | Personnummer (ÅÅÅÅMMDD-XXXX) |
 | bookingDate | ISO 8601 | ⚪ | Datum för undersökning |
@@ -116,14 +119,20 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
 - `Linsundersökning` - Kontaktlinsanpassning
 - `CISS-formulär` - CISS-formulär
 
+#### Store-Form Validation
+
+När en butik anges valideras att formuläret är aktivt för den butiken via `store_forms`-tabellen:
+- Om ingen koppling finns skapas den automatiskt
+- Om formuläret är inaktiverat för butiken returneras error `FORM_NOT_ACTIVE_FOR_STORE`
+
 #### Response 200 (Success)
 ```json
 {
   "success": true,
   "accessToken": "550e8400-e29b-41d4-a716-446655440000",
   "entryId": "7f3e4d2a-1b5c-4e9f-8d3a-9c7b6e5f4d3c",
-  "formUrl": "https://anamnesportalen.se/form?token=550e8400...",
-  "qrCodeUrl": "https://anamnesportalen.se/api/qr?token=550e8400...",
+  "formUrl": "https://anamnes.binokeloptik.se/form?token=550e8400...",
+  "qrCodeUrl": "https://anamnes.binokeloptik.se/qr?token=550e8400...",
   "expiresAt": "2025-12-01T14:00:00Z",
   "formId": "3e7b9f1a-2c5d-4e8f-9a1b-6c7d8e9f0a1b",
   "organizationId": "org_xxxxxxxxx",
@@ -138,6 +147,16 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
 {
   "error": "Invalid API key",
   "code": "INVALID_API_KEY"
+}
+```
+
+#### Response 403 (Form Not Active for Store)
+```json
+{
+  "error": "Form is not active for this store",
+  "code": "FORM_NOT_ACTIVE_FOR_STORE",
+  "formId": "3e7b9f1a-2c5d-4e8f-9a1b-6c7d8e9f0a1b",
+  "storeId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -261,7 +280,7 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/get-anamnesis
 | 200 | Success |
 | 400 | Bad Request - Invalid parameters |
 | 401 | Unauthorized - Invalid/expired API key |
-| 403 | Forbidden - Insufficient permissions |
+| 403 | Forbidden - Insufficient permissions or form not active for store |
 | 404 | Not Found - Resource doesn't exist |
 | 409 | Conflict - Resource not in correct state |
 | 500 | Internal Server Error |
@@ -275,6 +294,8 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/get-anamnesis
 | INSUFFICIENT_PERMISSIONS | Nyckeln saknar behörighet | Kontrollera permissions i admin panel |
 | MISSING_REQUIRED_FIELD | Obligatoriskt fält saknas | Kontrollera request body |
 | FORM_NOT_FOUND | Formulärtyp finns inte | Kontrollera att formType är korrekt |
+| FORM_NOT_ACTIVE_FOR_STORE | Formuläret är inaktiverat för butiken | Aktivera formuläret för butiken i admin |
+| UNAUTHORIZED_FORM_ACCESS | Formuläret tillhör inte er organisation | Kontrollera formId |
 | ANAMNESIS_NOT_FOUND | Ingen anamnes för bookingId | Kontrollera att patienten fyllt i formulär |
 | ANAMNESIS_NOT_READY | Anamnes ej färdig | Vänta tills patient slutfört |
 
@@ -292,6 +313,14 @@ Vid överträdelse returneras status `429 Too Many Requests`.
 3. **Hantera timeout:** Använd 30 sekunders timeout för API-anrop
 4. **Använd sandbox:** Testa alltid i sandbox-miljö först
 5. **Logga errors:** Logga alla error codes för enklare felsökning
+
+## Changelog
+
+- **2025-11-25 v1.1.0:** 
+  - Lagt till validering av store-form assignments
+  - Ny felkod `FORM_NOT_ACTIVE_FOR_STORE`
+  - Uppdaterat URL:er till `anamnes.binokeloptik.se`
+- **2025-11-25 v1.0.0:** Initial release
 
 ## Support
 

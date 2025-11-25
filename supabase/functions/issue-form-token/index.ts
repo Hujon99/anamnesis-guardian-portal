@@ -285,6 +285,57 @@ serve(async (req: Request) => {
       }
     }
     
+    // Validate that the form is active for the store via store_forms table
+    if (finalStoreId && formData.organization_id) {
+      console.log("🔍 Validating form-store assignment...");
+      
+      const { data: storeFormAssignment, error: assignmentError } = await supabase
+        .from('store_forms')
+        .select('id, is_active')
+        .eq('store_id', finalStoreId)
+        .eq('form_id', actualFormId)
+        .eq('organization_id', formData.organization_id)
+        .single();
+      
+      if (assignmentError && assignmentError.code !== 'PGRST116') {
+        console.error("Error checking store-form assignment:", assignmentError);
+        // Log but don't fail - assignment might not exist yet
+      }
+      
+      if (!storeFormAssignment) {
+        console.warn("⚠️ No store-form assignment found for store:", finalStoreId, "and form:", actualFormId);
+        // Create the assignment automatically for API-created entries
+        console.log("📝 Auto-creating store-form assignment...");
+        const { error: createAssignmentError } = await supabase
+          .from('store_forms')
+          .insert({
+            store_id: finalStoreId,
+            form_id: actualFormId,
+            organization_id: formData.organization_id,
+            is_active: true
+          });
+        
+        if (createAssignmentError && !createAssignmentError.message?.includes('duplicate')) {
+          console.error("Failed to create store-form assignment:", createAssignmentError);
+        } else {
+          console.log("✅ Store-form assignment created");
+        }
+      } else if (!storeFormAssignment.is_active) {
+        console.error("❌ Form is not active for this store");
+        return new Response(
+          JSON.stringify({ 
+            error: 'Form is not active for this store',
+            code: 'FORM_NOT_ACTIVE_FOR_STORE',
+            formId: actualFormId,
+            storeId: finalStoreId
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        console.log("✅ Form-store assignment validated");
+      }
+    }
+    
     // Generate access token
     const accessToken = uuidv4();
     

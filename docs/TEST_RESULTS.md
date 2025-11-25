@@ -1,21 +1,55 @@
-# API Test Results
+# API Test Results Template
+
+> ⚠️ **VIKTIGT: Detta är en MALL för testresultat**
+> 
+> Resultaten nedan är **förväntade värden**, INTE faktiska testresultat.
+> Du måste köra testerna manuellt och uppdatera detta dokument med verkliga resultat.
+
+---
+
+## 📋 Hur du kör testerna
+
+### Förberedelser
+
+1. **Skapa en API-nyckel:**
+   - Logga in i Anamnesportalen Admin Panel
+   - Gå till "API-integration" → "Skapa ny nyckel"
+   - Kopiera API-nyckeln (börjar med `anp_live_` eller `anp_test_`)
+   - Spara nyckeln säkert - den visas bara en gång!
+
+2. **Sätt miljövariabler (valfritt, för enklare testning):**
+   ```bash
+   export API_KEY="anp_test_din_nyckel_här"
+   export API_BASE="https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1"
+   ```
+
+### Kör testerna
+
+Kör varje `curl`-kommando nedan i terminalen och jämför svaret med förväntat resultat.
+
+---
 
 ## Test Environment
-- **Date:** 2025-11-25
+
+- **Date:** `[FYLL I DATUM]`
 - **API Base URL:** `https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1`
-- **Environment:** Sandbox (test)
+- **Environment:** `[sandbox/production]`
+- **API Key Used:** `anp_test_***` (dölj fullständig nyckel)
+- **Tested By:** `[DITT NAMN]`
 
 ---
 
 ## Test Scenarios
 
-### ✅ Test 1: Create Form Link (Happy Path)
+### Test 1: Create Form Link (Happy Path)
 
-**Request:**
+**Status:** ⏳ EJ TESTAT
+
+**Kör detta kommando:**
 ```bash
-curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-token \
+curl -X POST "$API_BASE/issue-form-token" \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: [TEST_API_KEY]" \
+  -H "X-API-Key: $API_KEY" \
   -d '{
     "bookingId": "test_booking_001",
     "formType": "Synundersökning",
@@ -24,9 +58,7 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-to
   }'
 ```
 
-**Expected Result:** 200 OK with `accessToken`, `formUrl`, and `qrCodeUrl`
-
-**Actual Result:**
+**Förväntat resultat (200 OK):**
 ```json
 {
   "success": true,
@@ -40,25 +72,30 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-to
 }
 ```
 
-**Status:** ✅ PASS
+**Faktiskt resultat:**
+```
+[KLISTRA IN SVAR HÄR]
+```
+
+**Resultat:** ⬜ PASS / ⬜ FAIL
 
 ---
 
-### ✅ Test 2: Get Anamnesis (Not Completed)
+### Test 2: Get Anamnesis (Not Completed)
 
-**Request:**
+**Status:** ⏳ EJ TESTAT
+
+**Kör detta kommando:**
 ```bash
-curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/get-anamnesis \
+curl -X POST "$API_BASE/get-anamnesis" \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: [TEST_API_KEY]" \
+  -H "X-API-Key: $API_KEY" \
   -d '{
     "bookingId": "test_booking_001"
   }'
 ```
 
-**Expected Result:** 409 Conflict (anamnesis not ready)
-
-**Actual Result:**
+**Förväntat resultat (409 Conflict):**
 ```json
 {
   "error": "Anamnesis not completed yet",
@@ -68,30 +105,22 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/get-anamnesis
 }
 ```
 
-**Status:** ✅ PASS
+**Faktiskt resultat:**
+```
+[KLISTRA IN SVAR HÄR]
+```
+
+**Resultat:** ⬜ PASS / ⬜ FAIL
 
 ---
 
-### ✅ Test 3: Complete Form and Retrieve
+### Test 3: Invalid API Key
 
-**Steps:**
-1. Create form link (from Test 1)
-2. Open `formUrl` in browser
-3. Fill out form completely
-4. Submit form
-5. Retrieve anamnesis via API
+**Status:** ⏳ EJ TESTAT
 
-**Expected Result:** 200 OK with complete anamnesis data
-
-**Status:** ⏳ PENDING (requires manual form completion)
-
----
-
-### ✅ Test 4: Invalid API Key
-
-**Request:**
+**Kör detta kommando:**
 ```bash
-curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-token \
+curl -X POST "$API_BASE/issue-form-token" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: invalid_key_12345" \
   -d '{
@@ -100,9 +129,7 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-to
   }'
 ```
 
-**Expected Result:** 401 Unauthorized
-
-**Actual Result:**
+**Förväntat resultat (401 Unauthorized):**
 ```json
 {
   "error": "Invalid API key",
@@ -110,25 +137,30 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-to
 }
 ```
 
-**Status:** ✅ PASS
+**Faktiskt resultat:**
+```
+[KLISTRA IN SVAR HÄR]
+```
+
+**Resultat:** ⬜ PASS / ⬜ FAIL
 
 ---
 
-### ✅ Test 5: Missing Required Fields
+### Test 4: Missing Required Fields
 
-**Request:**
+**Status:** ⏳ EJ TESTAT
+
+**Kör detta kommando:**
 ```bash
-curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-token \
+curl -X POST "$API_BASE/issue-form-token" \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: [TEST_API_KEY]" \
+  -H "X-API-Key: $API_KEY" \
   -d '{
     "formType": "Synundersökning"
   }'
 ```
 
-**Expected Result:** 400 Bad Request (missing bookingId)
-
-**Actual Result:**
+**Förväntat resultat (400 Bad Request):**
 ```json
 {
   "error": "Missing required parameter: bookingId",
@@ -136,26 +168,31 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-to
 }
 ```
 
-**Status:** ✅ PASS
+**Faktiskt resultat:**
+```
+[KLISTRA IN SVAR HÄR]
+```
+
+**Resultat:** ⬜ PASS / ⬜ FAIL
 
 ---
 
-### ✅ Test 6: Invalid Form Type
+### Test 5: Invalid Form Type
 
-**Request:**
+**Status:** ⏳ EJ TESTAT
+
+**Kör detta kommando:**
 ```bash
-curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-token \
+curl -X POST "$API_BASE/issue-form-token" \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: [TEST_API_KEY]" \
+  -H "X-API-Key: $API_KEY" \
   -d '{
     "bookingId": "test_booking_003",
     "formType": "InvalidExamType"
   }'
 ```
 
-**Expected Result:** 404 Not Found
-
-**Actual Result:**
+**Förväntat resultat (404 Not Found):**
 ```json
 {
   "error": "No active form found for type: InvalidExamType",
@@ -163,25 +200,30 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/issue-form-to
 }
 ```
 
-**Status:** ✅ PASS
+**Faktiskt resultat:**
+```
+[KLISTRA IN SVAR HÄR]
+```
+
+**Resultat:** ⬜ PASS / ⬜ FAIL
 
 ---
 
-### ✅ Test 7: Get Non-Existent Anamnesis
+### Test 6: Get Non-Existent Anamnesis
 
-**Request:**
+**Status:** ⏳ EJ TESTAT
+
+**Kör detta kommando:**
 ```bash
-curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/get-anamnesis \
+curl -X POST "$API_BASE/get-anamnesis" \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: [TEST_API_KEY]" \
+  -H "X-API-Key: $API_KEY" \
   -d '{
     "bookingId": "nonexistent_booking_999"
   }'
 ```
 
-**Expected Result:** 404 Not Found
-
-**Actual Result:**
+**Förväntat resultat (404 Not Found):**
 ```json
 {
   "error": "No anamnesis found for this booking",
@@ -190,57 +232,91 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/get-anamnesis
 }
 ```
 
-**Status:** ✅ PASS
+**Faktiskt resultat:**
+```
+[KLISTRA IN SVAR HÄR]
+```
+
+**Resultat:** ⬜ PASS / ⬜ FAIL
 
 ---
 
-## Edge Cases Tested
+### Test 7: Complete Flow (End-to-End)
 
-| Test Case | Status | Notes |
-|-----------|--------|-------|
-| Multiple requests with same bookingId | ⏳ TODO | Should return existing entry |
-| Expired API key | ⏳ TODO | Requires creating expired key |
-| API key without write permission | ⏳ TODO | Requires permission configuration |
-| Special characters in storeName | ⏳ TODO | UTF-8 handling |
-| Very long bookingId (>255 chars) | ⏳ TODO | Input validation |
-| Null values in optional fields | ✅ PASS | Handled correctly |
-| Custom expiresInDays value | ⏳ TODO | Verify expiry calculation |
+**Status:** ⏳ EJ TESTAT
 
----
+**Steg:**
+1. Skapa formulärlänk (Test 1)
+2. Öppna `formUrl` i webbläsaren
+3. Fyll i formuläret helt
+4. Skicka in formuläret
+5. Hämta anamnes via API
 
-## Known Limitations
+**Kör detta kommando (efter att formuläret är ifyllt):**
+```bash
+curl -X POST "$API_BASE/get-anamnesis" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -d '{
+    "bookingId": "test_booking_001",
+    "includeRawData": true
+  }'
+```
 
-1. **QR Code Generation:** The `qrCodeUrl` endpoint is not yet implemented (returns URL but endpoint needs to be created)
-2. **Rate Limiting:** Not yet enforced (planned for future release)
-3. **Webhooks:** Not available in v1.0.0
+**Förväntat resultat (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "bookingId": "test_booking_001",
+    "status": "ready",
+    "patientName": "Test Patient",
+    "summary": "...",
+    "answers": { ... },
+    "submittedAt": "...",
+    "rawData": "..."
+  }
+}
+```
 
----
+**Faktiskt resultat:**
+```
+[KLISTRA IN SVAR HÄR]
+```
 
-## Performance Metrics
-
-| Endpoint | Avg Response Time | Success Rate |
-|----------|-------------------|--------------|
-| issue-form-token | ~300ms | 100% |
-| get-anamnesis | ~250ms | 100% |
-
----
-
-## Recommendations for Production
-
-1. ✅ Implement rate limiting
-2. ✅ Add monitoring/alerting for API errors
-3. ✅ Create QR code generation endpoint
-4. ✅ Add API usage dashboard in admin panel
-5. ✅ Implement webhook system for real-time updates
+**Resultat:** ⬜ PASS / ⬜ FAIL
 
 ---
 
 ## Test Summary
 
-- **Total Tests:** 7
-- **Passed:** 7
-- **Failed:** 0
-- **Pending:** 0
-- **Coverage:** Core functionality complete
+| Test | Beskrivning | Status |
+|------|-------------|--------|
+| 1 | Create Form Link (Happy Path) | ⏳ EJ TESTAT |
+| 2 | Get Anamnesis (Not Completed) | ⏳ EJ TESTAT |
+| 3 | Invalid API Key | ⏳ EJ TESTAT |
+| 4 | Missing Required Fields | ⏳ EJ TESTAT |
+| 5 | Invalid Form Type | ⏳ EJ TESTAT |
+| 6 | Get Non-Existent Anamnesis | ⏳ EJ TESTAT |
+| 7 | Complete Flow (End-to-End) | ⏳ EJ TESTAT |
 
-**Overall Status:** ✅ Ready for integration testing with ServeIT
+**Totalt:** 0/7 testade
+
+---
+
+## Anteckningar
+
+```
+[Skriv eventuella observationer, buggar eller problem här]
+```
+
+---
+
+## Signoff
+
+- [ ] Alla tester körda
+- [ ] Alla PASS-tester verifierade
+- [ ] Alla FAIL-tester rapporterade som issues
+- [ ] Dokumentet uppdaterat med faktiska resultat
+
+**Testat av:** _________________ **Datum:** _________________

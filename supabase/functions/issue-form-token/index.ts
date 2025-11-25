@@ -3,7 +3,8 @@
  * This Edge Function generates access tokens for magic link anamnes forms.
  * It creates a new entry in the anamnes_entries table with booking information
  * and returns an access token that can be used to access the form.
- * It verifies that the form exists and belongs to the correct organization.
+ * 
+ * NEW: Now supports API key authentication and formType parameter for external integrations.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -13,7 +14,7 @@ import { v4 as uuidv4 } from "https://esm.sh/uuid@9.0.1";
 // Define CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
 };
 
 // Create a Supabase client using env vars
@@ -29,6 +30,66 @@ serve(async (req: Request) => {
   try {
     console.log("Request received:", req.method);
     
+    // Initialize Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    });
+    
+    // Check for API key authentication
+    const apiKey = req.headers.get('x-api-key');
+    let organizationId: string | null = null;
+    let isApiRequest = false;
+
+    if (apiKey) {
+      console.log("🔑 API key provided, validating...");
+      
+      // Validate API key
+      const { data: apiKeyData, error: apiKeyError } = await supabase
+        .from('api_keys')
+        .select('organization_id, permissions, is_active, expires_at')
+        .eq('api_key', apiKey)
+        .eq('is_active', true)
+        .single();
+
+      if (apiKeyError || !apiKeyData) {
+        console.error("❌ Invalid API key");
+        return new Response(
+          JSON.stringify({ error: 'Invalid API key', code: 'INVALID_API_KEY' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check expiry
+      if (apiKeyData.expires_at && new Date(apiKeyData.expires_at) < new Date()) {
+        console.error("❌ API key expired");
+        return new Response(
+          JSON.stringify({ error: 'API key expired', code: 'API_KEY_EXPIRED' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check write permission
+      const permissions = Array.isArray(apiKeyData.permissions) ? apiKeyData.permissions : [];
+      if (!permissions.includes('write')) {
+        console.error("❌ Insufficient permissions");
+        return new Response(
+          JSON.stringify({ error: 'Insufficient permissions', code: 'INSUFFICIENT_PERMISSIONS' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      organizationId = apiKeyData.organization_id;
+      isApiRequest = true;
+      
+      console.log("✅ API key validated for organization:", organizationId);
+      
+      // Update last_used_at
+      await supabase
+        .from('api_keys')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('api_key', apiKey);
+    }
+    
     // Parse the request body
     const { 
       bookingId, 
@@ -38,19 +99,35 @@ serve(async (req: Request) => {
       storeName: inputStoreName, 
       bookingDate, 
       formId,
+      formType,
       isKioskMode = false,
-      requireSupervisorCode = false
+      requireSupervisorCode = false,
+      expiresInDays = 7,
+      metadata
     } = await req.json();
     
     // Create mutable variable for store name
     let effectiveStoreName = inputStoreName;
     
     // Validate required parameters
-    if (!bookingId || !formId) {
+    if (!bookingId) {
       return new Response(
         JSON.stringify({ 
-          error: 'Missing required parameters',
-          details: 'bookingId and formId are required'
+          error: 'Missing required parameter: bookingId',
+          code: 'MISSING_REQUIRED_FIELD'
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    if (!formId && !formType) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Either formId or formType must be provided',
+          code: 'MISSING_REQUIRED_FIELD'
         }),
         { 
           status: 400, 
@@ -59,24 +136,61 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("Parameters received:", { bookingId, firstName, personalNumber, storeId, storeName: inputStoreName, bookingDate, formId });
+    console.log("Parameters received:", { bookingId, firstName, personalNumber, storeId, storeName: inputStoreName, bookingDate, formId, formType, isApiRequest });
     
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false }
-    });
+    // Determine actual formId
+    let actualFormId = formId;
+
+    // If formType is provided instead of formId, look up the form
+    if (!actualFormId && formType && organizationId) {
+      console.log("🔍 Looking up form by type:", formType, "for organization:", organizationId);
+      
+      const { data: forms, error: formLookupError } = await supabase
+        .from('anamnes_forms')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('examination_type', formType)
+        .eq('is_active', true)
+        .limit(1);
+      
+      if (formLookupError) {
+        console.error("Error looking up form by type:", formLookupError);
+        return new Response(
+          JSON.stringify({ 
+            error: `Error looking up form type: ${formType}`,
+            code: 'FORM_LOOKUP_ERROR',
+            details: formLookupError.message
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (forms && forms.length > 0) {
+        actualFormId = forms[0].id;
+        console.log("✅ Found form by type:", actualFormId);
+      } else {
+        console.error("❌ No active form found for type:", formType);
+        return new Response(
+          JSON.stringify({ 
+            error: `No active form found for type: ${formType}`,
+            code: 'FORM_NOT_FOUND'
+          }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
     
     // Check if form exists and get its organization
     const { data: formData, error: formError } = await supabase
       .from('anamnes_forms')
-      .select('organization_id, title')
-      .eq('id', formId)
+      .select('organization_id, title, examination_type')
+      .eq('id', actualFormId)
       .single();
       
     if (formError) {
       console.error("Error fetching form data:", formError);
       return new Response(
-        JSON.stringify({ error: 'Invalid form ID', details: formError.message }),
+        JSON.stringify({ error: 'Invalid form ID', code: 'FORM_NOT_FOUND', details: formError.message }),
         { 
           status: 404, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -84,9 +198,20 @@ serve(async (req: Request) => {
       );
     }
     
+    // If API request, verify organization matches
+    if (isApiRequest && organizationId && formData.organization_id !== organizationId) {
+      console.error("❌ Form does not belong to API key's organization");
+      return new Response(
+        JSON.stringify({ 
+          error: 'Form does not belong to your organization',
+          code: 'UNAUTHORIZED_FORM_ACCESS'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     if (!formData.organization_id) {
       console.log("Form has no organization, using the default form");
-      // This is the default form (organization_id is null), which is fine to use
     } else {
       console.log("Using form for organization:", formData.organization_id);
     }
@@ -106,7 +231,7 @@ serve(async (req: Request) => {
       } else {
         // If it's not a UUID, treat it as a store name
         console.log("Received store ID that is not a UUID, treating as store name:", storeId);
-        effectiveStoreName = storeId; // Use storeId as storeName (using our mutable variable)
+        effectiveStoreName = storeId;
       }
     }
     
@@ -163,22 +288,22 @@ serve(async (req: Request) => {
     // Generate access token
     const accessToken = uuidv4();
     
-    // Set expiry date based on kiosk mode
-    // Kiosk mode: 24 hours, Normal mode: 7 days
+    // Set expiry date based on kiosk mode or custom days
     const expiresAt = new Date();
     if (isKioskMode) {
       expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours for kiosk
       console.log("Creating kiosk mode entry with 24h expiry");
     } else {
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days for normal
+      expiresAt.setDate(expiresAt.getDate() + expiresInDays); // Custom days (default 7)
+      console.log(`Creating entry with ${expiresInDays} days expiry`);
     }
     
     // Create new entry in anamnes_entries
     const { data: entry, error: entryError } = await supabase
       .from('anamnes_entries')
       .insert({
-        form_id: formId,
-        organization_id: formData.organization_id, // Use the organization from the form
+        form_id: actualFormId,
+        organization_id: formData.organization_id,
         access_token: accessToken,
         booking_id: bookingId,
         first_name: firstName || null,
@@ -198,7 +323,7 @@ serve(async (req: Request) => {
     if (entryError) {
       console.error("Error creating entry:", entryError);
       return new Response(
-        JSON.stringify({ error: 'Failed to create entry', details: entryError.message }),
+        JSON.stringify({ error: 'Failed to create entry', code: 'DATABASE_ERROR', details: entryError.message }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -206,14 +331,23 @@ serve(async (req: Request) => {
       );
     }
     
-    // Return the access token and entry ID, plus form metadata for prefetching
+    // Generate URLs
+    const baseUrl = 'https://anamnesportalen.se';
+    const formUrl = `${baseUrl}/form?token=${accessToken}`;
+    const qrCodeUrl = `${baseUrl}/api/qr?token=${accessToken}`;
+    
+    // Return enhanced response
     return new Response(
       JSON.stringify({ 
+        success: true,
         accessToken,
         entryId: entry.id,
+        formUrl,
+        qrCodeUrl,
         expiresAt: expiresAt.toISOString(),
-        formId: formId,
-        organizationId: formData.organization_id
+        formId: actualFormId,
+        organizationId: formData.organization_id,
+        ...(metadata && { metadata })
       }),
       { 
         status: 200, 
@@ -225,7 +359,7 @@ serve(async (req: Request) => {
     console.error("Unexpected error:", error);
     
     return new Response(
-      JSON.stringify({ error: 'Server error', details: error.message }),
+      JSON.stringify({ error: 'Server error', code: 'INTERNAL_ERROR', details: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

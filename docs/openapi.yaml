@@ -1,0 +1,653 @@
+openapi: 3.0.3
+info:
+  title: Anamnesportalen API
+  description: |
+    API för integration med externa bokningssystem som ServeIT. 
+    
+    Detta API gör det möjligt för externa system att:
+    - Skapa unika formulärlänkar för patienter
+    - Hämta färdig anamnesdata efter att patienten fyllt i formuläret
+    
+    ## Autentisering
+    Alla endpoints kräver en API-nyckel som skickas via `X-API-Key` header.
+    Kontakta din systemadministratör för att få en API-nyckel.
+    
+    ## Miljöer
+    - **Production**: Använd API-nycklar som börjar med `anp_live_`
+    - **Sandbox/Test**: Använd API-nycklar som börjar med `anp_test_`
+    
+    ## Rate Limits
+    - Write operations (POST /issue-form-token): 100 requests/minut
+    - Read operations (POST /get-anamnesis): 200 requests/minut
+  version: 1.0.0
+  contact:
+    name: Anamnesportalen Support
+    email: support@anamnesportalen.se
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1
+    description: Production Server
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Forms
+    description: Endpoints för att skapa och hantera formulärlänkar
+  - name: Anamnesis
+    description: Endpoints för att hämta färdig anamnesdata
+
+paths:
+  /issue-form-token:
+    post:
+      operationId: createFormLink
+      summary: Skapa formulärlänk för patient
+      description: |
+        Skapar en unik formulärlänk och QR-kod för en patient baserat på bokningsdata.
+        
+        Du kan antingen ange `formId` (UUID) eller `formType` (t.ex. "Synundersökning").
+        Om du anger `formType` kommer systemet att leta upp rätt formulär automatiskt.
+        
+        Länken är giltig i 7 dagar som standard (kan justeras med `expiresInDays`).
+      tags:
+        - Forms
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueFormTokenRequest'
+            examples:
+              withFormType:
+                summary: Skapa länk med formType
+                value:
+                  bookingId: "BK-2024-001234"
+                  formType: "Synundersökning"
+                  storeName: "Synoptik Stockholm"
+                  firstName: "Anna"
+                  personalNumber: "19850315-1234"
+                  bookingDate: "2024-12-20T10:00:00Z"
+                  expiresInDays: 7
+                  metadata:
+                    source: "ServeIT"
+                    bookingSystem: "v2.3"
+              withFormId:
+                summary: Skapa länk med formId
+                value:
+                  bookingId: "BK-2024-001235"
+                  formId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  firstName: "Erik"
+                  bookingDate: "2024-12-21T14:30:00Z"
+      responses:
+        '200':
+          description: Formulärlänk skapad framgångsrikt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueFormTokenResponse'
+              example:
+                success: true
+                accessToken: "550e8400-e29b-41d4-a716-446655440000"
+                formUrl: "https://app.anamnesportalen.se/form?token=550e8400-e29b-41d4-a716-446655440000"
+                qrCodeUrl: "https://app.anamnesportalen.se/qr/550e8400-e29b-41d4-a716-446655440000"
+                entryId: "660f9511-f3ac-52e5-b827-557766551111"
+                expiresAt: "2024-12-27T10:00:00Z"
+                formId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                organizationId: "org_2a3b4c5d6e7f8g9h"
+        '400':
+          description: Ogiltig request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingBookingId:
+                  summary: bookingId saknas
+                  value:
+                    error: "bookingId är obligatoriskt"
+                    code: "MISSING_REQUIRED_FIELD"
+                missingFormInfo:
+                  summary: Varken formId eller formType angivet
+                  value:
+                    error: "Antingen formId eller formType måste anges"
+                    code: "MISSING_REQUIRED_FIELD"
+        '401':
+          description: Autentisering misslyckades
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidKey:
+                  summary: Ogiltig API-nyckel
+                  value:
+                    error: "Ogiltig API-nyckel"
+                    code: "INVALID_API_KEY"
+                expiredKey:
+                  summary: API-nyckeln har gått ut
+                  value:
+                    error: "API-nyckeln har gått ut"
+                    code: "API_KEY_EXPIRED"
+        '403':
+          description: Otillräckliga behörigheter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                noWritePermission:
+                  summary: Saknar write-behörighet
+                  value:
+                    error: "API-nyckeln saknar write-behörighet"
+                    code: "INSUFFICIENT_PERMISSIONS"
+                unauthorizedForm:
+                  summary: Försök att använda formulär från annan organisation
+                  value:
+                    error: "Formuläret tillhör inte din organisation"
+                    code: "UNAUTHORIZED_FORM_ACCESS"
+        '404':
+          description: Resurs hittades inte
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Formulär med typ 'Synundersökning' hittades inte"
+                code: "FORM_NOT_FOUND"
+        '500':
+          description: Internt serverfel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Ett oväntat fel uppstod"
+                code: "INTERNAL_ERROR"
+
+  /get-anamnesis:
+    post:
+      operationId: getAnamnesis
+      summary: Hämta färdig anamnes för bokning
+      description: |
+        Hämtar färdig anamnesdata för en specifik bokning efter att patienten fyllt i formuläret.
+        
+        Anamnesen måste ha status 'ready', 'reviewed' eller 'journaled' för att kunna hämtas.
+        
+        Du kan även hämta rådata (`includeRawData: true`) och körkortsdata (`includeDrivingLicense: true`) om det finns.
+      tags:
+        - Anamnesis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetAnamnesisRequest'
+            examples:
+              basic:
+                summary: Grundläggande hämtning
+                value:
+                  bookingId: "BK-2024-001234"
+              withExtras:
+                summary: Hämta med rådata och körkortsinfo
+                value:
+                  bookingId: "BK-2024-001234"
+                  includeRawData: true
+                  includeDrivingLicense: true
+      responses:
+        '200':
+          description: Anamnes hämtad framgångsrikt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAnamnesisResponse'
+              example:
+                success: true
+                data:
+                  id: "660f9511-f3ac-52e5-b827-557766551111"
+                  bookingId: "BK-2024-001234"
+                  firstName: "Anna"
+                  personalNumber: "19850315-1234"
+                  status: "ready"
+                  createdAt: "2024-12-18T10:00:00Z"
+                  submittedAt: "2024-12-18T10:15:00Z"
+                  store:
+                    name: "Synoptik Stockholm"
+                    address: "Drottninggatan 1, 111 51 Stockholm"
+                    phone: "08-123 456 78"
+                    email: "stockholm@synoptik.se"
+                  aiSummary: "Patienten har inga tidigare ögonsjukdomar. Arbetar mycket vid dator och upplever lätt trötthet i ögonen vid skärmarbete."
+                  formattedRawData: "## Personuppgifter\n\n**Personnummer:** 19850315-1234\n\n## Hälsohistorik\n\n**Tidigare ögonsjukdomar:** Nej\n\n**Symptom:** Lätt trötthet vid skärmarbete"
+                  formId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  organizationId: "org_2a3b4c5d6e7f8g9h"
+        '400':
+          description: Ogiltig request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "bookingId är obligatoriskt"
+                code: "MISSING_REQUIRED_FIELD"
+        '401':
+          description: Autentisering misslyckades
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Ogiltig API-nyckel"
+                code: "INVALID_API_KEY"
+        '403':
+          description: Otillräckliga behörigheter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "API-nyckeln saknar read-behörighet"
+                code: "INSUFFICIENT_PERMISSIONS"
+        '404':
+          description: Anamnes hittades inte
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Ingen anamnes hittades för bookingId: BK-2024-001234"
+                code: "ANAMNESIS_NOT_FOUND"
+        '409':
+          description: Anamnes är inte klar ännu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Anamnesen är inte klar. Nuvarande status: draft"
+                code: "ANAMNESIS_NOT_READY"
+        '500':
+          description: Internt serverfel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Ett oväntat fel uppstod"
+                code: "INTERNAL_ERROR"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API-nyckel för autentisering. Hämta din API-nyckel från Admin Panel.
+        
+        Format:
+        - Production: `anp_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+        - Sandbox: `anp_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+
+  schemas:
+    IssueFormTokenRequest:
+      type: object
+      required:
+        - bookingId
+      properties:
+        bookingId:
+          type: string
+          description: Unikt ID för bokningen i ert system
+          example: "BK-2024-001234"
+        formType:
+          type: string
+          description: Typ av formulär (alternativ till formId)
+          enum:
+            - Synundersökning
+            - Körkortsundersökning
+            - Linsundersökning
+            - CISS-formulär
+          example: "Synundersökning"
+        formId:
+          type: string
+          format: uuid
+          description: UUID för specifikt formulär (alternativ till formType)
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        storeId:
+          type: string
+          format: uuid
+          description: UUID för butik (om känt)
+          example: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+        storeName:
+          type: string
+          description: Butiksnamn (skapas automatiskt om det inte finns)
+          example: "Synoptik Stockholm"
+        firstName:
+          type: string
+          description: Patientens förnamn
+          example: "Anna"
+        personalNumber:
+          type: string
+          description: Personnummer (ÅÅÅÅMMDD-XXXX)
+          pattern: '^\d{8}-\d{4}$'
+          example: "19850315-1234"
+        bookingDate:
+          type: string
+          format: date-time
+          description: Datum och tid för bokningen (ISO 8601)
+          example: "2024-12-20T10:00:00Z"
+        expiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 7
+          description: Antal dagar tills länken går ut
+          example: 7
+        isKioskMode:
+          type: boolean
+          default: false
+          description: Om formuläret ska öppnas i kiosk-läge (24h giltighetstid)
+          example: false
+        metadata:
+          type: object
+          description: Extra metadata att lagra tillsammans med bokningen
+          additionalProperties: true
+          example:
+            source: "ServeIT"
+            bookingSystem: "v2.3"
+            campaign: "winter2024"
+
+    IssueFormTokenResponse:
+      type: object
+      required:
+        - success
+        - accessToken
+        - formUrl
+        - qrCodeUrl
+        - entryId
+        - expiresAt
+        - formId
+        - organizationId
+      properties:
+        success:
+          type: boolean
+          description: Om operationen lyckades
+          example: true
+        accessToken:
+          type: string
+          format: uuid
+          description: Unik åtkomsttoken för formuläret
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        formUrl:
+          type: string
+          format: uri
+          description: URL till formuläret som patienten kan använda
+          example: "https://app.anamnesportalen.se/form?token=550e8400-e29b-41d4-a716-446655440000"
+        qrCodeUrl:
+          type: string
+          format: uri
+          description: URL till QR-kod som öppnar formuläret
+          example: "https://app.anamnesportalen.se/qr/550e8400-e29b-41d4-a716-446655440000"
+        entryId:
+          type: string
+          format: uuid
+          description: Internt ID för anamnesen
+          example: "660f9511-f3ac-52e5-b827-557766551111"
+        expiresAt:
+          type: string
+          format: date-time
+          description: När länken går ut (ISO 8601)
+          example: "2024-12-27T10:00:00Z"
+        formId:
+          type: string
+          format: uuid
+          description: ID för formuläret som används
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        organizationId:
+          type: string
+          description: ID för organisationen
+          example: "org_2a3b4c5d6e7f8g9h"
+
+    GetAnamnesisRequest:
+      type: object
+      required:
+        - bookingId
+      properties:
+        bookingId:
+          type: string
+          description: Unikt ID för bokningen
+          example: "BK-2024-001234"
+        includeRawData:
+          type: boolean
+          default: false
+          description: Om rådata (svar på alla frågor) ska inkluderas
+          example: false
+        includeDrivingLicense:
+          type: boolean
+          default: false
+          description: Om körkortsdata ska inkluderas (om tillämpligt)
+          example: false
+
+    GetAnamnesisResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          description: Om operationen lyckades
+          example: true
+        data:
+          $ref: '#/components/schemas/AnamnesisData'
+
+    AnamnesisData:
+      type: object
+      required:
+        - id
+        - bookingId
+        - status
+        - createdAt
+        - formId
+        - organizationId
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unikt ID för anamnesen
+          example: "660f9511-f3ac-52e5-b827-557766551111"
+        bookingId:
+          type: string
+          description: Boknings-ID från ert system
+          example: "BK-2024-001234"
+        firstName:
+          type: string
+          nullable: true
+          description: Patientens förnamn
+          example: "Anna"
+        personalNumber:
+          type: string
+          nullable: true
+          description: Personnummer
+          example: "19850315-1234"
+        status:
+          type: string
+          enum:
+            - ready
+            - reviewed
+            - journaled
+          description: Status för anamnesen
+          example: "ready"
+        createdAt:
+          type: string
+          format: date-time
+          description: När anamnesen skapades
+          example: "2024-12-18T10:00:00Z"
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: När patienten skickade in formuläret
+          example: "2024-12-18T10:15:00Z"
+        store:
+          $ref: '#/components/schemas/StoreInfo'
+        aiSummary:
+          type: string
+          nullable: true
+          description: AI-genererad sammanfattning av anamnesen
+          example: "Patienten har inga tidigare ögonsjukdomar. Arbetar mycket vid dator och upplever lätt trötthet i ögonen vid skärmarbete."
+        formattedRawData:
+          type: string
+          nullable: true
+          description: Formaterad rådata (Markdown) med alla svar
+          example: "## Personuppgifter\n\n**Personnummer:** 19850315-1234\n\n## Hälsohistorik\n\n**Tidigare ögonsjukdomar:** Nej"
+        answers:
+          type: object
+          nullable: true
+          description: Rådata med alla svar (endast om includeRawData=true)
+          additionalProperties: true
+          example:
+            health_history: "Inga tidigare ögonsjukdomar"
+            symptoms: "Lätt trötthet vid skärmarbete"
+        scoringResult:
+          $ref: '#/components/schemas/ScoringResult'
+        drivingLicense:
+          $ref: '#/components/schemas/DrivingLicenseData'
+        formId:
+          type: string
+          format: uuid
+          description: ID för formuläret som användes
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        organizationId:
+          type: string
+          description: ID för organisationen
+          example: "org_2a3b4c5d6e7f8g9h"
+
+    StoreInfo:
+      type: object
+      nullable: true
+      properties:
+        name:
+          type: string
+          example: "Synoptik Stockholm"
+        address:
+          type: string
+          nullable: true
+          example: "Drottninggatan 1, 111 51 Stockholm"
+        phone:
+          type: string
+          nullable: true
+          example: "08-123 456 78"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "stockholm@synoptik.se"
+
+    ScoringResult:
+      type: object
+      nullable: true
+      description: Scoring-resultat för formulär med poängsystem (t.ex. CISS)
+      properties:
+        totalScore:
+          type: integer
+          description: Total poäng
+          example: 18
+        maxPossibleScore:
+          type: integer
+          description: Max möjlig poäng
+          example: 40
+        percentage:
+          type: number
+          format: float
+          description: Procentandel av max poäng
+          example: 45.0
+        thresholdExceeded:
+          type: boolean
+          description: Om tröskelvärdet överskridits
+          example: true
+        flaggedQuestions:
+          type: array
+          description: Frågor som flaggats
+          items:
+            type: object
+            properties:
+              questionId:
+                type: string
+                example: "q_double_vision"
+              label:
+                type: string
+                example: "Dubbelseende"
+              score:
+                type: integer
+                example: 4
+              warningMessage:
+                type: string
+                nullable: true
+                example: "Högt värde - rekommenderar uppföljning"
+
+    DrivingLicenseData:
+      type: object
+      nullable: true
+      description: Data för körkortsundersökning (endast om includeDrivingLicense=true)
+      properties:
+        visualAcuityRightEye:
+          type: number
+          format: float
+          nullable: true
+          example: 1.0
+        visualAcuityLeftEye:
+          type: number
+          format: float
+          nullable: true
+          example: 0.8
+        visualAcuityBothEyes:
+          type: number
+          format: float
+          nullable: true
+          example: 1.2
+        passedExamination:
+          type: boolean
+          nullable: true
+          example: true
+        opticianDecision:
+          type: string
+          nullable: true
+          enum:
+            - approved
+            - requires_booking
+            - rejected
+          example: "approved"
+        notes:
+          type: string
+          nullable: true
+          example: "Godkänd för B-körkort"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Felmeddelande
+          example: "Ogiltig API-nyckel"
+        code:
+          type: string
+          description: Felkod för programmatisk hantering
+          enum:
+            - MISSING_REQUIRED_FIELD
+            - INVALID_API_KEY
+            - API_KEY_EXPIRED
+            - INSUFFICIENT_PERMISSIONS
+            - UNAUTHORIZED_FORM_ACCESS
+            - FORM_NOT_FOUND
+            - ANAMNESIS_NOT_FOUND
+            - ANAMNESIS_NOT_READY
+            - INTERNAL_ERROR
+          example: "INVALID_API_KEY"
+        details:
+          type: string
+          nullable: true
+          description: Ytterligare detaljer om felet
+          example: "API-nyckeln har gått ut sedan 2024-12-01"

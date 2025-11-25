@@ -3,6 +3,39 @@
 Version: 1.0.0  
 Senast uppdaterad: 2025-11-25
 
+## 📋 OpenAPI Specifikation
+
+En komplett maskinläsbar **OpenAPI 3.0.3**-specifikation finns i [`openapi.yaml`](./openapi.yaml).
+
+### Användning av OpenAPI-spec
+
+#### **Swagger UI (Interaktiv dokumentation)**
+Öppna [Swagger Editor](https://editor.swagger.io/) och importera `openapi.yaml` för interaktiv API-dokumentation och testning.
+
+#### **Postman**
+1. Öppna Postman
+2. Klicka på **Import** → **File** → Välj `openapi.yaml`
+3. Postman genererar automatiskt en Collection med alla endpoints
+
+#### **Kodgenerering**
+Generera klient-bibliotek automatiskt för ditt språk:
+
+```bash
+# TypeScript/JavaScript
+npx @openapitools/openapi-generator-cli generate \
+  -i openapi.yaml -g typescript-axios -o ./client
+
+# PHP
+npx @openapitools/openapi-generator-cli generate \
+  -i openapi.yaml -g php -o ./client
+
+# Python
+npx @openapitools/openapi-generator-cli generate \
+  -i openapi.yaml -g python -o ./client
+```
+
+---
+
 ## Översikt
 
 Anamnesportalen API möjliggör integration med externa bokningssystem som ServeIT. API:et använder REST och JSON för kommunikation.

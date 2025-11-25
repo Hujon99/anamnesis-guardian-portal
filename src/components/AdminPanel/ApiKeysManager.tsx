@@ -10,18 +10,21 @@
  * - View existing keys (masked secret)
  * - Deactivate keys
  * - View last usage timestamp
+ * 
+ * Uses Clerk for organization context and authenticated Supabase client for RLS.
  */
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useSafeOrganization } from "@/hooks/useSafeOrganization";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Key, Copy, Trash2, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Key, Copy, Trash2, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
@@ -45,15 +48,20 @@ interface NewApiKeyResponse {
 
 export function ApiKeysManager() {
   const queryClient = useQueryClient();
+  const { organization } = useSafeOrganization();
+  const { supabase, isLoading: isSupabaseLoading, isReady } = useSupabaseClient();
+  
   const [keyName, setKeyName] = useState("");
   const [environment, setEnvironment] = useState<'production' | 'sandbox'>('production');
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<NewApiKeyResponse | null>(null);
   const [showSecret, setShowSecret] = useState(false);
 
-  // Fetch API keys
+  // Fetch API keys - only when supabase client is ready
   const { data: apiKeys, isLoading } = useQuery({
-    queryKey: ['api-keys'],
+    queryKey: ['api-keys', organization?.id],
     queryFn: async () => {
+      if (!supabase) throw new Error('Supabase client not ready');
+      
       const { data, error } = await supabase
         .from('api_keys')
         .select('*')
@@ -61,12 +69,16 @@ export function ApiKeysManager() {
       
       if (error) throw error;
       return data as ApiKey[];
-    }
+    },
+    enabled: isReady && !!organization?.id
   });
 
   // Create API key mutation
   const createKeyMutation = useMutation({
     mutationFn: async ({ name, env }: { name: string; env: 'production' | 'sandbox' }) => {
+      if (!supabase) throw new Error('Supabase client not ready');
+      if (!organization?.id) throw new Error('Organization ID not found');
+
       // Generate random API key and secret
       const prefix = env === 'production' ? 'anp_live_' : 'anp_test_';
       const randomKey = prefix + crypto.randomUUID().replace(/-/g, '');
@@ -80,24 +92,14 @@ export function ApiKeysManager() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      const { data: user } = await supabase.auth.getUser();
-      
-      // Get organization_id from user metadata
-      const orgId = user.user?.user_metadata?.org_id || user.user?.user_metadata?.organization_id;
-      
-      if (!orgId) {
-        throw new Error('Organization ID not found');
-      }
-
       const { data: result, error } = await supabase
         .from('api_keys')
         .insert({
-          organization_id: orgId,
+          organization_id: organization.id,
           key_name: name,
           api_key: randomKey,
           api_secret_hash: hashHex,
           environment: env,
-          created_by: user.user?.id,
           permissions: ['read', 'write']
         })
         .select()
@@ -121,6 +123,8 @@ export function ApiKeysManager() {
   // Deactivate key mutation
   const deactivateKeyMutation = useMutation({
     mutationFn: async (keyId: string) => {
+      if (!supabase) throw new Error('Supabase client not ready');
+      
       const { error } = await supabase
         .from('api_keys')
         .update({ is_active: false })
@@ -149,6 +153,16 @@ export function ApiKeysManager() {
     }
     createKeyMutation.mutate({ name: keyName, env: environment });
   };
+
+  // Show loading state while Supabase client or organization is loading
+  if (isSupabaseLoading || !organization) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Laddar...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -189,7 +203,7 @@ export function ApiKeysManager() {
           </div>
           <Button 
             onClick={handleCreateKey}
-            disabled={createKeyMutation.isPending}
+            disabled={createKeyMutation.isPending || !isReady}
           >
             {createKeyMutation.isPending ? "Skapar..." : "Skapa API-nyckel"}
           </Button>

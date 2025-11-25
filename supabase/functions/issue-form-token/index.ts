@@ -331,10 +331,10 @@ serve(async (req: Request) => {
       );
     }
     
-    // Generate URLs
-    const baseUrl = 'https://anamnesportalen.se';
+    // Generate URLs - use production domain
+    const baseUrl = 'https://anamnes.binokeloptik.se';
     const formUrl = `${baseUrl}/form?token=${accessToken}`;
-    const qrCodeUrl = `${baseUrl}/api/qr?token=${accessToken}`;
+    const qrCodeUrl = `${baseUrl}/qr?token=${accessToken}`;
     
     // Return enhanced response
     return new Response(

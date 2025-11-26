@@ -187,6 +187,9 @@ export function ApiKeysManager() {
                 value={keyName}
                 onChange={(e) => setKeyName(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Endast för din egen identifiering. Hjälper dig hålla koll på vilken integration nyckeln används för.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="environment">Miljö</Label>
@@ -199,6 +202,9 @@ export function ApiKeysManager() {
                   <SelectItem value="sandbox">Sandbox (Test)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Sandbox-nycklar kan användas för tester utan att påverka produktionsdata.
+              </p>
             </div>
           </div>
           <Button 
@@ -216,41 +222,51 @@ export function ApiKeysManager() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="space-y-3">
             <p className="font-semibold">API-nyckel skapad! Spara dessa uppgifter säkert - secret visas bara en gång:</p>
-            <div className="space-y-2 font-mono text-sm bg-muted p-3 rounded">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">API Key:</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(newlyCreatedKey.apiKey, "API Key")}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="break-all">{newlyCreatedKey.apiKey}</p>
-              
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-muted-foreground">Secret:</span>
-                <div className="flex gap-2">
+            <div className="space-y-4 font-mono text-sm bg-muted p-3 rounded">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground font-sans font-medium">API Key:</span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowSecret(!showSecret)}
-                  >
-                    {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(newlyCreatedKey.secret, "Secret")}
+                    onClick={() => copyToClipboard(newlyCreatedKey.apiKey, "API Key")}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="break-all">{newlyCreatedKey.apiKey}</p>
+                <p className="text-xs text-muted-foreground font-sans mt-1">
+                  Skickas i headern <code className="bg-background px-1 py-0.5 rounded">X-API-Key</code> vid varje API-anrop.
+                </p>
               </div>
-              <p className="break-all">
-                {showSecret ? newlyCreatedKey.secret : '•'.repeat(40)}
-              </p>
+              
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground font-sans font-medium">Secret:</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSecret(!showSecret)}
+                    >
+                      {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(newlyCreatedKey.secret, "Secret")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="break-all">
+                  {showSecret ? newlyCreatedKey.secret : '•'.repeat(40)}
+                </p>
+                <p className="text-xs text-muted-foreground font-sans mt-1">
+                  Skickas i headern <code className="bg-background px-1 py-0.5 rounded">X-API-Secret</code> tillsammans med API Key för autentisering.
+                </p>
+              </div>
             </div>
             <Button
               variant="outline"
@@ -337,11 +353,18 @@ export function ApiKeysManager() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <p className="font-semibold mb-2">Integration med externa system</p>
-          <p className="text-sm">
-            Använd API-nyckeln i dina HTTP-anrop med headern <code className="bg-muted px-1 py-0.5 rounded">X-API-Key</code>.
-            Se fullständig API-dokumentation för endpoints och exempel.
-          </p>
+          <p className="font-semibold mb-2">Så använder du API-nycklarna</p>
+          <div className="text-sm space-y-2">
+            <p>Vid varje API-anrop behöver du skicka båda headers:</p>
+            <div className="bg-muted p-2 rounded font-mono text-xs space-y-1">
+              <p><span className="text-muted-foreground">X-API-Key:</span> din_api_nyckel</p>
+              <p><span className="text-muted-foreground">X-API-Secret:</span> din_secret</p>
+            </div>
+            <p className="text-muted-foreground">
+              <strong>API Key</strong> identifierar din organisation. <strong>Secret</strong> verifierar att anropet verkligen kommer från dig. 
+              Båda krävs för att autentisera ett API-anrop.
+            </p>
+          </div>
         </AlertDescription>
       </Alert>
     </div>

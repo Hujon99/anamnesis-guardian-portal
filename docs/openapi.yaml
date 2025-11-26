@@ -23,7 +23,11 @@ info:
     ## Store-Form Validering
     Vid skapande av formulärlänk valideras att formuläret är aktivt för den angivna butiken.
     Om ingen koppling finns skapas den automatiskt. Om formuläret är inaktiverat returneras error.
-  version: 1.1.0
+    
+    ## Dupliceringskontroll
+    Om en aktiv entry med samma bookingId redan finns returneras HTTP 409. 
+    Använd `force: true` för att ersätta den befintliga entryn.
+  version: 1.2.0
   contact:
     name: Anamnesportalen Support
     email: support@anamnesportalen.se
@@ -167,6 +171,22 @@ paths:
               example:
                 error: "Formulär med typ 'Synundersökning' hittades inte"
                 code: "FORM_NOT_FOUND"
+        '409':
+          description: Konflikt - en aktiv entry med samma bookingId finns redan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuplicateErrorResponse'
+              example:
+                error: "An active entry with this bookingId already exists"
+                code: "DUPLICATE_BOOKING_ID"
+                existingEntry:
+                  id: "7f3e4d2a-1b5c-4e9f-8d3a-9c7b6e5f4d3c"
+                  status: "sent"
+                  expiresAt: "2025-12-01T14:00:00Z"
+                  firstName: "Anna"
+                  createdAt: "2025-11-24T10:00:00Z"
+                hint: "Use force: true to replace the existing entry, or wait for it to expire."
         '500':
           description: Internt serverfel
           content:
@@ -358,6 +378,11 @@ components:
           type: boolean
           default: false
           description: Om formuläret ska öppnas i kiosk-läge (24h giltighetstid)
+          example: false
+        force:
+          type: boolean
+          default: false
+          description: Om true, ersätter befintlig aktiv entry med samma bookingId. Den gamla entryn markeras som 'replaced'.
           example: false
         metadata:
           type: object
@@ -654,6 +679,7 @@ components:
             - UNAUTHORIZED_FORM_ACCESS
             - FORM_NOT_FOUND
             - FORM_NOT_ACTIVE_FOR_STORE
+            - DUPLICATE_BOOKING_ID
             - ANAMNESIS_NOT_FOUND
             - ANAMNESIS_NOT_READY
             - INTERNAL_ERROR
@@ -663,3 +689,53 @@ components:
           nullable: true
           description: Ytterligare detaljer om felet
           example: "API-nyckeln har gått ut sedan 2024-12-01"
+
+    DuplicateErrorResponse:
+      type: object
+      required:
+        - error
+        - code
+        - existingEntry
+      properties:
+        error:
+          type: string
+          description: Felmeddelande
+          example: "An active entry with this bookingId already exists"
+        code:
+          type: string
+          description: Felkod
+          enum:
+            - DUPLICATE_BOOKING_ID
+          example: "DUPLICATE_BOOKING_ID"
+        existingEntry:
+          type: object
+          description: Information om den befintliga entryn
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Entry ID
+              example: "7f3e4d2a-1b5c-4e9f-8d3a-9c7b6e5f4d3c"
+            status:
+              type: string
+              description: Status för entryn
+              example: "sent"
+            expiresAt:
+              type: string
+              format: date-time
+              description: När entryn går ut
+              example: "2025-12-01T14:00:00Z"
+            firstName:
+              type: string
+              nullable: true
+              description: Patientens förnamn
+              example: "Anna"
+            createdAt:
+              type: string
+              format: date-time
+              description: När entryn skapades
+              example: "2025-11-24T10:00:00Z"
+        hint:
+          type: string
+          description: Tips för hur problemet kan lösas
+          example: "Use force: true to replace the existing entry, or wait for it to expire."

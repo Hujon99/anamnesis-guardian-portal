@@ -94,8 +94,8 @@ paths:
               example:
                 success: true
                 accessToken: "550e8400-e29b-41d4-a716-446655440000"
-                formUrl: "https://anamnes.binokeloptik.se/form?token=550e8400-e29b-41d4-a716-446655440000"
-                qrCodeUrl: "https://anamnes.binokeloptik.se/qr?token=550e8400-e29b-41d4-a716-446655440000"
+                formUrl: "https://anamnes.binokeloptik.se/patient-form?token=550e8400-e29b-41d4-a716-446655440000"
+                qrCodeUrl: "https://anamnes.binokeloptik.se/patient-form?token=550e8400-e29b-41d4-a716-446655440000"
                 entryId: "660f9511-f3ac-52e5-b827-557766551111"
                 expiresAt: "2024-12-27T10:00:00Z"
                 formId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -393,12 +393,12 @@ components:
           type: string
           format: uri
           description: URL till formuläret som patienten kan använda
-          example: "https://anamnes.binokeloptik.se/form?token=550e8400-e29b-41d4-a716-446655440000"
+          example: "https://anamnes.binokeloptik.se/patient-form?token=550e8400-e29b-41d4-a716-446655440000"
         qrCodeUrl:
           type: string
           format: uri
-          description: URL till QR-kod som öppnar formuläret
-          example: "https://anamnes.binokeloptik.se/qr?token=550e8400-e29b-41d4-a716-446655440000"
+          description: URL som kan användas i QR-kod för att öppna formuläret
+          example: "https://anamnes.binokeloptik.se/patient-form?token=550e8400-e29b-41d4-a716-446655440000"
         entryId:
           type: string
           format: uuid

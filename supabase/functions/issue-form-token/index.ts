@@ -384,8 +384,8 @@ serve(async (req: Request) => {
     
     // Generate URLs - use production domain
     const baseUrl = 'https://anamnes.binokeloptik.se';
-    const formUrl = `${baseUrl}/form?token=${accessToken}`;
-    const qrCodeUrl = `${baseUrl}/qr?token=${accessToken}`;
+    const formUrl = `${baseUrl}/patient-form?token=${accessToken}`;
+    const qrCodeUrl = `${baseUrl}/patient-form?token=${accessToken}`;
     
     // Return enhanced response
     return new Response(

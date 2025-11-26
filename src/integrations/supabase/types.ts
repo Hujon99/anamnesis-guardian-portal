@@ -284,6 +284,65 @@ export type Database = {
           },
         ]
       }
+      api_request_logs: {
+        Row: {
+          api_key_id: string | null
+          created_at: string
+          created_entry_id: string | null
+          endpoint: string
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          ip_address_anonymized: string | null
+          method: string
+          organization_id: string | null
+          request_params: Json | null
+          response_code: string | null
+          response_status: number
+          user_agent: string | null
+        }
+        Insert: {
+          api_key_id?: string | null
+          created_at?: string
+          created_entry_id?: string | null
+          endpoint: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          ip_address_anonymized?: string | null
+          method: string
+          organization_id?: string | null
+          request_params?: Json | null
+          response_code?: string | null
+          response_status: number
+          user_agent?: string | null
+        }
+        Update: {
+          api_key_id?: string | null
+          created_at?: string
+          created_entry_id?: string | null
+          endpoint?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          ip_address_anonymized?: string | null
+          method?: string
+          organization_id?: string | null
+          request_params?: Json | null
+          response_code?: string | null
+          response_status?: number
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_request_logs_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_auth_logs: {
         Row: {
           clerk_user_id: string | null

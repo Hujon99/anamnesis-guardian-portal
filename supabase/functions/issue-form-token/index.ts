@@ -4,7 +4,11 @@
  * It creates a new entry in the anamnes_entries table with booking information
  * and returns an access token that can be used to access the form.
  * 
- * NEW: Now supports API key authentication and formType parameter for external integrations.
+ * Features:
+ * - API key authentication for external integrations
+ * - formType parameter to look up forms by examination type
+ * - Duplicate booking detection with force override option
+ * - Comprehensive request logging to api_request_logs table
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -21,23 +25,103 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
+/**
+ * Anonymize IP address for GDPR compliance
+ * Keeps first two octets for IPv4, first four groups for IPv6
+ */
+function anonymizeIp(ip: string | null): string | null {
+  if (!ip) return null;
+  
+  // Handle comma-separated IPs (from x-forwarded-for)
+  const firstIp = ip.split(',')[0].trim();
+  
+  // IPv4
+  if (firstIp.includes('.')) {
+    const parts = firstIp.split('.');
+    if (parts.length === 4) {
+      return `${parts[0]}.${parts[1]}.x.x`;
+    }
+  }
+  
+  // IPv6
+  if (firstIp.includes(':')) {
+    const parts = firstIp.split(':');
+    if (parts.length >= 4) {
+      return `${parts.slice(0, 4).join(':')}:x:x:x:x`;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Log API request to database
+ */
+async function logApiRequest(
+  supabase: any,
+  data: {
+    endpoint: string;
+    method: string;
+    apiKeyId?: string | null;
+    organizationId?: string | null;
+    requestParams?: object;
+    responseStatus: number;
+    responseCode?: string;
+    errorMessage?: string;
+    createdEntryId?: string | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    executionTimeMs: number;
+  }
+) {
+  try {
+    await supabase.from('api_request_logs').insert({
+      endpoint: data.endpoint,
+      method: data.method,
+      api_key_id: data.apiKeyId || null,
+      organization_id: data.organizationId || null,
+      request_params: data.requestParams || null,
+      response_status: data.responseStatus,
+      response_code: data.responseCode || null,
+      error_message: data.errorMessage || null,
+      created_entry_id: data.createdEntryId || null,
+      ip_address_anonymized: data.ipAddress || null,
+      user_agent: data.userAgent || null,
+      execution_time_ms: data.executionTimeMs
+    });
+  } catch (logError) {
+    console.error("Failed to log API request:", logError);
+    // Don't throw - logging failure shouldn't break the API
+  }
+}
+
 serve(async (req: Request) => {
+  const startTime = Date.now();
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Extract metadata for logging
+  const ipAddress = anonymizeIp(req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'));
+  const userAgent = req.headers.get('user-agent');
+
+  // Initialize Supabase client early for logging
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false }
+  });
+
+  // Variables to track for logging
+  let apiKeyId: string | null = null;
+  let organizationId: string | null = null;
+  let requestParams: object = {};
+
   try {
     console.log("Request received:", req.method);
     
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false }
-    });
-    
     // Check for API key authentication
     const apiKey = req.headers.get('x-api-key');
-    let organizationId: string | null = null;
     let isApiRequest = false;
 
     if (apiKey) {
@@ -46,22 +130,46 @@ serve(async (req: Request) => {
       // Validate API key
       const { data: apiKeyData, error: apiKeyError } = await supabase
         .from('api_keys')
-        .select('organization_id, permissions, is_active, expires_at')
+        .select('id, organization_id, permissions, is_active, expires_at')
         .eq('api_key', apiKey)
         .eq('is_active', true)
         .single();
 
       if (apiKeyError || !apiKeyData) {
         console.error("❌ Invalid API key");
+        await logApiRequest(supabase, {
+          endpoint: 'issue-form-token',
+          method: req.method,
+          responseStatus: 401,
+          responseCode: 'INVALID_API_KEY',
+          errorMessage: 'Invalid API key',
+          ipAddress,
+          userAgent,
+          executionTimeMs: Date.now() - startTime
+        });
         return new Response(
           JSON.stringify({ error: 'Invalid API key', code: 'INVALID_API_KEY' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
+      apiKeyId = apiKeyData.id;
+
       // Check expiry
       if (apiKeyData.expires_at && new Date(apiKeyData.expires_at) < new Date()) {
         console.error("❌ API key expired");
+        await logApiRequest(supabase, {
+          endpoint: 'issue-form-token',
+          method: req.method,
+          apiKeyId,
+          organizationId: apiKeyData.organization_id,
+          responseStatus: 401,
+          responseCode: 'API_KEY_EXPIRED',
+          errorMessage: 'API key expired',
+          ipAddress,
+          userAgent,
+          executionTimeMs: Date.now() - startTime
+        });
         return new Response(
           JSON.stringify({ error: 'API key expired', code: 'API_KEY_EXPIRED' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -72,6 +180,18 @@ serve(async (req: Request) => {
       const permissions = Array.isArray(apiKeyData.permissions) ? apiKeyData.permissions : [];
       if (!permissions.includes('write')) {
         console.error("❌ Insufficient permissions");
+        await logApiRequest(supabase, {
+          endpoint: 'issue-form-token',
+          method: req.method,
+          apiKeyId,
+          organizationId: apiKeyData.organization_id,
+          responseStatus: 403,
+          responseCode: 'INSUFFICIENT_PERMISSIONS',
+          errorMessage: 'Insufficient permissions - write access required',
+          ipAddress,
+          userAgent,
+          executionTimeMs: Date.now() - startTime
+        });
         return new Response(
           JSON.stringify({ error: 'Insufficient permissions', code: 'INSUFFICIENT_PERMISSIONS' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -107,11 +227,40 @@ serve(async (req: Request) => {
       force = false  // Allow forcing creation even if duplicate exists
     } = await req.json();
     
+    // Store sanitized request params for logging (no PII)
+    requestParams = {
+      bookingId,
+      hasFirstName: !!firstName,
+      hasPersonalNumber: !!personalNumber,
+      storeId: storeId || null,
+      storeName: inputStoreName || null,
+      hasBookingDate: !!bookingDate,
+      formId: formId || null,
+      formType: formType || null,
+      isKioskMode,
+      requireSupervisorCode,
+      expiresInDays,
+      force
+    };
+    
     // Create mutable variable for store name
     let effectiveStoreName = inputStoreName;
     
     // Validate required parameters
     if (!bookingId) {
+      await logApiRequest(supabase, {
+        endpoint: 'issue-form-token',
+        method: req.method,
+        apiKeyId,
+        organizationId,
+        requestParams,
+        responseStatus: 400,
+        responseCode: 'MISSING_REQUIRED_FIELD',
+        errorMessage: 'Missing required parameter: bookingId',
+        ipAddress,
+        userAgent,
+        executionTimeMs: Date.now() - startTime
+      });
       return new Response(
         JSON.stringify({ 
           error: 'Missing required parameter: bookingId',
@@ -125,6 +274,19 @@ serve(async (req: Request) => {
     }
     
     if (!formId && !formType) {
+      await logApiRequest(supabase, {
+        endpoint: 'issue-form-token',
+        method: req.method,
+        apiKeyId,
+        organizationId,
+        requestParams,
+        responseStatus: 400,
+        responseCode: 'MISSING_REQUIRED_FIELD',
+        errorMessage: 'Either formId or formType must be provided',
+        ipAddress,
+        userAgent,
+        executionTimeMs: Date.now() - startTime
+      });
       return new Response(
         JSON.stringify({ 
           error: 'Either formId or formType must be provided',
@@ -156,6 +318,19 @@ serve(async (req: Request) => {
       
       if (formLookupError) {
         console.error("Error looking up form by type:", formLookupError);
+        await logApiRequest(supabase, {
+          endpoint: 'issue-form-token',
+          method: req.method,
+          apiKeyId,
+          organizationId,
+          requestParams,
+          responseStatus: 500,
+          responseCode: 'FORM_LOOKUP_ERROR',
+          errorMessage: `Error looking up form type: ${formType} - ${formLookupError.message}`,
+          ipAddress,
+          userAgent,
+          executionTimeMs: Date.now() - startTime
+        });
         return new Response(
           JSON.stringify({ 
             error: `Error looking up form type: ${formType}`,
@@ -171,6 +346,19 @@ serve(async (req: Request) => {
         console.log("✅ Found form by type:", actualFormId);
       } else {
         console.error("❌ No active form found for type:", formType);
+        await logApiRequest(supabase, {
+          endpoint: 'issue-form-token',
+          method: req.method,
+          apiKeyId,
+          organizationId,
+          requestParams,
+          responseStatus: 404,
+          responseCode: 'FORM_NOT_FOUND',
+          errorMessage: `No active form found for type: ${formType}`,
+          ipAddress,
+          userAgent,
+          executionTimeMs: Date.now() - startTime
+        });
         return new Response(
           JSON.stringify({ 
             error: `No active form found for type: ${formType}`,
@@ -190,6 +378,19 @@ serve(async (req: Request) => {
       
     if (formError) {
       console.error("Error fetching form data:", formError);
+      await logApiRequest(supabase, {
+        endpoint: 'issue-form-token',
+        method: req.method,
+        apiKeyId,
+        organizationId,
+        requestParams,
+        responseStatus: 404,
+        responseCode: 'FORM_NOT_FOUND',
+        errorMessage: `Invalid form ID - ${formError.message}`,
+        ipAddress,
+        userAgent,
+        executionTimeMs: Date.now() - startTime
+      });
       return new Response(
         JSON.stringify({ error: 'Invalid form ID', code: 'FORM_NOT_FOUND', details: formError.message }),
         { 
@@ -199,9 +400,27 @@ serve(async (req: Request) => {
       );
     }
     
+    // Update organizationId from form if not set from API key
+    if (!organizationId) {
+      organizationId = formData.organization_id;
+    }
+    
     // If API request, verify organization matches
     if (isApiRequest && organizationId && formData.organization_id !== organizationId) {
       console.error("❌ Form does not belong to API key's organization");
+      await logApiRequest(supabase, {
+        endpoint: 'issue-form-token',
+        method: req.method,
+        apiKeyId,
+        organizationId,
+        requestParams,
+        responseStatus: 403,
+        responseCode: 'UNAUTHORIZED_FORM_ACCESS',
+        errorMessage: 'Form does not belong to your organization',
+        ipAddress,
+        userAgent,
+        executionTimeMs: Date.now() - startTime
+      });
       return new Response(
         JSON.stringify({ 
           error: 'Form does not belong to your organization',
@@ -323,6 +542,19 @@ serve(async (req: Request) => {
         }
       } else if (!storeFormAssignment.is_active) {
         console.error("❌ Form is not active for this store");
+        await logApiRequest(supabase, {
+          endpoint: 'issue-form-token',
+          method: req.method,
+          apiKeyId,
+          organizationId,
+          requestParams,
+          responseStatus: 403,
+          responseCode: 'FORM_NOT_ACTIVE_FOR_STORE',
+          errorMessage: 'Form is not active for this store',
+          ipAddress,
+          userAgent,
+          executionTimeMs: Date.now() - startTime
+        });
         return new Response(
           JSON.stringify({ 
             error: 'Form is not active for this store',
@@ -362,6 +594,19 @@ serve(async (req: Request) => {
       
       if (!force) {
         // Return conflict error with info about the existing entry
+        await logApiRequest(supabase, {
+          endpoint: 'issue-form-token',
+          method: req.method,
+          apiKeyId,
+          organizationId,
+          requestParams,
+          responseStatus: 409,
+          responseCode: 'DUPLICATE_BOOKING_ID',
+          errorMessage: `Duplicate booking ID found: ${existingEntry.id}`,
+          ipAddress,
+          userAgent,
+          executionTimeMs: Date.now() - startTime
+        });
         return new Response(
           JSON.stringify({ 
             error: 'An active entry with this bookingId already exists',
@@ -438,6 +683,19 @@ serve(async (req: Request) => {
     
     if (entryError) {
       console.error("Error creating entry:", entryError);
+      await logApiRequest(supabase, {
+        endpoint: 'issue-form-token',
+        method: req.method,
+        apiKeyId,
+        organizationId,
+        requestParams,
+        responseStatus: 500,
+        responseCode: 'DATABASE_ERROR',
+        errorMessage: `Failed to create entry - ${entryError.message}`,
+        ipAddress,
+        userAgent,
+        executionTimeMs: Date.now() - startTime
+      });
       return new Response(
         JSON.stringify({ error: 'Failed to create entry', code: 'DATABASE_ERROR', details: entryError.message }),
         { 
@@ -451,6 +709,21 @@ serve(async (req: Request) => {
     const baseUrl = 'https://anamnes.binokeloptik.se';
     const formUrl = `${baseUrl}/patient-form?token=${accessToken}`;
     const qrCodeUrl = `${baseUrl}/patient-form?token=${accessToken}`;
+    
+    // Log successful request
+    await logApiRequest(supabase, {
+      endpoint: 'issue-form-token',
+      method: req.method,
+      apiKeyId,
+      organizationId,
+      requestParams,
+      responseStatus: 200,
+      responseCode: 'SUCCESS',
+      createdEntryId: entry.id,
+      ipAddress,
+      userAgent,
+      executionTimeMs: Date.now() - startTime
+    });
     
     // Return enhanced response
     return new Response(
@@ -473,6 +746,21 @@ serve(async (req: Request) => {
     
   } catch (error) {
     console.error("Unexpected error:", error);
+    
+    // Log unexpected error
+    await logApiRequest(supabase, {
+      endpoint: 'issue-form-token',
+      method: req.method,
+      apiKeyId,
+      organizationId,
+      requestParams,
+      responseStatus: 500,
+      responseCode: 'INTERNAL_ERROR',
+      errorMessage: error.message || 'Unknown error',
+      ipAddress,
+      userAgent,
+      executionTimeMs: Date.now() - startTime
+    });
     
     return new Response(
       JSON.stringify({ error: 'Server error', code: 'INTERNAL_ERROR', details: error.message }),

@@ -103,7 +103,8 @@ serve(async (req: Request) => {
       isKioskMode = false,
       requireSupervisorCode = false,
       expiresInDays = 7,
-      metadata
+      metadata,
+      force = false  // Allow forcing creation even if duplicate exists
     } = await req.json();
     
     // Create mutable variable for store name
@@ -334,6 +335,70 @@ serve(async (req: Request) => {
       } else {
         console.log("✅ Form-store assignment validated");
       }
+    }
+    
+    // ========== DUPLICATE CHECK ==========
+    // Check for existing active entry with same bookingId in this organization
+    console.log("🔍 Checking for duplicate bookingId:", bookingId);
+    
+    const { data: existingEntries, error: duplicateCheckError } = await supabase
+      .from('anamnes_entries')
+      .select('id, access_token, status, expires_at, first_name, form_id, created_at')
+      .eq('organization_id', formData.organization_id)
+      .eq('booking_id', bookingId)
+      .in('status', ['sent', 'ready', 'klar för undersökning'])
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (duplicateCheckError) {
+      console.error("Error checking for duplicates:", duplicateCheckError);
+      // Continue anyway - better to create than to block completely
+    }
+
+    if (existingEntries && existingEntries.length > 0) {
+      const existingEntry = existingEntries[0];
+      console.log("⚠️ Duplicate bookingId found:", existingEntry.id, "Status:", existingEntry.status);
+      
+      if (!force) {
+        // Return conflict error with info about the existing entry
+        return new Response(
+          JSON.stringify({ 
+            error: 'An active entry with this bookingId already exists',
+            code: 'DUPLICATE_BOOKING_ID',
+            existingEntry: {
+              id: existingEntry.id,
+              status: existingEntry.status,
+              expiresAt: existingEntry.expires_at,
+              firstName: existingEntry.first_name,
+              createdAt: existingEntry.created_at
+            },
+            hint: 'Use force: true to replace the existing entry, or wait for it to expire.'
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Force mode: Mark all existing entries as replaced
+      console.log("🔄 Force mode enabled - marking", existingEntries.length, "existing entries as replaced");
+      
+      for (const entry of existingEntries) {
+        const { error: updateError } = await supabase
+          .from('anamnes_entries')
+          .update({ 
+            status: 'replaced',
+            internal_notes: `Replaced by new entry at ${new Date().toISOString()}`
+          })
+          .eq('id', entry.id);
+        
+        if (updateError) {
+          console.error("Error marking entry as replaced:", entry.id, updateError);
+        } else {
+          console.log("✅ Marked entry as replaced:", entry.id);
+        }
+      }
+    } else {
+      console.log("✅ No duplicate found, proceeding...");
     }
     
     // Generate access token

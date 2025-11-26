@@ -90,6 +90,7 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
   "personalNumber": "19900101-1234",
   "bookingDate": "2025-11-25T14:00:00Z",
   "expiresInDays": 7,
+  "force": false,
   "metadata": {
     "serveItBookingId": "SI-12345"
   }
@@ -109,6 +110,7 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
 | personalNumber | string | ⚪ | Personnummer (ÅÅÅÅMMDD-XXXX) |
 | bookingDate | ISO 8601 | ⚪ | Datum för undersökning |
 | expiresInDays | number | ⚪ | Dagar tills länken utgår (default: 7) |
+| force | boolean | ⚪ | Om true, ersätter befintlig aktiv entry med samma bookingId (default: false) |
 | metadata | object | ⚪ | Valfri metadata från externt system |
 
 *Antingen `formType` ELLER `formId` måste anges.
@@ -157,6 +159,22 @@ När en butik anges valideras att formuläret är aktivt för den butiken via `s
   "code": "FORM_NOT_ACTIVE_FOR_STORE",
   "formId": "3e7b9f1a-2c5d-4e8f-9a1b-6c7d8e9f0a1b",
   "storeId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+#### Response 409 (Duplicate Booking ID)
+```json
+{
+  "error": "An active entry with this bookingId already exists",
+  "code": "DUPLICATE_BOOKING_ID",
+  "existingEntry": {
+    "id": "7f3e4d2a-1b5c-4e9f-8d3a-9c7b6e5f4d3c",
+    "status": "sent",
+    "expiresAt": "2025-12-01T14:00:00Z",
+    "firstName": "Anna",
+    "createdAt": "2025-11-24T10:00:00Z"
+  },
+  "hint": "Use force: true to replace the existing entry, or wait for it to expire."
 }
 ```
 
@@ -293,6 +311,7 @@ curl -X POST https://jawtwwwelxaaprzsqfyp.supabase.co/functions/v1/get-anamnesis
 | API_KEY_EXPIRED | API-nyckeln har utgått | Skapa ny API-nyckel |
 | INSUFFICIENT_PERMISSIONS | Nyckeln saknar behörighet | Kontrollera permissions i admin panel |
 | MISSING_REQUIRED_FIELD | Obligatoriskt fält saknas | Kontrollera request body |
+| DUPLICATE_BOOKING_ID | En aktiv entry med samma bookingId finns redan | Använd `force: true` för att ersätta, eller använd befintlig entry |
 | FORM_NOT_FOUND | Formulärtyp finns inte | Kontrollera att formType är korrekt |
 | FORM_NOT_ACTIVE_FOR_STORE | Formuläret är inaktiverat för butiken | Aktivera formuläret för butiken i admin |
 | UNAUTHORIZED_FORM_ACCESS | Formuläret tillhör inte er organisation | Kontrollera formId |
@@ -316,6 +335,10 @@ Vid överträdelse returneras status `429 Too Many Requests`.
 
 ## Changelog
 
+- **2025-11-26 v1.2.0:** 
+  - Lagt till dupliceringskontroll för bookingId
+  - Ny parameter `force` för att ersätta befintlig entry
+  - Ny felkod `DUPLICATE_BOOKING_ID` (HTTP 409)
 - **2025-11-25 v1.1.0:** 
   - Lagt till validering av store-form assignments
   - Ny felkod `FORM_NOT_ACTIVE_FOR_STORE`

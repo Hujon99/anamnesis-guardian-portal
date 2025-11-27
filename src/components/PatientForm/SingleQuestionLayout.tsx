@@ -52,6 +52,11 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   // Grace period after mount to allow form to stabilize
   useEffect(() => {
+    // Clear any previous history on mount to prevent false positives
+    questionVisitHistory.current = [];
+    hasNavigated.current = false;
+    loopDismissedAt.current = null;
+    
     const timer = setTimeout(() => setIsInitialLoad(false), 2000);
     return () => clearTimeout(timer);
   }, []);
@@ -183,8 +188,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     // Don't trigger until user has navigated at least once
     if (!hasNavigated.current) return;
     
-    // Don't trigger if recently dismissed (10 second cooldown)
-    if (loopDismissedAt.current && Date.now() - loopDismissedAt.current < 10000) {
+    // Don't trigger if recently dismissed (30 second cooldown - increased from 10)
+    if (loopDismissedAt.current && Date.now() - loopDismissedAt.current < 30000) {
       return;
     }
     
@@ -436,13 +441,18 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const handleContinueTrying = useCallback(() => {
     console.log('[SingleQuestionLayout] User chose to continue trying');
     
-    // Reset loop detection and clear history to prevent immediate re-trigger
+    // First hide the modal
     setLoopDetected(false);
     setLoopQuestionId(null);
+    
+    // Clear history completely to prevent immediate re-trigger
     questionVisitHistory.current = [];
     
-    // Set cooldown timestamp to prevent immediate re-detection
+    // Set a strong cooldown - 30 seconds to give user time to work
     loopDismissedAt.current = Date.now();
+    
+    // Also reset navigation flag to require fresh navigation
+    hasNavigated.current = false;
     
     toast.info("Försök att svara på frågan igen");
   }, []);

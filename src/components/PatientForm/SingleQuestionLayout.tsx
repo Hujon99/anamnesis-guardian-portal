@@ -4,7 +4,7 @@
  * section headers as "chapters" and preserving all existing form functionality.
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -38,6 +38,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -52,7 +53,33 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   }
 
   // Get current form values using immediate watch (not debounced)
+  // Performance optimization: Only watch when not navigating to reduce unnecessary re-renders
   const currentFormValues = form.watch();
+  
+  // Memoized visibility checker with cache to avoid repeated calculations
+  const shouldShowQuestionMemo = useMemo(() => {
+    const cache = new Map<string, boolean>();
+    
+    return (question: FormQuestion, values: Record<string, any>): boolean => {
+      // Create cache key from question ID and relevant values
+      const cacheKey = question.id + JSON.stringify(question.show_if) + JSON.stringify(values);
+      
+      if (cache.has(cacheKey)) {
+        return cache.get(cacheKey)!;
+      }
+      
+      const result = shouldShowQuestion(question, values);
+      cache.set(cacheKey, result);
+      
+      // Limit cache size to prevent memory leaks
+      if (cache.size > 100) {
+        const firstKey = cache.keys().next().value;
+        cache.delete(firstKey);
+      }
+      
+      return result;
+    };
+  }, []);
 
   // Build a STABLE question list that includes ALL questions without filtering by current values
   // Visibility is checked dynamically during navigation, NOT when building the list
@@ -131,8 +158,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   }, [visibleSections, currentFormValues, processSectionsWithDebounce]);
 
 
-  // Helper to find next visible question in a given direction
-  const findNextVisibleQuestion = (fromIndex: number, direction: 1 | -1): number => {
+  // Helper to find next visible question in a given direction (optimized with memoized checker)
+  const findNextVisibleQuestion = useCallback((fromIndex: number, direction: 1 | -1): number => {
     let index = fromIndex + direction;
     let attempts = 0;
     const maxAttempts = allQuestions.length;
@@ -140,8 +167,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     while (attempts < maxAttempts && index >= 0 && index < allQuestions.length) {
       const question = allQuestions[index];
       
-      // Check if question should be shown based on current form values
-      if (shouldShowQuestion(question.question, currentFormValues)) {
+      // Use memoized visibility checker for better performance
+      if (shouldShowQuestionMemo(question.question, currentFormValues)) {
         // For dynamic questions, verify they have a valid parentValue
         if ((question.question as any).isDynamicPlaceholder) {
           const parentId = (question.question as any).parentId;
@@ -164,14 +191,14 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     
     // No visible question found, stay at current
     return fromIndex;
-  };
+  }, [allQuestions, currentFormValues, shouldShowQuestionMemo]);
 
-  // Check if current question is answered
-  const isCurrentQuestionAnswered = () => {
+  // Check if current question is answered (optimized with memoized checker)
+  const isCurrentQuestionAnswered = useCallback(() => {
     if (!currentQuestion) return false;
     
-    // If question is not visible (conditions not met), auto-skip
-    if (!shouldShowQuestion(currentQuestion.question, currentFormValues)) {
+    // Use memoized visibility checker
+    if (!shouldShowQuestionMemo(currentQuestion.question, currentFormValues)) {
       return true;
     }
     
@@ -183,20 +210,29 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     if (value === undefined || value === null || value === '') return false;
     if (Array.isArray(value)) return value.length > 0;
     return true;
-  };
+  }, [currentQuestion, currentFormValues, form, shouldShowQuestionMemo]);
 
   // REMOVED: Destructive cleanup effect
   // Previous code deleted field values when questions became invisible due to conditional logic
   // This caused data loss and navigation loops. Field visibility is now handled at render time.
 
-  const handleNext = () => {
+  // Debounced navigation handler to prevent rapid double-taps
+  const handleNext = useCallback(() => {
+    if (isNavigating) {
+      console.log('[SingleQuestionLayout] Navigation already in progress, ignoring');
+      return;
+    }
+    
     if (currentQuestionIndex >= totalQuestions - 1) return;
+    
+    setIsNavigating(true);
     
     // Find next VISIBLE question
     const nextIndex = findNextVisibleQuestion(currentQuestionIndex, 1);
     
     if (nextIndex === currentQuestionIndex) {
       console.log('[SingleQuestionLayout] No next visible question found');
+      setIsNavigating(false);
       return;
     }
     
@@ -230,18 +266,28 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
           behavior: isSafari() ? 'instant' : 'smooth' 
         });
         setAnimationClass("");
+        setIsNavigating(false); // Re-enable navigation after animation completes
       }, 100);
     }, 200);
-  };
+  }, [isNavigating, currentQuestionIndex, totalQuestions, findNextVisibleQuestion, allQuestions, currentQuestion, tracking]);
 
-  const handlePrevious = () => {
+  // Debounced navigation handler to prevent rapid double-taps
+  const handlePrevious = useCallback(() => {
+    if (isNavigating) {
+      console.log('[SingleQuestionLayout] Navigation already in progress, ignoring');
+      return;
+    }
+    
     if (currentQuestionIndex <= 0) return;
+    
+    setIsNavigating(true);
     
     // Find previous VISIBLE question
     const prevIndex = findNextVisibleQuestion(currentQuestionIndex, -1);
     
     if (prevIndex === currentQuestionIndex) {
       console.log('[SingleQuestionLayout] No previous visible question found');
+      setIsNavigating(false);
       return;
     }
     
@@ -275,9 +321,10 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
           behavior: isSafari() ? 'instant' : 'smooth' 
         });
         setAnimationClass("");
+        setIsNavigating(false); // Re-enable navigation after animation completes
       }, 100);
     }, 200);
-  };
+  }, [isNavigating, currentQuestionIndex, findNextVisibleQuestion, allQuestions, currentQuestion, totalQuestions, tracking]);
 
   const handleFormSubmit = () => {
     console.log("Form submit triggered");
@@ -363,18 +410,18 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
             <Button
               variant="outline"
               onClick={handlePrevious}
-              disabled={currentQuestionIndex === 0}
+              disabled={currentQuestionIndex === 0 || isNavigating}
               className="h-11 sm:h-12 px-3 sm:px-4 md:px-6 flex-shrink-0 text-sm sm:text-base"
             >
               <ChevronLeft className="w-4 h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Föregående</span>
-              <span className="sm:hidden">Föreg.</span>
+              <span className="hidden sm:inline">{isNavigating ? "Laddar..." : "Föregående"}</span>
+              <span className="sm:hidden">{isNavigating ? "..." : "Föreg."}</span>
             </Button>
 
             {currentQuestionIndex === totalQuestions - 1 ? (
               <Button
                 onClick={handleFormSubmit}
-                disabled={isSubmitting || !isCurrentQuestionAnswered()}
+                disabled={isSubmitting || !isCurrentQuestionAnswered() || isNavigating}
                 className="h-11 sm:h-12 px-4 sm:px-6 md:px-8 !bg-accent-teal hover:!bg-accent-teal/90 text-white disabled:opacity-50 flex-shrink-0 transition-all text-sm sm:text-base font-medium"
               >
                 <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
@@ -383,10 +430,10 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
             ) : (
               <Button
                 onClick={handleNext}
-                disabled={!isCurrentQuestionAnswered()}
+                disabled={!isCurrentQuestionAnswered() || isNavigating}
                 className="h-11 sm:h-12 px-3 sm:px-4 md:px-6 flex-shrink-0 text-sm sm:text-base"
               >
-                Nästa
+                {isNavigating ? "Laddar..." : "Nästa"}
                 <ChevronRight className="w-4 h-4 ml-1 sm:ml-2" />
               </Button>
             )}

@@ -39,13 +39,22 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Loop detection: Track question visit history to detect when users get stuck
   const questionVisitHistory = useRef<Array<{ questionId: string; timestamp: number; index: number }>>([]);
+  const hasNavigated = useRef(false);
+  const loopDismissedAt = useRef<number | null>(null);
   const [loopDetected, setLoopDetected] = useState(false);
   const [loopQuestionId, setLoopQuestionId] = useState<string | null>(null);
   const loopDetectionThreshold = 3; // Trigger after visiting same question 3 times
   const loopDetectionTimeWindow = 30000; // Within 30 seconds
+
+  // Grace period after mount to allow form to stabilize
+  useEffect(() => {
+    const timer = setTimeout(() => setIsInitialLoad(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -168,6 +177,17 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   useEffect(() => {
     if (!currentQuestion) return;
     
+    // Don't trigger during initial load grace period
+    if (isInitialLoad) return;
+    
+    // Don't trigger until user has navigated at least once
+    if (!hasNavigated.current) return;
+    
+    // Don't trigger if recently dismissed (10 second cooldown)
+    if (loopDismissedAt.current && Date.now() - loopDismissedAt.current < 10000) {
+      return;
+    }
+    
     const questionId = currentQuestion.question.id;
     const now = Date.now();
     
@@ -204,7 +224,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
       setLoopDetected(true);
       setLoopQuestionId(questionId);
     }
-  }, [currentQuestionIndex, currentQuestion, loopDetected, tracking]);
+  }, [currentQuestionIndex, loopDetected, isInitialLoad, tracking]);
 
 
   // Helper to find next visible question in a given direction (optimized with memoized checker)
@@ -274,6 +294,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     
     if (currentQuestionIndex >= totalQuestions - 1) return;
     
+    // Mark that user has navigated at least once
+    hasNavigated.current = true;
+    
     setIsNavigating(true);
     
     // Find next VISIBLE question
@@ -328,6 +351,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
     
     if (currentQuestionIndex <= 0) return;
+    
+    // Mark that user has navigated at least once
+    hasNavigated.current = true;
     
     setIsNavigating(true);
     
@@ -410,9 +436,13 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const handleContinueTrying = useCallback(() => {
     console.log('[SingleQuestionLayout] User chose to continue trying');
     
-    // Reset loop detection but keep history
+    // Reset loop detection and clear history to prevent immediate re-trigger
     setLoopDetected(false);
     setLoopQuestionId(null);
+    questionVisitHistory.current = [];
+    
+    // Set cooldown timestamp to prevent immediate re-detection
+    loopDismissedAt.current = Date.now();
     
     toast.info("Försök att svara på frågan igen");
   }, []);

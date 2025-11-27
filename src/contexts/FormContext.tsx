@@ -21,6 +21,7 @@ import { CURRENT_PRIVACY_POLICY_VERSION, CURRENT_TERMS_VERSION } from '@/legal';
 
 interface FormSessionTracking {
   logSectionChange: (sectionIndex: number, questionId: string | undefined, progress: number) => void;
+  logNavigation: (direction: 'next' | 'previous', fromIndex: number, toIndex: number, fromQuestionId: string, toQuestionId: string, progress: number) => void;
   logSubmissionAttempt: (progress: number) => void;
   logSubmissionSuccess: () => void;
   logSubmissionError: (errorMessage: string, errorType: string) => void;
@@ -63,6 +64,7 @@ interface FormContextValue {
   handleSubmit: () => (data: any) => Promise<void>;
   processSectionsWithDebounce?: (sections: any[], values: Record<string, any>) => void;
   visibleFieldIds?: string[];
+  tracking?: FormSessionTracking;
   
   // Legal consent
   consentGiven: boolean;
@@ -402,6 +404,7 @@ export const FormContextProvider: React.FC<FormContextProviderProps> = ({
         handleSubmit: () => handleFormSubmit(),
         processSectionsWithDebounce,
         visibleFieldIds,
+        tracking,
         
         // Legal consent (now always true, handled on ConsentPage)
         consentGiven,

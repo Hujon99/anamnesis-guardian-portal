@@ -39,27 +39,27 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
   const [isNavigating, setIsNavigating] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
-  // Loop detection: Track question visit history to detect when users get stuck
+  // LOOP DETECTION TEMPORARILY DISABLED - TOO AGGRESSIVE
+  // Can be re-enabled after analyzing real user data to set proper thresholds
+  /*
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const questionVisitHistory = useRef<Array<{ questionId: string; timestamp: number; index: number }>>([]);
   const hasNavigated = useRef(false);
   const loopDismissedAt = useRef<number | null>(null);
   const [loopDetected, setLoopDetected] = useState(false);
   const [loopQuestionId, setLoopQuestionId] = useState<string | null>(null);
-  const loopDetectionThreshold = 3; // Trigger after visiting same question 3 times
-  const loopDetectionTimeWindow = 30000; // Within 30 seconds
+  const loopDetectionThreshold = 3;
+  const loopDetectionTimeWindow = 30000;
 
-  // Grace period after mount to allow form to stabilize
   useEffect(() => {
-    // Clear any previous history on mount to prevent false positives
     questionVisitHistory.current = [];
     hasNavigated.current = false;
     loopDismissedAt.current = null;
-    
     const timer = setTimeout(() => setIsInitialLoad(false), 2000);
     return () => clearTimeout(timer);
   }, []);
+  */
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -178,58 +178,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
   }, [visibleSections, currentFormValues, processSectionsWithDebounce]);
 
-  // Loop detection: Track question visits and detect if user is stuck
-  useEffect(() => {
-    if (!currentQuestion) return;
-    
-    // Don't trigger during initial load grace period
-    if (isInitialLoad) return;
-    
-    // Don't trigger until user has navigated at least once
-    if (!hasNavigated.current) return;
-    
-    // Don't trigger if recently dismissed (30 second cooldown - increased from 10)
-    if (loopDismissedAt.current && Date.now() - loopDismissedAt.current < 30000) {
-      return;
-    }
-    
-    const questionId = currentQuestion.question.id;
-    const now = Date.now();
-    
-    // Add current visit to history
-    questionVisitHistory.current.push({
-      questionId,
-      timestamp: now,
-      index: currentQuestionIndex
-    });
-    
-    // Clean up old visits outside time window
-    questionVisitHistory.current = questionVisitHistory.current.filter(
-      visit => now - visit.timestamp < loopDetectionTimeWindow
-    );
-    
-    // Count visits to current question within time window
-    const visitsToCurrentQuestion = questionVisitHistory.current.filter(
-      visit => visit.questionId === questionId
-    );
-    
-    // Detect loop if visited same question multiple times
-    if (visitsToCurrentQuestion.length >= loopDetectionThreshold && !loopDetected) {
-      console.warn('[SingleQuestionLayout] Loop detected:', {
-        questionId,
-        visitCount: visitsToCurrentQuestion.length,
-        questionIndex: currentQuestionIndex,
-        timeWindow: loopDetectionTimeWindow
-      });
-      
-      // Log loop detection event
-      tracking?.logLoopDetected(questionId, visitsToCurrentQuestion.length, currentQuestionIndex);
-      
-      // Show recovery UI
-      setLoopDetected(true);
-      setLoopQuestionId(questionId);
-    }
-  }, [currentQuestionIndex, loopDetected, isInitialLoad, tracking]);
+  // LOOP DETECTION TEMPORARILY DISABLED
+  // useEffect(() => { ... loop detection code ... }, [currentQuestionIndex, loopDetected]);
 
 
   // Helper to find next visible question in a given direction (optimized with memoized checker)
@@ -299,9 +249,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     
     if (currentQuestionIndex >= totalQuestions - 1) return;
     
-    // Mark that user has navigated at least once
-    hasNavigated.current = true;
-    
     setIsNavigating(true);
     
     // Find next VISIBLE question
@@ -356,9 +303,6 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
     
     if (currentQuestionIndex <= 0) return;
-    
-    // Mark that user has navigated at least once
-    hasNavigated.current = true;
     
     setIsNavigating(true);
     
@@ -416,46 +360,9 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     submitHandler(form.getValues());
   };
   
-  // Recovery functions for loop detection
-  const handleForceSkipToNext = useCallback(() => {
-    console.log('[SingleQuestionLayout] Force skipping to next question due to loop');
-    
-    // Reset loop detection
-    setLoopDetected(false);
-    setLoopQuestionId(null);
-    questionVisitHistory.current = [];
-    
-    // Find next visible question
-    const nextIndex = findNextVisibleQuestion(currentQuestionIndex, 1);
-    
-    if (nextIndex !== currentQuestionIndex) {
-      toast.success("Hoppar till nästa fråga");
-      setCurrentQuestionIndex(nextIndex);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      toast.info("Ingen fler frågor, försöker skicka in formuläret");
-      handleFormSubmit();
-    }
-  }, [currentQuestionIndex, findNextVisibleQuestion]);
-  
-  const handleContinueTrying = useCallback(() => {
-    console.log('[SingleQuestionLayout] User chose to continue trying');
-    
-    // First hide the modal
-    setLoopDetected(false);
-    setLoopQuestionId(null);
-    
-    // Clear history completely to prevent immediate re-trigger
-    questionVisitHistory.current = [];
-    
-    // Set a strong cooldown - 30 seconds to give user time to work
-    loopDismissedAt.current = Date.now();
-    
-    // Also reset navigation flag to require fresh navigation
-    hasNavigated.current = false;
-    
-    toast.info("Försök att svara på frågan igen");
-  }, []);
+  // LOOP DETECTION RECOVERY FUNCTIONS - DISABLED
+  // const handleForceSkipToNext = useCallback(() => { ... }, [currentQuestionIndex, findNextVisibleQuestion]);
+  // const handleContinueTrying = useCallback(() => { ... }, []);
 
   if (totalQuestions === 0) {
     return (
@@ -467,44 +374,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   return (
     <>
-      {/* Loop Detection Alert */}
-      {loopDetected && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-lg shadow-lg max-w-md w-full p-6 space-y-4 animate-scale-in">
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-foreground">
-                Har du fastnat?
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Vi har märkt att du har besökt samma fråga flera gånger. Det kan bero på ett tekniskt problem eller att frågan är svår att besvara.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Vad vill du göra?
-              </p>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <Button
-                onClick={handleForceSkipToNext}
-                className="w-full bg-accent-teal hover:bg-accent-teal/90 text-white"
-              >
-                Hoppa till nästa fråga
-              </Button>
-              <Button
-                onClick={handleContinueTrying}
-                variant="outline"
-                className="w-full"
-              >
-                Fortsätt försöka
-              </Button>
-            </div>
-            
-            <p className="text-xs text-muted-foreground text-center">
-              Om problemet kvarstår, kontakta din optiker för hjälp.
-            </p>
-          </div>
-        </div>
-      )}
+      {/* LOOP DETECTION UI - DISABLED */}
       
       {/* Header with progress - compact padding for iPad */}
       <div className="p-3 sm:p-4 border-b bg-background sticky top-0 z-10">

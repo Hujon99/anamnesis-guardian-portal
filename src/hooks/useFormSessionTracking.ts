@@ -133,6 +133,16 @@ export const useFormSessionTracking = ({
       logEvent('submission_success', { form_progress_percent: 100 }),
       
     logSubmissionError: (errorMessage: string, errorType: string) =>
-      logEvent('submission_error', {}, { message: errorMessage, type: errorType })
+      logEvent('submission_error', {}, { message: errorMessage, type: errorType }),
+      
+    logLoopDetected: (questionId: string, visitCount: number, questionIndex: number) =>
+      logEvent('loop_detected', { 
+        current_question_id: questionId,
+        current_section_index: questionIndex,
+        visit_count: visitCount
+      }, { 
+        message: `User visited question ${questionId} ${visitCount} times`, 
+        type: 'LoopDetected' 
+      })
   };
 };

@@ -39,6 +39,13 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [animationClass, setAnimationClass] = useState("");
   const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Loop detection: Track question visit history to detect when users get stuck
+  const questionVisitHistory = useRef<Array<{ questionId: string; timestamp: number; index: number }>>([]);
+  const [loopDetected, setLoopDetected] = useState(false);
+  const [loopQuestionId, setLoopQuestionId] = useState<string | null>(null);
+  const loopDetectionThreshold = 3; // Trigger after visiting same question 3 times
+  const loopDetectionTimeWindow = 30000; // Within 30 seconds
 
   // Show consent step if needed
   if (showConsentStep) {
@@ -156,6 +163,48 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
       processSectionsWithDebounce(allSections, currentFormValues);
     }
   }, [visibleSections, currentFormValues, processSectionsWithDebounce]);
+
+  // Loop detection: Track question visits and detect if user is stuck
+  useEffect(() => {
+    if (!currentQuestion) return;
+    
+    const questionId = currentQuestion.question.id;
+    const now = Date.now();
+    
+    // Add current visit to history
+    questionVisitHistory.current.push({
+      questionId,
+      timestamp: now,
+      index: currentQuestionIndex
+    });
+    
+    // Clean up old visits outside time window
+    questionVisitHistory.current = questionVisitHistory.current.filter(
+      visit => now - visit.timestamp < loopDetectionTimeWindow
+    );
+    
+    // Count visits to current question within time window
+    const visitsToCurrentQuestion = questionVisitHistory.current.filter(
+      visit => visit.questionId === questionId
+    );
+    
+    // Detect loop if visited same question multiple times
+    if (visitsToCurrentQuestion.length >= loopDetectionThreshold && !loopDetected) {
+      console.warn('[SingleQuestionLayout] Loop detected:', {
+        questionId,
+        visitCount: visitsToCurrentQuestion.length,
+        questionIndex: currentQuestionIndex,
+        timeWindow: loopDetectionTimeWindow
+      });
+      
+      // Log loop detection event
+      tracking?.logLoopDetected(questionId, visitsToCurrentQuestion.length, currentQuestionIndex);
+      
+      // Show recovery UI
+      setLoopDetected(true);
+      setLoopQuestionId(questionId);
+    }
+  }, [currentQuestionIndex, currentQuestion, loopDetected, tracking]);
 
 
   // Helper to find next visible question in a given direction (optimized with memoized checker)
@@ -335,6 +384,38 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     const submitHandler = contextHandleSubmit();
     submitHandler(form.getValues());
   };
+  
+  // Recovery functions for loop detection
+  const handleForceSkipToNext = useCallback(() => {
+    console.log('[SingleQuestionLayout] Force skipping to next question due to loop');
+    
+    // Reset loop detection
+    setLoopDetected(false);
+    setLoopQuestionId(null);
+    questionVisitHistory.current = [];
+    
+    // Find next visible question
+    const nextIndex = findNextVisibleQuestion(currentQuestionIndex, 1);
+    
+    if (nextIndex !== currentQuestionIndex) {
+      toast.success("Hoppar till nästa fråga");
+      setCurrentQuestionIndex(nextIndex);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      toast.info("Ingen fler frågor, försöker skicka in formuläret");
+      handleFormSubmit();
+    }
+  }, [currentQuestionIndex, findNextVisibleQuestion]);
+  
+  const handleContinueTrying = useCallback(() => {
+    console.log('[SingleQuestionLayout] User chose to continue trying');
+    
+    // Reset loop detection but keep history
+    setLoopDetected(false);
+    setLoopQuestionId(null);
+    
+    toast.info("Försök att svara på frågan igen");
+  }, []);
 
   if (totalQuestions === 0) {
     return (
@@ -346,6 +427,45 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
   return (
     <>
+      {/* Loop Detection Alert */}
+      {loopDetected && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg shadow-lg max-w-md w-full p-6 space-y-4 animate-scale-in">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-foreground">
+                Har du fastnat?
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Vi har märkt att du har besökt samma fråga flera gånger. Det kan bero på ett tekniskt problem eller att frågan är svår att besvara.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Vad vill du göra?
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={handleForceSkipToNext}
+                className="w-full bg-accent-teal hover:bg-accent-teal/90 text-white"
+              >
+                Hoppa till nästa fråga
+              </Button>
+              <Button
+                onClick={handleContinueTrying}
+                variant="outline"
+                className="w-full"
+              >
+                Fortsätt försöka
+              </Button>
+            </div>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              Om problemet kvarstår, kontakta din optiker för hjälp.
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Header with progress - compact padding for iPad */}
       <div className="p-3 sm:p-4 border-b bg-background sticky top-0 z-10">
         <div className="space-y-2 sm:space-y-3">

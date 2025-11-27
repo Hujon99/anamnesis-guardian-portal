@@ -16,6 +16,7 @@ import { useFormContext } from "@/contexts/FormContext";
 import { FormQuestion, DynamicFollowupQuestion, FormSection } from "@/types/anamnesis";
 import { toast } from "sonner";
 import { generateRuntimeId } from "@/utils/questionIdUtils";
+import { isSafari } from "@/utils/safariDetection";
 
 interface SingleQuestionLayoutProps {
   createdByName?: string | null;
@@ -31,7 +32,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     showConsentStep,
     consentGiven,
     onConsentChange,
-    setShowConsentStep
+    setShowConsentStep,
+    tracking
   } = useFormContext();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -199,25 +201,36 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
     
     const nextQuestion = allQuestions[nextIndex];
+    const fromQuestionId = currentQuestion?.question.id || 'unknown';
+    const toQuestionId = nextQuestion?.question.id || 'unknown';
+    const progressPercent = Math.round(((nextIndex + 1) / totalQuestions) * 100);
     
     console.log('[SingleQuestionLayout] Navigation Next:', {
       from: currentQuestionIndex,
       to: nextIndex,
-      currentQuestionId: currentQuestion?.question.id,
-      nextQuestionId: nextQuestion?.question.id,
+      currentQuestionId: fromQuestionId,
+      nextQuestionId: toQuestionId,
       totalQuestions: allQuestions.length,
-      progress: Math.round(((nextIndex + 1) / totalQuestions) * 100)
+      progress: progressPercent
     });
     
-    // Scrolla till toppen för att se hela nästa fråga
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Log navigation event for debugging
+    tracking?.logNavigation('next', currentQuestionIndex, nextIndex, fromQuestionId, toQuestionId, progressPercent);
     
     // Navigera med animation
     setAnimationClass("slide-out-left");
     setTimeout(() => {
       setCurrentQuestionIndex(nextIndex);
       setAnimationClass("slide-in-right");
-      setTimeout(() => setAnimationClass(""), 100);
+      
+      // iOS Safari scroll fix - use instant scroll after animation to avoid glitches
+      setTimeout(() => {
+        window.scrollTo({ 
+          top: 0, 
+          behavior: isSafari() ? 'instant' : 'smooth' 
+        });
+        setAnimationClass("");
+      }, 100);
     }, 200);
   };
 
@@ -233,25 +246,36 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     }
     
     const prevQuestion = allQuestions[prevIndex];
+    const fromQuestionId = currentQuestion?.question.id || 'unknown';
+    const toQuestionId = prevQuestion?.question.id || 'unknown';
+    const progressPercent = Math.round(((prevIndex + 1) / totalQuestions) * 100);
     
     console.log('[SingleQuestionLayout] Navigation Previous:', {
       from: currentQuestionIndex,
       to: prevIndex,
-      currentQuestionId: currentQuestion?.question.id,
-      prevQuestionId: prevQuestion?.question.id,
+      currentQuestionId: fromQuestionId,
+      prevQuestionId: toQuestionId,
       totalQuestions: allQuestions.length,
-      progress: Math.round(((prevIndex + 1) / totalQuestions) * 100)
+      progress: progressPercent
     });
     
-    // Scrolla till toppen för att se hela föregående fråga
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Log navigation event for debugging
+    tracking?.logNavigation('previous', currentQuestionIndex, prevIndex, fromQuestionId, toQuestionId, progressPercent);
     
     // Navigera med animation
     setAnimationClass("slide-out-right");
     setTimeout(() => {
       setCurrentQuestionIndex(prevIndex);
       setAnimationClass("slide-in-left");
-      setTimeout(() => setAnimationClass(""), 100);
+      
+      // iOS Safari scroll fix - use instant scroll after animation to avoid glitches
+      setTimeout(() => {
+        window.scrollTo({ 
+          top: 0, 
+          behavior: isSafari() ? 'instant' : 'smooth' 
+        });
+        setAnimationClass("");
+      }, 100);
     }, 200);
   };
 

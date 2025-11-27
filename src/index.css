@@ -112,6 +112,29 @@
   stroke-width: 1.5px;
 }
 
+/* iOS/Safari-specific fixes for form layouts */
+/* Safe area padding for iOS notches and home indicator */
+@supports (-webkit-touch-callout: none) {
+  .form-footer-mobile {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+  
+  /* iOS keyboard viewport fix - prevents layout shift when keyboard appears */
+  .form-container {
+    min-height: -webkit-fill-available;
+  }
+  
+  /* Fix sticky positioning on iOS Safari - use fixed instead */
+  .ios-fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
 /* Add utility for hiding scrollbars */
 @layer utilities {
   .scrollbar-hide {

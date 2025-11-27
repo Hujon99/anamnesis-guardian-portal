@@ -25,6 +25,7 @@ interface FormSessionTracking {
   logSubmissionAttempt: (progress: number) => void;
   logSubmissionSuccess: () => void;
   logSubmissionError: (errorMessage: string, errorType: string) => void;
+  logLoopDetected: (questionId: string, visitCount: number, questionIndex: number) => void;
 }
 
 interface FormContextProviderProps {

@@ -115,6 +115,16 @@ export const useFormSessionTracking = ({
         current_question_id: questionId || 'unknown',
         form_progress_percent: progress 
       }),
+    
+    logNavigation: (direction: 'next' | 'previous', fromIndex: number, toIndex: number, fromQuestionId: string, toQuestionId: string, progress: number) =>
+      logEvent('navigation', {
+        direction,
+        from_index: fromIndex,
+        to_index: toIndex,
+        from_question_id: fromQuestionId,
+        to_question_id: toQuestionId,
+        form_progress_percent: progress
+      }),
       
     logSubmissionAttempt: (progress: number) =>
       logEvent('submission_attempt', { form_progress_percent: progress }),

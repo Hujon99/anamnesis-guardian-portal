@@ -52,7 +52,8 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   // Get current form values using immediate watch (not debounced)
   const currentFormValues = form.watch();
 
-  // Flatten all visible questions with section context - memoized for performance
+  // Build a STABLE question list that includes ALL questions without filtering by current values
+  // Visibility is checked dynamically during navigation, NOT when building the list
   const allQuestions = useMemo(() => {
     if (!visibleSections || visibleSections.length === 0) return [];
     
@@ -65,7 +66,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
 
     visibleSections.forEach((sections, sectionIndex) => {
       sections.forEach((section) => {
-        // Filter visible questions
+        // Include ALL questions (except templates and optician-only) regardless of visibility
         section.questions.forEach((q, qIndex) => {
           // Skip follow-up templates
           if (q.is_followup_template) return;
@@ -73,9 +74,7 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
           // Skip optician-only questions in patient mode
           if (q.show_in_mode === "optician") return;
           
-          // Check conditional visibility using CURRENT form values
-          if (!shouldShowQuestion(q, currentFormValues)) return;
-          
+          // DO NOT filter by shouldShowQuestion - include all questions for stable indexing
           questions.push({
             question: q,
             sectionTitle: section.section_title,
@@ -84,21 +83,38 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
           });
         });
 
-        // Add dynamic follow-up questions using CURRENT form values
-        const dynamicQuestions = getDynamicQuestionsForSection(section, currentFormValues);
-        dynamicQuestions.forEach((question, qIndex) => {
-          questions.push({
-            question,
-            sectionTitle: section.section_title,
-            sectionIndex,
-            questionIndex: section.questions.length + qIndex
+        // Add placeholders for ALL possible dynamic follow-up questions
+        // These are generated based on parent question configuration, not current values
+        section.questions.forEach((parentQuestion) => {
+          if (!parentQuestion.followup_question_ids) return;
+          
+          // For each followup template, add it to the stable list
+          parentQuestion.followup_question_ids.forEach((followupId) => {
+            const template = section.questions.find(
+              (q) => q.id === followupId && q.is_followup_template
+            );
+            
+            if (template) {
+              // Add as a placeholder - will be populated dynamically
+              questions.push({
+                question: {
+                  ...template,
+                  parentId: parentQuestion.id,
+                  // Mark as dynamic placeholder
+                  isDynamicPlaceholder: true
+                } as any,
+                sectionTitle: section.section_title,
+                sectionIndex,
+                questionIndex: section.questions.length
+              });
+            }
           });
         });
       });
     });
 
     return questions;
-  }, [visibleSections, currentFormValues]);
+  }, [visibleSections]); // ONLY depends on visibleSections, NOT currentFormValues
 
   const currentQuestion = allQuestions[currentQuestionIndex];
   const totalQuestions = allQuestions.length;
@@ -113,9 +129,50 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   }, [visibleSections, currentFormValues, processSectionsWithDebounce]);
 
 
+  // Helper to find next visible question in a given direction
+  const findNextVisibleQuestion = (fromIndex: number, direction: 1 | -1): number => {
+    let index = fromIndex + direction;
+    let attempts = 0;
+    const maxAttempts = allQuestions.length;
+    
+    while (attempts < maxAttempts && index >= 0 && index < allQuestions.length) {
+      const question = allQuestions[index];
+      
+      // Check if question should be shown based on current form values
+      if (shouldShowQuestion(question.question, currentFormValues)) {
+        // For dynamic questions, verify they have a valid parentValue
+        if ((question.question as any).isDynamicPlaceholder) {
+          const parentId = (question.question as any).parentId;
+          const parentValue = currentFormValues[parentId];
+          
+          // Skip if parent has no value
+          if (!parentValue || (Array.isArray(parentValue) && parentValue.length === 0)) {
+            index += direction;
+            attempts++;
+            continue;
+          }
+        }
+        
+        return index;
+      }
+      
+      index += direction;
+      attempts++;
+    }
+    
+    // No visible question found, stay at current
+    return fromIndex;
+  };
+
   // Check if current question is answered
   const isCurrentQuestionAnswered = () => {
     if (!currentQuestion) return false;
+    
+    // If question is not visible (conditions not met), auto-skip
+    if (!shouldShowQuestion(currentQuestion.question, currentFormValues)) {
+      return true;
+    }
+    
     const fieldId = (currentQuestion.question as DynamicFollowupQuestion).runtimeId || currentQuestion.question.id;
     
     // Använd form.watch direkt för omedelbar feedback (inte watchedValues som är debounced)
@@ -126,34 +183,31 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
     return true;
   };
 
-  // Cleanup invisible fields (not in visible questions list)
-  useEffect(() => {
-    // Samla alla synliga field IDs
-    const visibleFieldIds = allQuestions.map(q => 
-      (q.question as DynamicFollowupQuestion).runtimeId || q.question.id
-    );
-    
-    const currentValues = form.getValues();
-    
-    // Rensa ENDAST fält som inte är synliga OCH inte är metadata
-    Object.keys(currentValues).forEach(key => {
-      if (!visibleFieldIds.includes(key) && !key.startsWith('_meta_')) {
-        form.setValue(key, undefined, { shouldValidate: false, shouldDirty: false });
-      }
-    });
-  }, [allQuestions, form]);
+  // REMOVED: Destructive cleanup effect
+  // Previous code deleted field values when questions became invisible due to conditional logic
+  // This caused data loss and navigation loops. Field visibility is now handled at render time.
 
   const handleNext = () => {
     if (currentQuestionIndex >= totalQuestions - 1) return;
     
-    const nextIndex = currentQuestionIndex + 1;
+    // Find next VISIBLE question
+    const nextIndex = findNextVisibleQuestion(currentQuestionIndex, 1);
+    
+    if (nextIndex === currentQuestionIndex) {
+      console.log('[SingleQuestionLayout] No next visible question found');
+      return;
+    }
+    
     const nextQuestion = allQuestions[nextIndex];
     
-    if (!nextQuestion) return;
-    
-    // KRITISKT: Rensa nästa frågas fält INNAN navigation
-    const nextFieldId = (nextQuestion.question as DynamicFollowupQuestion).runtimeId || nextQuestion.question.id;
-    form.setValue(nextFieldId, undefined, { shouldValidate: false, shouldDirty: false });
+    console.log('[SingleQuestionLayout] Navigation Next:', {
+      from: currentQuestionIndex,
+      to: nextIndex,
+      currentQuestionId: currentQuestion?.question.id,
+      nextQuestionId: nextQuestion?.question.id,
+      totalQuestions: allQuestions.length,
+      progress: Math.round(((nextIndex + 1) / totalQuestions) * 100)
+    });
     
     // Scrolla till toppen för att se hela nästa fråga
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -170,20 +224,24 @@ export const SingleQuestionLayout: React.FC<SingleQuestionLayoutProps> = ({ crea
   const handlePrevious = () => {
     if (currentQuestionIndex <= 0) return;
     
-    const prevIndex = currentQuestionIndex - 1;
+    // Find previous VISIBLE question
+    const prevIndex = findNextVisibleQuestion(currentQuestionIndex, -1);
+    
+    if (prevIndex === currentQuestionIndex) {
+      console.log('[SingleQuestionLayout] No previous visible question found');
+      return;
+    }
+    
     const prevQuestion = allQuestions[prevIndex];
     
-    if (!prevQuestion) return;
-    
-    // KRITISKT: Kontrollera om vi har ett giltigt sparat svar
-    const prevFieldId = (prevQuestion.question as DynamicFollowupQuestion).runtimeId || prevQuestion.question.id;
-    const savedValue = form.getValues()[prevFieldId];
-    
-    // Om inget giltigt svar finns, rensa fältet
-    if (savedValue === undefined || savedValue === null || savedValue === '') {
-      form.setValue(prevFieldId, undefined, { shouldValidate: false, shouldDirty: false });
-    }
-    // Om det finns ett giltigt svar behöver vi inte göra något - det finns redan i form state
+    console.log('[SingleQuestionLayout] Navigation Previous:', {
+      from: currentQuestionIndex,
+      to: prevIndex,
+      currentQuestionId: currentQuestion?.question.id,
+      prevQuestionId: prevQuestion?.question.id,
+      totalQuestions: allQuestions.length,
+      progress: Math.round(((prevIndex + 1) / totalQuestions) * 100)
+    });
     
     // Scrolla till toppen för att se hela föregående fråga
     window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -1,7 +1,7 @@
 # Anamnesportalen API Dokumentation
 
-Version: 1.1.0  
-Senast uppdaterad: 2025-11-25
+Version: 1.2.0  
+Senast uppdaterad: 2025-12-01
 
 ## 📋 OpenAPI Specifikation
 
@@ -64,6 +64,22 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
 - **Production:** `anp_live_` prefix
 - **Sandbox:** `anp_test_` prefix (använder testdata)
 
+## Säkerhet & Compliance
+
+### Säker kommunikation
+- **HTTPS endast**: Alla API-anrop måste ske över HTTPS
+- **Backend-only**: API-nycklar ska ALDRIG exponeras i frontend-kod eller mobilappar
+
+### Hantering av API-nycklar
+- **En nyckel per system**: Skapa separata nycklar för varje integrerat system (t.ex. en för ServeIT, en för ert CRM)
+- **Nyckelrotation**: Rotera API-nycklar regelbundet (rekommendation: var 6:e månad)
+- **Sandbox för test**: Använd alltid sandbox-nycklar (`anp_test_`) under utveckling
+
+### Datalagring & GDPR
+- **Retention**: Patientdata raderas automatiskt **48 timmar** efter att anamnesen journalförts
+- **GDPR-dokumentation**: Se [SECURITY.md](./SECURITY.md) för fullständig GDPR-policy
+- **Audit logging**: Alla API-anrop loggas med anonymiserad IP för spårbarhet
+
 ---
 
 ## Endpoints
@@ -114,6 +130,22 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
 | metadata | object | ⚪ | Valfri metadata från externt system |
 
 *Antingen `formType` ELLER `formId` måste anges.
+
+#### Användning av `force: true`
+
+Parametern `force` används för att ersätta en befintlig aktiv entry med samma `bookingId`. 
+
+**Använd detta när:**
+- Patienten behöver en ny länk (t.ex. tappat bort eller raderat tidigare)
+- Bokningsinformation har ändrats (datum, butik, etc.)
+- Det gamla formuläret har utgått och en ny länk behövs
+
+**Vad händer:**
+1. Den befintliga entryn markeras som `replaced`
+2. En ny entry skapas med ny token och utgångsdatum
+3. Den gamla länken slutar fungera omedelbart
+
+**⚠️ Varning:** Om patienten redan fyllt i och skickat formuläret (`status: ready/reviewed/journaled`) ersätts INTE entryn. Returnerar istället `409 Conflict`.
 
 #### Form Types
 - `Synundersökning` - Standard synundersökning
@@ -260,6 +292,24 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
 }
 ```
 
+#### ⚠️ Känslig data
+
+Fälten `aiSummary`, `formattedSummary` och `rawData` (om `includeRawData: true`) innehåller **känsliga patientuppgifter** inklusive hälsodata.
+
+**Er ansvar som integratör:**
+- Lagra inte data längre än nödvändigt
+- Visa endast för behörig personal
+- Logga åtkomst enligt GDPR artikel 30
+- Kryptera data vid lagring
+
+**Hur vi hanterar AI-sammanfattningen:**
+- AI-modellen (Google Gemini) processar data enbart för att generera sammanfattningen
+- Ingen patientdata lagras hos AI-leverantören efter bearbetning
+- AI-prompten innehåller inga personidentifierare
+- Se [SECURITY.md](./SECURITY.md) för fullständig AI-policy
+```
+```
+
 #### Response 404 (Not Found)
 ```json
 {
@@ -268,6 +318,13 @@ X-API-Key: anp_live_xxxxxxxxxxxxx
   "code": "ANAMNESIS_NOT_FOUND"
 }
 ```
+
+**Obs:** Om anamnesen tidigare funnits men raderats efter retention-perioden (48h efter journalföring) returneras samma 404-kod. 
+
+**Om ni behöver verifiera att en anamnes existerade:**
+- Spara `entryId` från `issue-form-token`-svaret i ert system
+- Logga tidpunkt för när ni hämtade anamnesdata
+- Kontakta support om ni behöver åtkomst till audit-loggar
 
 #### Response 409 (Not Ready)
 ```json
@@ -328,13 +385,19 @@ Vid överträdelse returneras status `429 Too Many Requests`.
 ## Best Practices
 
 1. **Spara accessToken:** När du skapar en formulärlänk, spara `accessToken` och `entryId` i er databas kopplat till bookingId
-2. **Poll inte:** Anropa inte get-anamnesis upprepade gånger. Implementera webhooks när tillgängligt
+2. **Poll inte:** Anropa inte get-anamnesis upprepade gånger för att kolla status. Gör ett anrop när optikern öppnar journalen
 3. **Hantera timeout:** Använd 30 sekunders timeout för API-anrop
 4. **Använd sandbox:** Testa alltid i sandbox-miljö först
 5. **Logga errors:** Logga alla error codes för enklare felsökning
 
 ## Changelog
 
+- **2025-12-01 v1.2.1:**
+  - Lagt till Security & Compliance-sektion
+  - Förtydligat `force`-parameter och om-sändning av länkar
+  - Lagt till dokumentation om data efter retention-period
+  - Lagt till varning om känslig data i aiSummary/rawData
+  - Tagit bort referens till webhooks
 - **2025-11-26 v1.2.0:** 
   - Lagt till dupliceringskontroll för bookingId
   - Ny parameter `force` för att ersätta befintlig entry

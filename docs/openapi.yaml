@@ -382,7 +382,15 @@ components:
         force:
           type: boolean
           default: false
-          description: Om true, ersätter befintlig aktiv entry med samma bookingId. Den gamla entryn markeras som 'replaced'.
+          description: |
+            Om true, ersätter befintlig aktiv entry med samma bookingId. Den gamla entryn markeras som 'replaced'.
+            
+            **Använd detta när:**
+            - Patienten behöver en ny länk (t.ex. tappat bort eller raderat tidigare)
+            - Bokningsinformation har ändrats (datum, butik, etc.)
+            - Det gamla formuläret har utgått och en ny länk behövs
+            
+            **⚠️ Varning:** Om patienten redan fyllt i och skickat formuläret (status: ready/reviewed/journaled) ersätts INTE entryn. Returnerar istället 409 Conflict.
           example: false
         metadata:
           type: object
@@ -530,12 +538,18 @@ components:
         aiSummary:
           type: string
           nullable: true
-          description: AI-genererad sammanfattning av anamnesen
+          description: |
+            AI-genererad sammanfattning av anamnesen
+            
+            ⚠️ **KÄNSLIG DATA**: Innehåller patientuppgifter inklusive hälsodata. Lagra inte längre än nödvändigt. Visa endast för behörig personal.
           example: "Patienten har inga tidigare ögonsjukdomar. Arbetar mycket vid dator och upplever lätt trötthet i ögonen vid skärmarbete."
         formattedRawData:
           type: string
           nullable: true
-          description: Formaterad rådata (Markdown) med alla svar
+          description: |
+            Formaterad rådata (Markdown) med alla svar
+            
+            ⚠️ **KÄNSLIG DATA**: Innehåller fullständiga patientuppgifter. Hantera enligt GDPR.
           example: "## Personuppgifter\n\n**Personnummer:** 19850315-1234\n\n## Hälsohistorik\n\n**Tidigare ögonsjukdomar:** Nej"
         answers:
           type: object

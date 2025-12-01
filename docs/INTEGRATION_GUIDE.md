@@ -260,6 +260,11 @@ När sandbox-tester är godkända:
 
 ## Changelog
 
+- **2025-12-01 v1.2.1:**
+  - Lagt till Security & Compliance-sektion i API.md
+  - Förtydligat `force`-parameter och om-sändning av länkar
+  - Lagt till dokumentation om data efter retention-period
+  - Lagt till varning om känslig data i aiSummary/rawData
 - **2025-11-25 v1.1.0:** 
   - Lagt till dokumentation för store-form validering
   - Uppdaterat URL:er till `anamnes.binokeloptik.se`

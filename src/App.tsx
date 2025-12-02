@@ -17,6 +17,7 @@ import Dashboard from "@/pages/Dashboard";
 import MyAnamnesisPage from "@/pages/MyAnamnesisPage";
 import OpticianView from "@/pages/OpticianView";
 import AdminPanel from "@/pages/AdminPanel";
+import SystemAnalyticsPage from "@/pages/SystemAnalyticsPage";
 import NotFound from "@/pages/NotFound";
 import PatientFormPage from "@/pages/PatientFormPage";
 import OpticianFormPage from "@/pages/OpticianFormPage";
@@ -118,6 +119,7 @@ function App() {
               <Route path="/ciss-links" element={<CISSFormLinkPage />} />
               <Route path="/optician" element={<OpticianView />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/system-analytics" element={<SystemAnalyticsPage />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />

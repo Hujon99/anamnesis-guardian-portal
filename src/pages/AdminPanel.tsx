@@ -3,6 +3,8 @@
  * Administrationspanel för organisationsadministratörer.
  * Innehåller gränssnitt för hantering av butiker, formulär och organisationsinställningar.
  * Endast användare med administratörsroll har tillgång till denna sida.
+ * 
+ * OBS: System-admin-specifik analys har flyttats till /system-analytics.
  */
 
 import { useState } from "react";
@@ -10,7 +12,7 @@ import { useSafeUser as useUser } from "@/hooks/useSafeUser";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Building2, AlertTriangle, Settings, Plus, FileText, Bug, TrendingUp } from "lucide-react";
+import { Building2, AlertTriangle, Settings, Plus, FileText, TrendingUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,16 +24,9 @@ import { StoreCard } from "@/components/AdminPanel/StoreCard";
 import { StoreForm } from "@/components/AdminPanel/StoreForm";
 import { ConfirmDeleteDialog } from "@/components/AdminPanel/ConfirmDeleteDialog";
 import { OrganizationSettings } from "@/components/AdminPanel/OrganizationSettings";
-import { SystemSettings } from "@/components/AdminPanel/SystemSettings";
 import { FormManagementGrid } from "@/components/FormBuilder/FormManagementGrid";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { useSystemAdmin } from "@/contexts/SystemAdminContext";
-import { FormSessionDebugView } from "@/components/AdminPanel/FormSessionDebugView";
 import { UpgradeStatsCards } from "@/components/AdminPanel/UpgradeStatsCards";
-import FormCompletionStats from "@/components/AdminPanel/FormCompletionStats";
-import { StartedFormsAnalysis } from "@/components/AdminPanel/StartedFormsAnalysis";
-import { FormAbandonmentHeatmap } from "@/components/AdminPanel/FormAbandonmentHeatmap";
-import { SentEntriesAnalysis } from "@/components/AdminPanel/SentEntriesAnalysis";
 import { ApiKeysManager } from "@/components/AdminPanel/ApiKeysManager";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Key } from "lucide-react";
@@ -41,7 +36,6 @@ type Store = Tables<"stores">;
 const AdminPanel = () => {
   const { user } = useUser();
   const { organization } = useOrganization();
-  const { isSystemAdmin } = useSystemAdmin();
   const [activeTab, setActiveTab] = useState("stores");
   const { error: supabaseError } = useSupabaseClient();
   const [statsTimeRange, setStatsTimeRange] = useState<'week' | 'month' | 'year' | 'all'>('month');
@@ -173,30 +167,6 @@ const AdminPanel = () => {
             <Key className="h-4 w-4" />
             API-integration
           </TabsTrigger>
-          {isSystemAdmin && (
-            <>
-              <TabsTrigger value="sent-analysis" className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Sent Formulär
-              </TabsTrigger>
-              <TabsTrigger value="completion" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Formulär-completion
-              </TabsTrigger>
-              <TabsTrigger value="started" className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Påbörjade Formulär
-              </TabsTrigger>
-              <TabsTrigger value="debug" className="flex items-center gap-2">
-                <Bug className="h-4 w-4" />
-                Felsökning
-              </TabsTrigger>
-              <TabsTrigger value="system" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                System
-              </TabsTrigger>
-            </>
-          )}
         </TabsList>
         
         <TabsContent value="stores" className="mt-0">
@@ -310,59 +280,6 @@ const AdminPanel = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
-        {isSystemAdmin && (
-          <>
-            <TabsContent value="sent-analysis" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5" />
-                    'Sent' Formulär Analys
-                  </CardTitle>
-                  <CardDescription>
-                    Statistik över gamla formulär med status 'sent' som aldrig slutfördes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <SentEntriesAnalysis />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="completion" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Formulär Slutförandestatistik
-                  </CardTitle>
-                  <CardDescription>
-                    Spårning av misslyckade formulärförsök och completion rates
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <FormCompletionStats />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="started" className="mt-0">
-              <div className="space-y-6">
-                <FormAbandonmentHeatmap />
-                <StartedFormsAnalysis />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="debug" className="mt-0">
-              <FormSessionDebugView />
-            </TabsContent>
-            
-            <TabsContent value="system" className="mt-0">
-              <SystemSettings />
-            </TabsContent>
-          </>
-        )}
       </Tabs>
 
       {/* Store Form Dialog */}

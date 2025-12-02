@@ -63,7 +63,7 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
 
   const fullText = "Vi behöver samla in vissa uppgifter om din syn och hälsa inför undersökningen. Din optiker är ansvarig för dessa uppgifter och de sparas i journalsystemet enligt lag. Uppgifterna används bara för att kunna genomföra din undersökning och sparas inte längre än nödvändigt. Du har rätt att få veta vilka uppgifter som finns, få fel rättade och i vissa fall begära radering.";
   
-  const shortText = "Vi behandlar dina uppgifter enligt GDPR och Patientdatalagen, bara för din undersökning och med lagstadgad journalföring.";
+  const shortText = "Dina uppgifter sparas i journalen enligt lag och används bara för din undersökning.";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -17,9 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent } from "@/components/ui/card";
-import { Info, Users, Shield } from "lucide-react";
+import { Users, Shield } from "lucide-react";
 
 interface GdprInformationDialogProps {
   open: boolean;
@@ -36,7 +35,6 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
   isProcessing = false,
   examinationType
 }) => {
-  const [infoType, setInfoType] = useState<'full' | 'short'>('full');
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [notes, setNotes] = useState('');
 
@@ -44,80 +42,45 @@ export const GdprInformationDialog: React.FC<GdprInformationDialogProps> = ({
     if (!isConfirmed) return;
     
     onConfirm({
-      infoType,
+      infoType: 'short',
       notes: notes.trim() || undefined
     });
     
     // Reset form
     setIsConfirmed(false);
     setNotes('');
-    setInfoType('full');
   };
 
   const handleCancel = () => {
     setIsConfirmed(false);
     setNotes('');
-    setInfoType('full');
     onOpenChange(false);
   };
 
-  const fullText = "Vi behöver samla in vissa uppgifter om din syn och hälsa inför undersökningen. Din optiker är ansvarig för dessa uppgifter och de sparas i journalsystemet enligt lag. Uppgifterna används bara för att kunna genomföra din undersökning och sparas inte längre än nödvändigt. Du har rätt att få veta vilka uppgifter som finns, få fel rättade och i vissa fall begära radering.";
-  
-  const shortText = "Dina uppgifter sparas i journalen enligt lag och används bara för din undersökning.";
+  const gdprText = "Dina uppgifter sparas i journalen enligt lag och används bara för din undersökning.";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-8">
+      <DialogContent className="max-w-lg p-6">
         <DialogHeader className="space-y-3 pb-4">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Shield className="h-5 w-5 text-primary" />
-            GDPR-information för patienten
+            GDPR-information
           </DialogTitle>
           <DialogDescription className="text-sm">
-            Informera patienten om hur personuppgifter behandlas för {examinationType.toLowerCase()}
+            Läs upp följande för patienten innan {examinationType.toLowerCase()}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-2">
-          {/* Information text selection */}
-          <div className="space-y-4">
-            <Label className="text-base font-medium flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              Välj informationstext att läsa upp för patienten:
-            </Label>
-            
-            <RadioGroup value={infoType} onValueChange={(value: 'full' | 'short') => setInfoType(value)}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="full" id="full" />
-                    <Label htmlFor="full" className="font-medium">Full text (rekommenderas)</Label>
-                  </div>
-                  <Card className="ml-6 border-2 transition-colors" data-selected={infoType === 'full'}>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        "{fullText}"
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="short" id="short" />
-                    <Label htmlFor="short" className="font-medium">Kort text (vid tidsbrist)</Label>
-                  </div>
-                  <Card className="ml-6 border-2 transition-colors" data-selected={infoType === 'short'}>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        "{shortText}"
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </RadioGroup>
-          </div>
+          {/* Information text */}
+          <Card className="border-2 border-primary/20 bg-primary/5">
+            <CardContent className="pt-4">
+              <p className="text-sm leading-relaxed font-medium">
+                "{gdprText}"
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Confirmation checkbox */}
           <div className="p-4 bg-muted/50 rounded-lg border">

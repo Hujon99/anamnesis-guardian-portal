@@ -2,6 +2,8 @@
  * This page allows customers to select their examination type when accessing forms via organization links.
  * It displays available examination types based on the selected store's forms (or organization's forms if no store selected)
  * and redirects to the customer info page with the selected examination type and form ID.
+ * 
+ * Includes journey tracking to monitor user drop-off before reaching the actual form.
  */
 
 import React, { useState, useEffect } from "react";
@@ -16,6 +18,7 @@ import { useFormsByStore } from "@/hooks/useFormsByStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFormTemplateByFormId } from "@/hooks/useFormTemplateByFormId";
 import { checkConsent, createConsentRedirectUrl, preserveCustomerParams } from "@/utils/consentUtils";
+import { useJourneyTracking } from "@/hooks/useJourneyTracking";
 
 interface ExaminationType {
   type: string;
@@ -45,6 +48,13 @@ const ExaminationTypeSelectionPage = () => {
     store_name: searchParams.get("store_name"),
     booking_date: searchParams.get("booking_date"),
   };
+
+  // Initialize journey tracking
+  const { logExaminationSelected, logError } = useJourneyTracking({
+    pageType: 'examination_selection',
+    organizationId: orgId,
+    storeId: storeId
+  });
 
   // Use the new hook when store is selected
   const { data: storeforms = [], isLoading: isLoadingStoreForms } = useFormsByStore(storeId || undefined);
@@ -226,6 +236,9 @@ const ExaminationTypeSelectionPage = () => {
   const handleExaminationTypeSelect = async (examinationType: ExaminationType) => {
     try {
       setIsLoading(true);
+      
+      // Log examination selection for journey tracking
+      logExaminationSelected(examinationType.type, examinationType.formId);
       
       // Call the edge function to generate token
       // Combine first and last name for display purposes

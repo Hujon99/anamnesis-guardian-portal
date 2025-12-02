@@ -1,17 +1,22 @@
 /**
  * Component for analyzing started but uncompleted forms.
  * Provides insights into where users abandon forms and why.
+ * 
+ * Now includes pre-form journey analysis to track abandonment
+ * on consent, customer info, and examination selection pages.
  */
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { useStartedFormsData } from '@/hooks/useStartedFormsData';
+import { useJourneyData } from '@/hooks/useJourneyData';
 import { useSafeOrganization } from '@/hooks/useSafeOrganization';
 import { useSystemAdmin } from '@/contexts/SystemAdminContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -33,7 +38,11 @@ import {
   Monitor,
   Tablet,
   Clock,
-  TrendingDown
+  TrendingDown,
+  ArrowRight,
+  Users,
+  FileCheck,
+  FileX
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -47,8 +56,15 @@ export const StartedFormsAnalysis = () => {
   const [daysFilter, setDaysFilter] = useState<number>(30);
   const [deviceFilter, setDeviceFilter] = useState<string>('all');
   const [progressFilter, setProgressFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('forms');
 
   const { data, isLoading } = useStartedFormsData({
+    organizationId: !isSystemAdmin ? organization?.id : undefined,
+    days: daysFilter,
+  });
+
+  // Fetch journey data for pre-form analysis
+  const { stats: journeyStats, dropoffs: journeyDropoffs, isLoading: journeyLoading } = useJourneyData({
     organizationId: !isSystemAdmin ? organization?.id : undefined,
     days: daysFilter,
   });
@@ -136,66 +152,93 @@ export const StartedFormsAnalysis = () => {
 
   const stats = data?.stats || { total: 0, avgProgress: 0, mobileCount: 0, desktopCount: 0, tabletCount: 0 };
 
+  // Helper to translate page type
+  const getPageTypeName = (pageType: string) => {
+    switch (pageType) {
+      case 'consent': return 'Samtycke';
+      case 'customer_info': return 'Kunduppgifter';
+      case 'examination_selection': return 'Val av undersökning';
+      case 'store_selection': return 'Val av butik';
+      case 'form': return 'Formuläret';
+      default: return pageType;
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Påbörjade Formulär
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Senaste {daysFilter} dagarna
-            </p>
-          </CardContent>
-        </Card>
+      {/* Tabs for different analysis views */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="forms" className="flex items-center gap-2">
+            <FileX className="h-4 w-4" />
+            I formuläret
+          </TabsTrigger>
+          <TabsTrigger value="journey" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Före formuläret
+          </TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Genomsnittlig Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.avgProgress}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Var användare i snitt slutar
-            </p>
-          </CardContent>
-        </Card>
+        {/* In-Form Analysis Tab */}
+        <TabsContent value="forms" className="space-y-6 mt-6">
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Påbörjade Formulär
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{stats.total}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Senaste {daysFilter} dagarna
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Mobila Enheter
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.mobileCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.total > 0 ? Math.round((stats.mobileCount / stats.total) * 100) : 0}% av alla
-            </p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Genomsnittlig Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{stats.avgProgress}%</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Var användare i snitt slutar
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Desktop
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.desktopCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.total > 0 ? Math.round((stats.desktopCount / stats.total) * 100) : 0}% av alla
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Mobila Enheter
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{stats.mobileCount}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stats.total > 0 ? Math.round((stats.mobileCount / stats.total) * 100) : 0}% av alla
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Desktop
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{stats.desktopCount}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stats.total > 0 ? Math.round((stats.desktopCount / stats.total) * 100) : 0}% av alla
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
       {/* Filters and Table */}
       <Card>
@@ -364,6 +407,201 @@ export const StartedFormsAnalysis = () => {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        {/* Pre-Form Journey Analysis Tab */}
+        <TabsContent value="journey" className="space-y-6 mt-6">
+          {journeyLoading ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center text-muted-foreground">Laddar resedata...</div>
+              </CardContent>
+            </Card>
+          ) : journeyStats ? (
+            <>
+              {/* Journey Funnel Visualization */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Kundresa Funnel
+                  </CardTitle>
+                  <CardDescription>
+                    Var försvinner användare innan de når formuläret?
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Funnel steps */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-primary/20 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold">{journeyStats.consentPageViews}</div>
+                        <div className="text-sm text-muted-foreground">Samtycke visad</div>
+                      </div>
+                      <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 bg-primary/30 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold">{journeyStats.consentCompleted}</div>
+                        <div className="text-sm text-muted-foreground">Samtycke godkänt</div>
+                        <Badge variant="outline" className="mt-1">{journeyStats.consentConversionRate}%</Badge>
+                      </div>
+                      <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 bg-primary/40 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold">{journeyStats.customerInfoCompleted}</div>
+                        <div className="text-sm text-muted-foreground">Uppgifter ifyllda</div>
+                        <Badge variant="outline" className="mt-1">{journeyStats.customerInfoConversionRate}%</Badge>
+                      </div>
+                      <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 bg-primary/60 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold">{journeyStats.formStarted}</div>
+                        <div className="text-sm text-muted-foreground">Formulär startat</div>
+                        <Badge variant="secondary" className="mt-1">{journeyStats.overallConversionRate}% totalt</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Journey Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Totala Resor
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{journeyStats.totalJourneys}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Senaste {daysFilter} dagarna
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Konvertering
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{journeyStats.overallConversionRate}%</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Når formuläret
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Avbrutna Resor
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{journeyDropoffs.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Nådde aldrig formuläret
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Mobil Andel
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">
+                      {journeyStats.totalJourneys > 0 
+                        ? Math.round((journeyStats.mobileCount / journeyStats.totalJourneys) * 100) 
+                        : 0}%
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {journeyStats.mobileCount} mobila av {journeyStats.totalJourneys}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Dropoff List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileX className="h-5 w-5" />
+                    Avbrutna Resor
+                  </CardTitle>
+                  <CardDescription>
+                    Användare som inte nådde formuläret
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Stannade på</TableHead>
+                          <TableHead>Senaste händelse</TableHead>
+                          <TableHead>Tid spenderad</TableHead>
+                          <TableHead>Enhet</TableHead>
+                          <TableHead>Senaste aktivitet</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {journeyDropoffs.length > 0 ? (
+                          journeyDropoffs.slice(0, 50).map((dropoff) => (
+                            <TableRow key={dropoff.journey_id}>
+                              <TableCell>
+                                <Badge variant="outline">{getPageTypeName(dropoff.last_page)}</Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {dropoff.last_event}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {dropoff.time_spent_seconds < 60 
+                                  ? `${Math.round(dropoff.time_spent_seconds)}s`
+                                  : `${Math.round(dropoff.time_spent_seconds / 60)}m`
+                                }
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {getDeviceIcon(dropoff.device_type)}
+                                  <span className="text-xs text-muted-foreground capitalize">
+                                    {dropoff.device_type || 'Okänd'}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {getTimeSinceActivity(dropoff.last_activity)}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                              <div className="flex flex-col items-center gap-2">
+                                <FileCheck className="h-12 w-12 opacity-20" />
+                                <p>Inga avbrutna resor hittades</p>
+                                <p className="text-xs">Journey tracking behöver lite tid för att samla data</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center text-muted-foreground">Ingen resedata tillgänglig</div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

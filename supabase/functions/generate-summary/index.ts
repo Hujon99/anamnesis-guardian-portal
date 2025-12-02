@@ -179,7 +179,12 @@ Strukturera sammanfattningen under följande rubriker (anpassa efter den informa
   - Aktuella symtom/besvär: (Synproblem, huvudvärk, dubbelseende, torra ögon etc.)
   - Tidigare ögonhistorik: (Användning av glasögon/linser, tidigare undersökningar, operationer, kända ögonsjukdomar)
   - Ärftlighet: (Ögonsjukdomar i släkten)
-  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier) För medeciner (Tänk på att svaren är den medecingrupp patienten tar, inte en lista på alla medeciner som tas. Så i de fall där det finns en lista, säg bara gruppen, och ananrs säg hela medecinen)
+  - Allmänhälsa/Medicinering: (Relevanta sjukdomar, mediciner, allergier)
+    VIKTIGT om läkemedel: Gruppera ALLTID läkemedel efter kategori istället för att lista enskilda preparat.
+    Exempel: Istället för "Metoprolol, Atenolol" skriv "Betablockerare".
+    Istället för "Omeprazol, Pantoprazol" skriv "Protonpumpshämmare".
+    Istället för "Sertralin, Citalopram" skriv "SSRI-preparat".
+    Om bara ett läkemedel i en kategori: skriv kategorin OM känd, annars läkemedelsnamnet.
   - Socialt/Livsstil: (Yrke, skärmtid, fritidsintressen om relevant)`,
         
         driving_license: `${baseInstructions}

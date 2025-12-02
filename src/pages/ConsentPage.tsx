@@ -12,6 +12,7 @@ import { LegalConsentStep } from '@/components/Legal/LegalConsentStep';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { checkConsent, addConsentParams, preserveCustomerParams } from '@/utils/consentUtils';
 
 const ConsentPage = () => {
   const [searchParams] = useSearchParams();
@@ -25,13 +26,13 @@ const ConsentPage = () => {
   const formId = searchParams.get("form_id");
 
   useEffect(() => {
-    // Check if consent already given for this session (use orgId or formId as key)
-    const consentKey = orgId || formId;
-    const sessionConsent = sessionStorage.getItem(`consent_given_${consentKey}`);
-    if (sessionConsent === 'true') {
-      // Redirect directly to customer info
-      const currentParams = searchParams.toString();
-      navigate(`/customer-info?${currentParams}`);
+    // Check if consent already given using URL params first, then sessionStorage
+    const consentResult = checkConsent(searchParams);
+    if (consentResult.isValid) {
+      // Redirect directly to customer info with consent params preserved
+      const redirectParams = new URLSearchParams();
+      preserveCustomerParams(searchParams, redirectParams);
+      navigate(`/customer-info?${redirectParams.toString()}`);
       return;
     }
 
@@ -119,14 +120,16 @@ const ConsentPage = () => {
   const handleConsentContinue = () => {
     if (!consentGiven) return;
 
-    // Store consent in sessionStorage for this organization or form
+    // Store consent in sessionStorage as backup
     const consentKey = orgId || formId;
     sessionStorage.setItem(`consent_given_${consentKey}`, 'true');
     sessionStorage.setItem(`consent_timestamp_${consentKey}`, new Date().toISOString());
 
-    // Navigate to customer info with all current params
-    const currentParams = searchParams.toString();
-    navigate(`/customer-info?${currentParams}`);
+    // Navigate to customer info with consent params in URL (mobile-safe)
+    const redirectParams = new URLSearchParams();
+    preserveCustomerParams(searchParams, redirectParams);
+    addConsentParams(redirectParams);
+    navigate(`/customer-info?${redirectParams.toString()}`);
   };
 
   if (isLoading) {

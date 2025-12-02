@@ -16,6 +16,7 @@ import { useFormsByStore } from '@/hooks/useFormsByStore';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { preserveCustomerParams } from '@/utils/consentUtils';
 
 interface StoreCardProps {
   store: any;
@@ -136,10 +137,16 @@ const StoreSelectionPage: React.FC = () => {
     setSelectedStore(storeId);
 
     try {
+      // Preserve all customer data params (including consent) through the flow
       const params = new URLSearchParams();
-      if (orgId) params.set('org_id', orgId);
-      if (formId) params.set('form_id', formId);
+      preserveCustomerParams(searchParams, params);
       params.set('store_id', storeId);
+      
+      // Get store name for display purposes
+      const selectedStore = stores?.find(s => s.id === storeId);
+      if (selectedStore?.name) {
+        params.set('store_name', selectedStore.name);
+      }
 
       navigate(`/examination-type-selection?${params.toString()}`);
     } catch (error) {

@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { checkConsent, createConsentRedirectUrl, preserveCustomerParams, addConsentParams } from "@/utils/consentUtils";
 
 const CustomerInfoPage = () => {
   const [searchParams] = useSearchParams();
@@ -109,9 +110,17 @@ const CustomerInfoPage = () => {
     }
   }, [urlFirstName, urlLastName, urlPersonalNumber, urlStoreId, urlBookingDate, firstName, lastName, personalNumber, stores, bookingDate]);
   
-  // Validate and fetch data
+  // Validate consent and fetch data
   useEffect(() => {
     const validateAndFetchData = async () => {
+      // Check consent first - redirect if missing
+      const consentResult = checkConsent(searchParams);
+      if (!consentResult.isValid) {
+        console.log("CustomerInfoPage: Consent missing, redirecting to consent page");
+        navigate(createConsentRedirectUrl(searchParams));
+        return;
+      }
+      
       // Handle form_id based flow
       if (formId && !orgId) {
         try {
@@ -272,6 +281,12 @@ const CustomerInfoPage = () => {
           params.set("store_name", selectedStore.name);
         }
       }
+      
+      // Preserve consent params for mobile reliability
+      const urlConsent = searchParams.get('consent');
+      const urlConsentTs = searchParams.get('consent_ts');
+      if (urlConsent) params.set('consent', urlConsent);
+      if (urlConsentTs) params.set('consent_ts', urlConsentTs);
       
       // Navigate to examination type selection
       navigate(`/examination-type-selection?${params.toString()}`);

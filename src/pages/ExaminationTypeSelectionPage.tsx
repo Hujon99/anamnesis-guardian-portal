@@ -15,6 +15,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useFormsByStore } from "@/hooks/useFormsByStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFormTemplateByFormId } from "@/hooks/useFormTemplateByFormId";
+import { checkConsent, createConsentRedirectUrl, preserveCustomerParams } from "@/utils/consentUtils";
 
 interface ExaminationType {
   type: string;
@@ -82,13 +83,11 @@ const ExaminationTypeSelectionPage = () => {
         return;
       }
 
-      // Check if consent has been given for this session
-      // Use same key logic as ConsentPage: orgId || formId
-      const consentKey = orgId || searchParams.get("form_id");
-      const sessionConsent = sessionStorage.getItem(`consent_given_${consentKey}`);
-      if (sessionConsent !== 'true') {
-        // Redirect back to consent page if consent not given
-        navigate(`/consent?${searchParams.toString()}`);
+      // Check consent using URL params first (mobile-safe), then sessionStorage
+      const consentResult = checkConsent(searchParams);
+      if (!consentResult.isValid) {
+        console.log("ExaminationTypeSelectionPage: Consent missing, redirecting to consent page");
+        navigate(createConsentRedirectUrl(searchParams));
         return;
       }
 

@@ -1,8 +1,8 @@
-
 /**
  * This component renders the application's sidebar navigation.
  * It displays different menu items based on the user's role and authentication status.
  * The navigation includes links to the Overview (all anamneses) and My Anamneses views.
+ * System admins get an additional "Systemanalys" menu item.
  */
 
 import { useSafeAuth as useAuth } from "@/hooks/useSafeAuth";
@@ -16,7 +16,8 @@ import {
   User,
   LayoutDashboard,
   Clipboard,
-  QrCode
+  QrCode,
+  BarChart3
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +38,7 @@ import { FeedbackButton } from "@/components/Feedback/FeedbackButton";
 import { useUserRole } from "@/hooks/useUserRole";
 import { RestartTourButton } from "@/components/Onboarding/RestartTourButton";
 import { Logo } from "@/components/Logo";
+import { useSystemAdmin } from "@/contexts/SystemAdminContext";
 
 export function AppSidebar() {
   const { has, userId } = useAuth();
@@ -44,6 +46,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { role, isAdmin, isOptician } = useUserRole();
   const { state } = useSidebar();
+  const { isSystemAdmin } = useSystemAdmin();
   
   // Check organization roles from Clerk
   const isClerkAdmin = has({ role: "org:admin" });
@@ -129,6 +132,27 @@ export function AppSidebar() {
                     <Link to="/admin">
                       <Settings />
                       <span>Administration</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              
+              {isSystemAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={location.pathname === '/system-analytics'}
+                    tooltip="Systemanalys - endast för systemadministratörer"
+                  >
+                    <Link to="/system-analytics">
+                      <BarChart3 />
+                      <span>Systemanalys</span>
+                      <Badge 
+                        variant="outline" 
+                        className="ml-auto text-[10px] px-1.5 py-0 bg-accent-2/10 text-accent-2 border-accent-2/20"
+                      >
+                        System
+                      </Badge>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

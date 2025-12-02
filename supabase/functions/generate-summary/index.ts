@@ -171,7 +171,7 @@ Viktiga instruktioner:
   4. Använd tydliga rubriker (utan emojis) för enkel läsbarhet.
   5. FORMATTERING - MYCKET VIKTIGT:
      - Returnera REN TEXT (plain text), INTE markdown.
-     - Använd ALDRIG markdown-symboler som **, ##, *, -, eller ```.
+     - Använd ALDRIG markdown-symboler som asterisker, hashtags eller liknande.
      - Rubriker skrivs som vanlig text med kolon, t.ex. "Anledning till besök:"
      - Punktlistor skrivs med vanliga bindestreck eller som löpande text.
      - Texten ska kunna kopieras direkt till journalsystem utan formatering.`;

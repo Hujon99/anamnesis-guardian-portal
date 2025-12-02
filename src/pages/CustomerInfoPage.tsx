@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, CalendarIcon, AlertCircle, UserIcon, MapPinIcon, IdCard } from "lucide-react";
+import { Loader2, CalendarIcon, AlertCircle, UserIcon, MapPinIcon, IdCard, Info } from "lucide-react";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +50,7 @@ const CustomerInfoPage = () => {
   const urlStoreId = searchParams.get("store_id");
   const urlStoreName = searchParams.get("store_name");
   const urlFirstName = searchParams.get("first_name");
+  const urlLastName = searchParams.get("last_name");
   const urlPersonalNumber = searchParams.get("personal_number");
   const urlBookingId = searchParams.get("booking_id");
   
@@ -77,6 +78,11 @@ const CustomerInfoPage = () => {
       setFirstName(urlFirstName);
     }
     
+    // Pre-fill last name if provided
+    if (urlLastName && !lastName) {
+      setLastName(urlLastName);
+    }
+    
     // Pre-fill personal number if provided
     if (urlPersonalNumber && !personalNumber) {
       setPersonalNumber(urlPersonalNumber);
@@ -101,7 +107,7 @@ const CustomerInfoPage = () => {
         console.warn("Could not parse booking date from URL:", urlBookingDate);
       }
     }
-  }, [urlFirstName, urlPersonalNumber, urlStoreId, urlBookingDate, firstName, personalNumber, stores, bookingDate]);
+  }, [urlFirstName, urlLastName, urlPersonalNumber, urlStoreId, urlBookingDate, firstName, lastName, personalNumber, stores, bookingDate]);
   
   // Validate and fetch data
   useEffect(() => {
@@ -225,11 +231,11 @@ const CustomerInfoPage = () => {
       // Use existing booking_id if provided from URL, otherwise generate new one
       const orderNumber = urlBookingId || generateOrderNumber();
       const selectedStore = stores.find(store => store.id === selectedStoreId);
-      const fullName = `${firstName.trim()} ${lastName.trim()}`;
       
       console.log("CustomerInfoPage: Navigating to examination type selection with data:", {
         orderNumber,
-        fullName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         selectedStoreId,
         selectedStoreName: selectedStore?.name,
         bookingDate: bookingDate.toISOString(),
@@ -251,7 +257,9 @@ const CustomerInfoPage = () => {
       params.set("form_id", formId);
       }
       
-      params.set("first_name", fullName);
+      // Store first and last name separately to avoid name concatenation issues
+      params.set("first_name", firstName.trim());
+      params.set("last_name", lastName.trim());
       if (personalNumber.trim()) {
         params.set("personal_number", personalNumber.trim());
       }
@@ -315,19 +323,27 @@ const CustomerInfoPage = () => {
     <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-primary">
       <Card className="w-full max-w-lg bg-white/95 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
         <CardHeader>
-          <CardTitle>Dina uppgifter</CardTitle>
+          <CardTitle>Bekräfta din bokning</CardTitle>
           <CardDescription>
-            Vänligen fyll i dina uppgifter för att välja undersökning.
+            Fyll i dina uppgifter så att vi kan koppla formuläret till din befintliga bokning.
             {(urlFirstName || urlBookingDate || urlStoreId) && (
               <span className="block mt-2 text-sm text-accent-1">
                 Vissa uppgifter är förifyllda från din bokningslänk.
               </span>
             )}
           </CardDescription>
-          <div className="mt-3 p-3 bg-accent-1/5 border border-accent-1/20 rounded-lg">
-            <p className="text-sm text-foreground/80">
-              💡 Fyll i dina uppgifter noggrant för korrekt hantering av din undersökning.
-            </p>
+          <div className="mt-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-primary">
+                  Detta är inte en ny bokning
+                </p>
+                <p className="text-sm text-foreground/70 mt-1">
+                  Vi använder dina uppgifter för att koppla ditt hälsoformulär till din befintliga bokade tid hos optikern. Ingen ny tid skapas.
+                </p>
+              </div>
+            </div>
           </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>

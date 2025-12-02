@@ -38,6 +38,7 @@ const ExaminationTypeSelectionPage = () => {
   const preservedParams = {
     booking_id: searchParams.get("booking_id"),
     first_name: searchParams.get("first_name"),
+    last_name: searchParams.get("last_name"),
     personal_number: searchParams.get("personal_number"),
     store_id: searchParams.get("store_id"),
     store_name: searchParams.get("store_name"),
@@ -82,7 +83,9 @@ const ExaminationTypeSelectionPage = () => {
       }
 
       // Check if consent has been given for this session
-      const sessionConsent = sessionStorage.getItem(`consent_given_${orgId}`);
+      // Use same key logic as ConsentPage: orgId || formId
+      const consentKey = orgId || searchParams.get("form_id");
+      const sessionConsent = sessionStorage.getItem(`consent_given_${consentKey}`);
       if (sessionConsent !== 'true') {
         // Redirect back to consent page if consent not given
         navigate(`/consent?${searchParams.toString()}`);
@@ -226,10 +229,15 @@ const ExaminationTypeSelectionPage = () => {
       setIsLoading(true);
       
       // Call the edge function to generate token
+      // Combine first and last name for display purposes
+      const fullName = preservedParams.last_name 
+        ? `${preservedParams.first_name} ${preservedParams.last_name}`.trim()
+        : preservedParams.first_name;
+      
       const { data, error } = await supabase.functions.invoke('issue-form-token', {
         body: {
           bookingId: preservedParams.booking_id,
-          firstName: preservedParams.first_name,
+          firstName: fullName,
           personalNumber: preservedParams.personal_number,
           storeId: preservedParams.store_id || null,
           storeName: preservedParams.store_name || null,
@@ -417,7 +425,11 @@ const ExaminationTypeSelectionPage = () => {
           <div className="mt-8 text-center">
             <Card className="inline-block px-6 py-3 bg-white/90 backdrop-blur-sm shadow-lg/20 rounded-2xl border-white/60">
               <p className="text-sm text-foreground/80">
-                Bokning för: <span className="font-medium text-foreground">{preservedParams.first_name}</span>
+                Bokning för: <span className="font-medium text-foreground">
+                  {preservedParams.last_name 
+                    ? `${preservedParams.first_name} ${preservedParams.last_name}` 
+                    : preservedParams.first_name}
+                </span>
                 {preservedParams.booking_date && (
                   <span className="ml-2">
                     • {new Date(preservedParams.booking_date).toLocaleDateString('sv-SE')}

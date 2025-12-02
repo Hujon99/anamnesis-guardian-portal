@@ -3,6 +3,8 @@
  * This page displays the legal consent step before users can access the examination selection.
  * It ensures users accept legal terms before entering any personal information or selecting examination types.
  * The page validates organization existence and stores consent in sessionStorage for the session.
+ * 
+ * Includes journey tracking to monitor user drop-off before reaching the actual form.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { checkConsent, addConsentParams, preserveCustomerParams } from '@/utils/consentUtils';
+import { useJourneyTracking, preserveJourneyId } from '@/hooks/useJourneyTracking';
 
 const ConsentPage = () => {
   const [searchParams] = useSearchParams();
@@ -24,6 +27,13 @@ const ConsentPage = () => {
 
   const orgId = searchParams.get("org_id");
   const formId = searchParams.get("form_id");
+
+  // Initialize journey tracking
+  const { logConsentGiven, logError } = useJourneyTracking({
+    pageType: 'consent',
+    organizationId: orgId,
+    formId: formId
+  });
 
   useEffect(() => {
     // Check if consent already given using URL params first, then sessionStorage
@@ -120,6 +130,9 @@ const ConsentPage = () => {
   const handleConsentContinue = () => {
     if (!consentGiven) return;
 
+    // Log consent given for journey tracking
+    logConsentGiven();
+
     // Store consent in sessionStorage as backup
     const consentKey = orgId || formId;
     sessionStorage.setItem(`consent_given_${consentKey}`, 'true');
@@ -128,6 +141,7 @@ const ConsentPage = () => {
     // Navigate to customer info with consent params in URL (mobile-safe)
     const redirectParams = new URLSearchParams();
     preserveCustomerParams(searchParams, redirectParams);
+    preserveJourneyId(searchParams, redirectParams);
     addConsentParams(redirectParams);
     navigate(`/customer-info?${redirectParams.toString()}`);
   };

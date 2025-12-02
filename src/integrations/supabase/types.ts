@@ -793,6 +793,69 @@ export type Database = {
           },
         ]
       }
+      journey_session_logs: {
+        Row: {
+          browser: string | null
+          created_at: string | null
+          device_type: string | null
+          entry_id: string | null
+          event_data: Json | null
+          event_type: string
+          form_id: string | null
+          id: string
+          is_touch_device: boolean | null
+          journey_id: string
+          organization_id: string | null
+          page_type: string
+          referrer: string | null
+          store_id: string | null
+          token: string | null
+          url_params: Json | null
+          viewport_height: number | null
+          viewport_width: number | null
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          entry_id?: string | null
+          event_data?: Json | null
+          event_type: string
+          form_id?: string | null
+          id?: string
+          is_touch_device?: boolean | null
+          journey_id: string
+          organization_id?: string | null
+          page_type: string
+          referrer?: string | null
+          store_id?: string | null
+          token?: string | null
+          url_params?: Json | null
+          viewport_height?: number | null
+          viewport_width?: number | null
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          entry_id?: string | null
+          event_data?: Json | null
+          event_type?: string
+          form_id?: string | null
+          id?: string
+          is_touch_device?: boolean | null
+          journey_id?: string
+          organization_id?: string | null
+          page_type?: string
+          referrer?: string | null
+          store_id?: string | null
+          token?: string | null
+          url_params?: Json | null
+          viewport_height?: number | null
+          viewport_width?: number | null
+        }
+        Relationships: []
+      }
       organization_settings: {
         Row: {
           ai_prompt_driving_license: string | null

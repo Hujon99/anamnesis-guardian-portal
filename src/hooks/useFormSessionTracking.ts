@@ -123,6 +123,8 @@ export const useFormSessionTracking = ({
         to_index: toIndex,
         from_question_id: fromQuestionId,
         to_question_id: toQuestionId,
+        current_section_index: toIndex,
+        current_question_id: toQuestionId,
         form_progress_percent: progress
       }),
       

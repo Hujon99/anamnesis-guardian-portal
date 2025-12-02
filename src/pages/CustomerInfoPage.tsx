@@ -3,6 +3,8 @@
  * It displays a simple form where customers enter their name, select a store, and choose a booking date.
  * After submission, it generates a token and redirects to the patient form.
  * Updated to pre-fill booking date when provided in URL parameters.
+ * 
+ * Includes journey tracking to monitor user drop-off before reaching the actual form.
  */
 
 import { useEffect, useState } from "react";
@@ -20,6 +22,7 @@ import { sv } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { checkConsent, createConsentRedirectUrl, preserveCustomerParams, addConsentParams } from "@/utils/consentUtils";
+import { useJourneyTracking, preserveJourneyId } from "@/hooks/useJourneyTracking";
 
 const CustomerInfoPage = () => {
   const [searchParams] = useSearchParams();
@@ -45,6 +48,14 @@ const CustomerInfoPage = () => {
   const formId = searchParams.get("form_id");
   const orgId = searchParams.get("org_id");
   const effectiveOrgId = orgId || formData?.organization_id;
+
+  // Initialize journey tracking
+  const { logCustomerInfoSubmitted, logError } = useJourneyTracking({
+    pageType: 'customer_info',
+    organizationId: effectiveOrgId,
+    formId: formId,
+    storeId: selectedStoreId || undefined
+  });
   
   // Read additional URL parameters for pre-filling
   const urlBookingDate = searchParams.get("booking_date");
@@ -287,6 +298,16 @@ const CustomerInfoPage = () => {
       const urlConsentTs = searchParams.get('consent_ts');
       if (urlConsent) params.set('consent', urlConsent);
       if (urlConsentTs) params.set('consent_ts', urlConsentTs);
+      
+      // Preserve journey ID for tracking
+      preserveJourneyId(searchParams, params);
+
+      // Log customer info submitted for journey tracking
+      logCustomerInfoSubmitted({
+        hasName: !!firstName.trim() && !!lastName.trim(),
+        hasPersonalNumber: !!personalNumber.trim(),
+        hasStore: !!selectedStoreId
+      });
       
       // Navigate to examination type selection
       navigate(`/examination-type-selection?${params.toString()}`);

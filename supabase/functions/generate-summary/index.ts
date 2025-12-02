@@ -169,7 +169,12 @@ Viktiga instruktioner:
   2. Var koncis och fokusera på det kliniskt relevanta.
   3. Tänk på att om något INTE står i anamnesen tolkas det som att man INTE har frågat om det.
   4. Använd tydliga rubriker (utan emojis) för enkel läsbarhet.
-  5. Formattera EJ som markdown, utan tänk txt.`;
+  5. FORMATTERING - MYCKET VIKTIGT:
+     - Returnera REN TEXT (plain text), INTE markdown.
+     - Använd ALDRIG markdown-symboler som **, ##, *, -, eller ```.
+     - Rubriker skrivs som vanlig text med kolon, t.ex. "Anledning till besök:"
+     - Punktlistor skrivs med vanliga bindestreck eller som löpande text.
+     - Texten ska kunna kopieras direkt till journalsystem utan formatering.`;
 
       const defaultPrompts = {
         general: `${baseInstructions}

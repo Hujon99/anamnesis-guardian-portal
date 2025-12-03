@@ -2,12 +2,16 @@
  * Hook for managing onboarding tour state.
  * Tracks whether user has completed onboarding and which step they're on.
  * Syncs with Supabase users table for persistence.
+ * 
+ * Includes 7-day cooldown when user dismisses (closes) the tour without completing.
  */
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useSupabaseClient } from '@/hooks/useSupabaseClient';
 import { useToast } from '@/hooks/use-toast';
+
+const DISMISS_COOLDOWN_DAYS = 7;
 
 export const useOnboarding = () => {
   const { user } = useUser();
@@ -16,6 +20,18 @@ export const useOnboarding = () => {
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [dismissedAt, setDismissedAt] = useState<string | null>(null);
+
+  // Check if cooldown period has passed since dismissal
+  const isCooldownActive = (dismissedAtTimestamp: string | null): boolean => {
+    if (!dismissedAtTimestamp) return false;
+    
+    const dismissedDate = new Date(dismissedAtTimestamp);
+    const now = new Date();
+    const daysSinceDismissal = (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+    
+    return daysSinceDismissal < DISMISS_COOLDOWN_DAYS;
+  };
 
   // Fetch onboarding status from database
   useEffect(() => {
@@ -29,7 +45,7 @@ export const useOnboarding = () => {
         console.log('[useOnboarding]: Fetching status with authenticated client');
         const { data, error } = await supabase
           .from('users')
-          .select('onboarding_completed, onboarding_step')
+          .select('onboarding_completed, onboarding_step, onboarding_dismissed_at')
           .eq('clerk_user_id', user.id)
           .single();
 
@@ -38,8 +54,20 @@ export const useOnboarding = () => {
           setIsOnboardingComplete(false);
           setCurrentStep(0);
         } else if (data) {
-          setIsOnboardingComplete(data.onboarding_completed ?? false);
+          const completed = data.onboarding_completed ?? false;
+          const dismissed = data.onboarding_dismissed_at;
+          
+          // If not completed but dismissed within cooldown, treat as complete (don't show)
+          const shouldHide = completed || isCooldownActive(dismissed);
+          
+          setIsOnboardingComplete(shouldHide);
           setCurrentStep(data.onboarding_step ?? 0);
+          setDismissedAt(dismissed);
+          
+          if (dismissed && isCooldownActive(dismissed)) {
+            console.log('[useOnboarding]: Tour dismissed, cooldown active until', 
+              new Date(new Date(dismissed).getTime() + DISMISS_COOLDOWN_DAYS * 24 * 60 * 60 * 1000));
+          }
         }
       } catch (err) {
         console.error('[useOnboarding]: Unexpected error:', err);
@@ -67,7 +95,8 @@ export const useOnboarding = () => {
         .from('users')
         .update({ 
           onboarding_completed: true,
-          onboarding_step: 0 
+          onboarding_step: 0,
+          onboarding_dismissed_at: null // Clear dismissal when properly completed
         })
         .eq('clerk_user_id', user.id)
         .select();
@@ -105,6 +134,7 @@ export const useOnboarding = () => {
       console.log('[useOnboarding]: Successfully completed onboarding', data);
       setIsOnboardingComplete(true);
       setCurrentStep(0);
+      setDismissedAt(null);
       
       toast({
         title: "Välkommen!",
@@ -117,6 +147,41 @@ export const useOnboarding = () => {
         description: "Kunde inte ansluta till databasen. Försök igen.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Dismiss onboarding (close without completing) - sets 7-day cooldown
+  const dismissOnboarding = async (currentStepIndex: number) => {
+    if (!user?.id || !supabase) return;
+
+    try {
+      console.log('[useOnboarding]: Dismissing tour with 7-day cooldown');
+      
+      const { error, data } = await supabase
+        .from('users')
+        .update({ 
+          onboarding_step: currentStepIndex,
+          onboarding_dismissed_at: new Date().toISOString()
+        })
+        .eq('clerk_user_id', user.id)
+        .select();
+
+      if (!error && (!data || data.length === 0)) {
+        console.error('[useOnboarding]: Dismiss blocked - no rows affected');
+        return;
+      }
+
+      if (error) {
+        console.error('[useOnboarding]: Error dismissing onboarding:', error);
+        return;
+      }
+
+      console.log('[useOnboarding]: Tour dismissed, will show again in 7 days');
+      setIsOnboardingComplete(true); // Hide the tour
+      setCurrentStep(currentStepIndex);
+      setDismissedAt(new Date().toISOString());
+    } catch (err) {
+      console.error('[useOnboarding]: Unexpected error:', err);
     }
   };
 
@@ -156,7 +221,8 @@ export const useOnboarding = () => {
         .from('users')
         .update({ 
           onboarding_completed: false,
-          onboarding_step: 0 
+          onboarding_step: 0,
+          onboarding_dismissed_at: null // Clear dismissal timestamp
         })
         .eq('clerk_user_id', user.id)
         .select();
@@ -183,6 +249,7 @@ export const useOnboarding = () => {
 
       setIsOnboardingComplete(false);
       setCurrentStep(0);
+      setDismissedAt(null);
       
       toast({
         title: "Guiden återställd",
@@ -198,6 +265,7 @@ export const useOnboarding = () => {
     currentStep,
     isLoading,
     completeOnboarding,
+    dismissOnboarding,
     updateStep,
     restartOnboarding,
   };

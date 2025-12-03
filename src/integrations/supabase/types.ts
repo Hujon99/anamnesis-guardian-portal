@@ -1149,6 +1149,7 @@ export type Database = {
           id: string
           last_name: string | null
           onboarding_completed: boolean | null
+          onboarding_dismissed_at: string | null
           onboarding_step: number | null
           organization_id: string
           preferred_store_id: string | null
@@ -1162,6 +1163,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           onboarding_completed?: boolean | null
+          onboarding_dismissed_at?: string | null
           onboarding_step?: number | null
           organization_id: string
           preferred_store_id?: string | null
@@ -1175,6 +1177,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           onboarding_completed?: boolean | null
+          onboarding_dismissed_at?: string | null
           onboarding_step?: number | null
           organization_id?: string
           preferred_store_id?: string | null

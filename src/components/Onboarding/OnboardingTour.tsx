@@ -11,7 +11,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { getTourSteps } from './tourSteps';
 
 export const OnboardingTour: React.FC = () => {
-  const { isOnboardingComplete, currentStep, isLoading, completeOnboarding, updateStep } = useOnboarding();
+  const { isOnboardingComplete, currentStep, isLoading, completeOnboarding, dismissOnboarding, updateStep } = useOnboarding();
   const { isOptician, isAdmin } = useUserRole();
   const [run, setRun] = React.useState(false);
   const [hasTodayBookings, setHasTodayBookings] = React.useState(true);
@@ -85,12 +85,12 @@ export const OnboardingTour: React.FC = () => {
       }
     }
 
-    // User closed the tour (allow resuming)
+    // User closed the tour - dismiss with 7-day cooldown
     if (action === ACTIONS.CLOSE) {
-      updateStep(index);
+      dismissOnboarding(index);
       setRun(false);
     }
-  }, [completeOnboarding, updateStep, isOptician, isAdmin, hasTodayBookings]);
+  }, [completeOnboarding, dismissOnboarding, updateStep, isOptician, isAdmin, hasTodayBookings]);
 
   // Don't render while loading
   if (isLoading || isOnboardingComplete === null) {

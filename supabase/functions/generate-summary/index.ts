@@ -195,14 +195,23 @@ Strukturera sammanfattningen under följande rubriker (anpassa efter den informa
         driving_license: `${baseInstructions}
 
 KÖRKORTSUNDERSÖKNING - SPECIALINSTRUKTIONER:
-Detta är en körkortsundersökning. Använd kortformat:
+Detta är en körkortsundersökning. Använd kortformat.
+
+KRITISKT - BEHÖRIGHETSGRUPP OCH ANSÖKNINGSTYP:
+- Behörighetsgrupp (Grupp I, II eller III) MÅSTE tas EXAKT från formulärsvaren.
+- Ansökningstyp (Ny ansökan eller Förlängning) MÅSTE tas EXAKT från formulärsvaren.
+- GISSA ALDRIG eller anta vilken grupp eller ansökningstyp det gäller.
+- Om du inte hittar tydlig information om grupp/ansökningstyp i svaren, skriv "Grupp: Ej angivet i formuläret" eller "Ansökningstyp: Ej angivet i formuläret".
+- Vanliga formulärfrågor som innehåller denna info kan vara: "Vilken behörighetsgrupp?", "Ny ansökan eller förlängning?", "Körkortsklass" eller liknande.
 
 OM allt är NORMALT (Nej på alla frågor):
-- Skriv: "Allt är normalt och licens kan ges för körkortstillstånd grupp I (A, AM, B, BE)." eller motsvarande baserat på önskad körkortskategori.
+- Ange alltid vilken behörighetsgrupp och ansökningstyp som framgår av formuläret.
+- Exempel: "Förlängning Grupp I (A, AM, B, BE). Allt är normalt, körkortstillstånd kan ges."
 - Använd INTE några rubriker.
 - Håll det MYCKET kort.
 
 OM något är AVVIKANDE (Ja-svar med förklarande text):
+- Ange alltid vilken behörighetsgrupp och ansökningstyp som framgår av formuläret först.
 - Inkludera fråga och svar för avvikande fynd.
 - Avsluta med att resten var normalt.
 - Använd INTE rubriker för körkortsundersökningar.

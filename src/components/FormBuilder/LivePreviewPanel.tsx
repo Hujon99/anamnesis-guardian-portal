@@ -91,8 +91,36 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
   const shouldShowQuestion = (question: FormQuestion): boolean => {
     if (!question.show_if) return true;
     
-    const dependentValue = formData[question.show_if.question];
-    return dependentValue === question.show_if.equals;
+    const { question: dependentQuestion, equals, contains } = question.show_if;
+    const dependentValue = formData[dependentQuestion];
+    
+    // Handle 'contains' condition for checkboxes
+    if (contains !== undefined) {
+      if (Array.isArray(dependentValue)) {
+        return dependentValue.includes(contains);
+      }
+      return dependentValue === contains;
+    }
+    
+    // Handle 'equals' condition
+    if (equals !== undefined) {
+      // If dependentValue is an array (checkbox), check if it contains the target
+      if (Array.isArray(dependentValue)) {
+        if (Array.isArray(equals)) {
+          return equals.some(eq => dependentValue.includes(eq));
+        }
+        return dependentValue.includes(equals);
+      }
+      
+      // dependentValue is a single value
+      if (Array.isArray(equals)) {
+        return equals.includes(dependentValue);
+      }
+      return dependentValue === equals;
+    }
+    
+    // Default: show if value is truthy
+    return !!dependentValue;
   };
 
   // Render question input based on type

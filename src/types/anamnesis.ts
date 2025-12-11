@@ -82,7 +82,7 @@ export type FormQuestionOption = string | {
 export interface FormQuestion {
   id: string;
   label: string;
-  type: 'text' | 'textarea' | 'radio' | 'select' | 'checkbox' | 'dropdown' | 'number' | 'date' | 'email' | 'tel' | 'url';
+  type: 'text' | 'textarea' | 'radio' | 'select' | 'checkbox' | 'dropdown' | 'number' | 'date' | 'email' | 'tel' | 'url' | 'info';
   options?: FormQuestionOption[];
   required?: boolean;
   placeholder?: string;

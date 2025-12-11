@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Info } from 'lucide-react';
 
 import { FormTemplate, FormSection, FormQuestion } from '@/types/anamnesis';
 
@@ -295,6 +295,21 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
               })}
             </SelectContent>
           </Select>
+        );
+
+      case 'info':
+        return (
+          <div className="p-4 rounded-lg bg-amber-50 border-l-4 border-amber-400 dark:bg-amber-950/20 dark:border-amber-600">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800 dark:text-amber-200">
+                {question.label}
+                {question.help_text && (
+                  <p className="mt-2 text-amber-600 dark:text-amber-400">{question.help_text}</p>
+                )}
+              </div>
+            </div>
+          </div>
         );
 
       default:

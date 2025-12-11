@@ -63,7 +63,8 @@ import {
   Type,
   AlignLeft,
   Circle,
-  CheckSquare
+  CheckSquare,
+  Info
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -121,6 +122,13 @@ const QUESTION_TYPES = [
     icon: ChevronDown,
     description: 'Som radioknappar men sparar plats',
     color: 'text-teal-700'
+  },
+  { 
+    value: 'info', 
+    label: 'Informativ text',
+    icon: Info,
+    description: 'Visa information utan att samla svar',
+    color: 'text-amber-500'
   }
 ];
 

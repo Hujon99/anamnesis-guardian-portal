@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
 import { FieldError } from "react-hook-form";
 import ReactMarkdown from 'react-markdown';
+import { Info } from 'lucide-react';
 
 export interface FormFieldRendererProps {
   question: FormQuestion | DynamicFollowupQuestion;
@@ -433,6 +434,21 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = React.memo(({
               </FormItem>
             )}
           />
+        );
+        
+      case "info":
+        return (
+          <div className={`p-4 rounded-lg bg-amber-50 border-l-4 border-amber-400 dark:bg-amber-950/20 dark:border-amber-600 ${dynamicQuestionClass}`}>
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="prose prose-sm max-w-none text-amber-800 dark:text-amber-200">
+                <ReactMarkdown>{question.label}</ReactMarkdown>
+                {question.help_text && (
+                  <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">{question.help_text}</p>
+                )}
+              </div>
+            </div>
+          </div>
         );
         
       default:

@@ -48,16 +48,31 @@ export const useConditionalFields = (
     
     // Handle 'equals' condition
     if (equals !== undefined) {
-      // Handle array of possible values
+      // If value is an array (checkbox), check if it contains the target value(s)
+      if (Array.isArray(value)) {
+        if (Array.isArray(equals)) {
+          // Both are arrays: check if any of equals values are in value array
+          const result = equals.some(eq => value.includes(eq));
+          console.log(`[useConditionalFields/evaluateCondition]: Equals check (both arrays): ${result}`);
+          return result;
+        } else {
+          // equals is string, value is array: check if value contains equals
+          const result = value.includes(equals);
+          console.log(`[useConditionalFields/evaluateCondition]: Equals check (value array, equals string): ${result}`);
+          return result;
+        }
+      }
+      
+      // value is a single value (radio, dropdown)
       if (Array.isArray(equals)) {
         const result = equals.includes(value);
-        console.log(`[useConditionalFields/evaluateCondition]: Equals check (array): ${result}`);
+        console.log(`[useConditionalFields/evaluateCondition]: Equals check (equals array, value string): ${result}`);
         return result;
       }
       
-      // Handle single value
+      // Both are single values
       const result = value === equals;
-      console.log(`[useConditionalFields/evaluateCondition]: Equals check (single): ${result}`);
+      console.log(`[useConditionalFields/evaluateCondition]: Equals check (both strings): ${result}`);
       return result;
     }
     

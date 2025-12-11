@@ -54,8 +54,17 @@ export const SystemAdminProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
 export const useSystemAdmin = () => {
   const context = useContext(SystemAdminContext);
+  
+  // Return safe default when not in provider context
+  // This allows the hook to be used in components that may render
+  // outside the SystemAdminProvider (e.g., FormLayout for patient forms)
   if (context === undefined) {
-    throw new Error('useSystemAdmin must be used within a SystemAdminProvider');
+    return {
+      isSystemAdmin: false,
+      isLoading: false,
+      systemOrgId: null
+    };
   }
+  
   return context;
 };

@@ -264,7 +264,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Button>
               )}
 
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
@@ -274,35 +274,37 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                     data-no-dnd="true"
                     onPointerDown={(e) => {
                       e.stopPropagation();
-                      e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
                     }}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => addQuestion('text')}>
+                  <DropdownMenuItem onSelect={() => addQuestion('text')}>
                     Textfält
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                  <DropdownMenuItem onSelect={() => addQuestion('textarea')}>
                     Textområde
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                  <DropdownMenuItem onSelect={() => addQuestion('radio')}>
                     Radioknappar
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                  <DropdownMenuItem onSelect={() => addQuestion('checkbox')}>
                     Kryssrutor
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                  <DropdownMenuItem onSelect={() => addQuestion('dropdown')}>
                     Dropdown
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => addQuestion('info')}>
+                  <DropdownMenuItem onSelect={() => addQuestion('info')}>
                     Informativ text
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="ghost" 
@@ -310,7 +312,6 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                   data-no-dnd="true"
                   onPointerDown={(e) => {
                     e.stopPropagation();
-                    e.preventDefault();
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -320,11 +321,11 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Button>
               </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                  <DropdownMenuItem onSelect={() => setIsEditing(true)}>
                     <Edit className="h-4 w-4 mr-2" />
                     Redigera titel
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
+                  <DropdownMenuItem onSelect={() => setShowDeleteDialog(true)} className="text-destructive">
                     <Trash2 className="h-4 w-4 mr-2" />
                     Ta bort sektion
                   </DropdownMenuItem>
@@ -368,7 +369,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Använd mall
                         </Button>
                       )}
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button 
                             variant="outline" 
@@ -378,7 +379,9 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                             data-no-dnd="true"
                             onPointerDown={(e) => {
                               e.stopPropagation();
-                              e.preventDefault();
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
                             }}
                           >
                             <Plus className="h-4 w-4" />
@@ -386,22 +389,22 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-56">
-                          <DropdownMenuItem onClick={() => addQuestion('text')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('text')}>
                             Textfält
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('textarea')}>
                             Textområde
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('radio')}>
                             Radioknappar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('checkbox')}>
                             Kryssrutor
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('dropdown')}>
                             Dropdown
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('info')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('info')}>
                             Informativ text
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -435,7 +438,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Använd mall
                         </Button>
                       )}
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button 
                             variant="outline" 
@@ -444,7 +447,9 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                             data-no-dnd="true"
                             onPointerDown={(e) => {
                               e.stopPropagation();
-                              e.preventDefault();
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
                             }}
                           >
                             <Plus className="h-4 w-4" />
@@ -452,22 +457,22 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="center" className="w-56">
-                          <DropdownMenuItem onClick={() => addQuestion('text')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('text')}>
                             Textfält
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('textarea')}>
                             Textområde
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('radio')}>
                             Radioknappar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('checkbox')}>
                             Kryssrutor
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('dropdown')}>
                             Dropdown
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => addQuestion('info')}>
+                          <DropdownMenuItem onSelect={() => addQuestion('info')}>
                             Informativ text
                           </DropdownMenuItem>
                         </DropdownMenuContent>

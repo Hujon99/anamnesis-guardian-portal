@@ -14,6 +14,32 @@ import { generateRuntimeId } from "@/utils/questionIdUtils";
  * Calculate the total score for a specific section based on current form values.
  * Only considers questions that have scoring enabled.
  */
+/**
+ * Extracts a numeric value from an answer that may contain text labels.
+ * Handles formats like "Dålig (1)", "Acceptabel (2)", "3", etc.
+ * 
+ * @param answer - The answer value which may be a number, string, or labeled string
+ * @returns The extracted numeric string, or null if no number found
+ */
+const extractNumericValue = (answer: any): string | null => {
+  if (answer === undefined || answer === null || answer === '') return null;
+  
+  const answerStr = String(answer);
+  
+  // If the answer is already a pure number, return it
+  if (/^\d+$/.test(answerStr)) return answerStr;
+  
+  // Try to extract number from format like "Dålig (1)" or "Acceptabel (2)"
+  const parenMatch = answerStr.match(/\((\d+)\)/);
+  if (parenMatch) return parenMatch[1];
+  
+  // Fallback: try to find any number in the string
+  const numMatch = answerStr.match(/\d+/);
+  if (numMatch) return numMatch[0];
+  
+  return null;
+};
+
 const calculateSectionScore = (
   section: FormSection,
   values: Record<string, any>
@@ -23,10 +49,11 @@ const calculateSectionScore = (
   section.questions.forEach(question => {
     if (question.scoring?.enabled) {
       const answer = values[question.id];
-      if (answer !== undefined && answer !== null && answer !== '') {
-        const numericValue = parseInt(String(answer), 10);
-        if (!isNaN(numericValue)) {
-          totalScore += numericValue;
+      const numericStr = extractNumericValue(answer);
+      if (numericStr) {
+        const score = parseInt(numericStr, 10);
+        if (!isNaN(score)) {
+          totalScore += score;
         }
       }
     }
@@ -54,10 +81,30 @@ const evaluateAdvancedCondition = (
         ? condition.values 
         : [condition.values].filter(Boolean);
       
+      const valueStr = String(value);
+      const numericValue = extractNumericValue(value);
+      
       if (Array.isArray(value)) {
-        return targetValues.some(target => value.includes(target));
+        // For array values, check each item
+        return targetValues.some(target => 
+          value.includes(target) || 
+          value.some((v: any) => extractNumericValue(v) === target)
+        );
       }
-      return targetValues.includes(String(value));
+      
+      // Match against exact value OR extracted numeric value
+      const matches = targetValues.includes(valueStr) || 
+                     (numericValue !== null && targetValues.includes(numericValue));
+      
+      console.log('[evaluateAdvancedCondition] answer:', {
+        questionId: condition.question_id,
+        targetValues,
+        actualValue: valueStr,
+        numericValue,
+        matches
+      });
+      
+      return matches;
     }
     
     case 'any_answer': {
@@ -70,21 +117,44 @@ const evaluateAdvancedCondition = (
         ? condition.any_value 
         : [condition.any_value].filter(Boolean);
       
+      console.log('[evaluateAdvancedCondition] any_answer check:', {
+        sectionIndex: targetSectionIndex,
+        sectionTitle: targetSection.section_title,
+        targetValues,
+        questionCount: targetSection.questions.length
+      });
+      
       // Check all questions in the target section
       for (const question of targetSection.questions) {
         const value = values[question.id];
         if (value === undefined || value === null || value === '') continue;
         
+        const valueStr = String(value);
+        const numericValue = extractNumericValue(value);
+        
         if (Array.isArray(value)) {
-          if (targetValues.some(target => value.includes(target))) {
+          if (targetValues.some(target => 
+            value.includes(target) || 
+            value.some((v: any) => extractNumericValue(v) === target)
+          )) {
+            console.log('[evaluateAdvancedCondition] any_answer MATCH (array):', { questionId: question.id, value });
             return true;
           }
         } else {
-          if (targetValues.includes(String(value))) {
+          // Match against exact value OR extracted numeric value
+          if (targetValues.includes(valueStr) || 
+              (numericValue !== null && targetValues.includes(numericValue))) {
+            console.log('[evaluateAdvancedCondition] any_answer MATCH:', { 
+              questionId: question.id, 
+              actualValue: valueStr, 
+              numericValue,
+              targetValues
+            });
             return true;
           }
         }
       }
+      console.log('[evaluateAdvancedCondition] any_answer NO MATCH');
       return false;
     }
     
@@ -96,6 +166,14 @@ const evaluateAdvancedCondition = (
       
       const targetSection = sections[targetSectionIndex];
       const sectionScore = calculateSectionScore(targetSection, values);
+      
+      console.log('[evaluateAdvancedCondition] section_score:', {
+        sectionIndex: targetSectionIndex,
+        sectionTitle: targetSection.section_title,
+        calculatedScore: sectionScore,
+        operator: condition.operator,
+        threshold: condition.threshold
+      });
       
       switch (condition.operator) {
         case 'less_than':

@@ -49,32 +49,9 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [editTitle, setEditTitle] = useState(section.section_title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPresetDialog, setShowPresetDialog] = useState(false);
-  const [showAddQuestionMenu, setShowAddQuestionMenu] = useState(false);
-  const [showAddQuestionMenuBottom, setShowAddQuestionMenuBottom] = useState(false);
-  const [showAddQuestionMenuEmpty, setShowAddQuestionMenuEmpty] = useState(false);
 
   const hasPresets = schema.question_presets && schema.question_presets.length > 0;
   
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (showAddQuestionMenu && !target.closest('.add-question-menu-top')) {
-        setShowAddQuestionMenu(false);
-      }
-      if (showAddQuestionMenuBottom && !target.closest('.add-question-menu-bottom')) {
-        setShowAddQuestionMenuBottom(false);
-      }
-      if (showAddQuestionMenuEmpty && !target.closest('.add-question-menu-empty')) {
-        setShowAddQuestionMenuEmpty(false);
-      }
-    };
-
-    if (showAddQuestionMenu || showAddQuestionMenuBottom || showAddQuestionMenuEmpty) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showAddQuestionMenu, showAddQuestionMenuBottom, showAddQuestionMenuEmpty]);
   
   // Check if section is conditional and find parent question
   const isConditional = !!section.show_if;
@@ -287,43 +264,43 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 </Button>
               )}
 
-              <div className="relative add-question-menu-top">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  type="button"
-                  title="Lägg till fråga"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowAddQuestionMenu(!showAddQuestionMenu);
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-                {showAddQuestionMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-56 p-2 bg-popover border border-border rounded-lg shadow-lg z-50">
-                    <div className="space-y-1">
-                      {['text', 'textarea', 'radio', 'checkbox', 'dropdown'].map((type) => (
-                        <button
-                          key={type}
-                          className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent/50 transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addQuestion(type as any);
-                            setShowAddQuestionMenu(false);
-                          }}
-                        >
-                          {type === 'text' && 'Textfält'}
-                          {type === 'textarea' && 'Textområde'}
-                          {type === 'radio' && 'Radioknappar'}
-                          {type === 'checkbox' && 'Kryssrutor'}
-                          {type === 'dropdown' && 'Dropdown'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    type="button"
+                    title="Lägg till fråga"
+                    data-no-dnd="true"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => addQuestion('text')}>
+                    Textfält
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                    Textområde
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                    Radioknappar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                    Kryssrutor
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                    Dropdown
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => addQuestion('info')}>
+                    Informativ text
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -391,44 +368,44 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Använd mall
                         </Button>
                       )}
-                      <div className="relative add-question-menu-bottom">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="gap-2"
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAddQuestionMenuBottom(!showAddQuestionMenuBottom);
-                          }}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Lägg till fråga
-                        </Button>
-                        {showAddQuestionMenuBottom && (
-                          <div className="absolute left-0 top-full mt-1 w-56 p-2 bg-popover border border-border rounded-lg shadow-lg z-50">
-                            <div className="space-y-1">
-                              {['text', 'textarea', 'radio', 'checkbox', 'dropdown'].map((type) => (
-                                <button
-                                  key={type}
-                                  className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent/50 transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    addQuestion(type as any);
-                                    setShowAddQuestionMenuBottom(false);
-                                  }}
-                                >
-                                  {type === 'text' && 'Textfält'}
-                                  {type === 'textarea' && 'Textområde'}
-                                  {type === 'radio' && 'Radioknappar'}
-                                  {type === 'checkbox' && 'Kryssrutor'}
-                                  {type === 'dropdown' && 'Dropdown'}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-2"
+                            type="button"
+                            data-no-dnd="true"
+                            onPointerDown={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Lägg till fråga
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-56">
+                          <DropdownMenuItem onClick={() => addQuestion('text')}>
+                            Textfält
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                            Textområde
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                            Radioknappar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                            Kryssrutor
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                            Dropdown
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('info')}>
+                            Informativ text
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 )}
@@ -458,43 +435,43 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           Använd mall
                         </Button>
                       )}
-                      <div className="relative add-question-menu-empty">
-                        <Button 
-                          variant="outline" 
-                          className="gap-2"
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAddQuestionMenuEmpty(!showAddQuestionMenuEmpty);
-                          }}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Lägg till första frågan
-                        </Button>
-                        {showAddQuestionMenuEmpty && (
-                          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-56 p-2 bg-popover border border-border rounded-lg shadow-lg z-50">
-                            <div className="space-y-1">
-                              {['text', 'textarea', 'radio', 'checkbox', 'dropdown'].map((type) => (
-                                <button
-                                  key={type}
-                                  className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent/50 transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    addQuestion(type as any);
-                                    setShowAddQuestionMenuEmpty(false);
-                                  }}
-                                >
-                                  {type === 'text' && 'Textfält'}
-                                  {type === 'textarea' && 'Textområde'}
-                                  {type === 'radio' && 'Radioknappar'}
-                                  {type === 'checkbox' && 'Kryssrutor'}
-                                  {type === 'dropdown' && 'Dropdown'}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            className="gap-2"
+                            type="button"
+                            data-no-dnd="true"
+                            onPointerDown={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Lägg till första frågan
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="center" className="w-56">
+                          <DropdownMenuItem onClick={() => addQuestion('text')}>
+                            Textfält
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('textarea')}>
+                            Textområde
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('radio')}>
+                            Radioknappar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('checkbox')}>
+                            Kryssrutor
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('dropdown')}>
+                            Dropdown
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addQuestion('info')}>
+                            Informativ text
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 )}

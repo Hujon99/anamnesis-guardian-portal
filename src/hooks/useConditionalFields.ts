@@ -70,125 +70,158 @@ const evaluateAdvancedCondition = (
   values: Record<string, any>,
   sections: FormSection[]
 ): boolean => {
-  switch (condition.type) {
-    case 'answer': {
-      // Standard answer-based condition
-      if (!condition.question_id) return true;
-      const value = values[condition.question_id];
-      if (value === undefined) return false;
-      
-      const targetValues = Array.isArray(condition.values) 
-        ? condition.values 
-        : [condition.values].filter(Boolean);
-      
-      const valueStr = String(value);
-      const numericValue = extractNumericValue(value);
-      
-      if (Array.isArray(value)) {
-        // For array values, check each item
-        return targetValues.some(target => 
-          value.includes(target) || 
-          value.some((v: any) => extractNumericValue(v) === target)
-        );
-      }
-      
-      // Match against exact value OR extracted numeric value
-      const matches = targetValues.includes(valueStr) || 
-                     (numericValue !== null && targetValues.includes(numericValue));
-      
-      console.log('[evaluateAdvancedCondition] answer:', {
-        questionId: condition.question_id,
-        targetValues,
-        actualValue: valueStr,
-        numericValue,
-        matches
-      });
-      
-      return matches;
+  try {
+    // Guard against undefined inputs
+    if (!condition || !values || !sections) {
+      console.warn('[evaluateAdvancedCondition] Missing required parameters');
+      return false;
     }
     
-    case 'any_answer': {
-      // Check if ANY question in a section has a specific value
-      const targetSectionIndex = condition.section_index;
-      if (targetSectionIndex === undefined || !sections[targetSectionIndex]) return false;
-      
-      const targetSection = sections[targetSectionIndex];
-      const targetValues = Array.isArray(condition.any_value) 
-        ? condition.any_value 
-        : [condition.any_value].filter(Boolean);
-      
-      console.log('[evaluateAdvancedCondition] any_answer check:', {
-        sectionIndex: targetSectionIndex,
-        sectionTitle: targetSection.section_title,
-        targetValues,
-        questionCount: targetSection.questions.length
-      });
-      
-      // Check all questions in the target section
-      for (const question of targetSection.questions) {
-        const value = values[question.id];
-        if (value === undefined || value === null || value === '') continue;
+    switch (condition.type) {
+      case 'answer': {
+        // Standard answer-based condition
+        if (!condition.question_id) return true;
+        const value = values[condition.question_id];
+        if (value === undefined) return false;
+        
+        const targetValues = Array.isArray(condition.values) 
+          ? condition.values 
+          : [condition.values].filter(Boolean);
         
         const valueStr = String(value);
         const numericValue = extractNumericValue(value);
         
         if (Array.isArray(value)) {
-          if (targetValues.some(target => 
+          // For array values, check each item
+          return targetValues.some(target => 
             value.includes(target) || 
             value.some((v: any) => extractNumericValue(v) === target)
-          )) {
-            console.log('[evaluateAdvancedCondition] any_answer MATCH (array):', { questionId: question.id, value });
-            return true;
-          }
-        } else {
-          // Match against exact value OR extracted numeric value
-          if (targetValues.includes(valueStr) || 
-              (numericValue !== null && targetValues.includes(numericValue))) {
-            console.log('[evaluateAdvancedCondition] any_answer MATCH:', { 
-              questionId: question.id, 
-              actualValue: valueStr, 
-              numericValue,
-              targetValues
-            });
-            return true;
+          );
+        }
+        
+        // Match against exact value OR extracted numeric value
+        const matches = targetValues.includes(valueStr) || 
+                       (numericValue !== null && targetValues.includes(numericValue));
+        
+        console.log('[evaluateAdvancedCondition] answer:', {
+          questionId: condition.question_id,
+          targetValues,
+          actualValue: valueStr,
+          numericValue,
+          matches
+        });
+        
+        return matches;
+      }
+      
+      case 'any_answer': {
+        // Check if ANY question in a section has a specific value
+        const targetSectionIndex = condition.section_index;
+        if (targetSectionIndex === undefined || targetSectionIndex < 0 || !sections[targetSectionIndex]) {
+          console.warn('[evaluateAdvancedCondition] any_answer: Invalid section index', targetSectionIndex);
+          return false;
+        }
+        
+        const targetSection = sections[targetSectionIndex];
+        if (!targetSection || !targetSection.questions) {
+          console.warn('[evaluateAdvancedCondition] any_answer: Target section has no questions');
+          return false;
+        }
+        
+        const targetValues = Array.isArray(condition.any_value) 
+          ? condition.any_value 
+          : [condition.any_value].filter(Boolean);
+        
+        console.log('[evaluateAdvancedCondition] any_answer check:', {
+          sectionIndex: targetSectionIndex,
+          sectionTitle: targetSection.section_title,
+          targetValues,
+          questionCount: targetSection.questions.length
+        });
+        
+        // Check all questions in the target section
+        for (const question of targetSection.questions) {
+          if (!question || !question.id) continue;
+          
+          const value = values[question.id];
+          if (value === undefined || value === null || value === '') continue;
+          
+          const valueStr = String(value);
+          const numericValue = extractNumericValue(value);
+          
+          if (Array.isArray(value)) {
+            if (targetValues.some(target => 
+              value.includes(target) || 
+              value.some((v: any) => extractNumericValue(v) === target)
+            )) {
+              console.log('[evaluateAdvancedCondition] any_answer MATCH (array):', { questionId: question.id, value });
+              return true;
+            }
+          } else {
+            // Match against exact value OR extracted numeric value
+            if (targetValues.includes(valueStr) || 
+                (numericValue !== null && targetValues.includes(numericValue))) {
+              console.log('[evaluateAdvancedCondition] any_answer MATCH:', { 
+                questionId: question.id, 
+                actualValue: valueStr, 
+                numericValue,
+                targetValues
+              });
+              return true;
+            }
           }
         }
+        console.log('[evaluateAdvancedCondition] any_answer NO MATCH');
+        return false;
       }
-      console.log('[evaluateAdvancedCondition] any_answer NO MATCH');
-      return false;
-    }
-    
-    case 'section_score': {
-      // Check total score of a section against a threshold
-      const targetSectionIndex = condition.target_section_index;
-      if (targetSectionIndex === undefined || !sections[targetSectionIndex]) return false;
-      if (condition.threshold === undefined) return false;
       
-      const targetSection = sections[targetSectionIndex];
-      const sectionScore = calculateSectionScore(targetSection, values);
-      
-      console.log('[evaluateAdvancedCondition] section_score:', {
-        sectionIndex: targetSectionIndex,
-        sectionTitle: targetSection.section_title,
-        calculatedScore: sectionScore,
-        operator: condition.operator,
-        threshold: condition.threshold
-      });
-      
-      switch (condition.operator) {
-        case 'less_than':
-          return sectionScore < condition.threshold;
-        case 'greater_than':
-          return sectionScore > condition.threshold;
-        case 'equals':
-          return sectionScore === condition.threshold;
-        default:
+      case 'section_score': {
+        // Check total score of a section against a threshold
+        const targetSectionIndex = condition.target_section_index;
+        if (targetSectionIndex === undefined || targetSectionIndex < 0 || !sections[targetSectionIndex]) {
+          console.warn('[evaluateAdvancedCondition] section_score: Invalid section index', targetSectionIndex);
           return false;
+        }
+        if (condition.threshold === undefined) {
+          console.warn('[evaluateAdvancedCondition] section_score: Missing threshold');
+          return false;
+        }
+        
+        const targetSection = sections[targetSectionIndex];
+        if (!targetSection || !targetSection.questions) {
+          console.warn('[evaluateAdvancedCondition] section_score: Target section has no questions');
+          return false;
+        }
+        
+        const sectionScore = calculateSectionScore(targetSection, values);
+        
+        console.log('[evaluateAdvancedCondition] section_score:', {
+          sectionIndex: targetSectionIndex,
+          sectionTitle: targetSection.section_title,
+          calculatedScore: sectionScore,
+          operator: condition.operator,
+          threshold: condition.threshold
+        });
+        
+        switch (condition.operator) {
+          case 'less_than':
+            return sectionScore < condition.threshold;
+          case 'greater_than':
+            return sectionScore > condition.threshold;
+          case 'equals':
+            return sectionScore === condition.threshold;
+          default:
+            return false;
+        }
       }
+      
+      default:
+        console.warn('[evaluateAdvancedCondition] Unknown condition type:', (condition as any).type);
+        return false;
     }
-    
-    default:
-      return false;
+  } catch (error) {
+    console.error('[evaluateAdvancedCondition] Error evaluating condition:', error, condition);
+    return false;
   }
 };
 
@@ -206,88 +239,97 @@ export const useConditionalFields = (
     values: Record<string, any>,
     allSections: FormSection[] = []
   ): boolean => {
-    if (!condition) return true;
-    
-    // Handle advanced conditions array (new logic)
-    if ('conditions' in condition && condition.conditions && condition.conditions.length > 0) {
-      const logic = condition.logic || 'or';
+    try {
+      if (!condition) return true;
       
-      if (logic === 'or') {
-        // OR logic: return true if ANY condition is met
-        return condition.conditions.some(cond => 
-          evaluateAdvancedCondition(cond, values, allSections)
-        );
-      } else {
-        // AND logic: return true only if ALL conditions are met
-        return condition.conditions.every(cond => 
-          evaluateAdvancedCondition(cond, values, allSections)
-        );
-      }
-    }
-    
-    // Handle legacy question-based condition
-    const { question, equals, contains } = condition;
-    
-    // If no question is specified but there are no advanced conditions, show the item
-    if (!question) return true;
-    
-    // If dependent question doesn't exist in values, don't show the item
-    if (!(question in values)) {
-      console.log(`[useConditionalFields/evaluateCondition]: Question "${question}" not found in values, hiding dependent field`);
-      return false;
-    }
-    
-    const value = values[question];
-    console.log(`[useConditionalFields/evaluateCondition]: Evaluating condition for question "${question}", value:`, value, 'condition:', { equals, contains });
-
-    // Handle 'contains' condition for checkboxes and multi-select fields
-    if (contains !== undefined) {
-      if (Array.isArray(value)) {
-        const result = value.includes(contains);
-        console.log(`[useConditionalFields/evaluateCondition]: Contains check (array): ${result}`);
-        return result;
-      }
-      // If value is a string, check if it's equal to contains
-      const result = value === contains;
-      console.log(`[useConditionalFields/evaluateCondition]: Contains check (string): ${result}`);
-      return result;
-    }
-    
-    // Handle 'equals' condition
-    if (equals !== undefined) {
-      // If value is an array (checkbox), check if it contains the target value(s)
-      if (Array.isArray(value)) {
-        if (Array.isArray(equals)) {
-          // Both are arrays: check if any of equals values are in value array
-          const result = equals.some(eq => value.includes(eq));
-          console.log(`[useConditionalFields/evaluateCondition]: Equals check (both arrays): ${result}`);
-          return result;
+      // Guard against undefined values
+      const safeValues = values || {};
+      
+      // Handle advanced conditions array (new logic)
+      if ('conditions' in condition && condition.conditions && Array.isArray(condition.conditions) && condition.conditions.length > 0) {
+        const logic = condition.logic || 'or';
+        
+        if (logic === 'or') {
+          // OR logic: return true if ANY condition is met
+          return condition.conditions.some(cond => 
+            evaluateAdvancedCondition(cond, safeValues, allSections)
+          );
         } else {
-          // equals is string, value is array: check if value contains equals
-          const result = value.includes(equals);
-          console.log(`[useConditionalFields/evaluateCondition]: Equals check (value array, equals string): ${result}`);
-          return result;
+          // AND logic: return true only if ALL conditions are met
+          return condition.conditions.every(cond => 
+            evaluateAdvancedCondition(cond, safeValues, allSections)
+          );
         }
       }
       
-      // value is a single value (radio, dropdown)
-      if (Array.isArray(equals)) {
-        const result = equals.includes(value);
-        console.log(`[useConditionalFields/evaluateCondition]: Equals check (equals array, value string): ${result}`);
+      // Handle legacy question-based condition
+      const { question, equals, contains } = condition;
+      
+      // If no question is specified but there are no advanced conditions, show the item
+      if (!question) return true;
+      
+      // If dependent question doesn't exist in values, don't show the item
+      if (!(question in safeValues)) {
+        console.log(`[useConditionalFields/evaluateCondition]: Question "${question}" not found in values, hiding dependent field`);
+        return false;
+      }
+      
+      const value = safeValues[question];
+      console.log(`[useConditionalFields/evaluateCondition]: Evaluating condition for question "${question}", value:`, value, 'condition:', { equals, contains });
+
+      // Handle 'contains' condition for checkboxes and multi-select fields
+      if (contains !== undefined) {
+        if (Array.isArray(value)) {
+          const result = value.includes(contains);
+          console.log(`[useConditionalFields/evaluateCondition]: Contains check (array): ${result}`);
+          return result;
+        }
+        // If value is a string, check if it's equal to contains
+        const result = value === contains;
+        console.log(`[useConditionalFields/evaluateCondition]: Contains check (string): ${result}`);
         return result;
       }
       
-      // Both are single values
-      const result = value === equals;
-      console.log(`[useConditionalFields/evaluateCondition]: Equals check (both strings): ${result}`);
+      // Handle 'equals' condition
+      if (equals !== undefined) {
+        // If value is an array (checkbox), check if it contains the target value(s)
+        if (Array.isArray(value)) {
+          if (Array.isArray(equals)) {
+            // Both are arrays: check if any of equals values are in value array
+            const result = equals.some(eq => value.includes(eq));
+            console.log(`[useConditionalFields/evaluateCondition]: Equals check (both arrays): ${result}`);
+            return result;
+          } else {
+            // equals is string, value is array: check if value contains equals
+            const result = value.includes(equals);
+            console.log(`[useConditionalFields/evaluateCondition]: Equals check (value array, equals string): ${result}`);
+            return result;
+          }
+        }
+        
+        // value is a single value (radio, dropdown)
+        if (Array.isArray(equals)) {
+          const result = equals.includes(value);
+          console.log(`[useConditionalFields/evaluateCondition]: Equals check (equals array, value string): ${result}`);
+          return result;
+        }
+        
+        // Both are single values
+        const result = value === equals;
+        console.log(`[useConditionalFields/evaluateCondition]: Equals check (both strings): ${result}`);
+        return result;
+      }
+      
+      // If no specific condition is provided but the question is specified,
+      // show the item if the value is truthy
+      const result = !!value;
+      console.log(`[useConditionalFields/evaluateCondition]: Truthy check: ${result}`);
       return result;
+    } catch (error) {
+      console.error('[useConditionalFields/evaluateCondition]: Error evaluating condition:', error, condition);
+      // On error, default to showing the item to prevent hiding content unexpectedly
+      return true;
     }
-    
-    // If no specific condition is provided but the question is specified,
-    // show the item if the value is truthy
-    const result = !!value;
-    console.log(`[useConditionalFields/evaluateCondition]: Truthy check: ${result}`);
-    return result;
   }, []);
 
 

@@ -281,11 +281,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                   }}
                   className="gap-2 text-accent"
                   type="button"
-                  data-no-dnd="true"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }}
+                  title="Använd frågemall"
                 >
                   <Sparkles className="h-4 w-4" />
                 </Button>

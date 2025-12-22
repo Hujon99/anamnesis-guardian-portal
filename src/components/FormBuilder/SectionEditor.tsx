@@ -513,19 +513,19 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
 
       {/* Preset Selection Dialog */}
       <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md p-6">
+          <DialogHeader className="pb-2">
             <DialogTitle>Välj frågemall</DialogTitle>
             <DialogDescription>
               Välj en mall att använda för den nya frågan
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 py-4">
+          <div className="space-y-3 pt-2">
             {schema.question_presets?.map((preset, idx) => (
               <Button
                 key={idx}
                 variant="outline"
-                className="w-full justify-start gap-3 h-auto py-3"
+                className="w-full justify-start gap-3 h-auto py-4 px-4"
                 onClick={() => addQuestion(undefined, preset)}
               >
                 <Sparkles className="h-5 w-5 text-accent flex-shrink-0" />

@@ -508,32 +508,81 @@ export const SectionConditionalLogic: React.FC<SectionConditionalLogicProps> = (
                       </div>
                     )}
 
-                    {condition.type === 'answer' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs">Fråga</Label>
-                          <SearchableQuestionPicker
-                            questions={availableDependencies}
-                            value={condition.question_id || ''}
-                            onValueChange={(v) => updateCondition(idx, { question_id: v })}
-                            placeholder="Välj fråga..."
-                            className="h-9"
-                          />
+                    {condition.type === 'answer' && (() => {
+                      const selectedQuestion = availableDependencies.find(d => d.id === condition.question_id);
+                      const currentValues = Array.isArray(condition.values) 
+                        ? condition.values 
+                        : [condition.values].filter(Boolean) as string[];
+                      
+                      const handleAnswerValueToggle = (optionValue: string) => {
+                        const newValues = currentValues.includes(optionValue)
+                          ? currentValues.filter(v => v !== optionValue)
+                          : [...currentValues, optionValue];
+                        updateCondition(idx, { values: newValues });
+                      };
+                      
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Fråga</Label>
+                            <SearchableQuestionPicker
+                              questions={availableDependencies}
+                              value={condition.question_id || ''}
+                              onValueChange={(v) => updateCondition(idx, { question_id: v, values: [] })}
+                              placeholder="Välj fråga..."
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Värde(n)</Label>
+                            {selectedQuestion?.options ? (
+                              <div className="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto p-1">
+                                {selectedQuestion.options.map((option) => {
+                                  const optionValue = typeof option === 'string' ? option : option.value;
+                                  const optionLabel = typeof option === 'string' ? option : option.value;
+                                  const isSelected = currentValues.includes(optionValue);
+                                  
+                                  return (
+                                    <div
+                                      key={optionValue}
+                                      className={`group p-2 border rounded cursor-pointer transition-all duration-200 text-xs hover:shadow-sm ${
+                                        isSelected 
+                                          ? 'bg-accent/20 border-accent text-accent-foreground shadow-sm ring-1 ring-accent/30' 
+                                          : 'border-border hover:bg-muted/50 hover:border-border'
+                                      }`}
+                                      onClick={() => handleAnswerValueToggle(optionValue)}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-3.5 h-3.5 border-2 rounded transition-all duration-200 flex items-center justify-center ${
+                                          isSelected 
+                                            ? 'bg-accent border-accent shadow-sm' 
+                                            : 'border-border group-hover:border-accent/50'
+                                        }`}>
+                                          {isSelected && (
+                                            <div className="w-1.5 h-1.5 bg-accent-foreground rounded-sm"></div>
+                                          )}
+                                        </div>
+                                        <span className="font-medium">{optionLabel}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <Input
+                                value={currentValues.join(', ')}
+                                onChange={(e) => {
+                                  const values = e.target.value.split(',').map(v => v.trim()).filter(Boolean);
+                                  updateCondition(idx, { values });
+                                }}
+                                placeholder="t.ex. 1, 2 (separera med komma)"
+                                className="h-9 text-sm"
+                              />
+                            )}
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs">Värde(n)</Label>
-                          <Input
-                            value={Array.isArray(condition.values) ? condition.values.join(', ') : condition.values || ''}
-                            onChange={(e) => {
-                              const values = e.target.value.split(',').map(v => v.trim()).filter(Boolean);
-                              updateCondition(idx, { values });
-                            }}
-                            placeholder="t.ex. 1, 2 (separera med komma)"
-                            className="h-9 text-sm"
-                          />
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 ))}
               </div>

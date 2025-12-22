@@ -464,9 +464,6 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                           <Sparkles className="h-4 w-4 text-accent" />
                           Använd mall
                         </Button>
-                          <Sparkles className="h-4 w-4 text-accent" />
-                          Använd mall
-                        </Button>
                       )}
                       <div className="relative add-question-menu-empty">
                         <Button 

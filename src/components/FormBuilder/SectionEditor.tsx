@@ -78,7 +78,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showAddQuestionMenu, showAddQuestionMenuBottom, showAddQuestionMenuEmpty]);
+  }, [showAddQuestionMenu, showAddQuestionMenuBottom, showAddQuestionMenuEmpty, showSectionMenu]);
   
   // Check if section is conditional and find parent question
   const isConditional = !!section.show_if;
@@ -460,12 +460,10 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                             setShowPresetDialog(true);
                           }}
                           type="button"
-                          data-no-dnd="true"
-                          onPointerDown={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                          }}
                         >
+                          <Sparkles className="h-4 w-4 text-accent" />
+                          Använd mall
+                        </Button>
                           <Sparkles className="h-4 w-4 text-accent" />
                           Använd mall
                         </Button>

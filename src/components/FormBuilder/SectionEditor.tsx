@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+// DropdownMenu removed - using custom dropdown to avoid DndContext conflicts
 // Popover removed - using simple dropdown instead to avoid DndContext conflicts
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -52,6 +52,7 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
   const [showAddQuestionMenu, setShowAddQuestionMenu] = useState(false);
   const [showAddQuestionMenuBottom, setShowAddQuestionMenuBottom] = useState(false);
   const [showAddQuestionMenuEmpty, setShowAddQuestionMenuEmpty] = useState(false);
+  const [showSectionMenu, setShowSectionMenu] = useState(false);
 
   const hasPresets = schema.question_presets && schema.question_presets.length > 0;
   
@@ -68,9 +69,12 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
       if (showAddQuestionMenuEmpty && !target.closest('.add-question-menu-empty')) {
         setShowAddQuestionMenuEmpty(false);
       }
+      if (showSectionMenu && !target.closest('.section-options-menu')) {
+        setShowSectionMenu(false);
+      }
     };
 
-    if (showAddQuestionMenu || showAddQuestionMenuBottom || showAddQuestionMenuEmpty) {
+    if (showAddQuestionMenu || showAddQuestionMenuBottom || showAddQuestionMenuEmpty || showSectionMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
@@ -325,34 +329,46 @@ export const SectionEditor: React.FC<SectionEditorProps> = ({
                 )}
               </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <div className="relative section-options-menu">
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  data-no-dnd="true"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }}
+                  type="button"
+                  title="Sektionsalternativ"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setShowSectionMenu(!showSectionMenu);
                   }}
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
-              </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Redigera titel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Ta bort sektion
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                {showSectionMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 p-1 bg-popover border border-border rounded-lg shadow-lg z-50">
+                    <button
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-accent/50 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditing(true);
+                        setShowSectionMenu(false);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                      Redigera titel
+                    </button>
+                    <button
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-destructive/10 text-destructive transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDeleteDialog(true);
+                        setShowSectionMenu(false);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Ta bort sektion
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>

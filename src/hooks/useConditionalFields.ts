@@ -2,13 +2,117 @@
 /**
  * This hook analyzes the form template and current values to determine
  * which sections and questions should be visible based on the conditional logic.
- * It now also handles dynamic follow-up questions and the "contains" condition
- * for checkbox fields.
+ * It now also handles dynamic follow-up questions, the "contains" condition
+ * for checkbox fields, and advanced conditions (any_answer, section_score).
  */
 
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { FormTemplate, FormSection, FormQuestion, DynamicFollowupQuestion } from "@/types/anamnesis";
+import { FormTemplate, FormSection, FormQuestion, DynamicFollowupQuestion, AdvancedCondition } from "@/types/anamnesis";
 import { generateRuntimeId } from "@/utils/questionIdUtils";
+
+/**
+ * Calculate the total score for a specific section based on current form values.
+ * Only considers questions that have scoring enabled.
+ */
+const calculateSectionScore = (
+  section: FormSection,
+  values: Record<string, any>
+): number => {
+  let totalScore = 0;
+  
+  section.questions.forEach(question => {
+    if (question.scoring?.enabled) {
+      const answer = values[question.id];
+      if (answer !== undefined && answer !== null && answer !== '') {
+        const numericValue = parseInt(String(answer), 10);
+        if (!isNaN(numericValue)) {
+          totalScore += numericValue;
+        }
+      }
+    }
+  });
+  
+  return totalScore;
+};
+
+/**
+ * Evaluate a single advanced condition against current form values.
+ */
+const evaluateAdvancedCondition = (
+  condition: AdvancedCondition,
+  values: Record<string, any>,
+  sections: FormSection[]
+): boolean => {
+  switch (condition.type) {
+    case 'answer': {
+      // Standard answer-based condition
+      if (!condition.question_id) return true;
+      const value = values[condition.question_id];
+      if (value === undefined) return false;
+      
+      const targetValues = Array.isArray(condition.values) 
+        ? condition.values 
+        : [condition.values].filter(Boolean);
+      
+      if (Array.isArray(value)) {
+        return targetValues.some(target => value.includes(target));
+      }
+      return targetValues.includes(String(value));
+    }
+    
+    case 'any_answer': {
+      // Check if ANY question in a section has a specific value
+      const targetSectionIndex = condition.section_index;
+      if (targetSectionIndex === undefined || !sections[targetSectionIndex]) return false;
+      
+      const targetSection = sections[targetSectionIndex];
+      const targetValues = Array.isArray(condition.any_value) 
+        ? condition.any_value 
+        : [condition.any_value].filter(Boolean);
+      
+      // Check all questions in the target section
+      for (const question of targetSection.questions) {
+        const value = values[question.id];
+        if (value === undefined || value === null || value === '') continue;
+        
+        if (Array.isArray(value)) {
+          if (targetValues.some(target => value.includes(target))) {
+            return true;
+          }
+        } else {
+          if (targetValues.includes(String(value))) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    
+    case 'section_score': {
+      // Check total score of a section against a threshold
+      const targetSectionIndex = condition.target_section_index;
+      if (targetSectionIndex === undefined || !sections[targetSectionIndex]) return false;
+      if (condition.threshold === undefined) return false;
+      
+      const targetSection = sections[targetSectionIndex];
+      const sectionScore = calculateSectionScore(targetSection, values);
+      
+      switch (condition.operator) {
+        case 'less_than':
+          return sectionScore < condition.threshold;
+        case 'greater_than':
+          return sectionScore > condition.threshold;
+        case 'equals':
+          return sectionScore === condition.threshold;
+        default:
+          return false;
+      }
+    }
+    
+    default:
+      return false;
+  }
+};
 
 export const useConditionalFields = (
   template: FormTemplate | null,
@@ -19,10 +123,35 @@ export const useConditionalFields = (
   const [totalSections, setTotalSections] = useState(0);
   
   // Helper function to evaluate if a section or question should be shown based on conditions
-  const evaluateCondition = useCallback((condition: any, values: Record<string, any>): boolean => {
+  const evaluateCondition = useCallback((
+    condition: FormSection['show_if'] | FormQuestion['show_if'],
+    values: Record<string, any>,
+    allSections: FormSection[] = []
+  ): boolean => {
     if (!condition) return true;
     
+    // Handle advanced conditions array (new logic)
+    if ('conditions' in condition && condition.conditions && condition.conditions.length > 0) {
+      const logic = condition.logic || 'or';
+      
+      if (logic === 'or') {
+        // OR logic: return true if ANY condition is met
+        return condition.conditions.some(cond => 
+          evaluateAdvancedCondition(cond, values, allSections)
+        );
+      } else {
+        // AND logic: return true only if ALL conditions are met
+        return condition.conditions.every(cond => 
+          evaluateAdvancedCondition(cond, values, allSections)
+        );
+      }
+    }
+    
+    // Handle legacy question-based condition
     const { question, equals, contains } = condition;
+    
+    // If no question is specified but there are no advanced conditions, show the item
+    if (!question) return true;
     
     // If dependent question doesn't exist in values, don't show the item
     if (!(question in values)) {
@@ -169,8 +298,8 @@ export const useConditionalFields = (
       
       // Process each section, applying conditions
       allSections.forEach((section) => {
-        // Apply section visibility condition
-        const sectionVisible = evaluateCondition(section.show_if, safeValues);
+        // Apply section visibility condition (pass all sections for advanced conditions)
+        const sectionVisible = evaluateCondition(section.show_if, safeValues, allSections);
         
         if (sectionVisible) {
           // Clone the section to modify its questions without mutating the original
@@ -187,8 +316,8 @@ export const useConditionalFields = (
             
             if (!meetsModeCriteria) return false;
             
-            // Then check conditional logic
-            return evaluateCondition(question.show_if, safeValues);
+            // Then check conditional logic (pass all sections for potential advanced conditions)
+            return evaluateCondition(question.show_if, safeValues, allSections);
           });
           
           // Generate dynamic follow-up questions for this section

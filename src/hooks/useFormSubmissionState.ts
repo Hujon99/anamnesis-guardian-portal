@@ -327,7 +327,7 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
   // Updated helper function to evaluate show_if conditions with the new type definition
   const evaluateCondition = (
-    condition: { question: string; equals?: string | string[]; contains?: string; } | undefined,
+    condition: { question?: string; equals?: string | string[]; contains?: string; conditions?: any[]; logic?: 'or' | 'and'; } | undefined,
     currentValues: Record<string, any>
   ): boolean => {
     // If no condition is provided, always show the element
@@ -335,6 +335,10 @@ export function useFormSubmissionState(formTemplate: FormTemplate) {
 
     // Check if the dependent question exists in the current values
     const { question, equals, contains } = condition;
+    
+    // If no question is specified, show the element
+    if (!question) return true;
+    
     const dependentValue = currentValues[question];
     
     // Handle "contains" condition for checkbox array values

@@ -234,12 +234,16 @@ export const enhancedProcessFormAnswers = (
 
   // Function to evaluate show_if conditions
   const evaluateCondition = (
-    condition: { question: string; equals?: string | string[]; contains?: string; } | undefined,
+    condition: { question?: string; equals?: string | string[]; contains?: string; conditions?: any[]; logic?: 'or' | 'and'; } | undefined,
     values: Record<string, any>
   ): boolean => {
     if (!condition) return true;
 
     const { question, equals, contains } = condition;
+    
+    // If no question is specified, show the element
+    if (!question) return true;
+    
     const dependentValue = values[question];
 
     if (contains !== undefined) {

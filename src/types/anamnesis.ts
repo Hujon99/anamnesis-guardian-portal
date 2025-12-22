@@ -104,13 +104,47 @@ export interface FormQuestion {
   };
 }
 
+/**
+ * Advanced condition types for section visibility.
+ * Used in FormSection.show_if.conditions array for complex logic.
+ */
+export type AdvancedCondition = {
+  /** Type of condition to evaluate */
+  type: 'answer' | 'any_answer' | 'section_score';
+  
+  /** For 'answer' type: the specific question ID to check */
+  question_id?: string;
+  /** For 'answer' type: the value(s) to match */
+  values?: string | string[];
+  
+  /** For 'any_answer' type: the section index to check */
+  section_index?: number;
+  /** For 'any_answer' type: show section if ANY question in target section has this value */
+  any_value?: string | string[];
+  
+  /** For 'section_score' type: the section index to calculate score from */
+  target_section_index?: number;
+  /** For 'section_score' type: comparison operator */
+  operator?: 'less_than' | 'greater_than' | 'equals';
+  /** For 'section_score' type: threshold value to compare against */
+  threshold?: number;
+};
+
 export type FormSection = {
   section_title: string;
   questions: FormQuestion[];
   show_if?: {
-    question: string;
+    /** Legacy: specific question to check */
+    question?: string;
+    /** Legacy: value(s) to match */
     equals?: string | string[];
+    /** Legacy: for checkbox contains check */
     contains?: string;
+    
+    /** Advanced: array of conditions with OR logic between them */
+    conditions?: AdvancedCondition[];
+    /** Logic operator between conditions (default: 'or') */
+    logic?: 'or' | 'and';
   };
 };
 

@@ -335,7 +335,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
               <SelectTrigger>
                 <SelectValue placeholder="Välj VISUS-värde" />
               </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
+              <SelectContent>
                 {VISUS_SCALE.map((visus) => (
                   <SelectItem key={visus} value={visus}>
                     {visus.replace('.', ',')}
@@ -354,7 +354,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
               <SelectTrigger>
                 <SelectValue placeholder="Välj VISUS-värde" />
               </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
+              <SelectContent>
                 {VISUS_SCALE.map((visus) => (
                   <SelectItem key={visus} value={visus}>
                     {visus.replace('.', ',')}
@@ -373,7 +373,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
               <SelectTrigger>
                 <SelectValue placeholder="Välj VISUS-värde" />
               </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
+              <SelectContent>
                 {VISUS_SCALE.map((visus) => (
                   <SelectItem key={visus} value={visus}>
                     {visus.replace('.', ',')}
@@ -414,7 +414,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                     <SelectTrigger>
                       <SelectValue placeholder="Välj VISUS-värde" />
                     </SelectTrigger>
-                    <SelectContent className="bg-background border z-50">
+                     <SelectContent>
                       {VISUS_SCALE.map((visus) => (
                         <SelectItem key={visus} value={visus}>
                           {visus.replace('.', ',')}
@@ -433,7 +433,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                     <SelectTrigger>
                       <SelectValue placeholder="Välj VISUS-värde" />
                     </SelectTrigger>
-                    <SelectContent className="bg-background border z-50">
+                     <SelectContent>
                       {VISUS_SCALE.map((visus) => (
                         <SelectItem key={visus} value={visus}>
                           {visus.replace('.', ',')}
@@ -452,7 +452,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                     <SelectTrigger>
                       <SelectValue placeholder="Välj VISUS-värde" />
                     </SelectTrigger>
-                    <SelectContent className="bg-background border z-50">
+                    <SelectContent>
                       {VISUS_SCALE.map((visus) => (
                         <SelectItem key={visus} value={visus}>
                           {visus.replace('.', ',')}

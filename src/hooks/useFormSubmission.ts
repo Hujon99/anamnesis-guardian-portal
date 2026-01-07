@@ -1,8 +1,10 @@
-
 /**
  * This hook handles form submission through the edge function.
  * It provides error handling, retry logic, and manages submission state.
  * Enhanced to handle both patient and optician submissions.
+ * 
+ * LOGGING: All submission errors are logged to form_session_logs for debugging.
+ * This includes edge function errors, network errors, and retry attempts.
  */
 
 import { useState, useCallback } from 'react';
@@ -11,6 +13,7 @@ import { useTokenManager } from './useTokenManager';
 import { toast } from '@/components/ui/use-toast';
 import { FormTemplate } from '@/types/anamnesis';
 import { prepareFormSubmission } from '@/utils/formSubmissionUtils';
+import { v4 as uuidv4 } from 'uuid';
 
 export type SubmissionError = Error & {
   details?: string;
@@ -26,7 +29,27 @@ let lastSubmissionData: {
   formattedText?: string;
   isOptician?: boolean;
   kioskCustomerData?: { personalNumber: string; fullName: string } | null;
+  sessionId?: string;
 } | null = null;
+
+/**
+ * Categorize error type for better tracking
+ */
+function categorizeError(error: unknown): string {
+  if (error instanceof TypeError && String(error).includes('fetch')) {
+    return 'NetworkError';
+  }
+  if (String(error).toLowerCase().includes('timeout')) {
+    return 'TimeoutError';
+  }
+  if (String(error).toLowerCase().includes('token') || String(error).toLowerCase().includes('jwt')) {
+    return 'AuthError';
+  }
+  if (error instanceof Error) {
+    return error.name || 'SubmissionError';
+  }
+  return 'UnknownError';
+}
 
 export function useFormSubmission() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,6 +58,53 @@ export function useFormSubmission() {
   const [submissionAttempts, setSubmissionAttempts] = useState(0);
   const { supabase } = useSupabaseClient();
   const tokenManager = useTokenManager();
+
+  /**
+   * Log submission error to form_session_logs for debugging
+   */
+  const logSubmissionError = useCallback(async (
+    eventType: 'submission_error' | 'edge_function_error' | 'submission_retry',
+    errorMessage: string,
+    errorType: string,
+    context: Record<string, unknown> = {}
+  ) => {
+    try {
+      // Use anonymous client for logging (patient submissions have no auth)
+      const { createClient } = await import('@supabase/supabase-js');
+      const anonClient = createClient(
+        'https://jawtwwwelxaaprzsqfyp.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd3R3d3dlbHhhYXByenNxZnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDMzMTYsImV4cCI6MjA1ODA3OTMxNn0.FAAh0QpAM18T2pDrohTUBUMcNez8dnmIu3bpRoa8Yhk'
+      );
+      
+      await anonClient.from('form_session_logs').insert({
+        session_id: lastSubmissionData?.sessionId || uuidv4(),
+        entry_id: null, // We don't have entry_id at this point
+        organization_id: 'unknown', // Patient submissions don't have org context
+        event_type: eventType,
+        error_message: errorMessage,
+        error_type: errorType,
+        event_data: {
+          ...context,
+          token_prefix: lastSubmissionData?.token?.substring(0, 8) || null,
+          is_optician: lastSubmissionData?.isOptician || false,
+          attempt_number: submissionAttempts,
+          timestamp: new Date().toISOString(),
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+        },
+        device_type: typeof navigator !== 'undefined' 
+          ? (/Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop')
+          : null,
+        browser: typeof navigator !== 'undefined'
+          ? navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)/i)?.[1] || 'unknown'
+          : null
+      });
+      
+      console.debug('[useFormSubmission] Error logged to database:', eventType);
+    } catch (logError) {
+      // Don't fail the main operation if logging fails
+      console.debug('[useFormSubmission] Failed to log error to database:', logError);
+    }
+  }, [submissionAttempts]);
 
   // Reset the error state
   const resetError = useCallback(() => {
@@ -50,8 +120,11 @@ export function useFormSubmission() {
     isOptician?: boolean,
     kioskCustomerData?: { personalNumber: string; fullName: string } | null
   ): Promise<{ success: boolean; entryId?: string }> => {
+    // Generate session ID for tracking this submission attempt
+    const sessionId = lastSubmissionData?.sessionId || uuidv4();
+    
     // Store submission data for retry
-    lastSubmissionData = { token, values, schema, formattedText, isOptician, kioskCustomerData };
+    lastSubmissionData = { token, values, schema, formattedText, isOptician, kioskCustomerData, sessionId };
     setSubmissionAttempts(prev => prev + 1);
     
     // If already submitted, just return success
@@ -98,6 +171,15 @@ export function useFormSubmission() {
       
       if (error) {
         console.error("[useFormSubmission]: Edge function error:", error);
+        
+        // Log edge function error to database
+        await logSubmissionError(
+          'edge_function_error',
+          error.message,
+          'EdgeFunctionError',
+          { edge_function: 'submit-form' }
+        );
+        
         const submissionError = new Error(`Fel vid inskickning: ${error.message}`) as SubmissionError;
         submissionError.details = error.message;
         setError(submissionError);
@@ -106,6 +188,15 @@ export function useFormSubmission() {
       
       if (data?.error) {
         console.error("[useFormSubmission]: Data error:", data.error);
+        
+        // Log data error to database
+        await logSubmissionError(
+          'submission_error',
+          data.error,
+          'DataError',
+          { response_data: data }
+        );
+        
         const submissionError = new Error(`Fel vid inskickning: ${data.error}`) as SubmissionError;
         submissionError.details = data.error;
         
@@ -135,6 +226,20 @@ export function useFormSubmission() {
     } catch (e) {
       console.error("[useFormSubmission]: Catch block error:", e);
       
+      // Log the error to database for tracking
+      const errorType = categorizeError(e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      
+      // Only log if we haven't already logged above (edge function or data errors)
+      if (errorType !== 'EdgeFunctionError' && !errorMessage.includes('Fel vid inskickning')) {
+        await logSubmissionError(
+          'submission_error',
+          errorMessage,
+          errorType,
+          { stack: e instanceof Error ? e.stack : undefined }
+        );
+      }
+      
       // Create an error object if it's not already one
       const submissionError = e instanceof Error 
         ? e as SubmissionError
@@ -159,7 +264,7 @@ export function useFormSubmission() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [supabase, isSubmitted, tokenManager]);
+  }, [supabase, isSubmitted, tokenManager, logSubmissionError]);
 
   // Retry submission with the last data
   const retrySubmission = useCallback(async (): Promise<{ success: boolean; entryId?: string }> => {
@@ -171,11 +276,19 @@ export function useFormSubmission() {
     const { token, values, schema, formattedText, isOptician, kioskCustomerData } = lastSubmissionData;
     console.log("[useFormSubmission]: Retrying submission...");
     
+    // Log retry attempt to database
+    await logSubmissionError(
+      'submission_retry',
+      'User initiated retry',
+      'RetryAttempt',
+      { previous_attempts: submissionAttempts }
+    );
+    
     // Clear previous error
     setError(null);
     
     return await submitForm(token, values, schema, formattedText, isOptician, kioskCustomerData);
-  }, [submitForm]);
+  }, [submitForm, logSubmissionError, submissionAttempts]);
 
   return {
     isSubmitting,

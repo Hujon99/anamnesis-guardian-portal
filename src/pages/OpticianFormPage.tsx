@@ -19,6 +19,7 @@ import { SubmissionMode } from "@/hooks/useFormSubmissionManager";
 import { ErrorBoundary } from "react-error-boundary";
 import { Card, CardContent } from "@/components/ui/card";
 import FormContainer from "@/components/PatientForm/FormContainer";
+import { useJourneyTracking } from "@/hooks/useJourneyTracking";
 
 // Import refactored components and utilities
 import { 
@@ -39,6 +40,14 @@ const OpticianFormPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [tokenError, setTokenError] = useState<SubmissionError | null>(null);
+  
+  // Track journey for funnel analysis - logs 'form' page view
+  const { journeyId } = useJourneyTracking({
+    pageType: 'form',
+    organizationId: null,
+    formId: null,
+    storeId: null
+  });
   
   // CRITICAL REFS - Use stable refs to prevent reinitialization
   const initCompletedRef = useRef<boolean>(false);

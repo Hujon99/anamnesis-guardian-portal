@@ -32,12 +32,14 @@ interface FormSessionTrackingProps {
   entryId?: string | null;
   organizationId: string;
   token?: string | null;
+  journeyId?: string | null;
 }
 
 export const useFormSessionTracking = ({
   entryId,
   organizationId,
-  token
+  token,
+  journeyId
 }: FormSessionTrackingProps) => {
   const { supabase } = useSupabaseClient();
   const sessionIdRef = useRef<string>(uuidv4());
@@ -56,7 +58,7 @@ export const useFormSessionTracking = ({
         token: token || null,
         organization_id: organizationId,
         event_type: eventType,
-        event_data: eventData,
+        event_data: { ...eventData, journey_id: journeyId || null },
         current_section_index: eventData.current_section_index,
         current_question_id: eventData.current_question_id,
         form_progress_percent: eventData.form_progress_percent,
@@ -68,7 +70,7 @@ export const useFormSessionTracking = ({
       // Silent fail - we don't want to disrupt the user experience
       console.debug('Failed to log form event:', error);
     }
-  }, [supabase, entryId, organizationId, token]);
+  }, [supabase, entryId, organizationId, token, journeyId]);
   
   // 1. Log form load
   useEffect(() => {

@@ -15,11 +15,20 @@ import { useSearchParams } from "react-router-dom";
 import { BaseFormPage } from "@/components/Forms/BaseFormPage";
 import { toast } from "@/hooks/use-toast";
 import FormLayout from "@/components/FormLayout";
+import { useJourneyTracking } from "@/hooks/useJourneyTracking";
 
 const PatientFormPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Track journey for funnel analysis - logs 'form' page view
+  const { journeyId, logEvent } = useJourneyTracking({
+    pageType: 'form',
+    organizationId: null, // Will be resolved from token
+    formId: null,
+    storeId: null
+  });
   
   // Log token for debugging
   useEffect(() => {

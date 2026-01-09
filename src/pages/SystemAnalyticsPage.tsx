@@ -10,6 +10,7 @@ import { useSystemAdmin } from "@/contexts/SystemAdminContext";
 import { AnalyticsDashboard } from "@/components/SystemAnalytics/AnalyticsDashboard";
 import { AnalyticsNavigation } from "@/components/SystemAnalytics/AnalyticsNavigation";
 import { JourneyFunnelAnalysis } from "@/components/SystemAnalytics/JourneyFunnelAnalysis";
+import { SubmissionErrorsView } from "@/components/SystemAnalytics/SubmissionErrorsView";
 import { FormAbandonmentHeatmap } from "@/components/AdminPanel/FormAbandonmentHeatmap";
 import { FormSessionDebugView } from "@/components/AdminPanel/FormSessionDebugView";
 import { SentEntriesAnalysis } from "@/components/AdminPanel/SentEntriesAnalysis";
@@ -25,6 +26,7 @@ export type AnalyticsSection =
   | 'heatmap' 
   | 'completion'
   | 'sent-analysis'
+  | 'submission-errors'
   | 'debug' 
   | 'system';
 
@@ -110,6 +112,24 @@ const SystemAnalyticsPage = () => {
             </CardHeader>
             <CardContent>
               <SentEntriesAnalysis />
+            </CardContent>
+          </Card>
+        );
+      
+      case 'submission-errors':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bug className="h-5 w-5 text-destructive" />
+                Submission Errors
+              </CardTitle>
+              <CardDescription>
+                Analysera formulärinlämningsfel, nätverksproblem och retry-försök
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SubmissionErrorsView />
             </CardContent>
           </Card>
         );

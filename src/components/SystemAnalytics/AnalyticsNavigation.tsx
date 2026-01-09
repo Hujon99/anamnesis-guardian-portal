@@ -57,6 +57,12 @@ const navigationItems: Array<{
     description: 'Gamla formulär'
   },
   {
+    id: 'submission-errors',
+    label: 'Errors',
+    icon: Bug,
+    description: 'Submission-fel'
+  },
+  {
     id: 'debug',
     label: 'Felsökning',
     icon: Bug,

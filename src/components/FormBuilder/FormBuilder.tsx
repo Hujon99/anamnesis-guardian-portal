@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1084,14 +1085,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
         )}
       </div>
 
-      {/* Print Preview Modal */}
-      {showPrintPreview && (
+      {/* Print Preview Modal - rendered as portal on body for correct print pagination */}
+      {showPrintPreview && ReactDOM.createPortal(
         <div className="fixed inset-0 bg-background z-50 overflow-auto print-overlay-container">
           <FormPrintPreview 
             template={currentForm.schema} 
             onClose={() => setShowPrintPreview(false)} 
           />
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Unsaved changes confirmation dialog */}

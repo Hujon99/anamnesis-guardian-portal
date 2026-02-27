@@ -127,16 +127,13 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
           }
           
           .print-question {
+            break-inside: avoid;
             page-break-inside: avoid;
           }
           
           .print-section {
+            break-before: auto;
             page-break-before: auto;
-          }
-          
-          /* Print-flow strategy: natural document flow for multi-page pagination */
-          .no-print {
-            display: none !important;
           }
           
           html, body, #root {
@@ -147,7 +144,6 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
             padding: 0 !important;
           }
           
-          /* Hide all direct children of body except the print overlay */
           body > *:not(.print-overlay-container) {
             display: none !important;
           }

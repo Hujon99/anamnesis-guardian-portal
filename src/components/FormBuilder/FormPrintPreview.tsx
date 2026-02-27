@@ -134,32 +134,45 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
             page-break-before: auto;
           }
           
-          /* Hide everything except print content using visibility */
-          body * {
-            visibility: hidden;
+          /* Print-flow strategy: natural document flow for multi-page pagination */
+          .no-print {
+            display: none !important;
           }
           
-          .print-overlay-container,
-          .print-overlay-container * {
-            visibility: visible;
+          html, body, #root {
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          /* Hide all direct children of body except the print overlay */
+          body > *:not(.print-overlay-container) {
+            display: none !important;
           }
           
           .print-overlay-container {
-            position: absolute !important;
-            left: 0;
-            top: 0;
+            display: block !important;
+            position: static !important;
+            inset: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
             width: 100% !important;
+            max-width: none !important;
             overflow: visible !important;
+            z-index: auto !important;
           }
           
-          .print-header {
-            display: block;
-            position: running(header);
+          .print-preview-container {
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
           }
           
-          .print-footer {
-            display: block;
-            position: running(footer);
+          .print-content {
+            overflow: visible !important;
           }
         }
         

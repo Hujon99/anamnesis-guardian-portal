@@ -1,52 +1,63 @@
 
 
-## Fix: Utskrift visar bara 2 sidor istället för hela formuläret
+## Fix: Utskriften visar tom/bara 1 sida
 
 ### Orsak
-CSS-regeln `page-break-inside: avoid` på `.print-section` säger åt webbläsaren att inte bryta inuti en sektion. Eftersom sektioner kan vara längre än en A4-sida, klipper webbläsaren bort överskjutande innehåll istället för att skapa fler sidor.
+CSS-regeln `#root > *:not(.print-overlay-container)` döljer alla direkta barn av `#root` som inte har klassen `.print-overlay-container`. Men `.print-overlay-container` ligger djupt nästlad (inuti Layout, Router, FormBuilder osv), så den matchas aldrig som direkt barn — och hela DOM:en döljs vid utskrift.
 
-### Ändringar (2 filer, minimala ändringar)
+### Lösning
+Ändra print-CSS i **enbart** `FormPrintPreview.tsx` (inga andra filer). Strategi:
 
-**Fil 1: `src/components/FormBuilder/FormPrintPreview.tsx`**
-- Ta bort `page-break-inside: avoid` från `.print-section` (tillåt sektioner att flöda över flera sidor)
-- Behåll `page-break-inside: avoid` på `.print-question` (enskilda frågor bör helst hållas ihop)
-- Lägg till `page-break-before: auto` på `.print-section` för naturligt sidflöde
-- Lägg till print-regler som hanterar den fasta containern (dölj sidebar, gör fixed-element till static)
+1. Ta bort de felaktiga `#root > *:not(...)` och `body > *:not(#root)` selektorerna
+2. Istället: gör `.print-overlay-container` till en "breakout" via `position: fixed` som täcker hela sidan vid print, med `z-index: 99999` och vit bakgrund
+3. Dölj alla andra element med `body *` visibility hidden, men gör `.print-overlay-container` och dess barn synliga igen
 
-**Fil 2: `src/components/FormBuilder/FormBuilder.tsx`**
-- Lägg till en print-specifik CSS-klass på print-preview-containern så att den renderas korrekt vid utskrift (ändra `fixed` till `static` vid print via inline style-tag)
+Konkret CSS-ändring (rad 137-150 i FormPrintPreview.tsx):
 
-### Exakt CSS-ändring i FormPrintPreview.tsx (rad 129-136)
-
-Nuvarande:
+**Ta bort:**
 ```css
-.print-section {
-  page-break-after: avoid;
-  page-break-inside: avoid;
-}
-```
-
-Nytt:
-```css
-.print-section {
-  page-break-before: auto;
-}
-```
-
-Plus tillägg av regler som döljer allt utom print-content vid utskrift:
-```css
-body > *:not(.print-preview-container),
+body > *:not(#root),
 nav, aside, header, [data-sidebar] {
   display: none !important;
 }
 
-.fixed {
+#root > *:not(.print-overlay-container) {
+  display: none !important;
+}
+
+.print-overlay-container {
   position: static !important;
+  overflow: visible !important;
 }
 ```
 
-### Vad som INTE ändras
-- Inga andra komponenter
-- Ingen logik, state eller funktioner
-- Inga andra sidor eller vyer
-- Bara CSS-regler i print media query
+**Ersätt med:**
+```css
+body * {
+  visibility: hidden;
+}
+
+.print-overlay-container,
+.print-overlay-container * {
+  visibility: visible;
+}
+
+.print-overlay-container {
+  position: absolute !important;
+  left: 0;
+  top: 0;
+  width: 100% !important;
+  overflow: visible !important;
+}
+```
+
+### Filer som ändras
+| Fil | Ändring |
+|-----|---------|
+| `src/components/FormBuilder/FormPrintPreview.tsx` | Byt ut print-CSS selektorer (ca 10 rader) |
+
+### Filer som INTE ändras
+- `FormBuilder.tsx` — ingen ändring
+- Alla andra filer — ingen ändring
+- Ingen logik, state eller funktioner påverkas
+

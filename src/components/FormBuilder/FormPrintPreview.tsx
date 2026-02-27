@@ -131,8 +131,22 @@ export const FormPrintPreview: React.FC<FormPrintPreviewProps> = ({ template, on
           }
           
           .print-section {
-            page-break-after: avoid;
-            page-break-inside: avoid;
+            page-break-before: auto;
+          }
+          
+          /* Hide everything except print content */
+          body > *:not(#root),
+          nav, aside, header, [data-sidebar] {
+            display: none !important;
+          }
+          
+          #root > *:not(.print-overlay-container) {
+            display: none !important;
+          }
+          
+          .print-overlay-container {
+            position: static !important;
+            overflow: visible !important;
           }
           
           .print-header {

@@ -1086,7 +1086,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
 
       {/* Print Preview Modal */}
       {showPrintPreview && (
-        <div className="fixed inset-0 bg-background z-50 overflow-auto">
+        <div className="fixed inset-0 bg-background z-50 overflow-auto print-overlay-container">
           <FormPrintPreview 
             template={currentForm.schema} 
             onClose={() => setShowPrintPreview(false)} 

@@ -34,6 +34,28 @@ export const CopyableExaminationSummary: React.FC<CopyableExaminationSummaryProp
   const { resolveUserDisplay } = useUserResolver();
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
 
+  const formatPrescription = () => {
+    const hasPrescription = examination.glasses_prescription_od_sph !== null || 
+                            examination.glasses_prescription_os_sph !== null;
+    if (!hasPrescription) return '';
+    
+    let text = '\nGLASÖGONSTYRKOR:\n';
+    
+    const formatEye = (label: string, sph: number | null, cyl: number | null, axis: number | null, add: number | null) => {
+      const parts: string[] = [];
+      if (sph !== null) parts.push(`Sfär: ${sph}`);
+      if (cyl !== null) parts.push(`Cyl: ${cyl}`);
+      if (axis !== null) parts.push(`Axel: ${axis}°`);
+      if (add !== null) parts.push(`Add: ${add}`);
+      return parts.length > 0 ? `${label}: ${parts.join(', ')}\n` : '';
+    };
+    
+    text += formatEye('OD', examination.glasses_prescription_od_sph, examination.glasses_prescription_od_cyl, examination.glasses_prescription_od_axis, examination.glasses_prescription_od_add);
+    text += formatEye('OS', examination.glasses_prescription_os_sph, examination.glasses_prescription_os_cyl, examination.glasses_prescription_os_axis, examination.glasses_prescription_os_add);
+    
+    return text;
+  };
+
   const formatForTrafikverket = () => {
     const date = new Date().toLocaleDateString('sv-SE');
     const examinationDate = entry.booking_date ? 
@@ -60,7 +82,7 @@ Korrektion: ${correctionType}
 Båda ögon: ${formatVisualAcuityDisplay(examination.visual_acuity_with_correction_both || examination.visual_acuity_both_eyes)}
 Höger öga: ${formatVisualAcuityDisplay(examination.visual_acuity_with_correction_right || examination.visual_acuity_right_eye)}
 Vänster öga: ${formatVisualAcuityDisplay(examination.visual_acuity_with_correction_left || examination.visual_acuity_left_eye)}
-
+${formatPrescription()}
 LEGITIMATIONSKONTROLL:
 Status: ${examination.id_verification_completed ? 'Verifierad' : 'Ej verifierad'}
 Typ: ${examination.id_type?.replace('_', ' ') || 'N/A'}

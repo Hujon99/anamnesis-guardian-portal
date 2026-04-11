@@ -281,6 +281,46 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Glasses prescription for higher license categories */}
+            {(localExamination.uses_glasses || localExamination.uses_contact_lenses) && 
+             (localExamination.glasses_prescription_od_sph !== null || localExamination.glasses_prescription_os_sph !== null) && (
+              <div className="space-y-3 mt-4">
+                <h5 className="font-medium text-sm">Glasögonstyrkor</h5>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <h6 className="font-medium text-xs text-muted-foreground">Höger öga (OD)</h6>
+                    {localExamination.glasses_prescription_od_sph !== null && (
+                      <p>Sfär: <span className="font-mono">{localExamination.glasses_prescription_od_sph}</span></p>
+                    )}
+                    {localExamination.glasses_prescription_od_cyl !== null && (
+                      <p>Cylinder: <span className="font-mono">{localExamination.glasses_prescription_od_cyl}</span></p>
+                    )}
+                    {localExamination.glasses_prescription_od_axis !== null && (
+                      <p>Axel: <span className="font-mono">{localExamination.glasses_prescription_od_axis}°</span></p>
+                    )}
+                    {localExamination.glasses_prescription_od_add !== null && (
+                      <p>Addition: <span className="font-mono">{localExamination.glasses_prescription_od_add}</span></p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <h6 className="font-medium text-xs text-muted-foreground">Vänster öga (OS)</h6>
+                    {localExamination.glasses_prescription_os_sph !== null && (
+                      <p>Sfär: <span className="font-mono">{localExamination.glasses_prescription_os_sph}</span></p>
+                    )}
+                    {localExamination.glasses_prescription_os_cyl !== null && (
+                      <p>Cylinder: <span className="font-mono">{localExamination.glasses_prescription_os_cyl}</span></p>
+                    )}
+                    {localExamination.glasses_prescription_os_axis !== null && (
+                      <p>Axel: <span className="font-mono">{localExamination.glasses_prescription_os_axis}°</span></p>
+                    )}
+                    {localExamination.glasses_prescription_os_add !== null && (
+                      <p>Addition: <span className="font-mono">{localExamination.glasses_prescription_os_add}</span></p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             
             {localExamination.vision_below_limit ? (
               <Alert variant="destructive">

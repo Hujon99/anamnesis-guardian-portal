@@ -114,7 +114,7 @@ Datum: ${date}`;
 
 Patient: ${entry.first_name || 'N/A'}${examination.personal_number ? `\nPersonnummer: ${examination.personal_number}` : ''}
 Visus med ${correctionType}: ${formatVisualAcuityDisplay(examination.visual_acuity_with_correction_both || examination.visual_acuity_both_eyes)}
-ID verifierad: ${examination.id_verification_completed ? 'Ja' : 'Nej'}
+${formatPrescription()}ID verifierad: ${examination.id_verification_completed ? 'Ja' : 'Nej'}
 Beslut: ${decision}
 
 Anamnes: ${entry.ai_summary || 'Ingen sammanfattning'}

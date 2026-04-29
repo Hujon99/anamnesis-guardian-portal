@@ -29,6 +29,33 @@ interface ExaminationSummaryProps {
   onComplete: () => void;
   isSaving: boolean;
 }
+// 4 explicita utfall enligt nytt arbetsflöde (assistentens bedömning).
+// Sparas som textprefix i existerande notes-fältet för att undvika DB-migration.
+const OUTCOME_OPTIONS = [
+  { value: 'approved_send', label: 'Godkänd – kan skickas' },
+  { value: 'approved_recommend_exam', label: 'Godkänd – rek. synundersökning' },
+  { value: 'optician_contact_first', label: 'Optiker ska kontakta innan inskick' },
+  { value: 'not_approved', label: 'Ej godkänd' },
+] as const;
+type OutcomeValue = typeof OUTCOME_OPTIONS[number]['value'];
+
+const OUTCOME_PREFIX = 'Utfall: ';
+
+const parseOutcomeFromNotes = (raw: string): { outcome: OutcomeValue | ''; rest: string } => {
+  if (!raw) return { outcome: '', rest: '' };
+  const lines = raw.split('\n');
+  const first = lines[0] ?? '';
+  if (first.startsWith(OUTCOME_PREFIX)) {
+    const label = first.slice(OUTCOME_PREFIX.length).trim();
+    const match = OUTCOME_OPTIONS.find(o => o.label === label);
+    return {
+      outcome: match ? match.value : '',
+      rest: lines.slice(1).join('\n').replace(/^\n/, ''),
+    };
+  }
+  return { outcome: '', rest: raw };
+};
+
 export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   examination,
   entry,
@@ -36,7 +63,9 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   onComplete,
   isSaving
 }) => {
-  const [notes, setNotes] = useState(examination?.notes || '');
+  const initialParsed = parseOutcomeFromNotes(examination?.notes || '');
+  const [notes, setNotes] = useState(initialParsed.rest);
+  const [outcome, setOutcome] = useState<OutcomeValue | ''>(initialParsed.outcome);
   const [selectedOpticianId, setSelectedOpticianId] = useState<string>('');
   
   // Load opticians for assignment
@@ -81,9 +110,15 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       return;
     }
     
+    const outcomeLabel = OUTCOME_OPTIONS.find(o => o.value === outcome)?.label;
+    const combinedNotes = [
+      outcomeLabel ? `${OUTCOME_PREFIX}${outcomeLabel}` : '',
+      notes.trim(),
+    ].filter(Boolean).join('\n\n') || null;
+
     const updates = {
       examination_status: 'completed' as const,
-      notes: notes.trim() || null
+      notes: combinedNotes
     };
     
     try {
@@ -332,13 +367,40 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
 
         <Separator />
 
+        {/* Assistant outcome (4 explicita utfall) — sparas i notes-prefix */}
+        {!isCompleted && (
+          <div className="space-y-2">
+            <Label htmlFor="outcome-select" className="font-medium">
+              Bedömning av assistent
+            </Label>
+            <Select
+              value={outcome}
+              onValueChange={(v) => setOutcome(v as OutcomeValue)}
+            >
+              <SelectTrigger id="outcome-select">
+                <SelectValue placeholder="Välj utfall" />
+              </SelectTrigger>
+              <SelectContent>
+                {OUTCOME_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Stöd för optikern. Slutligt beslut fattas i Servit.
+            </p>
+          </div>
+        )}
+
         {/* Optician assignment section */}
         {!isCompleted && <div className="space-y-4">
             <h4 className="font-medium flex items-center gap-2">
               <User className="h-4 w-4" />
               Tilldelning av ansvarig optiker
             </h4>
-            
+
             <div className="space-y-2">
               <Label htmlFor="optician-select">Välj ansvarig optiker</Label>
               <Select 

@@ -212,16 +212,10 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       uses_glasses: Boolean(measurements.uses_correction),
       uses_contact_lenses: false,
       vision_below_limit: warnings.length > 0,
-      // Include glasses prescription data if applicable
+      // Simplified ±8D flag stored as sph value (8 or 0) for backward compatibility
       ...(licenseCategory === 'higher' && measurements.uses_correction && {
-        glasses_prescription_od_sph: toNumberOrNull(measurements.glasses_prescription_od_sph),
-        glasses_prescription_od_cyl: toNumberOrNull(measurements.glasses_prescription_od_cyl),
-        glasses_prescription_od_axis: measurements.glasses_prescription_od_axis ? parseInt(measurements.glasses_prescription_od_axis.toString()) : null,
-        glasses_prescription_od_add: toNumberOrNull(measurements.glasses_prescription_od_add),
-        glasses_prescription_os_sph: toNumberOrNull(measurements.glasses_prescription_os_sph),
-        glasses_prescription_os_cyl: toNumberOrNull(measurements.glasses_prescription_os_cyl),
-        glasses_prescription_os_axis: measurements.glasses_prescription_os_axis ? parseInt(measurements.glasses_prescription_os_axis.toString()) : null,
-        glasses_prescription_os_add: toNumberOrNull(measurements.glasses_prescription_os_add),
+        glasses_prescription_od_sph: measurements.prescription_over_8d ? 8 : null,
+        glasses_prescription_os_sph: measurements.prescription_over_8d ? 8 : null,
       }),
       // Append license category info into notes without overwriting any existing notes saved earlier
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
@@ -245,9 +239,13 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     }
   };
 
-  const isFormValid = measurements.visual_acuity_both_eyes && 
-                      measurements.visual_acuity_right_eye && 
-                      measurements.visual_acuity_left_eye;
+  // Visus-fält är valfria — optikern kan hoppa över stödet och ändå gå vidare.
+  // (Servit är primär journal; portalen är endast stöd.)
+  const hasAnyMeasurement = Boolean(
+    measurements.visual_acuity_both_eyes ||
+    measurements.visual_acuity_right_eye ||
+    measurements.visual_acuity_left_eye
+  );
 
   return (
     <Card>

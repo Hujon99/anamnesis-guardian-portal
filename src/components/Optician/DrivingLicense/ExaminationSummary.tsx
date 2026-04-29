@@ -367,13 +367,40 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
 
         <Separator />
 
+        {/* Assistant outcome (4 explicita utfall) — sparas i notes-prefix */}
+        {!isCompleted && (
+          <div className="space-y-2">
+            <Label htmlFor="outcome-select" className="font-medium">
+              Bedömning av assistent
+            </Label>
+            <Select
+              value={outcome}
+              onValueChange={(v) => setOutcome(v as OutcomeValue)}
+            >
+              <SelectTrigger id="outcome-select">
+                <SelectValue placeholder="Välj utfall" />
+              </SelectTrigger>
+              <SelectContent>
+                {OUTCOME_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Stöd för optikern. Slutligt beslut fattas i Servit.
+            </p>
+          </div>
+        )}
+
         {/* Optician assignment section */}
         {!isCompleted && <div className="space-y-4">
             <h4 className="font-medium flex items-center gap-2">
               <User className="h-4 w-4" />
               Tilldelning av ansvarig optiker
             </h4>
-            
+
             <div className="space-y-2">
               <Label htmlFor="optician-select">Välj ansvarig optiker</Label>
               <Select 

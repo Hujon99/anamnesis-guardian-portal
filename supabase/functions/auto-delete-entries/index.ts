@@ -1,6 +1,6 @@
 /**
  * This edge function handles the automatic deletion of anamnesis entries
- * that have been marked as reviewed/ready for more than 48 hours, and also
+ * that have been marked as reviewed/ready for more than 30 days, and also
  * cleans up stuck forms in 'sent' status for more than 2 hours.
  * It runs on a schedule and logs deletions for audit purposes.
  */

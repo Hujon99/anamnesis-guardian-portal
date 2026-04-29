@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -117,15 +117,13 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     visual_acuity_with_correction_left: examination?.visual_acuity_with_correction_left || '',
     uses_correction: examination?.uses_glasses || examination?.uses_contact_lenses || usesCorrection,
     correction_type: examination?.correction_type || (usesCorrection ? 'glasses_or_lenses' : 'none'),
-    // Glasses prescription data for higher license categories
-    glasses_prescription_od_sph: examination?.glasses_prescription_od_sph || '',
-    glasses_prescription_od_cyl: examination?.glasses_prescription_od_cyl || '',
-    glasses_prescription_od_axis: examination?.glasses_prescription_od_axis || '',
-    glasses_prescription_od_add: examination?.glasses_prescription_od_add || '',
-    glasses_prescription_os_sph: examination?.glasses_prescription_os_sph || '',
-    glasses_prescription_os_cyl: examination?.glasses_prescription_os_cyl || '',
-    glasses_prescription_os_axis: examination?.glasses_prescription_os_axis || '',
-    glasses_prescription_os_add: examination?.glasses_prescription_os_add || ''
+    // Simplified prescription flag: true if any lens strength is over ±8,00 D
+    // (replaces detailed Sph/Cyl/Ax/Add inputs — Servit håller fullständigt recept)
+    prescription_over_8d: Boolean(
+      examination?.glasses_prescription_od_sph && Math.abs(Number(examination.glasses_prescription_od_sph)) >= 8
+    ) || Boolean(
+      examination?.glasses_prescription_os_sph && Math.abs(Number(examination.glasses_prescription_os_sph)) >= 8
+    ),
   });
 
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -182,27 +180,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       newWarnings.push("Mätning med korrektion krävs när glasögon/linser används");
     }
 
-    // Check for high prescription values (±8,00 D) for higher license categories with glasses
-    if (licenseCategory === 'higher' && measurements.uses_correction) {
-      const checkPrescriptionStrength = (sph: string, cyl: string, eyeName: string) => {
-        const sphValue = parseLocaleFloat(sph);
-        const cylValue = parseLocaleFloat(cyl);
-        
-        if (!isNaN(sphValue) && Math.abs(sphValue) >= 8.0) {
-          newWarnings.push(`${eyeName}: Sfärvärde över ±8,00 D (${sphValue}) - Transportstyrelsen måste informeras`);
-        }
-        if (!isNaN(cylValue) && Math.abs(cylValue) >= 8.0) {
-          newWarnings.push(`${eyeName}: Cylindervärde över ±8,00 D (${cylValue}) - Transportstyrelsen måste informeras`);
-        }
-        
-        // Check combined sphere + cylinder
-        if (!isNaN(sphValue) && !isNaN(cylValue) && Math.abs(sphValue + cylValue) >= 8.0) {
-          newWarnings.push(`${eyeName}: Kombinerat värde (sfär + cylinder) över ±8,00 D - Transportstyrelsen måste informeras`);
-        }
-      };
-      
-      checkPrescriptionStrength(measurements.glasses_prescription_od_sph, measurements.glasses_prescription_od_cyl, 'Höger öga');
-      checkPrescriptionStrength(measurements.glasses_prescription_os_sph, measurements.glasses_prescription_os_cyl, 'Vänster öga');
+    // Simplified ±8,00 D check via toggle (full prescription lever finns i Servit)
+    if (licenseCategory === 'higher' && measurements.uses_correction && measurements.prescription_over_8d) {
+      newWarnings.push("Glasstyrka över ±8,00 D - Transportstyrelsen måste informeras");
     }
 
     setWarnings(newWarnings);
@@ -232,16 +212,10 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       uses_glasses: Boolean(measurements.uses_correction),
       uses_contact_lenses: false,
       vision_below_limit: warnings.length > 0,
-      // Include glasses prescription data if applicable
+      // Simplified ±8D flag stored as sph value (8 or 0) for backward compatibility
       ...(licenseCategory === 'higher' && measurements.uses_correction && {
-        glasses_prescription_od_sph: toNumberOrNull(measurements.glasses_prescription_od_sph),
-        glasses_prescription_od_cyl: toNumberOrNull(measurements.glasses_prescription_od_cyl),
-        glasses_prescription_od_axis: measurements.glasses_prescription_od_axis ? parseInt(measurements.glasses_prescription_od_axis.toString()) : null,
-        glasses_prescription_od_add: toNumberOrNull(measurements.glasses_prescription_od_add),
-        glasses_prescription_os_sph: toNumberOrNull(measurements.glasses_prescription_os_sph),
-        glasses_prescription_os_cyl: toNumberOrNull(measurements.glasses_prescription_os_cyl),
-        glasses_prescription_os_axis: measurements.glasses_prescription_os_axis ? parseInt(measurements.glasses_prescription_os_axis.toString()) : null,
-        glasses_prescription_os_add: toNumberOrNull(measurements.glasses_prescription_os_add),
+        glasses_prescription_od_sph: measurements.prescription_over_8d ? 8 : null,
+        glasses_prescription_os_sph: measurements.prescription_over_8d ? 8 : null,
       }),
       // Append license category info into notes without overwriting any existing notes saved earlier
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
@@ -265,9 +239,13 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     }
   };
 
-  const isFormValid = measurements.visual_acuity_both_eyes && 
-                      measurements.visual_acuity_right_eye && 
-                      measurements.visual_acuity_left_eye;
+  // Visus-fält är valfria — optikern kan hoppa över stödet och ändå gå vidare.
+  // (Servit är primär journal; portalen är endast stöd.)
+  const hasAnyMeasurement = Boolean(
+    measurements.visual_acuity_both_eyes ||
+    measurements.visual_acuity_right_eye ||
+    measurements.visual_acuity_left_eye
+  );
 
   return (
     <Card>
@@ -466,107 +444,24 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           )}
         </div>
 
-        {/* Glasses prescription section for higher license categories with glasses */}
+        {/* Simplified glasses strength flag for higher license categories.
+            Detaljerat recept hanteras i Servit – portalen behöver bara veta
+            om någon styrka överstiger ±8,00 D (Transportstyrelsen-info). */}
         {licenseCategory === 'higher' && measurements.uses_correction && (
-          <div className="space-y-4">
-            <h4 className="font-medium">Glasögonstyrkor (krävs för högre behörigheter)</h4>
-            
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-1">
-                  <p className="font-medium">Fyll i glasögonstyrkor enligt recept:</p>
-                  <p className="text-sm">Sfär (Sph), Cylinder (Cyl), Axel (Ax) och Addition (Add) om tillämpligt. Varning visas automatiskt om styrkan överstiger ±8,00 D.</p>
-                </div>
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-6">
-              {/* Right eye (OD) */}
-              <div className="space-y-3">
-                <h5 className="font-medium text-sm">Höger öga (OD)</h5>
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="od-sph">Sfär (Sph)</Label>
-                    <Input
-                      id="od-sph"
-                      value={measurements.glasses_prescription_od_sph}
-                      onChange={(e) => handleInputChange('glasses_prescription_od_sph', e.target.value)}
-                      placeholder="t.ex. -2,50"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="od-cyl">Cylinder (Cyl)</Label>
-                    <Input
-                      id="od-cyl"
-                      value={measurements.glasses_prescription_od_cyl}
-                      onChange={(e) => handleInputChange('glasses_prescription_od_cyl', e.target.value)}
-                      placeholder="t.ex. -0,75"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="od-axis">Axel (Ax)</Label>
-                    <Input
-                      id="od-axis"
-                      value={measurements.glasses_prescription_od_axis}
-                      onChange={(e) => handleInputChange('glasses_prescription_od_axis', e.target.value)}
-                      placeholder="0-180°"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="od-add">Addition (Add)</Label>
-                    <Input
-                      id="od-add"
-                      value={measurements.glasses_prescription_od_add}
-                      onChange={(e) => handleInputChange('glasses_prescription_od_add', e.target.value)}
-                      placeholder="t.ex. +2,00"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Left eye (OS) */}
-              <div className="space-y-3">
-                <h5 className="font-medium text-sm">Vänster öga (OS)</h5>
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="os-sph">Sfär (Sph)</Label>
-                    <Input
-                      id="os-sph"
-                      value={measurements.glasses_prescription_os_sph}
-                      onChange={(e) => handleInputChange('glasses_prescription_os_sph', e.target.value)}
-                      placeholder="t.ex. -2,50"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="os-cyl">Cylinder (Cyl)</Label>
-                    <Input
-                      id="os-cyl"
-                      value={measurements.glasses_prescription_os_cyl}
-                      onChange={(e) => handleInputChange('glasses_prescription_os_cyl', e.target.value)}
-                      placeholder="t.ex. -0,75"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="os-axis">Axel (Ax)</Label>
-                    <Input
-                      id="os-axis"
-                      value={measurements.glasses_prescription_os_axis}
-                      onChange={(e) => handleInputChange('glasses_prescription_os_axis', e.target.value)}
-                      placeholder="0-180°"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="os-add">Addition (Add)</Label>
-                    <Input
-                      id="os-add"
-                      value={measurements.glasses_prescription_os_add}
-                      onChange={(e) => handleInputChange('glasses_prescription_os_add', e.target.value)}
-                      placeholder="t.ex. +2,00"
-                    />
-                  </div>
-                </div>
-              </div>
+          <div className="space-y-3 rounded-md border p-4">
+            <h4 className="font-medium">Glasstyrka</h4>
+            <p className="text-sm text-muted-foreground">
+              Fullständigt recept förs i Servit. Markera endast om någon styrka (sfär eller cylinder) är ±8,00 D eller mer.
+            </p>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="prescription-over-8d"
+                checked={measurements.prescription_over_8d}
+                onCheckedChange={(checked) => handleInputChange('prescription_over_8d', Boolean(checked))}
+              />
+              <Label htmlFor="prescription-over-8d" className="cursor-pointer">
+                Glasstyrka ±8,00 D eller mer (kräver info till Transportstyrelsen)
+              </Label>
             </div>
           </div>
         )}
@@ -583,11 +478,18 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           </div>
         )}
 
-        {/* Navigation */}
-        <div className="flex justify-end gap-2">
+        {/* Navigation — visus är valfritt; "Hoppa över stöd" går vidare utan värden */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button
+            variant="ghost"
+            onClick={onNext}
+            disabled={isSaving}
+          >
+            Hoppa över stöd
+          </Button>
           <Button
             onClick={handleSaveAndContinue}
-            disabled={!isFormValid || isSaving}
+            disabled={isSaving || !hasAnyMeasurement}
           >
             {isSaving ? "Sparar..." : "Spara och fortsätt"}
           </Button>

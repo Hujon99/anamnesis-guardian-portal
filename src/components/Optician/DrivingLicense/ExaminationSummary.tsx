@@ -110,9 +110,15 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       return;
     }
     
+    const outcomeLabel = OUTCOME_OPTIONS.find(o => o.value === outcome)?.label;
+    const combinedNotes = [
+      outcomeLabel ? `${OUTCOME_PREFIX}${outcomeLabel}` : '',
+      notes.trim(),
+    ].filter(Boolean).join('\n\n') || null;
+
     const updates = {
       examination_status: 'completed' as const,
-      notes: notes.trim() || null
+      notes: combinedNotes
     };
     
     try {

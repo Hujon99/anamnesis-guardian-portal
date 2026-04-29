@@ -117,15 +117,13 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     visual_acuity_with_correction_left: examination?.visual_acuity_with_correction_left || '',
     uses_correction: examination?.uses_glasses || examination?.uses_contact_lenses || usesCorrection,
     correction_type: examination?.correction_type || (usesCorrection ? 'glasses_or_lenses' : 'none'),
-    // Glasses prescription data for higher license categories
-    glasses_prescription_od_sph: examination?.glasses_prescription_od_sph || '',
-    glasses_prescription_od_cyl: examination?.glasses_prescription_od_cyl || '',
-    glasses_prescription_od_axis: examination?.glasses_prescription_od_axis || '',
-    glasses_prescription_od_add: examination?.glasses_prescription_od_add || '',
-    glasses_prescription_os_sph: examination?.glasses_prescription_os_sph || '',
-    glasses_prescription_os_cyl: examination?.glasses_prescription_os_cyl || '',
-    glasses_prescription_os_axis: examination?.glasses_prescription_os_axis || '',
-    glasses_prescription_os_add: examination?.glasses_prescription_os_add || ''
+    // Simplified prescription flag: true if any lens strength is over ±8,00 D
+    // (replaces detailed Sph/Cyl/Ax/Add inputs — Servit håller fullständigt recept)
+    prescription_over_8d: Boolean(
+      examination?.glasses_prescription_od_sph && Math.abs(Number(examination.glasses_prescription_od_sph)) >= 8
+    ) || Boolean(
+      examination?.glasses_prescription_os_sph && Math.abs(Number(examination.glasses_prescription_os_sph)) >= 8
+    ),
   });
 
   const [warnings, setWarnings] = useState<string[]>([]);

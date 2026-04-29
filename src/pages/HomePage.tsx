@@ -40,7 +40,7 @@ const HomePage = () => {
             />
             <FeatureCard 
               title="GDPR-vänlig" 
-              description="Automatisk radering av uppgifter efter 48 timmar" 
+              description="Automatisk radering av uppgifter efter 30 dagar" 
             />
           </div>
           

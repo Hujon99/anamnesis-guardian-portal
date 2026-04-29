@@ -49,7 +49,7 @@ export const LegalConsentStep: React.FC<LegalConsentStepProps> = ({
                 </h3>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• Dina uppgifter delas säkert med {organizationName}</li>
-                  <li>• All data krypteras och lagras tillfälligt (max 48 timmar)</li>
+                  <li>• All data krypteras och lagras tillfälligt (max 30 dagar)</li>
                   <li>• {organizationName} är ansvarig för dina personuppgifter</li>
                   <li>• Uppgifterna används endast för din synundersökning</li>
                 </ul>

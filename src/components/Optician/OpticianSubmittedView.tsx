@@ -52,9 +52,12 @@ const OpticianSubmittedView: React.FC<OpticianSubmittedViewProps> = ({
           <CardTitle className="text-center text-green-600">Formuläret har fyllts i</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-center mb-4">
+          <p className="text-center mb-3">
             Anamnesen har markerats som ifylld av optiker och statusen har ändrats till "Klar för undersökning".
             {patientName && ` Patient: ${patientName}`}
+          </p>
+          <p className="text-xs text-muted-foreground text-center mb-4 italic">
+            Anamnesportalen är ett stöd. Journalföring sker i Servit.
           </p>
           <p className="text-sm text-muted-foreground text-center mb-4">
             Du kommer automatiskt att omdirigeras till översikten.

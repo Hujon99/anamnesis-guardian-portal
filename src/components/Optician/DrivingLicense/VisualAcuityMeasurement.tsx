@@ -180,27 +180,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       newWarnings.push("Mätning med korrektion krävs när glasögon/linser används");
     }
 
-    // Check for high prescription values (±8,00 D) for higher license categories with glasses
-    if (licenseCategory === 'higher' && measurements.uses_correction) {
-      const checkPrescriptionStrength = (sph: string, cyl: string, eyeName: string) => {
-        const sphValue = parseLocaleFloat(sph);
-        const cylValue = parseLocaleFloat(cyl);
-        
-        if (!isNaN(sphValue) && Math.abs(sphValue) >= 8.0) {
-          newWarnings.push(`${eyeName}: Sfärvärde över ±8,00 D (${sphValue}) - Transportstyrelsen måste informeras`);
-        }
-        if (!isNaN(cylValue) && Math.abs(cylValue) >= 8.0) {
-          newWarnings.push(`${eyeName}: Cylindervärde över ±8,00 D (${cylValue}) - Transportstyrelsen måste informeras`);
-        }
-        
-        // Check combined sphere + cylinder
-        if (!isNaN(sphValue) && !isNaN(cylValue) && Math.abs(sphValue + cylValue) >= 8.0) {
-          newWarnings.push(`${eyeName}: Kombinerat värde (sfär + cylinder) över ±8,00 D - Transportstyrelsen måste informeras`);
-        }
-      };
-      
-      checkPrescriptionStrength(measurements.glasses_prescription_od_sph, measurements.glasses_prescription_od_cyl, 'Höger öga');
-      checkPrescriptionStrength(measurements.glasses_prescription_os_sph, measurements.glasses_prescription_os_cyl, 'Vänster öga');
+    // Simplified ±8,00 D check via toggle (full prescription lever finns i Servit)
+    if (licenseCategory === 'higher' && measurements.uses_correction && measurements.prescription_over_8d) {
+      newWarnings.push("Glasstyrka över ±8,00 D - Transportstyrelsen måste informeras");
     }
 
     setWarnings(newWarnings);

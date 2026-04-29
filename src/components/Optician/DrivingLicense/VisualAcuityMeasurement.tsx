@@ -444,107 +444,24 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           )}
         </div>
 
-        {/* Glasses prescription section for higher license categories with glasses */}
+        {/* Simplified glasses strength flag for higher license categories.
+            Detaljerat recept hanteras i Servit – portalen behöver bara veta
+            om någon styrka överstiger ±8,00 D (Transportstyrelsen-info). */}
         {licenseCategory === 'higher' && measurements.uses_correction && (
-          <div className="space-y-4">
-            <h4 className="font-medium">Glasögonstyrkor (krävs för högre behörigheter)</h4>
-            
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-1">
-                  <p className="font-medium">Fyll i glasögonstyrkor enligt recept:</p>
-                  <p className="text-sm">Sfär (Sph), Cylinder (Cyl), Axel (Ax) och Addition (Add) om tillämpligt. Varning visas automatiskt om styrkan överstiger ±8,00 D.</p>
-                </div>
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-6">
-              {/* Right eye (OD) */}
-              <div className="space-y-3">
-                <h5 className="font-medium text-sm">Höger öga (OD)</h5>
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="od-sph">Sfär (Sph)</Label>
-                    <Input
-                      id="od-sph"
-                      value={measurements.glasses_prescription_od_sph}
-                      onChange={(e) => handleInputChange('glasses_prescription_od_sph', e.target.value)}
-                      placeholder="t.ex. -2,50"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="od-cyl">Cylinder (Cyl)</Label>
-                    <Input
-                      id="od-cyl"
-                      value={measurements.glasses_prescription_od_cyl}
-                      onChange={(e) => handleInputChange('glasses_prescription_od_cyl', e.target.value)}
-                      placeholder="t.ex. -0,75"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="od-axis">Axel (Ax)</Label>
-                    <Input
-                      id="od-axis"
-                      value={measurements.glasses_prescription_od_axis}
-                      onChange={(e) => handleInputChange('glasses_prescription_od_axis', e.target.value)}
-                      placeholder="0-180°"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="od-add">Addition (Add)</Label>
-                    <Input
-                      id="od-add"
-                      value={measurements.glasses_prescription_od_add}
-                      onChange={(e) => handleInputChange('glasses_prescription_od_add', e.target.value)}
-                      placeholder="t.ex. +2,00"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Left eye (OS) */}
-              <div className="space-y-3">
-                <h5 className="font-medium text-sm">Vänster öga (OS)</h5>
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="os-sph">Sfär (Sph)</Label>
-                    <Input
-                      id="os-sph"
-                      value={measurements.glasses_prescription_os_sph}
-                      onChange={(e) => handleInputChange('glasses_prescription_os_sph', e.target.value)}
-                      placeholder="t.ex. -2,50"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="os-cyl">Cylinder (Cyl)</Label>
-                    <Input
-                      id="os-cyl"
-                      value={measurements.glasses_prescription_os_cyl}
-                      onChange={(e) => handleInputChange('glasses_prescription_os_cyl', e.target.value)}
-                      placeholder="t.ex. -0,75"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="os-axis">Axel (Ax)</Label>
-                    <Input
-                      id="os-axis"
-                      value={measurements.glasses_prescription_os_axis}
-                      onChange={(e) => handleInputChange('glasses_prescription_os_axis', e.target.value)}
-                      placeholder="0-180°"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="os-add">Addition (Add)</Label>
-                    <Input
-                      id="os-add"
-                      value={measurements.glasses_prescription_os_add}
-                      onChange={(e) => handleInputChange('glasses_prescription_os_add', e.target.value)}
-                      placeholder="t.ex. +2,00"
-                    />
-                  </div>
-                </div>
-              </div>
+          <div className="space-y-3 rounded-md border p-4">
+            <h4 className="font-medium">Glasstyrka</h4>
+            <p className="text-sm text-muted-foreground">
+              Fullständigt recept förs i Servit. Markera endast om någon styrka (sfär eller cylinder) är ±8,00 D eller mer.
+            </p>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="prescription-over-8d"
+                checked={measurements.prescription_over_8d}
+                onCheckedChange={(checked) => handleInputChange('prescription_over_8d', Boolean(checked))}
+              />
+              <Label htmlFor="prescription-over-8d" className="cursor-pointer">
+                Glasstyrka ±8,00 D eller mer (kräver info till Transportstyrelsen)
+              </Label>
             </div>
           </div>
         )}
@@ -561,11 +478,18 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           </div>
         )}
 
-        {/* Navigation */}
-        <div className="flex justify-end gap-2">
+        {/* Navigation — visus är valfritt; "Hoppa över stöd" går vidare utan värden */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button
+            variant="ghost"
+            onClick={onNext}
+            disabled={isSaving}
+          >
+            Hoppa över stöd
+          </Button>
           <Button
             onClick={handleSaveAndContinue}
-            disabled={!isFormValid || isSaving}
+            disabled={isSaving || !hasAnyMeasurement}
           >
             {isSaving ? "Sparar..." : "Spara och fortsätt"}
           </Button>

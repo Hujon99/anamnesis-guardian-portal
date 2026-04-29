@@ -85,17 +85,32 @@
     </div>
 
     <script>
-      // Remove loading screen when app is ready
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          const loader = document.getElementById('app-loading');
-          if (loader) {
-            loader.style.opacity = '0';
-            loader.style.transition = 'opacity 0.3s ease-out';
-            setTimeout(() => loader.remove(), 300);
-          }
-        }, 100);
-      });
+      // Robust splash removal:
+      // - React (main.tsx) removes it as soon as the app mounts.
+      // - As a fallback, remove on window 'load'.
+      // - As a hard safety net, force-remove after 8s so the overlay
+      //   can never permanently block the app (important for iOS/Safari).
+      (function () {
+        function removeLoader() {
+          var loader = document.getElementById('app-loading');
+          if (!loader) return;
+          loader.style.transition = 'opacity 0.3s ease-out';
+          loader.style.opacity = '0';
+          setTimeout(function () {
+            if (loader && loader.parentNode) {
+              loader.parentNode.removeChild(loader);
+            }
+          }, 300);
+        }
+        if (document.readyState === 'complete') {
+          setTimeout(removeLoader, 100);
+        } else {
+          window.addEventListener('load', function () {
+            setTimeout(removeLoader, 100);
+          });
+        }
+        setTimeout(removeLoader, 8000);
+      })();
     </script>
     
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->

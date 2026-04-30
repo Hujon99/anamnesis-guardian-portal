@@ -452,7 +452,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                   {entry.driving_license_status?.examination?.completion_method === 'servit' ? (
                     <Badge className="bg-accent/10 text-accent border-accent/30 hover:bg-accent/15 px-3 py-1 gap-1.5">
                       <ClipboardCheck className="h-3.5 w-3.5" />
-                      <span>Journalförd i Servit</span>
+                      <span>Journalförd i ServeIT</span>
                       {entry.driving_license_status?.examination?.servit_customer_number && (
                         <span className="font-mono font-medium">
                           · #{entry.driving_license_status.examination.servit_customer_number}
@@ -492,7 +492,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
                       className="h-10 border-accent/40 text-accent hover:bg-accent/10 hover:text-accent hover:border-accent flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
                     >
                       <ClipboardCheck className="h-4 w-4" strokeWidth={1.75} />
-                      <span>Journalför i Servit</span>
+                      <span>Journalför i ServeIT</span>
                     </Button>
                   </div>
                 </div>

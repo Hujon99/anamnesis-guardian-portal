@@ -14,7 +14,7 @@ Varje punkt körs mot preview-URL:en (eller publicerad miljö när relevant).
 ## 2. Båda spåren ska testas
 - **App-spåret**: Genomför undersökning i appen
   (`ExaminationSummary.tsx` – visus + ID + utfall + tilldelning).
-- **Servit-spåret**: Journalför direkt i Servit
+- **ServeIT-spåret**: Journalför direkt i ServeIT
   (`ServitJournalDialog.tsx` – kundnummer + utfall + tilldelning).
 
 ## 3. Alla fyra utfall ska testas i tur och ordning

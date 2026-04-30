@@ -287,18 +287,18 @@ const handler = async (req: Request): Promise<Response> => {
       : (entryData.patient_identifier || '');
     const outcomeSuffix = outcomeLabel ? ` – ${outcomeLabel}` : '';
     const subject = isServit
-      ? `Körkortsundersökning journalförd i Servit${customerNumber ? ` – kundnr ${customerNumber}` : ''}${outcomeSuffix}`
+      ? `Körkortsundersökning journalförd i ServeIT${customerNumber ? ` – kundnr ${customerNumber}` : ''}${outcomeSuffix}`
       : `Ny körkortsundersökning tilldelad${customerNumber ? ` – kundnr ${customerNumber}` : ''}${outcomeSuffix}`;
 
     const headline = isServit
-      ? "Journalförd i Servit – granska och skicka intyg"
-      : "Genomförd i Anamnesportalen – för in i Servit";
+      ? "Journalförd i ServeIT – granska och skicka intyg"
+      : "Genomförd i Anamnesportalen – för in i ServeIT";
 
     const introBlock = isServit
-      ? `<p style="margin:0 0 12px 0;">Patienten är journalförd direkt i Servit.</p>
+      ? `<p style="margin:0 0 12px 0;">Patienten är journalförd direkt i ServeIT.</p>
          <p style="margin:0;"><strong>Nästa steg:</strong> Granska anamnesen nedan och skicka intyg till Transportstyrelsen.</p>`
       : `<p style="margin:0 0 12px 0;">En körkortsundersökning är genomförd i Anamnesportalen och tilldelad dig.</p>
-         <p style="margin:0;"><strong>Nästa steg:</strong> Granska anamnesen nedan, för in resultatet i Servit och skicka intyg till Transportstyrelsen.</p>`;
+         <p style="margin:0;"><strong>Nästa steg:</strong> Granska anamnesen nedan, för in resultatet i ServeIT och skicka intyg till Transportstyrelsen.</p>`;
 
     const outcomeStyle = getOutcomeStyling(outcomeLabel);
     const outcomeBlock = outcomeLabel ? `

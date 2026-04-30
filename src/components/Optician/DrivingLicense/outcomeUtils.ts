@@ -3,7 +3,7 @@
  * "assistentens bedömning"-steg.
  *
  * Används av både `ExaminationSummary.tsx` (Genomför i appen) och
- * `ServitJournalDialog.tsx` (Journalför i Servit) så att assistenten
+ * `ServitJournalDialog.tsx` (Journalför i ServeIT) så att assistenten
  * alltid väljer ett av samma fyra utfall innan ärendet tilldelas optiker.
  *
  * Utfallet sparas som textprefix i `driving_license_examinations.notes`

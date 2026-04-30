@@ -343,6 +343,41 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             </p>
           </div>
 
+          {/* Bedömning av assistent — 4 explicita utfall */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="servit-outcome"
+              className="text-sm font-medium flex items-center gap-1.5"
+            >
+              <Gavel className="h-3.5 w-3.5 text-accent" />
+              Bedömning
+              <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={outcome}
+              onValueChange={(v) => setOutcome(v as OutcomeValue)}
+              disabled={isSaving}
+            >
+              <SelectTrigger
+                id="servit-outcome"
+                className="h-11"
+                aria-required="true"
+              >
+                <SelectValue placeholder="Välj utfall" />
+              </SelectTrigger>
+              <SelectContent className="z-[1100]">
+                {OUTCOME_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground pl-0.5">
+              Stöd för optikern. Slutligt beslut fattas i Servit.
+            </p>
+          </div>
+
           {/* Optiker */}
           <div className="space-y-2">
             <Label

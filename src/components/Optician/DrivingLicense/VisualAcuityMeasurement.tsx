@@ -384,69 +384,72 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           </div>
         </div>
 
-        {/* Correction settings */}
+        {/* Korrektion — separata rutor för glasögon resp. linser. Styrkor är
+            endast relevanta för glasögon (Christians feedback). */}
         <div className="space-y-4">
           <h4 className="font-medium">Korrektion</h4>
-          
+
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="correction"
-              checked={measurements.uses_correction}
-              onCheckedChange={(checked) => {
-                handleInputChange('uses_correction', checked);
-                handleInputChange('correction_type', checked ? 'glasses_or_lenses' : 'none');
-              }}
+              id="uses-glasses"
+              checked={measurements.uses_glasses}
+              onCheckedChange={(checked) => handleInputChange('uses_glasses', Boolean(checked))}
             />
-            <Label htmlFor="correction">Använder glasögon eller kontaktlinser</Label>
+            <Label htmlFor="uses-glasses" className="cursor-pointer">Använder glasögon</Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="uses-contact-lenses"
+              checked={measurements.uses_contact_lenses}
+              onCheckedChange={(checked) => handleInputChange('uses_contact_lenses', Boolean(checked))}
+            />
+            <Label htmlFor="uses-contact-lenses" className="cursor-pointer">Använder kontaktlinser</Label>
           </div>
 
           {/* Measurements with correction */}
-          {measurements.uses_correction && (
+          {(measurements.uses_glasses || measurements.uses_contact_lenses) && (
             <div className="space-y-4">
               <h5 className="font-medium text-sm">Visus med korrektion</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="with-correction-right">Höger öga (OD)</Label>
-                  <Select 
-                    value={measurements.visual_acuity_with_correction_right.toString()} 
+                  <Select
+                    value={measurements.visual_acuity_with_correction_right.toString()}
                     onValueChange={(value) => handleInputChange('visual_acuity_with_correction_right', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Välj VISUS-värde" />
                     </SelectTrigger>
-                     <SelectContent>
+                    <SelectContent>
                       {VISUS_SCALE.map((visus) => (
-                        <SelectItem key={visus} value={visus}>
-                          {visus.replace('.', ',')}
-                        </SelectItem>
+                        <SelectItem key={visus} value={visus}>{visus.replace('.', ',')}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="with-correction-left">Vänster öga (OS)</Label>
-                  <Select 
-                    value={measurements.visual_acuity_with_correction_left.toString()} 
+                  <Select
+                    value={measurements.visual_acuity_with_correction_left.toString()}
                     onValueChange={(value) => handleInputChange('visual_acuity_with_correction_left', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Välj VISUS-värde" />
                     </SelectTrigger>
-                     <SelectContent>
+                    <SelectContent>
                       {VISUS_SCALE.map((visus) => (
-                        <SelectItem key={visus} value={visus}>
-                          {visus.replace('.', ',')}
-                        </SelectItem>
+                        <SelectItem key={visus} value={visus}>{visus.replace('.', ',')}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="with-correction-both">Båda ögon (OU)</Label>
-                  <Select 
-                    value={measurements.visual_acuity_with_correction_both.toString()} 
+                  <Select
+                    value={measurements.visual_acuity_with_correction_both.toString()}
                     onValueChange={(value) => handleInputChange('visual_acuity_with_correction_both', value)}
                   >
                     <SelectTrigger>
@@ -454,9 +457,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                     </SelectTrigger>
                     <SelectContent>
                       {VISUS_SCALE.map((visus) => (
-                        <SelectItem key={visus} value={visus}>
-                          {visus.replace('.', ',')}
-                        </SelectItem>
+                        <SelectItem key={visus} value={visus}>{visus.replace('.', ',')}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -466,14 +467,14 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           )}
         </div>
 
-        {/* Simplified glasses strength flag for higher license categories.
-            Detaljerat recept hanteras i Servit – portalen behöver bara veta
-            om någon styrka överstiger ±8,00 D (Transportstyrelsen-info). */}
-        {licenseCategory === 'higher' && measurements.uses_correction && (
+        {/* Glasögonstyrka — endast om "Använder glasögon" är ikryssat.
+            Linser registreras aldrig med styrka. */}
+        {measurements.uses_glasses && (
           <div className="space-y-3 rounded-md border p-4">
-            <h4 className="font-medium">Glasstyrka</h4>
+            <h4 className="font-medium">Glasögonstyrka</h4>
             <p className="text-sm text-muted-foreground">
-              Fullständigt recept förs i Servit. Markera endast om någon styrka (sfär eller cylinder) är ±8,00 D eller mer.
+              Fullständigt recept förs i Servit. Markera om någon styrka är ±8,00 D eller mer
+              för att registrera exakta värden här (krävs för info till Transportstyrelsen).
             </p>
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -482,9 +483,63 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                 onCheckedChange={(checked) => handleInputChange('prescription_over_8d', Boolean(checked))}
               />
               <Label htmlFor="prescription-over-8d" className="cursor-pointer">
-                Glasstyrka ±8,00 D eller mer (kräver info till Transportstyrelsen)
+                Överstiger ±8 dioptrier
               </Label>
             </div>
+
+            {measurements.prescription_over_8d && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                {(['od', 'os'] as const).map((eye) => (
+                  <div key={eye} className="space-y-2">
+                    <h5 className="font-medium text-sm">
+                      {eye === 'od' ? 'Höger öga (OD)' : 'Vänster öga (OS)'}
+                    </h5>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label htmlFor={`${eye}-sph`} className="text-xs">Sfär</Label>
+                        <Input
+                          id={`${eye}-sph`}
+                          inputMode="decimal"
+                          placeholder="t.ex. -8,50"
+                          value={(measurements as any)[`glasses_prescription_${eye}_sph`] ?? ''}
+                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_sph`, e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`${eye}-cyl`} className="text-xs">Cylinder</Label>
+                        <Input
+                          id={`${eye}-cyl`}
+                          inputMode="decimal"
+                          placeholder="t.ex. -1,25"
+                          value={(measurements as any)[`glasses_prescription_${eye}_cyl`] ?? ''}
+                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_cyl`, e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`${eye}-axis`} className="text-xs">Axel (°)</Label>
+                        <Input
+                          id={`${eye}-axis`}
+                          inputMode="numeric"
+                          placeholder="0–180"
+                          value={(measurements as any)[`glasses_prescription_${eye}_axis`] ?? ''}
+                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_axis`, e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`${eye}-add`} className="text-xs">Add (valfritt)</Label>
+                        <Input
+                          id={`${eye}-add`}
+                          inputMode="decimal"
+                          placeholder="t.ex. 2,00"
+                          value={(measurements as any)[`glasses_prescription_${eye}_add`] ?? ''}
+                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_add`, e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

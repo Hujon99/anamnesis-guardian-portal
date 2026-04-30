@@ -109,6 +109,15 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
   }, [entry?.answers]);
 
   const [licenseCategory, setLicenseCategory] = useState<LicenseCategory>(detectedLicenseCategory);
+
+  // Härled initialt om patienten har styrke-värden registrerade (då är ±8 D-rutan på).
+  const initialHasPrescription = Boolean(
+    examination?.glasses_prescription_od_sph ||
+    examination?.glasses_prescription_od_cyl ||
+    examination?.glasses_prescription_os_sph ||
+    examination?.glasses_prescription_os_cyl
+  );
+
   const [measurements, setMeasurements] = useState({
     visual_acuity_both_eyes: examination?.visual_acuity_both_eyes || '',
     visual_acuity_right_eye: examination?.visual_acuity_right_eye || '',
@@ -116,15 +125,21 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     visual_acuity_with_correction_both: examination?.visual_acuity_with_correction_both || '',
     visual_acuity_with_correction_right: examination?.visual_acuity_with_correction_right || '',
     visual_acuity_with_correction_left: examination?.visual_acuity_with_correction_left || '',
-    uses_correction: examination?.uses_glasses || examination?.uses_contact_lenses || usesCorrection,
-    correction_type: examination?.correction_type || (usesCorrection ? 'glasses_or_lenses' : 'none'),
-    // Simplified prescription flag: true if any lens strength is over ±8,00 D
-    // (replaces detailed Sph/Cyl/Ax/Add inputs — Servit håller fullständigt recept)
-    prescription_over_8d: Boolean(
-      examination?.glasses_prescription_od_sph && Math.abs(Number(examination.glasses_prescription_od_sph)) >= 8
-    ) || Boolean(
-      examination?.glasses_prescription_os_sph && Math.abs(Number(examination.glasses_prescription_os_sph)) >= 8
-    ),
+    // Separata flaggor för glasögon resp. kontaktlinser. Christians feedback:
+    // styrkor är endast relevanta för glasögon, aldrig för linser.
+    uses_glasses: Boolean(examination?.uses_glasses) || (usesCorrection && !examination?.uses_contact_lenses),
+    uses_contact_lenses: Boolean(examination?.uses_contact_lenses),
+    // Kryssruta som visas om "Använder glasögon" är ikryssat. Vid ja → visa
+    // styrke-fält (sfär/cyl/axel) per öga. Sparar mot befintliga DB-kolumner.
+    prescription_over_8d: initialHasPrescription,
+    glasses_prescription_od_sph: examination?.glasses_prescription_od_sph ?? '',
+    glasses_prescription_od_cyl: examination?.glasses_prescription_od_cyl ?? '',
+    glasses_prescription_od_axis: examination?.glasses_prescription_od_axis ?? '',
+    glasses_prescription_od_add: examination?.glasses_prescription_od_add ?? '',
+    glasses_prescription_os_sph: examination?.glasses_prescription_os_sph ?? '',
+    glasses_prescription_os_cyl: examination?.glasses_prescription_os_cyl ?? '',
+    glasses_prescription_os_axis: examination?.glasses_prescription_os_axis ?? '',
+    glasses_prescription_os_add: examination?.glasses_prescription_os_add ?? '',
   });
 
   const [warnings, setWarnings] = useState<string[]>([]);

@@ -87,6 +87,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isServitDialogOpen, setIsServitDialogOpen] = useState(false);
   const { supabase } = useSupabaseClient();
   const { getStoreName } = useStores();
   

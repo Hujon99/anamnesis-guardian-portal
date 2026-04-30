@@ -142,7 +142,8 @@ export const useSyncClerkUsers = () => {
                 last_name: newLastName,
                 display_name: newDisplayName
               })
-              .eq('clerk_user_id', clerkUserId);
+              .eq('clerk_user_id', clerkUserId)
+              .eq('organization_id', organization.id);
               
             if (updateError) {
               console.error('Error updating user:', updateError);

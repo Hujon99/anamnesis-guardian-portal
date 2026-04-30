@@ -152,11 +152,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "anamnes_entries_optician_id_fkey"
-            columns: ["optician_id"]
+            foreignKeyName: "anamnes_entries_optician_org_fkey"
+            columns: ["organization_id", "optician_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["clerk_user_id"]
+            referencedColumns: ["organization_id", "clerk_user_id"]
           },
           {
             foreignKeyName: "fk_anamnes_entries_form_id"

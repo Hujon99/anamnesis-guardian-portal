@@ -20,12 +20,15 @@ export const useSyncClerkUsers = () => {
   const { user } = useUser();
   const { supabase, isReady } = useSupabaseClient();
   
-  // Function to check if a user already exists in the database
-  const checkUserExists = async (clerkUserId: string) => {
+  // Function to check if a user already exists in the database for a specific organization.
+  // IMPORTANT: We must scope by both clerk_user_id AND organization_id because the same
+  // Clerk user can belong to multiple organizations (e.g. an admin invited as optician elsewhere).
+  const checkUserExists = async (clerkUserId: string, organizationId: string) => {
     const { data, error } = await supabase
       .from('users')
       .select('id, role, email, first_name, last_name, display_name')
       .eq('clerk_user_id', clerkUserId)
+      .eq('organization_id', organizationId)
       .maybeSingle();
       
     if (error) {
@@ -89,7 +92,7 @@ export const useSyncClerkUsers = () => {
         if (!clerkUserId) continue;
         
         // Check if user already exists in Supabase
-        const existingUser = await checkUserExists(clerkUserId);
+        const existingUser = await checkUserExists(clerkUserId, organization.id);
         const role = determineRole(member);
         
         if (!existingUser) {
@@ -139,7 +142,8 @@ export const useSyncClerkUsers = () => {
                 last_name: newLastName,
                 display_name: newDisplayName
               })
-              .eq('clerk_user_id', clerkUserId);
+              .eq('clerk_user_id', clerkUserId)
+              .eq('organization_id', organization.id);
               
             if (updateError) {
               console.error('Error updating user:', updateError);

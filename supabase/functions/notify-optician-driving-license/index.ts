@@ -183,9 +183,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Variant-specifik text
     const isServit = method === 'servit';
+    const outcomeSuffix = outcomeLabel ? ` – ${outcomeLabel}` : '';
     const subject = isServit
-      ? `Körkortsundersökning journalförd i Servit${servitCustomerNumber ? ` – kundnr ${servitCustomerNumber}` : ''}`
-      : "Ny körkortsundersökning tilldelad";
+      ? `Körkortsundersökning journalförd i Servit${servitCustomerNumber ? ` – kundnr ${servitCustomerNumber}` : ''}${outcomeSuffix}`
+      : `Ny körkortsundersökning tilldelad${outcomeSuffix}`;
 
     const headline = isServit
       ? "Journalförd i Servit – granska och skicka intyg"
@@ -202,6 +203,19 @@ const handler = async (req: Request): Promise<Response> => {
         <p><strong>Nästa steg:</strong> För in resultatet i Servit och skicka intyg till Transportstyrelsen.</p>
       `;
 
+    // Utfalls-block (assistentens bedömning) — färgkodat ovanför patientinfo.
+    const outcomeStyle = getOutcomeStyling(outcomeLabel);
+    const outcomeBlock = outcomeLabel
+      ? `
+        <div style="background-color: ${outcomeStyle.bg}; border-left: 4px solid ${outcomeStyle.border}; padding: 16px 20px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: ${outcomeStyle.text}; opacity: 0.8;">Assistentens bedömning</p>
+          <p style="margin: 0; font-size: 18px; font-weight: 600; color: ${outcomeStyle.text};">
+            ${outcomeStyle.icon} ${outcomeLabel}
+          </p>
+        </div>
+      `
+      : '';
+
     // Send email notification
     const emailResponse: any = await resend.emails.send({
       from: fromAddress,
@@ -214,6 +228,8 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Hej,</p>
 
           ${introBlock}
+
+          ${outcomeBlock}
 
           <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="margin: 0 0 10px 0; color: #1e40af;">Patientinformation</h3>

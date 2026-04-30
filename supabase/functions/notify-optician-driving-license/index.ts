@@ -23,6 +23,11 @@ interface EmailNotificationRequest {
   entryId: string;
   opticianEmail?: string; // Optional - will be fetched from DB if not provided
   appUrl: string;
+  // 'app' (default) = undersökningen genomfördes i Anamnesportalen.
+  // 'servit' = optikern genomförde och journalförde direkt i Servit; vi har
+  // ett kundnummer som ska visas i mejlet.
+  completionMethod?: 'app' | 'servit';
+  servitCustomerNumber?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {

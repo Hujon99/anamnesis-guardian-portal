@@ -497,6 +497,13 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
         </div>
       </AnamnesCard>
 
+      <ServitJournalDialog
+        open={isServitDialogOpen}
+        onOpenChange={setIsServitDialogOpen}
+        entry={entry}
+        onCompleted={() => onEntryUpdated?.()}
+      />
+
       <AlertDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}

@@ -155,25 +155,25 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     const withCorrectionRight = parseLocaleFloat(measurements.visual_acuity_with_correction_right);
     const withCorrectionLeft = parseLocaleFloat(measurements.visual_acuity_with_correction_left);
 
+    // "Använder korrektion" = antingen glasögon eller linser.
+    const usesAnyCorrection = measurements.uses_glasses || measurements.uses_contact_lenses;
+
     // Use corrected values if correction is used, otherwise use uncorrected
-    const effectiveBoth = measurements.uses_correction && !isNaN(withCorrectionBoth) ? withCorrectionBoth : bothEyes;
-    const effectiveRight = measurements.uses_correction && !isNaN(withCorrectionRight) ? withCorrectionRight : rightEye;
-    const effectiveLeft = measurements.uses_correction && !isNaN(withCorrectionLeft) ? withCorrectionLeft : leftEye;
+    const effectiveBoth = usesAnyCorrection && !isNaN(withCorrectionBoth) ? withCorrectionBoth : bothEyes;
+    const effectiveRight = usesAnyCorrection && !isNaN(withCorrectionRight) ? withCorrectionRight : rightEye;
+    const effectiveLeft = usesAnyCorrection && !isNaN(withCorrectionLeft) ? withCorrectionLeft : leftEye;
 
     // Apply validation rules based on license category
     switch (licenseCategory) {
       case 'lower':
-        // Lägre behörigheter: Minst 0,5 binokulart
         if (!isNaN(effectiveBoth) && effectiveBoth < 0.5) {
           newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,5 för lägre behörigheter");
         }
         break;
-        
+
       case 'higher':
-        // Högre behörigheter: 0,8 i bästa ögat, 0,1 i sämsta ögat
         const bestEye = Math.max(effectiveRight || 0, effectiveLeft || 0);
         const worstEye = Math.min(effectiveRight || 0, effectiveLeft || 0);
-        
         if (bestEye < 0.8) {
           newWarnings.push("Bästa ögat har under 0,8 i synskärpa (krävs för högre behörigheter)");
         }
@@ -181,9 +181,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           newWarnings.push("Sämsta ögat har under 0,1 i synskärpa (krävs för högre behörigheter)");
         }
         break;
-        
+
       case 'taxi':
-        // Taxiförarlegitimation: Minst 0,8 binokulart
         if (!isNaN(effectiveBoth) && effectiveBoth < 0.8) {
           newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,8 för taxiförarlegitimation");
         }
@@ -191,14 +190,14 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     }
 
     // Check correction requirements
-    if (measurements.uses_correction && 
+    if (usesAnyCorrection &&
         (isNaN(withCorrectionBoth) && isNaN(withCorrectionRight) && isNaN(withCorrectionLeft))) {
       newWarnings.push("Mätning med korrektion krävs när glasögon/linser används");
     }
 
-    // Simplified ±8,00 D check via toggle (full prescription lever finns i Servit)
-    if (licenseCategory === 'higher' && measurements.uses_correction && measurements.prescription_over_8d) {
-      newWarnings.push("Glasstyrka över ±8,00 D - Transportstyrelsen måste informeras");
+    // ±8 D-flagga: gäller endast glasögon, oavsett behörighet.
+    if (measurements.uses_glasses && measurements.prescription_over_8d) {
+      newWarnings.push("Glasstyrka över ±8,00 D – Transportstyrelsen måste informeras");
     }
 
     setWarnings(newWarnings);
@@ -213,26 +212,33 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
 
   const handleSaveAndContinue = async () => {
     const toNumberOrNull = (v: any) => {
+      if (v === '' || v == null) return null;
       const n = parseLocaleFloat(v as any);
       return Number.isNaN(n) ? null : n;
     };
-    
+
+    // Styrkor sparas endast om patienten har glasögon OCH ±8 D-rutan är ikryssad.
+    const includePrescription = measurements.uses_glasses && measurements.prescription_over_8d;
+
     const updates = {
-      // Only include DB columns explicitly to avoid enum/type issues (no UI-only fields)
       visual_acuity_both_eyes: toNumberOrNull(measurements.visual_acuity_both_eyes),
       visual_acuity_right_eye: toNumberOrNull(measurements.visual_acuity_right_eye),
       visual_acuity_left_eye: toNumberOrNull(measurements.visual_acuity_left_eye),
       visual_acuity_with_correction_both: toNumberOrNull(measurements.visual_acuity_with_correction_both),
       visual_acuity_with_correction_right: toNumberOrNull(measurements.visual_acuity_with_correction_right),
       visual_acuity_with_correction_left: toNumberOrNull(measurements.visual_acuity_with_correction_left),
-      uses_glasses: Boolean(measurements.uses_correction),
-      uses_contact_lenses: false,
+      uses_glasses: Boolean(measurements.uses_glasses),
+      uses_contact_lenses: Boolean(measurements.uses_contact_lenses),
       vision_below_limit: warnings.length > 0,
-      // Simplified ±8D flag stored as sph value (8 or 0) for backward compatibility
-      ...(licenseCategory === 'higher' && measurements.uses_correction && {
-        glasses_prescription_od_sph: measurements.prescription_over_8d ? 8 : null,
-        glasses_prescription_os_sph: measurements.prescription_over_8d ? 8 : null,
-      }),
+      // Glasögonstyrkor (sparas alltid – nullas ut om rutan inte är ikryssad eller linser).
+      glasses_prescription_od_sph: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_sph) : null,
+      glasses_prescription_od_cyl: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_cyl) : null,
+      glasses_prescription_od_axis: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_axis) : null,
+      glasses_prescription_od_add: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_add) : null,
+      glasses_prescription_os_sph: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_sph) : null,
+      glasses_prescription_os_cyl: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_cyl) : null,
+      glasses_prescription_os_axis: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_axis) : null,
+      glasses_prescription_os_add: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_add) : null,
       // Append license category info into notes without overwriting any existing notes saved earlier
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
     };

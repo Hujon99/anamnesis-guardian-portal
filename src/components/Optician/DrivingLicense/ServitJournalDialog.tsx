@@ -15,16 +15,16 @@
  *     Servit-varianten (innehåller kundnumret).
  *
  * Komplement till `ExaminationSummary.tsx` som hanterar app-spåret.
+ *
+ * UI: Blue Pulse-konceptet — gradient-header (primary → accent-teal), patientkort
+ * med kontext, stort monospace-fält för kundnummer, gradient-CTA med glow.
  */
 
 import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ClipboardCheck } from "lucide-react";
+import {
+  Loader2,
+  ClipboardCheck,
+  Hash,
+  UserRound,
+  StickyNote,
+  Plus,
+  Calendar,
+  Mail,
+} from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/hooks/use-toast";
 import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
@@ -45,6 +54,7 @@ import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useSafeUser as useUser } from "@/hooks/useSafeUser";
+import { cn } from "@/lib/utils";
 
 interface ServitJournalDialogProps {
   open: boolean;
@@ -52,6 +62,12 @@ interface ServitJournalDialogProps {
   entry: AnamnesesEntry;
   onCompleted?: () => void;
 }
+
+const getInitials = (name?: string | null) => {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+};
 
 export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
   open,
@@ -63,6 +79,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
   const [notes, setNotes] = useState("");
   const [selectedOpticianId, setSelectedOpticianId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
 
   const { opticians, isLoading: loadingOpticians } = useOpticians();
   const { assignOptician } = useEntryMutations(entry.id);
@@ -74,6 +91,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
     setCustomerNumber("");
     setNotes("");
     setSelectedOpticianId("");
+    setShowNotes(false);
   };
 
   const handleConfirm = async () => {
@@ -117,8 +135,6 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
 
     setIsSaving(true);
     try {
-      // Upsert examination-rad. Vi gör en SELECT först för att hantera
-      // både "ny" och "redan påbörjad" på ett tydligt sätt.
       const { data: existing, error: fetchErr } = await supabase
         .from("driving_license_examinations")
         .select("id")
@@ -151,10 +167,8 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
         if (insErr) throw insErr;
       }
 
-      // Tilldela ansvarig optiker (sätter optician_id på anamnes_entries)
       await assignOptician(selectedOpticianId);
 
-      // Skicka mejl med Servit-variant
       try {
         const { error: emailError } = await supabase.functions.invoke(
           "notify-optician-driving-license",
@@ -195,6 +209,23 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
     }
   };
 
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const trigger = document.getElementById("servit-optician");
+      trigger?.focus();
+    }
+  };
+
+  const patientName = entry.first_name?.trim() || "Okänd patient";
+  const bookingDate = entry.booking_date
+    ? new Date(entry.booking_date).toLocaleDateString("sv-SE", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
   return (
     <Dialog
       open={open}
@@ -202,44 +233,115 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
         if (!isSaving) onOpenChange(o);
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-primary" />
-            Journalför i Servit
-          </DialogTitle>
-          <DialogDescription>
-            Använd detta när undersökningen redan är genomförd och journalförd
-            direkt i Servit. Optikern får ett mejl med kundnumret och nästa
-            steg (granska och skicka intyg till Transportstyrelsen).
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="servit-customer-number">
-              Kundnummer i Servit <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="servit-customer-number"
-              value={customerNumber}
-              onChange={(e) => setCustomerNumber(e.target.value)}
-              placeholder="t.ex. 12345"
-              autoFocus
-              disabled={isSaving}
-            />
+      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
+        {/* Gradient header */}
+        <div
+          className="relative px-6 pt-7 pb-6 text-white"
+          style={{ background: "var(--gradient-primary)" }}
+        >
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 h-12 w-12 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/25">
+              <ClipboardCheck className="h-6 w-6 text-white" strokeWidth={1.75} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-semibold leading-tight">
+                Journalför i Servit
+              </h2>
+              <p className="text-sm text-white/85 mt-1 leading-snug">
+                Optikern får ett mejl med kundnumret och nästa steg
+                (granska & skicka intyg till Transportstyrelsen).
+              </p>
+            </div>
           </div>
 
+          {/* Saving progress strip */}
+          {isSaving && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden bg-white/10">
+              <div className="h-full w-1/3 bg-white/80 animate-[shimmer_1.2s_ease-in-out_infinite]" />
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Patient context card */}
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
+            <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm flex-shrink-0">
+              {getInitials(patientName)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-foreground truncate">
+                {patientName}
+              </p>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                {bookingDate && (
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {bookingDate}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1">
+                  <ClipboardCheck className="h-3 w-3" />
+                  Körkort
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer number — hero field */}
           <div className="space-y-2">
-            <Label htmlFor="servit-optician">
-              Ansvarig optiker <span className="text-destructive">*</span>
+            <Label
+              htmlFor="servit-customer-number"
+              className="text-sm font-medium flex items-center gap-1.5"
+            >
+              <Hash className="h-3.5 w-3.5 text-accent" />
+              Kundnummer i Servit
+              <span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 font-mono text-base pointer-events-none">
+                #
+              </span>
+              <Input
+                id="servit-customer-number"
+                value={customerNumber}
+                onChange={(e) => setCustomerNumber(e.target.value)}
+                onKeyDown={handleNumberKeyDown}
+                placeholder="t.ex. 12345"
+                autoFocus
+                disabled={isSaving}
+                aria-required="true"
+                className={cn(
+                  "h-12 pl-9 pr-3 text-lg font-mono tracking-wide transition-colors duration-150",
+                  customerNumber.trim() &&
+                    "border-accent/60 focus-visible:ring-accent/40",
+                )}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground pl-0.5">
+              Numret som visas i Servit för denna patient.
+            </p>
+          </div>
+
+          {/* Optiker */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="servit-optician"
+              className="text-sm font-medium flex items-center gap-1.5"
+            >
+              <UserRound className="h-3.5 w-3.5 text-accent" />
+              Ansvarig optiker
+              <span className="text-destructive">*</span>
             </Label>
             <Select
               value={selectedOpticianId}
               onValueChange={setSelectedOpticianId}
               disabled={loadingOpticians || isSaving}
             >
-              <SelectTrigger id="servit-optician">
+              <SelectTrigger
+                id="servit-optician"
+                className="h-11"
+                aria-required="true"
+              >
                 <SelectValue
                   placeholder={
                     loadingOpticians ? "Laddar optiker..." : "Välj optiker"
@@ -247,37 +349,84 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
                 />
               </SelectTrigger>
               <SelectContent className="z-[1100]">
-                {opticians.map((opt) => (
-                  <SelectItem key={opt.id} value={opt.clerk_user_id}>
-                    {getOpticianDisplayName(opt)}
-                  </SelectItem>
-                ))}
+                {opticians.map((opt) => {
+                  const display = getOpticianDisplayName(opt);
+                  return (
+                    <SelectItem key={opt.id} value={opt.clerk_user_id}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-accent/15 text-accent flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
+                          {getInitials(display)}
+                        </div>
+                        <span className="truncate">{display}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
+            {selectedOpticianId && (
+              <p className="text-xs text-muted-foreground pl-0.5 inline-flex items-center gap-1">
+                <Mail className="h-3 w-3" />
+                Får mejl direkt vid bekräftelse.
+              </p>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="servit-notes">Anteckningar (valfritt)</Label>
-            <Textarea
-              id="servit-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="T.ex. förtydligande till optikern..."
+          {/* Collapsible notes */}
+          {showNotes ? (
+            <div className="space-y-2 animate-fade-in">
+              <Label
+                htmlFor="servit-notes"
+                className="text-sm font-medium flex items-center gap-1.5"
+              >
+                <StickyNote className="h-3.5 w-3.5 text-accent" />
+                Anteckningar
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  (valfritt)
+                </span>
+              </Label>
+              <Textarea
+                id="servit-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder="T.ex. förtydligande till optikern..."
+                disabled={isSaving}
+                className="resize-none"
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowNotes(true)}
               disabled={isSaving}
-            />
-          </div>
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors duration-150"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Lägg till anteckning
+            </button>
+          )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 pb-6 pt-2 flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={isSaving}
+            className="sm:w-auto"
           >
             Avbryt
           </Button>
-          <Button onClick={handleConfirm} disabled={isSaving}>
+          <Button
+            onClick={handleConfirm}
+            disabled={isSaving}
+            className={cn(
+              "sm:w-auto text-white border-0 transition-all duration-200",
+              "hover:shadow-[0_8px_24px_-8px_hsl(var(--accent)/0.6)] hover:-translate-y-0.5",
+              "active:translate-y-0",
+            )}
+            style={{ background: "var(--gradient-primary)" }}
+          >
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

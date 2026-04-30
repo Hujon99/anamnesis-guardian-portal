@@ -448,48 +448,53 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
           {isDrivingLicenseExam && (
             <div className="mt-3 pt-3 border-t border-gray-100" onClick={stopPropagation}>
               {isDrivingLicenseCompleted ? (
-                <div className="text-center py-2">
+                <div className="flex justify-center py-1">
                   {entry.driving_license_status?.examination?.completion_method === 'servit' ? (
-                    <Badge className="bg-accent/15 text-accent-foreground border-accent/30">
-                      <ClipboardCheck className="h-3 w-3 mr-1" />
-                      Journalförd i Servit
+                    <Badge className="bg-accent/10 text-accent border-accent/30 hover:bg-accent/15 px-3 py-1 gap-1.5">
+                      <ClipboardCheck className="h-3.5 w-3.5" />
+                      <span>Journalförd i Servit</span>
                       {entry.driving_license_status?.examination?.servit_customer_number && (
-                        <span className="ml-1 font-mono">
-                          – kundnr {entry.driving_license_status.examination.servit_customer_number}
+                        <span className="font-mono font-medium">
+                          · #{entry.driving_license_status.examination.servit_customer_number}
                         </span>
                       )}
                     </Badge>
                   ) : (
-                    <Badge className="bg-green-100 text-green-800 border-green-200">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Körkortsundersökning slutförd i appen
+                    <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1 gap-1.5">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Slutförd i appen
                     </Badge>
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button
-                    onClick={handleDrivingLicenseExamination}
-                    variant="default"
-                    size="sm"
-                    className="flex-1 bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
-                  >
-                    <Car className="h-4 w-4" />
-                    <span>Genomför körkortsundersökning</span>
-                  </Button>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setIsServitDialogOpen(true);
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 flex items-center gap-2"
-                  >
-                    <ClipboardCheck className="h-4 w-4" />
-                    <span>Journalför i Servit</span>
-                  </Button>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium px-0.5">
+                    Hur vill du genomföra undersökningen?
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Button
+                      onClick={handleDrivingLicenseExamination}
+                      variant="default"
+                      size="sm"
+                      className="h-10 bg-primary hover:bg-primary/90 text-white flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <Car className="h-4 w-4" strokeWidth={1.75} />
+                      <span>Genomför i appen</span>
+                    </Button>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setIsServitDialogOpen(true);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="h-10 border-accent/40 text-accent hover:bg-accent/10 hover:text-accent hover:border-accent flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <ClipboardCheck className="h-4 w-4" strokeWidth={1.75} />
+                      <span>Journalför i Servit</span>
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

@@ -1,91 +1,69 @@
 ## Mål
 
-Idag finns bara ett alternativ på körkortskortet: **"Genomför körkortsundersökning"** (i appen). Vi vill lägga till ett parallellt spår för optiker som hellre journalför hela undersökningen direkt i **Servit**. Resultatet ska bli ett tydligt mejl till ansvarig optiker som beskriver vad som faktiskt gjorts och vad nästa steg är (intyg till Transportstyrelsen).
+Lyfta UX:en på det nya **"Journalför i Servit"-flödet** så det känns premium, tydligt och i linje med Blue Pulse-konceptet (sjukhusblå trygghet + teal pulse + lugn luftighet). Två ytor uppgraderas: körkortskortets knappar på dashboarden, och själva dialogen.
 
-## Nytt flöde – två val på körkortskortet
+## 1. Körkortskortet på dashboarden – tydligare hierarki
 
-```text
-[ Körkortskort på dashboard ]
-        |
-        +---> "Genomför körkortsundersökning"  (befintligt, i appen)
-        |          -> visusmätning, ID-kontroll, sammanfattning, tilldela optiker
-        |          -> mejl: "Genomförd i Anamnesportalen – för in i Servit"
-        |
-        +---> "Journalför i Servit"            (NYTT)
-                   -> dialog: "Ange kundnummer i Servit"
-                   -> tilldela ansvarig optiker
-                   -> mejl: "Journalförd i Servit – kundnr XXXX. Granska & skicka intyg"
-```
+Idag står två knappar bredvid varandra med samma vikt, vilket gör valet otydligt. Förbättringar:
 
-## UI-ändringar
+- Liten infotext ovanför knapparna: "Hur vill du genomföra undersökningen?"
+- **Primär knapp** (vänster, fyllnad i `primary`): "Genomför i appen" med `Car`-ikon — fortsatt huvudval
+- **Sekundär knapp** (höger, outline med teal hover): "Journalför i Servit" med `ClipboardCheck`-ikon
+- Båda får hover-lift (subtle `translate-y` + `shadow-md`) och `transition-all duration-200`
+- På mobil staplas de och får full bredd; på desktop sitter de i ett grid med samma höjd
+- Slutförd-badgen för Servit byts till en mjuk teal "pulse"-stil (`bg-accent/15`, `border-accent/30`) med kundnummer i monospace
 
-**1. `AnamnesisListItem.tsx` (rad ~445–467)**
-Ersätt den enskilda primärknappen med två knappar sida vid sida:
-- Primär: "Genomför körkortsundersökning" (befintligt beteende, öppnar `DrivingLicenseExamination`-modalen)
-- Sekundär (outline): "Journalför i Servit" (öppnar ny dialog)
+## 2. ServitJournalDialog – "mumsig" version
 
-Båda göms när `isDrivingLicenseCompleted === true`. Visad badge efter slutförande ändras till antingen "Slutförd i appen" eller "Journalförd i Servit – kundnr XXXX".
+### Layout
+- Bredare dialog: `sm:max-w-lg` (mer luft)
+- Toppen får ett **gradient-band** (primary → accent-teal) med stor ikon `ClipboardCheck` i vit cirkel
+- Subtitel: kort förklaring om att kundnumret hamnar i optikerns mejl
+- Patient-snippet i en liten "context card" (ljusgrå surface, rounded-xl) så användaren ser vem det gäller: namn + bokningsdatum
 
-**2. Ny komponent: `ServitJournalDialog.tsx`** (i `src/components/Optician/DrivingLicense/`)
-- Fält: **Kundnummer i Servit** (obligatoriskt, fritext, trim, valfri regex senare)
-- Fält: **Ansvarig optiker** (samma `useOpticians`-select som i `ExaminationSummary`)
-- Fält: Anteckningar (valfritt)
-- Knapp: "Bekräfta journalföring" → sparar examination + skickar mejl + stänger dialog
+### Fält
+- **Kundnummer** får större `Input` (`h-12`, `text-lg`, monospace, centrerat caret), med dekorativ ikon till vänster (#) och hjälptext under: "Numret som visas i Servit för denna patient"
+- Live-validering: tom → muted border, ifylld → teal border (`focus-visible:ring-accent`)
+- **Optiker-select** behåller funktion men får avatar-cirkel (initialer) framför namnet i listan
+- **Anteckningar** kollapsbar via en liten "Lägg till anteckning"-toggle så formuläret inte ser långt ut by default
 
-## Datamodell
+### Mikrointeraktioner
+- Bekräfta-knappen blir `bg-gradient-to-r from-primary to-accent` med `shadow-elegant`-glow på hover
+- Vid spara: knappen byter till `Sparar...` med spinner och en tunn progress-linje längst ner i dialogen
+- Vid lyckat svar: kort `pop`-animation på en grön check innan dialogen stängs (250 ms)
 
-Lägg till två kolumner i `driving_license_examinations`:
-- `completion_method` (text, enum-liknande: `'app' | 'servit'`, default `'app'`)
-- `servit_customer_number` (text, nullable)
+### Footer
+- "Avbryt" som ghost (mindre visuell vikt)
+- "Bekräfta journalföring" som primär gradient
+- Mobil: knapparna staplas, primär överst
 
-Migration:
-```sql
-ALTER TABLE public.driving_license_examinations
-  ADD COLUMN IF NOT EXISTS completion_method text NOT NULL DEFAULT 'app',
-  ADD COLUMN IF NOT EXISTS servit_customer_number text;
-```
+## 3. Tillgänglighet & detaljer
 
-När "Journalför i Servit" bekräftas skapas/uppdateras en rad med:
-- `examination_status = 'completed'`
-- `completion_method = 'servit'`
-- `servit_customer_number = <input>`
-- `optician_id` på `anamnes_entries` sätts via befintlig `assignOptician`
+- Säkerställ kontrast WCAG AA på all text mot bakgrunder
+- `aria-required` + `aria-invalid` på obligatoriska fält
+- Fokusring tydlig (teal) på alla interaktiva element
+- Esc stänger dialogen (om inte `isSaving`), Enter i kundnummerfältet hoppar till optikerväljaren
 
-## Edge function – `notify-optician-driving-license`
-
-Funktionen tar emot ett nytt fält `completionMethod: 'app' | 'servit'` och ett valfritt `servitCustomerNumber`. Mejlinnehållet förgrenas:
-
-**Variant A – Genomförd i Anamnesportalen** (befintligt, men förtydligat):
-> Undersökningen är genomförd i Anamnesportalen.
-> **Nästa steg:** För in resultatet i Servit och skicka intyg till Transportstyrelsen.
-
-**Variant B – Journalförd i Servit** (NY):
-> Patienten är journalförd i Servit under **kundnummer {servitCustomerNumber}**.
-> **Nästa steg:** Gå in i Servit, granska undersökningen och skicka intyg till Transportstyrelsen.
-
-Båda mejlen behåller patientnamn, butik, organisation och länk till dashboard.
-
-## Sammanfattning av ändringar
+## 4. Filer som påverkas
 
 | Fil | Ändring |
 |---|---|
-| `supabase/migrations/<ny>.sql` | Lägg till `completion_method` + `servit_customer_number` |
-| `src/components/Optician/AnamnesisListItem.tsx` | Två knappar istället för en, ny badge-text |
-| `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` | NY komponent |
-| `src/components/Optician/AnamnesisListView.tsx` (eller motsv. parent) | Hanterar nytt callback `onJournalInServit` |
-| `src/hooks/useBulkDrivingLicenseStatus.ts` | Returnera `completionMethod` + `servitCustomerNumber` så badgen kan visa rätt text |
-| `supabase/functions/notify-optician-driving-license/index.ts` | Förgrenat mejlinnehåll baserat på `completionMethod` |
-| `src/components/Optician/DrivingLicense/ExaminationSummary.tsx` | Skicka med `completionMethod: 'app'` vid befintligt flöde |
+| `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` | Hela UI-skalet + gradient-header, patientkort, större fält, gradient CTA, kollapsbar anteckning |
+| `src/components/Optician/AnamnesisListItem.tsx` | Förtydligad knapp-hierarki, hover-lift, infotext, polerad Servit-badge |
+| `src/index.css` (vid behov) | Lägg till `@keyframes pop` om inte redan finns; säkerställ `shadow-elegant`-token |
 
-## Acceptanskriterier
+## 5. Acceptanskriterier
 
-1. På körkortskort visas **två** knappar: "Genomför körkortsundersökning" och "Journalför i Servit".
-2. "Journalför i Servit" öppnar dialog som kräver kundnummer + optiker innan bekräftelse.
-3. Efter bekräftelse syns badgen "Journalförd i Servit – kundnr XXXX" och kortet flyttas till "Journalförda".
-4. Optikern får mejl med korrekt variant (A eller B) inkl. kundnumret när det gäller Servit-spåret.
-5. Befintligt app-flöde är oförändrat förutom att mejltexten förtydligas till "för in resultatet i Servit + skicka intyg".
+1. Knapparna på körkortskortet har en tydlig primär/sekundär-relation (inte två likadana).
+2. Dialogen har gradient-header med stor ikon och visar patientens namn + bokningsdatum.
+3. Kundnummer-fältet är stort, monospace och har hjälptext.
+4. Bekräfta-knappen är gradient och får glow på hover.
+5. Allt fungerar lika bra på 375px mobil som på 1280px desktop.
+6. Inga regression i logik – samma data sparas och samma mejl skickas som idag.
 
-## Öppna frågor (kan tas senare, blockerar inte starten)
+## Tekniska detaljer
 
-- Ska kundnumret gå att redigera efteråt om det skrevs fel? (förslag: ja, via "Återställ"-knappen som redan finns)
-- Format/validering på kundnummer – fri text räcker i v1?
+- Använder befintliga semantiska tokens (`primary`, `accent`, `muted`, `surface`) — inga hårdkodade färger
+- Inga nya beroenden, allt med Tailwind + shadcn
+- Patient-kortet får data via befintlig `entry`-prop (redan tillgänglig)
+- Kollapsbar anteckning byggs med enkel `useState`-toggle, inte Radix Collapsible (för enkelhet)

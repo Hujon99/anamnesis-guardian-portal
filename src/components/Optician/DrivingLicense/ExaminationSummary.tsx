@@ -92,11 +92,8 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       return;
     }
     
-    const outcomeLabel = OUTCOME_OPTIONS.find(o => o.value === outcome)?.label;
-    const combinedNotes = [
-      outcomeLabel ? `${OUTCOME_PREFIX}${outcomeLabel}` : '',
-      notes.trim(),
-    ].filter(Boolean).join('\n\n') || null;
+    const outcomeLabel = getOutcomeLabel(outcome);
+    const combinedNotes = combineNotesWithOutcome(outcome, notes);
 
     const updates = {
       examination_status: 'completed' as const,
@@ -122,6 +119,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               opticianEmail: selectedOptician.email,
               appUrl: window.location.origin,
               completionMethod: 'app',
+              outcomeLabel,
             }
           }
         );

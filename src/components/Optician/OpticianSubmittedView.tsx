@@ -57,7 +57,7 @@ const OpticianSubmittedView: React.FC<OpticianSubmittedViewProps> = ({
             {patientName && ` Patient: ${patientName}`}
           </p>
           <p className="text-xs text-muted-foreground text-center mb-4 italic">
-            Anamnesportalen är ett stöd. Journalföring sker i Servit.
+            Anamnesportalen är ett stöd. Journalföring sker i ServeIT.
           </p>
           <p className="text-sm text-muted-foreground text-center mb-4">
             Du kommer automatiskt att omdirigeras till översikten.

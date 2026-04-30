@@ -370,7 +370,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Stöd för optikern. Slutligt beslut fattas i Servit.
+              Stöd för optikern. Slutligt beslut fattas i ServeIT.
             </p>
           </div>
         )}

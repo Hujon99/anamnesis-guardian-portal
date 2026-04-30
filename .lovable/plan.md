@@ -1,86 +1,41 @@
-## Plan: Christians feedback – mejlinnehåll, dioptrier, testflöde
+# Rätta stavning: Servit → ServeIT
 
-Tre delar baserat på Christians punkter. Allt passar in i nuvarande flöde (App-spår + Servit-spår delar redan `outcomeUtils` och `notify-optician-driving-license`).
+Användaren har klargjort att det externa systemet stavas **ServeIT** (inte "Servit"). Vi byter stavning i all text som visas för användaren (UI, mejl, kommentarer, dokumentation), men behåller interna kodidentifierare (filnamn, variabler, DB-kolumner, enum-värden, element-id:n) som de är. Att byta interna identifierare skulle kräva DB-migration och refaktor utan funktionellt värde.
 
----
+## Vad ändras (användarsynlig text)
 
-### 1. Mejl till optiker – all info direkt i inkorgen
+**UI-strängar (svenska):**
+- `src/components/Optician/AnamnesisListItem.tsx` — "Journalförd i Servit", "Journalför i Servit"
+- `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` — rubrik, beskrivningar, fältetiketter, hjälptexter, toast-meddelanden ("Journalför i Servit", "Kundnummer i Servit", "Slutligt beslut fattas i Servit", "Numret som visas i Servit...", "Ange Servit-kundnummer...", "Journalförd i Servit")
+- `src/components/Optician/DrivingLicense/ExaminationSummary.tsx` — "Slutligt beslut fattas i Servit"
+- `src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx` — "Fullständigt recept förs i Servit..."
+- `src/components/Optician/EntryDetails/ModalActions.tsx` — "Markera som klar (journalförs i Servit)" (knapp + aria-label)
+- `src/components/Optician/OpticianSubmittedView.tsx` — "Journalföring sker i Servit."
 
-**Mål:** Optikern fattar beslut direkt från mejlet, behöver inte logga in.
+**Mejl till optiker (`supabase/functions/notify-optician-driving-license/index.ts`):**
+- Subject: "Körkortsundersökning journalförd i ServeIT..."
+- Headline: "Journalförd i ServeIT – granska och skicka intyg" / "Genomförd i Anamnesportalen – för in i ServeIT"
+- Brödtext: "Patienten är journalförd direkt i ServeIT.", "...för in resultatet i ServeIT och skicka intyg..."
 
-**Vad som ska finnas i mejlet (i denna ordning):**
-1. **Bedömning** (utfallet) – färgkodat block (finns redan).
-2. **Patient** – Förnamn (finns) + **Kundnummer** (Servit-nr om Servit-spår, annars `patient_identifier`). **Aldrig personnummer.**
-3. **Bokning/butik** – datum + butik (finns).
-4. **Anteckning från assistent** – om sådan finns (visas i ett gråt block).
-5. **Anamnes-svar – komplett lista, ordagrant** – alla frågor med kundens svar, grupperade per sektion enligt formulärmallen. Ingen tolkning, ingen AI-summering. Tomma svar markeras "(ej besvarad)".
+**Kommentarer/dokumentation (kodförklarande, syns för utvecklare):**
+- `ServitJournalDialog.tsx` — header-kommentar
+- `outcomeUtils.ts` — header-kommentar
+- `VisualAcuityMeasurement.tsx` — `// (Servit är primär journal...)`
+- `docs/TESTING_CHECKLIST.md` — "Servit-spåret: Journalför direkt i ServeIT"
 
-**Tekniskt:**
-- Edge function `notify-optician-driving-license`:
-  - Hämta `anamnes_entries.answers`, `formatted_raw_data`, `patient_identifier`, `form_id`.
-  - Hämta `anamnes_forms.schema` för `form_id` → använd sektioner + frågor som "facit" så ordning och labels matchar formuläret.
-  - Bygg en HTML-tabell per sektion: `Fråga | Svar`. Checkbox-svar (arrays) joinas med komma. Booleska svar visas som "Ja"/"Nej".
-  - Escapa allt HTML (skydd mot injection från fritextsvar).
-  - Lägg också med en plain-text-version (Resend `text:`) för bättre deliverability.
-- Inga DB-ändringar.
+## Vad lämnas oförändrat (interna identifierare)
 
-**Kantfall:**
-- Om `formatted_raw_data` finns och är välformaterad – använd den som källa (matchar exakt det kunden såg), annars fall tillbaka på `answers` + `schema`.
-- Om svar saknas helt → "Inga anamnes-svar registrerade".
-- Personnummer: filtrera bort fält vars `id`/`label` matchar `personnummer|personal_number|ssn` som extra säkerhetsnät.
+För att undvika onödig risk och migrationsarbete behåller vi:
+- Filnamn: `ServitJournalDialog.tsx`
+- Komponentnamn: `ServitJournalDialog`, `ServitJournalDialogProps`
+- State/variabler: `isServitDialogOpen`, `setIsServitDialogOpen`, `isServit`
+- Props/payload-fält: `servitCustomerNumber`
+- HTML-id:n: `servit-customer-number`, `servit-optician`, `servit-outcome`, `servit-notes`
+- DB-kolumn: `servit_customer_number`
+- Enum/strängvärde: `completion_method = 'servit'`
 
----
+Dessa är osynliga för slutanvändaren. En framtida refaktor kan döpa om dem om så önskas — säg till så gör jag det i ett separat steg (kräver DB-migration för kolumn + enum).
 
-### 2. Glasögon-styrkor: ±8 D-flöde
+## Genomförande
 
-**Nuvarande problem:** Kryssrutan "±8,00 D eller mer" finns i `VisualAcuityMeasurement.tsx` men sparar bara en flagga (sph=8) – det går inte att registrera de exakta styrkorna. Christian behöver kunna ange dem när rutan kryssas i. Linser ska aldrig ha styrkor.
-
-**Förändringar i `VisualAcuityMeasurement.tsx`:**
-- Behåll kryssrutan **"Överstiger ±8 dioptrier"** – visas **endast om "Använder glasögon" är ikryssat** (inte för linser, inte för "ingen korrektion"). Idag är den bunden till `licenseCategory === 'higher'`; det villkoret tas bort så det gäller alla behörigheter när glasögon används.
-- Dela `uses_correction` till två separata kryssrutor:
-  - **"Använder glasögon"** → kan visa ±8 D-rutan + ev. styrke-fält.
-  - **"Använder kontaktlinser"** → inga styrke-fält alls.
-  (Idag är det en kombi-checkbox `glasses_or_lenses` – det skiljer inte på dem.)
-- När **"Överstiger ±8 dioptrier"** kryssas i visas ett kompakt fält-block:
-  - OD: Sfär, Cylinder, Axel, (Add valfritt)
-  - OS: Sfär, Cylinder, Axel, (Add valfritt)
-  - Mappar mot befintliga DB-kolumner `glasses_prescription_od_sph/cyl/axis/add` + os-motsvarigheter (ingen migration).
-- När rutan **inte** är ikryssad → inga styrke-fält, inga värden sparas.
-- `ExaminationSummary.tsx` visar redan styrkor om de finns – fungerar automatiskt.
-- Mejlet kan inkludera styrkor om de är angivna (under en "Glasögonstyrkor"-rubrik).
-
----
-
-### 3. Internt testprotokoll vid ändringar
-
-Inte en kodändring, men en arbetsrutin som dokumenteras:
-
-- En kort checklista skrivs in i `FLOWS.md` (eller ny `docs/TESTING_CHECKLIST.md`):
-  1. Kör flödet som **kund** (consent → anamnes → submit) på mobil.
-  2. Kör som **assistent** (Genomför / Journalför i Servit) – välj **varje** av de fyra utfallen i tur och ordning.
-  3. Kör som **optiker** – öppna mejlet, kontrollera att alla svar finns.
-  4. Verifiera båda spåren: App-spåret (visus i appen) + Servit-spåret (direkt journalföring).
-- Christian använder sig själv som test-optiker (redan klart). Hugo som backup.
-- Innan jag säger "klart" till dig kör jag igenom listan själv mot preview-URL:en.
-
----
-
-### Filer som ändras
-
-```text
-supabase/functions/notify-optician-driving-license/index.ts   # Mejlinnehåll (svar + kundnr)
-src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx  # ±8 D-fält + glas/lins-split
-docs/TESTING_CHECKLIST.md                                     # Ny – testrutin
-```
-
-Inga DB-migrationer, inga nya secrets, inga nya edge functions.
-
----
-
-### Ordning i implementation
-
-1. Mejlet – störst direkt nytta för Christian.
-2. ±8 D-flödet – fixar konkret blocker i Anamnesportalen.
-3. Testchecklistan + jag kör igenom alla utfall mot preview innan jag rapporterar tillbaka.
-
-Säg till om du vill att jag ändrar något – annars kör jag.
+Cirka 7 filer redigeras med exakta sök-och-ersätt på de strängar som listats ovan. Inget bygge eller test behövs utöver TypeScript-check (sker automatiskt).

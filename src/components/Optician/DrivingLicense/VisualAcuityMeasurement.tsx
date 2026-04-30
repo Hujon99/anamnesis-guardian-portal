@@ -262,7 +262,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
   };
 
   // Visus-fält är valfria — optikern kan hoppa över stödet och ändå gå vidare.
-  // (Servit är primär journal; portalen är endast stöd.)
+  // (ServeIT är primär journal; portalen är endast stöd.)
   const hasAnyMeasurement = Boolean(
     measurements.visual_acuity_both_eyes ||
     measurements.visual_acuity_right_eye ||
@@ -473,7 +473,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           <div className="space-y-3 rounded-md border p-4">
             <h4 className="font-medium">Glasögonstyrka</h4>
             <p className="text-sm text-muted-foreground">
-              Fullständigt recept förs i Servit. Markera om någon styrka är ±8,00 D eller mer
+              Fullständigt recept förs i ServeIT. Markera om någon styrka är ±8,00 D eller mer
               för att registrera exakta värden här (krävs för info till Transportstyrelsen).
             </p>
             <div className="flex items-center space-x-2">

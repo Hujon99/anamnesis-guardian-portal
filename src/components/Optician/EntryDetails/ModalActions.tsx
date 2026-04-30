@@ -106,10 +106,10 @@ export function ModalActions({
             onClick={() => onUpdateStatus("journaled")}
             disabled={isPending}
             className="flex-1"
-            aria-label="Markera som klar (journalförs i Servit)"
+            aria-label="Markera som klar (journalförs i ServeIT)"
           >
             <Star className="h-4 w-4 mr-2" />
-            Markera som klar (journalförs i Servit)
+            Markera som klar (journalförs i ServeIT)
           </Button>
           
           <Button 

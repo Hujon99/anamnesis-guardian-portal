@@ -92,7 +92,7 @@ export const useSyncClerkUsers = () => {
         if (!clerkUserId) continue;
         
         // Check if user already exists in Supabase
-        const existingUser = await checkUserExists(clerkUserId);
+        const existingUser = await checkUserExists(clerkUserId, organization.id);
         const role = determineRole(member);
         
         if (!existingUser) {

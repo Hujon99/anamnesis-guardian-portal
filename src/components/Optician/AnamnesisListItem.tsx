@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car, CheckCircle } from "lucide-react";
+import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car, CheckCircle, ClipboardCheck } from "lucide-react";
+import { ServitJournalDialog } from "./DrivingLicense/ServitJournalDialog";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";

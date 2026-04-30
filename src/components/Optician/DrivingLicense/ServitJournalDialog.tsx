@@ -2,17 +2,17 @@
  * ServitJournalDialog
  *
  * Dialog som låter optiker/assistent markera en körkortsundersökning som
- * "Journalförd direkt i Servit" – utan att gå igenom appens visus/ID-flöde.
+ * "Journalförd direkt i ServeIT" – utan att gå igenom appens visus/ID-flöde.
  *
  * Flödet:
- *  1. Användaren anger Servit-kundnummer (obligatoriskt) och valfri anteckning.
+ *  1. Användaren anger ServeIT-kundnummer (obligatoriskt) och valfri anteckning.
  *  2. Användaren väljer ansvarig optiker som ska få notisen.
  *  3. Vi skapar/uppdaterar en rad i `driving_license_examinations` med
  *     completion_method = 'servit', servit_customer_number = <input>,
  *     examination_status = 'completed'.
  *  4. Anamnes-posten tilldelas vald optiker via `useEntryMutations.assignOptician`.
  *  5. Edge-funktionen `notify-optician-driving-license` skickar mejl med
- *     Servit-varianten (innehåller kundnumret).
+ *     ServeIT-varianten (innehåller kundnumret).
  *
  * Komplement till `ExaminationSummary.tsx` som hanterar app-spåret.
  *
@@ -108,7 +108,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
     if (!trimmed) {
       toast({
         title: "Kundnummer saknas",
-        description: "Ange Servit-kundnummer för att fortsätta.",
+        description: "Ange ServeIT-kundnummer för att fortsätta.",
         variant: "destructive",
       });
       return;
@@ -211,7 +211,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
       }
 
       toast({
-        title: "Journalförd i Servit",
+        title: "Journalförd i ServeIT",
         description: `Kundnummer ${trimmed} sparat och ${getOpticianDisplayName(selectedOptician)} har notifierats.`,
       });
 
@@ -266,7 +266,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-semibold leading-tight">
-                Journalför i Servit
+                Journalför i ServeIT
               </h2>
               <p className="text-sm text-white/85 mt-1 leading-snug">
                 Optikern får ett mejl med kundnumret och nästa steg
@@ -315,7 +315,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
               className="text-sm font-medium flex items-center gap-1.5"
             >
               <Hash className="h-3.5 w-3.5 text-accent" />
-              Kundnummer i Servit
+              Kundnummer i ServeIT
               <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
@@ -339,7 +339,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
               />
             </div>
             <p className="text-xs text-muted-foreground pl-0.5">
-              Numret som visas i Servit för denna patient.
+              Numret som visas i ServeIT för denna patient.
             </p>
           </div>
 
@@ -374,7 +374,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground pl-0.5">
-              Stöd för optikern. Slutligt beslut fattas i Servit.
+              Stöd för optikern. Slutligt beslut fattas i ServeIT.
             </p>
           </div>
 

@@ -42,7 +42,8 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { entryId, opticianEmail, appUrl }: EmailNotificationRequest = await req.json();
+    const { entryId, opticianEmail, appUrl, completionMethod, servitCustomerNumber }: EmailNotificationRequest = await req.json();
+    const method: 'app' | 'servit' = completionMethod === 'servit' ? 'servit' : 'app';
 
     console.log("Processing email notification for entry:", entryId);
 

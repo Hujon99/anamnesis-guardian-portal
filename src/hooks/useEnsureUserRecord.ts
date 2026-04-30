@@ -33,23 +33,58 @@ export const useEnsureUserRecord = () => {
       const lastName = user.lastName || null;
       const displayName = user.fullName || [firstName, lastName].filter(Boolean).join(' ') || null;
       
-      // Try to upsert the user record
-      const { data, error: upsertError } = await supabase
+      // Check if a row already exists for this Clerk user in the active organization.
+      // We must scope by both clerk_user_id AND organization_id because the same user
+      // can be a member of multiple organizations with different roles.
+      const { data: existing, error: fetchError } = await supabase
         .from('users')
-        .upsert({
-          clerk_user_id: userId,
-          organization_id: orgId,
-          email: email,
-          first_name: firstName,
-          last_name: lastName,
-          display_name: displayName,
-          role: 'optician' // Default role, can be changed by admins later
-        }, {
-          onConflict: 'organization_id,clerk_user_id',
-          ignoreDuplicates: false
-        })
-        .select()
-        .single();
+        .select('id, role')
+        .eq('clerk_user_id', userId)
+        .eq('organization_id', orgId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error fetching existing user record:', fetchError);
+      }
+
+      let data: any = existing;
+      let upsertError: any = null;
+
+      if (existing) {
+        // Update only profile fields — never overwrite the role on an existing row,
+        // otherwise an admin could be silently demoted to optician on next login.
+        const { data: updated, error } = await supabase
+          .from('users')
+          .update({
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            display_name: displayName,
+          })
+          .eq('clerk_user_id', userId)
+          .eq('organization_id', orgId)
+          .select()
+          .single();
+        data = updated;
+        upsertError = error;
+      } else {
+        // Insert a new row with default role 'optician'.
+        const { data: inserted, error } = await supabase
+          .from('users')
+          .insert({
+            clerk_user_id: userId,
+            organization_id: orgId,
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            display_name: displayName,
+            role: 'optician',
+          })
+          .select()
+          .single();
+        data = inserted;
+        upsertError = error;
+      }
         
       if (upsertError) {
         console.error('Error upserting user record:', upsertError);

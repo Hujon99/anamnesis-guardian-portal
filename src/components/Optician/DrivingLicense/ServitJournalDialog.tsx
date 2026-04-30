@@ -46,6 +46,7 @@ import {
   Plus,
   Calendar,
   Mail,
+  Gavel,
 } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/hooks/use-toast";
@@ -54,6 +55,12 @@ import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useSafeUser as useUser } from "@/hooks/useSafeUser";
+import {
+  OUTCOME_OPTIONS,
+  type OutcomeValue,
+  combineNotesWithOutcome,
+  getOutcomeLabel,
+} from "./outcomeUtils";
 import { cn } from "@/lib/utils";
 
 interface ServitJournalDialogProps {

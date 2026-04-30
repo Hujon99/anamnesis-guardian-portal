@@ -480,6 +480,7 @@ export type Database = {
       }
       driving_license_examinations: {
         Row: {
+          completion_method: string
           correction_type: Database["public"]["Enums"]["correction_type"] | null
           created_at: string
           created_by: string | null
@@ -508,6 +509,7 @@ export type Database = {
           personal_number: string | null
           requires_further_investigation: boolean | null
           requires_optician_visit: boolean | null
+          servit_customer_number: string | null
           updated_at: string
           uses_contact_lenses: boolean | null
           uses_glasses: boolean | null
@@ -524,6 +526,7 @@ export type Database = {
           warning_flags: Json | null
         }
         Insert: {
+          completion_method?: string
           correction_type?:
             | Database["public"]["Enums"]["correction_type"]
             | null
@@ -554,6 +557,7 @@ export type Database = {
           personal_number?: string | null
           requires_further_investigation?: boolean | null
           requires_optician_visit?: boolean | null
+          servit_customer_number?: string | null
           updated_at?: string
           uses_contact_lenses?: boolean | null
           uses_glasses?: boolean | null
@@ -570,6 +574,7 @@ export type Database = {
           warning_flags?: Json | null
         }
         Update: {
+          completion_method?: string
           correction_type?:
             | Database["public"]["Enums"]["correction_type"]
             | null
@@ -600,6 +605,7 @@ export type Database = {
           personal_number?: string | null
           requires_further_investigation?: boolean | null
           requires_optician_visit?: boolean | null
+          servit_customer_number?: string | null
           updated_at?: string
           uses_contact_lenses?: boolean | null
           uses_glasses?: boolean | null

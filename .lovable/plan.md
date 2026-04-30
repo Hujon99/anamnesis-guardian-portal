@@ -1,77 +1,86 @@
-## Bakgrund — Christians feedback
+## Plan: Christians feedback – mejlinnehåll, dioptrier, testflöde
 
-Det nya arbetsflödet säger att assistenten ska välja ett utfall **innan** ärendet tilldelas optiker:
+Tre delar baserat på Christians punkter. Allt passar in i nuvarande flöde (App-spår + Servit-spår delar redan `outcomeUtils` och `notify-optician-driving-license`).
 
-1. Godkänd – kan skickas
-2. Godkänd – rek. synundersökning
-3. Optiker ska kontakta innan inskick
-4. Ej godkänd
+---
 
-Status idag:
+### 1. Mejl till optiker – all info direkt i inkorgen
 
-- **"Genomför i appen"** (`ExaminationSummary.tsx`) — ✅ redan implementerat. Utfallet sparas som textprefix i `notes` (`Utfall: <label>`).
-- **"Journalför i Servit"** (`ServitJournalDialog.tsx`) — ❌ saknar bedömningssteget helt. Christian använder främst detta flöde, så det är där han märker att det fattas.
-- **Mejlet till optiker** (`notify-optician-driving-license`) — visar inte utfallet idag, vilket gör att optikern måste öppna appen för att se assistentens bedömning.
+**Mål:** Optikern fattar beslut direkt från mejlet, behöver inte logga in.
 
-## Mål
+**Vad som ska finnas i mejlet (i denna ordning):**
+1. **Bedömning** (utfallet) – färgkodat block (finns redan).
+2. **Patient** – Förnamn (finns) + **Kundnummer** (Servit-nr om Servit-spår, annars `patient_identifier`). **Aldrig personnummer.**
+3. **Bokning/butik** – datum + butik (finns).
+4. **Anteckning från assistent** – om sådan finns (visas i ett gråt block).
+5. **Anamnes-svar – komplett lista, ordagrant** – alla frågor med kundens svar, grupperade per sektion enligt formulärmallen. Ingen tolkning, ingen AI-summering. Tomma svar markeras "(ej besvarad)".
 
-Lägga in samma fyra-utfalls-väljare i Servit-dialogen som i app-flödet, samt skicka med utfallet i mejlet så att optikern direkt ser assistentens bedömning.
+**Tekniskt:**
+- Edge function `notify-optician-driving-license`:
+  - Hämta `anamnes_entries.answers`, `formatted_raw_data`, `patient_identifier`, `form_id`.
+  - Hämta `anamnes_forms.schema` för `form_id` → använd sektioner + frågor som "facit" så ordning och labels matchar formuläret.
+  - Bygg en HTML-tabell per sektion: `Fråga | Svar`. Checkbox-svar (arrays) joinas med komma. Booleska svar visas som "Ja"/"Nej".
+  - Escapa allt HTML (skydd mot injection från fritextsvar).
+  - Lägg också med en plain-text-version (Resend `text:`) för bättre deliverability.
+- Inga DB-ändringar.
 
-## Plan
+**Kantfall:**
+- Om `formatted_raw_data` finns och är välformaterad – använd den som källa (matchar exakt det kunden såg), annars fall tillbaka på `answers` + `schema`.
+- Om svar saknas helt → "Inga anamnes-svar registrerade".
+- Personnummer: filtrera bort fält vars `id`/`label` matchar `personnummer|personal_number|ssn` som extra säkerhetsnät.
 
-### 1. Dela utfalls-konstanten
+---
 
-Bryt ut `OUTCOME_OPTIONS`, `OutcomeValue`, `OUTCOME_PREFIX` och `parseOutcomeFromNotes` från `ExaminationSummary.tsx` till en ny gemensam fil:
+### 2. Glasögon-styrkor: ±8 D-flöde
 
+**Nuvarande problem:** Kryssrutan "±8,00 D eller mer" finns i `VisualAcuityMeasurement.tsx` men sparar bara en flagga (sph=8) – det går inte att registrera de exakta styrkorna. Christian behöver kunna ange dem när rutan kryssas i. Linser ska aldrig ha styrkor.
+
+**Förändringar i `VisualAcuityMeasurement.tsx`:**
+- Behåll kryssrutan **"Överstiger ±8 dioptrier"** – visas **endast om "Använder glasögon" är ikryssat** (inte för linser, inte för "ingen korrektion"). Idag är den bunden till `licenseCategory === 'higher'`; det villkoret tas bort så det gäller alla behörigheter när glasögon används.
+- Dela `uses_correction` till två separata kryssrutor:
+  - **"Använder glasögon"** → kan visa ±8 D-rutan + ev. styrke-fält.
+  - **"Använder kontaktlinser"** → inga styrke-fält alls.
+  (Idag är det en kombi-checkbox `glasses_or_lenses` – det skiljer inte på dem.)
+- När **"Överstiger ±8 dioptrier"** kryssas i visas ett kompakt fält-block:
+  - OD: Sfär, Cylinder, Axel, (Add valfritt)
+  - OS: Sfär, Cylinder, Axel, (Add valfritt)
+  - Mappar mot befintliga DB-kolumner `glasses_prescription_od_sph/cyl/axis/add` + os-motsvarigheter (ingen migration).
+- När rutan **inte** är ikryssad → inga styrke-fält, inga värden sparas.
+- `ExaminationSummary.tsx` visar redan styrkor om de finns – fungerar automatiskt.
+- Mejlet kan inkludera styrkor om de är angivna (under en "Glasögonstyrkor"-rubrik).
+
+---
+
+### 3. Internt testprotokoll vid ändringar
+
+Inte en kodändring, men en arbetsrutin som dokumenteras:
+
+- En kort checklista skrivs in i `FLOWS.md` (eller ny `docs/TESTING_CHECKLIST.md`):
+  1. Kör flödet som **kund** (consent → anamnes → submit) på mobil.
+  2. Kör som **assistent** (Genomför / Journalför i Servit) – välj **varje** av de fyra utfallen i tur och ordning.
+  3. Kör som **optiker** – öppna mejlet, kontrollera att alla svar finns.
+  4. Verifiera båda spåren: App-spåret (visus i appen) + Servit-spåret (direkt journalföring).
+- Christian använder sig själv som test-optiker (redan klart). Hugo som backup.
+- Innan jag säger "klart" till dig kör jag igenom listan själv mot preview-URL:en.
+
+---
+
+### Filer som ändras
+
+```text
+supabase/functions/notify-optician-driving-license/index.ts   # Mejlinnehåll (svar + kundnr)
+src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx  # ±8 D-fält + glas/lins-split
+docs/TESTING_CHECKLIST.md                                     # Ny – testrutin
 ```
-src/components/Optician/DrivingLicense/outcomeUtils.ts
-```
 
-Importeras från både `ExaminationSummary.tsx` och `ServitJournalDialog.tsx`. Ingen funktionell ändring för app-flödet — bara flytt + import.
+Inga DB-migrationer, inga nya secrets, inga nya edge functions.
 
-### 2. Lägg in utfallssteget i `ServitJournalDialog.tsx`
+---
 
-Mellan "Kundnummer i Servit" och "Ansvarig optiker", lägg till ett `Select`-fält "Bedömning" med samma fyra alternativ. Designen följer Blue Pulse (matchande label-stil med ikon, accent-färg).
+### Ordning i implementation
 
-- `outcome` blir **obligatoriskt** (samma princip som kundnummer + optiker). Validering med toast vid saknat val.
-- När `handleConfirm` skapar/uppdaterar `driving_license_examinations`-raden kombineras valt utfall med ev. fritextanteckning på samma format som app-flödet:
-  ```
-  Utfall: <label>
-  
-  <fri text>
-  ```
-  Sparas i `notes`-kolumnen (ingen DB-migration behövs).
+1. Mejlet – störst direkt nytta för Christian.
+2. ±8 D-flödet – fixar konkret blocker i Anamnesportalen.
+3. Testchecklistan + jag kör igenom alla utfall mot preview innan jag rapporterar tillbaka.
 
-### 3. Skicka med utfallet i mejlet
-
-- I båda anropen till `supabase.functions.invoke("notify-optician-driving-license", ...)` (Servit + app) lägg till `outcomeLabel` i body.
-- I edge-funktionen `notify-optician-driving-license/index.ts`:
-  - Ta emot `outcomeLabel?: string` i request-payloaden.
-  - Rendera ett tydligt utfalls-block i HTML-mejlet ovanför "Patientinformation", med färgkodning beroende på utfall (grön = godkänd, gul = rek. synundersökning, orange = kontakta innan inskick, röd = ej godkänd).
-  - Lägg in utfallet i subject-raden för Servit-mejl, t.ex.
-    `Körkortsundersökning journalförd i Servit – kundnr 12345 – Godkänd kan skickas`.
-
-### 4. QA / kontroll
-
-- Verifiera i preview att Servit-dialogen nu kräver utfall + visar valideringstoast.
-- Skicka ett test-mejl (Christian/Hugo som mottagare) i båda flödena och bekräfta:
-  - utfallet syns tydligt i mejlet,
-  - subjectet uppdateras,
-  - befintliga app-flödesmejl fortfarande fungerar (inget regression).
-
-## Tekniska detaljer
-
-**Filer som ändras:**
-
-| Fil | Ändring |
-|---|---|
-| `src/components/Optician/DrivingLicense/outcomeUtils.ts` | Ny — innehåller `OUTCOME_OPTIONS`, `OutcomeValue`, `OUTCOME_PREFIX`, `parseOutcomeFromNotes`, `combineNotesWithOutcome` |
-| `src/components/Optician/DrivingLicense/ExaminationSummary.tsx` | Ta bort lokala konstanter, importera från `outcomeUtils`, skicka `outcomeLabel` till edge-funktionen |
-| `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` | Lägg till outcome-state + `Select`-block, validera, kombinera notes via helper, skicka `outcomeLabel` till edge-funktionen |
-| `supabase/functions/notify-optician-driving-license/index.ts` | Acceptera `outcomeLabel` i payload, rendera utfalls-block + lägg till i subject |
-
-**Inga DB-migrationer behövs** — utfallet sparas fortsatt som prefix i `notes` (samma format som app-flödet) och `outcomeLabel` i mejlet är derived data.
-
-**Z-index:** Servit-dialogen ligger i en Dialog (`z-[1000]`), så `SelectContent` för utfallet får samma `z-[1100]` som befintlig optiker-Select i samma fil.
-
-**Backwards-compatibility:** Edge-funktionen behandlar `outcomeLabel` som optional — gamla anrop utan fältet fungerar oförändrat.
+Säg till om du vill att jag ändrar något – annars kör jag.

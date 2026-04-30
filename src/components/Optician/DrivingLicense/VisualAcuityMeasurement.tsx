@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -108,6 +109,15 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
   }, [entry?.answers]);
 
   const [licenseCategory, setLicenseCategory] = useState<LicenseCategory>(detectedLicenseCategory);
+
+  // Härled initialt om patienten har styrke-värden registrerade (då är ±8 D-rutan på).
+  const initialHasPrescription = Boolean(
+    examination?.glasses_prescription_od_sph ||
+    examination?.glasses_prescription_od_cyl ||
+    examination?.glasses_prescription_os_sph ||
+    examination?.glasses_prescription_os_cyl
+  );
+
   const [measurements, setMeasurements] = useState({
     visual_acuity_both_eyes: examination?.visual_acuity_both_eyes || '',
     visual_acuity_right_eye: examination?.visual_acuity_right_eye || '',
@@ -115,15 +125,21 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     visual_acuity_with_correction_both: examination?.visual_acuity_with_correction_both || '',
     visual_acuity_with_correction_right: examination?.visual_acuity_with_correction_right || '',
     visual_acuity_with_correction_left: examination?.visual_acuity_with_correction_left || '',
-    uses_correction: examination?.uses_glasses || examination?.uses_contact_lenses || usesCorrection,
-    correction_type: examination?.correction_type || (usesCorrection ? 'glasses_or_lenses' : 'none'),
-    // Simplified prescription flag: true if any lens strength is over ±8,00 D
-    // (replaces detailed Sph/Cyl/Ax/Add inputs — Servit håller fullständigt recept)
-    prescription_over_8d: Boolean(
-      examination?.glasses_prescription_od_sph && Math.abs(Number(examination.glasses_prescription_od_sph)) >= 8
-    ) || Boolean(
-      examination?.glasses_prescription_os_sph && Math.abs(Number(examination.glasses_prescription_os_sph)) >= 8
-    ),
+    // Separata flaggor för glasögon resp. kontaktlinser. Christians feedback:
+    // styrkor är endast relevanta för glasögon, aldrig för linser.
+    uses_glasses: Boolean(examination?.uses_glasses) || (usesCorrection && !examination?.uses_contact_lenses),
+    uses_contact_lenses: Boolean(examination?.uses_contact_lenses),
+    // Kryssruta som visas om "Använder glasögon" är ikryssat. Vid ja → visa
+    // styrke-fält (sfär/cyl/axel) per öga. Sparar mot befintliga DB-kolumner.
+    prescription_over_8d: initialHasPrescription,
+    glasses_prescription_od_sph: examination?.glasses_prescription_od_sph ?? '',
+    glasses_prescription_od_cyl: examination?.glasses_prescription_od_cyl ?? '',
+    glasses_prescription_od_axis: examination?.glasses_prescription_od_axis ?? '',
+    glasses_prescription_od_add: examination?.glasses_prescription_od_add ?? '',
+    glasses_prescription_os_sph: examination?.glasses_prescription_os_sph ?? '',
+    glasses_prescription_os_cyl: examination?.glasses_prescription_os_cyl ?? '',
+    glasses_prescription_os_axis: examination?.glasses_prescription_os_axis ?? '',
+    glasses_prescription_os_add: examination?.glasses_prescription_os_add ?? '',
   });
 
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -139,25 +155,25 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     const withCorrectionRight = parseLocaleFloat(measurements.visual_acuity_with_correction_right);
     const withCorrectionLeft = parseLocaleFloat(measurements.visual_acuity_with_correction_left);
 
+    // "Använder korrektion" = antingen glasögon eller linser.
+    const usesAnyCorrection = measurements.uses_glasses || measurements.uses_contact_lenses;
+
     // Use corrected values if correction is used, otherwise use uncorrected
-    const effectiveBoth = measurements.uses_correction && !isNaN(withCorrectionBoth) ? withCorrectionBoth : bothEyes;
-    const effectiveRight = measurements.uses_correction && !isNaN(withCorrectionRight) ? withCorrectionRight : rightEye;
-    const effectiveLeft = measurements.uses_correction && !isNaN(withCorrectionLeft) ? withCorrectionLeft : leftEye;
+    const effectiveBoth = usesAnyCorrection && !isNaN(withCorrectionBoth) ? withCorrectionBoth : bothEyes;
+    const effectiveRight = usesAnyCorrection && !isNaN(withCorrectionRight) ? withCorrectionRight : rightEye;
+    const effectiveLeft = usesAnyCorrection && !isNaN(withCorrectionLeft) ? withCorrectionLeft : leftEye;
 
     // Apply validation rules based on license category
     switch (licenseCategory) {
       case 'lower':
-        // Lägre behörigheter: Minst 0,5 binokulart
         if (!isNaN(effectiveBoth) && effectiveBoth < 0.5) {
           newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,5 för lägre behörigheter");
         }
         break;
-        
+
       case 'higher':
-        // Högre behörigheter: 0,8 i bästa ögat, 0,1 i sämsta ögat
         const bestEye = Math.max(effectiveRight || 0, effectiveLeft || 0);
         const worstEye = Math.min(effectiveRight || 0, effectiveLeft || 0);
-        
         if (bestEye < 0.8) {
           newWarnings.push("Bästa ögat har under 0,8 i synskärpa (krävs för högre behörigheter)");
         }
@@ -165,9 +181,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           newWarnings.push("Sämsta ögat har under 0,1 i synskärpa (krävs för högre behörigheter)");
         }
         break;
-        
+
       case 'taxi':
-        // Taxiförarlegitimation: Minst 0,8 binokulart
         if (!isNaN(effectiveBoth) && effectiveBoth < 0.8) {
           newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,8 för taxiförarlegitimation");
         }
@@ -175,14 +190,14 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     }
 
     // Check correction requirements
-    if (measurements.uses_correction && 
+    if (usesAnyCorrection &&
         (isNaN(withCorrectionBoth) && isNaN(withCorrectionRight) && isNaN(withCorrectionLeft))) {
       newWarnings.push("Mätning med korrektion krävs när glasögon/linser används");
     }
 
-    // Simplified ±8,00 D check via toggle (full prescription lever finns i Servit)
-    if (licenseCategory === 'higher' && measurements.uses_correction && measurements.prescription_over_8d) {
-      newWarnings.push("Glasstyrka över ±8,00 D - Transportstyrelsen måste informeras");
+    // ±8 D-flagga: gäller endast glasögon, oavsett behörighet.
+    if (measurements.uses_glasses && measurements.prescription_over_8d) {
+      newWarnings.push("Glasstyrka över ±8,00 D – Transportstyrelsen måste informeras");
     }
 
     setWarnings(newWarnings);
@@ -197,26 +212,33 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
 
   const handleSaveAndContinue = async () => {
     const toNumberOrNull = (v: any) => {
+      if (v === '' || v == null) return null;
       const n = parseLocaleFloat(v as any);
       return Number.isNaN(n) ? null : n;
     };
-    
+
+    // Styrkor sparas endast om patienten har glasögon OCH ±8 D-rutan är ikryssad.
+    const includePrescription = measurements.uses_glasses && measurements.prescription_over_8d;
+
     const updates = {
-      // Only include DB columns explicitly to avoid enum/type issues (no UI-only fields)
       visual_acuity_both_eyes: toNumberOrNull(measurements.visual_acuity_both_eyes),
       visual_acuity_right_eye: toNumberOrNull(measurements.visual_acuity_right_eye),
       visual_acuity_left_eye: toNumberOrNull(measurements.visual_acuity_left_eye),
       visual_acuity_with_correction_both: toNumberOrNull(measurements.visual_acuity_with_correction_both),
       visual_acuity_with_correction_right: toNumberOrNull(measurements.visual_acuity_with_correction_right),
       visual_acuity_with_correction_left: toNumberOrNull(measurements.visual_acuity_with_correction_left),
-      uses_glasses: Boolean(measurements.uses_correction),
-      uses_contact_lenses: false,
+      uses_glasses: Boolean(measurements.uses_glasses),
+      uses_contact_lenses: Boolean(measurements.uses_contact_lenses),
       vision_below_limit: warnings.length > 0,
-      // Simplified ±8D flag stored as sph value (8 or 0) for backward compatibility
-      ...(licenseCategory === 'higher' && measurements.uses_correction && {
-        glasses_prescription_od_sph: measurements.prescription_over_8d ? 8 : null,
-        glasses_prescription_os_sph: measurements.prescription_over_8d ? 8 : null,
-      }),
+      // Glasögonstyrkor (sparas alltid – nullas ut om rutan inte är ikryssad eller linser).
+      glasses_prescription_od_sph: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_sph) : null,
+      glasses_prescription_od_cyl: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_cyl) : null,
+      glasses_prescription_od_axis: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_axis) : null,
+      glasses_prescription_od_add: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_add) : null,
+      glasses_prescription_os_sph: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_sph) : null,
+      glasses_prescription_os_cyl: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_cyl) : null,
+      glasses_prescription_os_axis: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_axis) : null,
+      glasses_prescription_os_add: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_add) : null,
       // Append license category info into notes without overwriting any existing notes saved earlier
       notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
     };
@@ -362,69 +384,72 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           </div>
         </div>
 
-        {/* Correction settings */}
+        {/* Korrektion — separata rutor för glasögon resp. linser. Styrkor är
+            endast relevanta för glasögon (Christians feedback). */}
         <div className="space-y-4">
           <h4 className="font-medium">Korrektion</h4>
-          
+
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="correction"
-              checked={measurements.uses_correction}
-              onCheckedChange={(checked) => {
-                handleInputChange('uses_correction', checked);
-                handleInputChange('correction_type', checked ? 'glasses_or_lenses' : 'none');
-              }}
+              id="uses-glasses"
+              checked={measurements.uses_glasses}
+              onCheckedChange={(checked) => handleInputChange('uses_glasses', Boolean(checked))}
             />
-            <Label htmlFor="correction">Använder glasögon eller kontaktlinser</Label>
+            <Label htmlFor="uses-glasses" className="cursor-pointer">Använder glasögon</Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="uses-contact-lenses"
+              checked={measurements.uses_contact_lenses}
+              onCheckedChange={(checked) => handleInputChange('uses_contact_lenses', Boolean(checked))}
+            />
+            <Label htmlFor="uses-contact-lenses" className="cursor-pointer">Använder kontaktlinser</Label>
           </div>
 
           {/* Measurements with correction */}
-          {measurements.uses_correction && (
+          {(measurements.uses_glasses || measurements.uses_contact_lenses) && (
             <div className="space-y-4">
               <h5 className="font-medium text-sm">Visus med korrektion</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="with-correction-right">Höger öga (OD)</Label>
-                  <Select 
-                    value={measurements.visual_acuity_with_correction_right.toString()} 
+                  <Select
+                    value={measurements.visual_acuity_with_correction_right.toString()}
                     onValueChange={(value) => handleInputChange('visual_acuity_with_correction_right', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Välj VISUS-värde" />
                     </SelectTrigger>
-                     <SelectContent>
+                    <SelectContent>
                       {VISUS_SCALE.map((visus) => (
-                        <SelectItem key={visus} value={visus}>
-                          {visus.replace('.', ',')}
-                        </SelectItem>
+                        <SelectItem key={visus} value={visus}>{visus.replace('.', ',')}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="with-correction-left">Vänster öga (OS)</Label>
-                  <Select 
-                    value={measurements.visual_acuity_with_correction_left.toString()} 
+                  <Select
+                    value={measurements.visual_acuity_with_correction_left.toString()}
                     onValueChange={(value) => handleInputChange('visual_acuity_with_correction_left', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Välj VISUS-värde" />
                     </SelectTrigger>
-                     <SelectContent>
+                    <SelectContent>
                       {VISUS_SCALE.map((visus) => (
-                        <SelectItem key={visus} value={visus}>
-                          {visus.replace('.', ',')}
-                        </SelectItem>
+                        <SelectItem key={visus} value={visus}>{visus.replace('.', ',')}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="with-correction-both">Båda ögon (OU)</Label>
-                  <Select 
-                    value={measurements.visual_acuity_with_correction_both.toString()} 
+                  <Select
+                    value={measurements.visual_acuity_with_correction_both.toString()}
                     onValueChange={(value) => handleInputChange('visual_acuity_with_correction_both', value)}
                   >
                     <SelectTrigger>
@@ -432,9 +457,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                     </SelectTrigger>
                     <SelectContent>
                       {VISUS_SCALE.map((visus) => (
-                        <SelectItem key={visus} value={visus}>
-                          {visus.replace('.', ',')}
-                        </SelectItem>
+                        <SelectItem key={visus} value={visus}>{visus.replace('.', ',')}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -444,14 +467,14 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           )}
         </div>
 
-        {/* Simplified glasses strength flag for higher license categories.
-            Detaljerat recept hanteras i Servit – portalen behöver bara veta
-            om någon styrka överstiger ±8,00 D (Transportstyrelsen-info). */}
-        {licenseCategory === 'higher' && measurements.uses_correction && (
+        {/* Glasögonstyrka — endast om "Använder glasögon" är ikryssat.
+            Linser registreras aldrig med styrka. */}
+        {measurements.uses_glasses && (
           <div className="space-y-3 rounded-md border p-4">
-            <h4 className="font-medium">Glasstyrka</h4>
+            <h4 className="font-medium">Glasögonstyrka</h4>
             <p className="text-sm text-muted-foreground">
-              Fullständigt recept förs i Servit. Markera endast om någon styrka (sfär eller cylinder) är ±8,00 D eller mer.
+              Fullständigt recept förs i Servit. Markera om någon styrka är ±8,00 D eller mer
+              för att registrera exakta värden här (krävs för info till Transportstyrelsen).
             </p>
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -460,9 +483,63 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
                 onCheckedChange={(checked) => handleInputChange('prescription_over_8d', Boolean(checked))}
               />
               <Label htmlFor="prescription-over-8d" className="cursor-pointer">
-                Glasstyrka ±8,00 D eller mer (kräver info till Transportstyrelsen)
+                Överstiger ±8 dioptrier
               </Label>
             </div>
+
+            {measurements.prescription_over_8d && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                {(['od', 'os'] as const).map((eye) => (
+                  <div key={eye} className="space-y-2">
+                    <h5 className="font-medium text-sm">
+                      {eye === 'od' ? 'Höger öga (OD)' : 'Vänster öga (OS)'}
+                    </h5>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label htmlFor={`${eye}-sph`} className="text-xs">Sfär</Label>
+                        <Input
+                          id={`${eye}-sph`}
+                          inputMode="decimal"
+                          placeholder="t.ex. -8,50"
+                          value={(measurements as any)[`glasses_prescription_${eye}_sph`] ?? ''}
+                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_sph`, e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`${eye}-cyl`} className="text-xs">Cylinder</Label>
+                        <Input
+                          id={`${eye}-cyl`}
+                          inputMode="decimal"
+                          placeholder="t.ex. -1,25"
+                          value={(measurements as any)[`glasses_prescription_${eye}_cyl`] ?? ''}
+                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_cyl`, e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`${eye}-axis`} className="text-xs">Axel (°)</Label>
+                        <Input
+                          id={`${eye}-axis`}
+                          inputMode="numeric"
+                          placeholder="0–180"
+                          value={(measurements as any)[`glasses_prescription_${eye}_axis`] ?? ''}
+                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_axis`, e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`${eye}-add`} className="text-xs">Add (valfritt)</Label>
+                        <Input
+                          id={`${eye}-add`}
+                          inputMode="decimal"
+                          placeholder="t.ex. 2,00"
+                          value={(measurements as any)[`glasses_prescription_${eye}_add`] ?? ''}
+                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_add`, e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -85,6 +85,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
   const [customerNumber, setCustomerNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedOpticianId, setSelectedOpticianId] = useState("");
+  const [outcome, setOutcome] = useState<OutcomeValue | "">("");
   const [isSaving, setIsSaving] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
@@ -98,6 +99,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
     setCustomerNumber("");
     setNotes("");
     setSelectedOpticianId("");
+    setOutcome("");
     setShowNotes(false);
   };
 
@@ -107,6 +109,14 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
       toast({
         title: "Kundnummer saknas",
         description: "Ange Servit-kundnummer för att fortsätta.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!outcome) {
+      toast({
+        title: "Bedömning saknas",
+        description: "Välj utfall (Godkänd, Ej godkänd m.m.) innan du tilldelar optiker.",
         variant: "destructive",
       });
       return;

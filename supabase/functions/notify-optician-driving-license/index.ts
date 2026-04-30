@@ -23,6 +23,11 @@ interface EmailNotificationRequest {
   entryId: string;
   opticianEmail?: string; // Optional - will be fetched from DB if not provided
   appUrl: string;
+  // 'app' (default) = undersökningen genomfördes i Anamnesportalen.
+  // 'servit' = optikern genomförde och journalförde direkt i Servit; vi har
+  // ett kundnummer som ska visas i mejlet.
+  completionMethod?: 'app' | 'servit';
+  servitCustomerNumber?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -37,7 +42,8 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { entryId, opticianEmail, appUrl }: EmailNotificationRequest = await req.json();
+    const { entryId, opticianEmail, appUrl, completionMethod, servitCustomerNumber }: EmailNotificationRequest = await req.json();
+    const method: 'app' | 'servit' = completionMethod === 'servit' ? 'servit' : 'app';
 
     console.log("Processing email notification for entry:", entryId);
 
@@ -152,19 +158,40 @@ const handler = async (req: Request): Promise<Response> => {
       ? FROM_EMAIL 
       : `${organizationName} <${FROM_EMAIL}>`;
 
+    // Variant-specifik text
+    const isServit = method === 'servit';
+    const subject = isServit
+      ? `Körkortsundersökning journalförd i Servit${servitCustomerNumber ? ` – kundnr ${servitCustomerNumber}` : ''}`
+      : "Ny körkortsundersökning tilldelad";
+
+    const headline = isServit
+      ? "Journalförd i Servit – granska och skicka intyg"
+      : "Genomförd i Anamnesportalen – för in i Servit";
+
+    const introBlock = isServit
+      ? `
+        <p>Patienten är journalförd direkt i Servit.</p>
+        ${servitCustomerNumber ? `<p style="font-size:16px;"><strong>Kundnummer i Servit:</strong> <span style="font-family:monospace; background:#eff6ff; padding:2px 8px; border-radius:4px;">${servitCustomerNumber}</span></p>` : ''}
+        <p><strong>Nästa steg:</strong> Gå in i Servit, granska undersökningen och skicka intyg till Transportstyrelsen.</p>
+      `
+      : `
+        <p>En körkortsundersökning är genomförd i Anamnesportalen och tilldelad dig.</p>
+        <p><strong>Nästa steg:</strong> För in resultatet i Servit och skicka intyg till Transportstyrelsen.</p>
+      `;
+
     // Send email notification
     const emailResponse: any = await resend.emails.send({
       from: fromAddress,
       to: [finalOpticianEmail],
-      subject: "Ny körkortsundersökning tilldelad",
+      subject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Ny körkortsundersökning</h2>
-          
+          <h2 style="color: #2563eb;">${headline}</h2>
+
           <p>Hej,</p>
-          
-          <p>Du har blivit tilldelad en ny slutförd körkortsundersökning:</p>
-          
+
+          ${introBlock}
+
           <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="margin: 0 0 10px 0; color: #1e40af;">Patientinformation</h3>
             <p><strong>Namn:</strong> ${entryData.first_name || 'Okänd patient'}</p>
@@ -172,16 +199,14 @@ const handler = async (req: Request): Promise<Response> => {
             <p><strong>Organisation:</strong> ${organizationName}</p>
             ${storeData ? `<p><strong>Butik:</strong> ${storeData.name}${storeData.address ? ` (${storeData.address})` : ''}</p>` : ''}
           </div>
-          
-          <p>Logga in på plattformen för att se fullständiga resultat och hantera undersökningen.</p>
-          
+
           <div style="margin: 30px 0;">
-            <a href="https://anamnes.binokeloptik.se/dashboard" 
+            <a href="https://anamnes.binokeloptik.se/dashboard"
                style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
               Öppna Dashboard
             </a>
           </div>
-          
+
           <p style="color: #6b7280; font-size: 14px;">
             Detta är ett automatiskt meddelande från ${organizationName}.
           </p>

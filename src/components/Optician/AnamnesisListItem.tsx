@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car, CheckCircle } from "lucide-react";
+import { ChevronDown, MoreVertical, Trash2, User, Store, AlertTriangle, Car, CheckCircle, ClipboardCheck } from "lucide-react";
+import { ServitJournalDialog } from "./DrivingLicense/ServitJournalDialog";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -86,6 +87,7 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isServitDialogOpen, setIsServitDialogOpen] = useState(false);
   const { supabase } = useSupabaseClient();
   const { getStoreName } = useStores();
   
@@ -442,31 +444,65 @@ export const AnamnesisListItem: React.FC<AnamnesisListItemProps> = ({
             </div>
           </div>
 
-          {/* Driving License Examination Button */}
+          {/* Driving License Examination Buttons */}
           {isDrivingLicenseExam && (
             <div className="mt-3 pt-3 border-t border-gray-100" onClick={stopPropagation}>
               {isDrivingLicenseCompleted ? (
                 <div className="text-center py-2">
-                  <Badge className="bg-green-100 text-green-800 border-green-200">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Körkortsundersökning slutförd
-                  </Badge>
+                  {entry.driving_license_status?.examination?.completion_method === 'servit' ? (
+                    <Badge className="bg-accent/15 text-accent-foreground border-accent/30">
+                      <ClipboardCheck className="h-3 w-3 mr-1" />
+                      Journalförd i Servit
+                      {entry.driving_license_status?.examination?.servit_customer_number && (
+                        <span className="ml-1 font-mono">
+                          – kundnr {entry.driving_license_status.examination.servit_customer_number}
+                        </span>
+                      )}
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-100 text-green-800 border-green-200">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Körkortsundersökning slutförd i appen
+                    </Badge>
+                  )}
                 </div>
               ) : (
-                <Button
-                  onClick={handleDrivingLicenseExamination}
-                  variant="default"
-                  size="sm"
-                  className="w-full bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
-                >
-                  <Car className="h-4 w-4" />
-                  <span>Genomför körkortsundersökning</span>
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    onClick={handleDrivingLicenseExamination}
+                    variant="default"
+                    size="sm"
+                    className="flex-1 bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
+                  >
+                    <Car className="h-4 w-4" />
+                    <span>Genomför körkortsundersökning</span>
+                  </Button>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setIsServitDialogOpen(true);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 flex items-center gap-2"
+                  >
+                    <ClipboardCheck className="h-4 w-4" />
+                    <span>Journalför i Servit</span>
+                  </Button>
+                </div>
               )}
             </div>
           )}
         </div>
       </AnamnesCard>
+
+      <ServitJournalDialog
+        open={isServitDialogOpen}
+        onOpenChange={setIsServitDialogOpen}
+        entry={entry}
+        onCompleted={() => onEntryUpdated?.()}
+      />
 
       <AlertDialog
         open={isDeleteDialogOpen}

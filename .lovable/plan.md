@@ -1,118 +1,91 @@
-Jag har gjort en genomgång av problemet utan att ändra kod.
+## Mål
 
-Fynd
+Idag finns bara ett alternativ på körkortskortet: **"Genomför körkortsundersökning"** (i appen). Vi vill lägga till ett parallellt spår för optiker som hellre journalför hela undersökningen direkt i **Servit**. Resultatet ska bli ett tydligt mejl till ansvarig optiker som beskriver vad som faktiskt gjorts och vad nästa steg är (intyg till Transportstyrelsen).
 
-1. Skärmen som visas i bilden kommer inte från det nya körkortsflödet A/B/C/D.
-Den kommer från den statiska laddningsrutan i index.html:
-
-```text
-<div id="app-loading">
-  Startar Anamnesportalen...
-</div>
-```
-
-2. Appen verkar kunna rendera bakom laddningsrutan.
-I browser-testet kunde jag läsa ut inloggningssidans innehåll bakom overlayn:
+## Nytt flöde – två val på körkortskortet
 
 ```text
-Välkommen tillbaka
-Logga in för att fortsätta
-Email address
-Password
+[ Körkortskort på dashboard ]
+        |
+        +---> "Genomför körkortsundersökning"  (befintligt, i appen)
+        |          -> visusmätning, ID-kontroll, sammanfattning, tilldela optiker
+        |          -> mejl: "Genomförd i Anamnesportalen – för in i Servit"
+        |
+        +---> "Journalför i Servit"            (NYTT)
+                   -> dialog: "Ange kundnummer i Servit"
+                   -> tilldela ansvarig optiker
+                   -> mejl: "Journalförd i Servit – kundnr XXXX. Granska & skicka intyg"
 ```
 
-Det betyder att React-appen troligen startar, men den statiska loadern ligger kvar ovanpå allt med z-index 9999.
+## UI-ändringar
 
-3. Nuvarande loader tas bara bort via `window.addEventListener('load', ...)` i index.html.
-Det är skört, särskilt på mobil/Safari/iOS och vid externa script/auth-resurser. Om `load` inte fångas eller en extern resurs strular kan overlayn ligga kvar även när appen är redo.
+**1. `AnamnesisListItem.tsx` (rad ~445–467)**
+Ersätt den enskilda primärknappen med två knappar sida vid sida:
+- Primär: "Genomför körkortsundersökning" (befintligt beteende, öppnar `DrivingLicenseExamination`-modalen)
+- Sekundär (outline): "Journalför i Servit" (öppnar ny dialog)
 
-4. Det finns även Clerk-relaterade fel i användarens preview-loggar:
+Båda göms när `isDrivingLicenseCompleted === true`. Visad badge efter slutförande ändras till antingen "Slutförd i appen" eller "Journalförd i Servit – kundnr XXXX".
 
-```text
-ClerkJS: Something went wrong initializing Clerk
-Browser unauthenticated
+**2. Ny komponent: `ServitJournalDialog.tsx`** (i `src/components/Optician/DrivingLicense/`)
+- Fält: **Kundnummer i Servit** (obligatoriskt, fritext, trim, valfri regex senare)
+- Fält: **Ansvarig optiker** (samma `useOpticians`-select som i `ExaminationSummary`)
+- Fält: Anteckningar (valfritt)
+- Knapp: "Bekräfta journalföring" → sparar examination + skickar mejl + stänger dialog
+
+## Datamodell
+
+Lägg till två kolumner i `driving_license_examinations`:
+- `completion_method` (text, enum-liknande: `'app' | 'servit'`, default `'app'`)
+- `servit_customer_number` (text, nullable)
+
+Migration:
+```sql
+ALTER TABLE public.driving_license_examinations
+  ADD COLUMN IF NOT EXISTS completion_method text NOT NULL DEFAULT 'app',
+  ADD COLUMN IF NOT EXISTS servit_customer_number text;
 ```
 
-I mitt browser-test laddade Clerk tillräckligt för att visa login-formuläret, men användarens preview har haft auth-init-problem. Det ska hanteras defensivt så att användaren inte fastnar bakom en loader även om Clerk har ett tillfälligt init-fel.
+När "Journalför i Servit" bekräftas skapas/uppdateras en rad med:
+- `examination_status = 'completed'`
+- `completion_method = 'servit'`
+- `servit_customer_number = <input>`
+- `optician_id` på `anamnes_entries` sätts via befintlig `assignOptician`
 
-Min bedömning
+## Edge function – `notify-optician-driving-license`
 
-Rotorsaken till det visuella felet är den statiska HTML-loadern, inte ändringarna i körkortsflödet. Fixen bör därför vara mycket liten och begränsad till app-starten.
+Funktionen tar emot ett nytt fält `completionMethod: 'app' | 'servit'` och ett valfritt `servitCustomerNumber`. Mejlinnehållet förgrenas:
 
-Plan för fix
+**Variant A – Genomförd i Anamnesportalen** (befintligt, men förtydligat):
+> Undersökningen är genomförd i Anamnesportalen.
+> **Nästa steg:** För in resultatet i Servit och skicka intyg till Transportstyrelsen.
 
-1. Gör loader-borttagning robust i React-starten
+**Variant B – Journalförd i Servit** (NY):
+> Patienten är journalförd i Servit under **kundnummer {servitCustomerNumber}**.
+> **Nästa steg:** Gå in i Servit, granska undersökningen och skicka intyg till Transportstyrelsen.
 
-Ändra `src/main.tsx` så att React själv tar bort `#app-loading` när appen har monterats, istället för att bara lita på `window.load` i index.html.
+Båda mejlen behåller patientnamn, butik, organisation och länk till dashboard.
 
-Tekniskt:
+## Sammanfattning av ändringar
 
-```text
-root.render(...)
-requestAnimationFrame(() => removeAppLoader())
-```
+| Fil | Ändring |
+|---|---|
+| `supabase/migrations/<ny>.sql` | Lägg till `completion_method` + `servit_customer_number` |
+| `src/components/Optician/AnamnesisListItem.tsx` | Två knappar istället för en, ny badge-text |
+| `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` | NY komponent |
+| `src/components/Optician/AnamnesisListView.tsx` (eller motsv. parent) | Hanterar nytt callback `onJournalInServit` |
+| `src/hooks/useBulkDrivingLicenseStatus.ts` | Returnera `completionMethod` + `servitCustomerNumber` så badgen kan visa rätt text |
+| `supabase/functions/notify-optician-driving-license/index.ts` | Förgrenat mejlinnehåll baserat på `completionMethod` |
+| `src/components/Optician/DrivingLicense/ExaminationSummary.tsx` | Skicka med `completionMethod: 'app'` vid befintligt flöde |
 
-Borttagningen ska:
-- hitta `document.getElementById('app-loading')`
-- tona ut den kort
-- ta bort noden helt
-- vara idempotent, så att den kan köras flera gånger utan fel
+## Acceptanskriterier
 
-Detta är en liten startfix och ändrar ingen befintlig affärslogik, formulärlogik, databaslogik eller körkortslogik.
+1. På körkortskort visas **två** knappar: "Genomför körkortsundersökning" och "Journalför i Servit".
+2. "Journalför i Servit" öppnar dialog som kräver kundnummer + optiker innan bekräftelse.
+3. Efter bekräftelse syns badgen "Journalförd i Servit – kundnr XXXX" och kortet flyttas till "Journalförda".
+4. Optikern får mejl med korrekt variant (A eller B) inkl. kundnumret när det gäller Servit-spåret.
+5. Befintligt app-flöde är oförändrat förutom att mejltexten förtydligas till "för in resultatet i Servit + skicka intyg".
 
-2. Lägg till säker fallback i index.html
+## Öppna frågor (kan tas senare, blockerar inte starten)
 
-Behåll den statiska loadern för första paint, men gör fallbacken mindre skör:
-
-- Om `document.readyState === 'complete'` redan gäller när scriptet körs, ta bort loadern direkt.
-- Lägg till en maximal timeout, t.ex. 8 sekunder, så att overlayn aldrig kan blockera appen permanent.
-
-Detta skyddar särskilt iOS/Safari och preview-lägen där load-event kan bete sig annorlunda.
-
-3. Ge appen en tydlig auth-fallback om Clerk inte blir redo
-
-På startsidan `src/pages/Index.tsx` finns en React-loader medan `isLoaded` är false. Den kan också bli oändlig om Clerk fastnar.
-
-Jag föreslår en minimal, defensiv fallback:
-
-- Starta en timer när `Index` väntar på Clerk.
-- Efter t.ex. 8 sekunder: visa inloggningssidan eller ett vänligt felkort med knapp “Försök igen”.
-- Ingen automatisk inloggning, ingen ändrad behörighetslogik.
-
-Syftet är bara att undvika att användaren ser en evig laddningssida.
-
-4. Rensa liten teknisk risk i Clerk-konfigurationen
-
-I `src/main.tsx` är Clerk JS-versionen hårdpinnad till en snapshot-version:
-
-```text
-clerkJSVersion="5.56.0-snapshot.v20250312225817"
-```
-
-Det är ovanligt skört i produktion/preview. Jag föreslår att ta bort den raden så att `@clerk/clerk-react` använder kompatibel stabil version automatiskt.
-
-Detta är en liten stabilitetsfix och påverkar inte appens egna auth-regler.
-
-5. Verifiering efter fix
-
-Jag testar följande efter implementation:
-
-- `/` på mobilstorlek ca 402x716: loader försvinner och login-sidan syns.
-- Refresh av `/`: ingen permanent overlay.
-- `/sign-in`: Clerk-formulär syns.
-- Skyddad route `/dashboard`: visar auth-flöde/redirect korrekt, inte evig loader.
-- Kontroll av console logs: inga nya React-fel.
-- Snabb kontroll att körkortsflödesfilerna A/B/C/D inte berörs.
-
-Avgränsning
-
-Jag kommer inte ändra:
-
-- formulärlogik
-- databas/migrationer
-- körkortsflödets A/B/C/D-logik
-- sammanfattningslogik
-- visuslogik
-- RLS eller Supabase-policies
-
-Endast robustare app-start och loader/auth-fallback.
+- Ska kundnumret gå att redigera efteråt om det skrevs fel? (förslag: ja, via "Återställ"-knappen som redan finns)
+- Format/validering på kundnummer – fri text räcker i v1?

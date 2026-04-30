@@ -138,7 +138,8 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
             body: {
               entryId: entry.id,
               opticianEmail: selectedOptician.email,
-              appUrl: window.location.origin
+              appUrl: window.location.origin,
+              completionMethod: 'app',
             }
           }
         );

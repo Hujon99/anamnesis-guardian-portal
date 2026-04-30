@@ -161,13 +161,16 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
 
       if (fetchErr) throw fetchErr;
 
+      const outcomeLabel = getOutcomeLabel(outcome);
+      const combinedNotes = combineNotesWithOutcome(outcome, notes);
+
       const payload = {
         entry_id: entry.id,
         organization_id: organization.id,
         examination_status: "completed" as const,
         completion_method: "servit",
         servit_customer_number: trimmed,
-        notes: notes.trim() || null,
+        notes: combinedNotes,
         created_by: user?.id ?? null,
       };
 
@@ -196,6 +199,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
               appUrl: window.location.origin,
               completionMethod: "servit",
               servitCustomerNumber: trimmed,
+              outcomeLabel,
             },
           },
         );

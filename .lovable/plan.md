@@ -1,69 +1,77 @@
+## Bakgrund — Christians feedback
+
+Det nya arbetsflödet säger att assistenten ska välja ett utfall **innan** ärendet tilldelas optiker:
+
+1. Godkänd – kan skickas
+2. Godkänd – rek. synundersökning
+3. Optiker ska kontakta innan inskick
+4. Ej godkänd
+
+Status idag:
+
+- **"Genomför i appen"** (`ExaminationSummary.tsx`) — ✅ redan implementerat. Utfallet sparas som textprefix i `notes` (`Utfall: <label>`).
+- **"Journalför i Servit"** (`ServitJournalDialog.tsx`) — ❌ saknar bedömningssteget helt. Christian använder främst detta flöde, så det är där han märker att det fattas.
+- **Mejlet till optiker** (`notify-optician-driving-license`) — visar inte utfallet idag, vilket gör att optikern måste öppna appen för att se assistentens bedömning.
+
 ## Mål
 
-Lyfta UX:en på det nya **"Journalför i Servit"-flödet** så det känns premium, tydligt och i linje med Blue Pulse-konceptet (sjukhusblå trygghet + teal pulse + lugn luftighet). Två ytor uppgraderas: körkortskortets knappar på dashboarden, och själva dialogen.
+Lägga in samma fyra-utfalls-väljare i Servit-dialogen som i app-flödet, samt skicka med utfallet i mejlet så att optikern direkt ser assistentens bedömning.
 
-## 1. Körkortskortet på dashboarden – tydligare hierarki
+## Plan
 
-Idag står två knappar bredvid varandra med samma vikt, vilket gör valet otydligt. Förbättringar:
+### 1. Dela utfalls-konstanten
 
-- Liten infotext ovanför knapparna: "Hur vill du genomföra undersökningen?"
-- **Primär knapp** (vänster, fyllnad i `primary`): "Genomför i appen" med `Car`-ikon — fortsatt huvudval
-- **Sekundär knapp** (höger, outline med teal hover): "Journalför i Servit" med `ClipboardCheck`-ikon
-- Båda får hover-lift (subtle `translate-y` + `shadow-md`) och `transition-all duration-200`
-- På mobil staplas de och får full bredd; på desktop sitter de i ett grid med samma höjd
-- Slutförd-badgen för Servit byts till en mjuk teal "pulse"-stil (`bg-accent/15`, `border-accent/30`) med kundnummer i monospace
+Bryt ut `OUTCOME_OPTIONS`, `OutcomeValue`, `OUTCOME_PREFIX` och `parseOutcomeFromNotes` från `ExaminationSummary.tsx` till en ny gemensam fil:
 
-## 2. ServitJournalDialog – "mumsig" version
+```
+src/components/Optician/DrivingLicense/outcomeUtils.ts
+```
 
-### Layout
-- Bredare dialog: `sm:max-w-lg` (mer luft)
-- Toppen får ett **gradient-band** (primary → accent-teal) med stor ikon `ClipboardCheck` i vit cirkel
-- Subtitel: kort förklaring om att kundnumret hamnar i optikerns mejl
-- Patient-snippet i en liten "context card" (ljusgrå surface, rounded-xl) så användaren ser vem det gäller: namn + bokningsdatum
+Importeras från både `ExaminationSummary.tsx` och `ServitJournalDialog.tsx`. Ingen funktionell ändring för app-flödet — bara flytt + import.
 
-### Fält
-- **Kundnummer** får större `Input` (`h-12`, `text-lg`, monospace, centrerat caret), med dekorativ ikon till vänster (#) och hjälptext under: "Numret som visas i Servit för denna patient"
-- Live-validering: tom → muted border, ifylld → teal border (`focus-visible:ring-accent`)
-- **Optiker-select** behåller funktion men får avatar-cirkel (initialer) framför namnet i listan
-- **Anteckningar** kollapsbar via en liten "Lägg till anteckning"-toggle så formuläret inte ser långt ut by default
+### 2. Lägg in utfallssteget i `ServitJournalDialog.tsx`
 
-### Mikrointeraktioner
-- Bekräfta-knappen blir `bg-gradient-to-r from-primary to-accent` med `shadow-elegant`-glow på hover
-- Vid spara: knappen byter till `Sparar...` med spinner och en tunn progress-linje längst ner i dialogen
-- Vid lyckat svar: kort `pop`-animation på en grön check innan dialogen stängs (250 ms)
+Mellan "Kundnummer i Servit" och "Ansvarig optiker", lägg till ett `Select`-fält "Bedömning" med samma fyra alternativ. Designen följer Blue Pulse (matchande label-stil med ikon, accent-färg).
 
-### Footer
-- "Avbryt" som ghost (mindre visuell vikt)
-- "Bekräfta journalföring" som primär gradient
-- Mobil: knapparna staplas, primär överst
+- `outcome` blir **obligatoriskt** (samma princip som kundnummer + optiker). Validering med toast vid saknat val.
+- När `handleConfirm` skapar/uppdaterar `driving_license_examinations`-raden kombineras valt utfall med ev. fritextanteckning på samma format som app-flödet:
+  ```
+  Utfall: <label>
+  
+  <fri text>
+  ```
+  Sparas i `notes`-kolumnen (ingen DB-migration behövs).
 
-## 3. Tillgänglighet & detaljer
+### 3. Skicka med utfallet i mejlet
 
-- Säkerställ kontrast WCAG AA på all text mot bakgrunder
-- `aria-required` + `aria-invalid` på obligatoriska fält
-- Fokusring tydlig (teal) på alla interaktiva element
-- Esc stänger dialogen (om inte `isSaving`), Enter i kundnummerfältet hoppar till optikerväljaren
+- I båda anropen till `supabase.functions.invoke("notify-optician-driving-license", ...)` (Servit + app) lägg till `outcomeLabel` i body.
+- I edge-funktionen `notify-optician-driving-license/index.ts`:
+  - Ta emot `outcomeLabel?: string` i request-payloaden.
+  - Rendera ett tydligt utfalls-block i HTML-mejlet ovanför "Patientinformation", med färgkodning beroende på utfall (grön = godkänd, gul = rek. synundersökning, orange = kontakta innan inskick, röd = ej godkänd).
+  - Lägg in utfallet i subject-raden för Servit-mejl, t.ex.
+    `Körkortsundersökning journalförd i Servit – kundnr 12345 – Godkänd kan skickas`.
 
-## 4. Filer som påverkas
+### 4. QA / kontroll
 
-| Fil | Ändring |
-|---|---|
-| `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` | Hela UI-skalet + gradient-header, patientkort, större fält, gradient CTA, kollapsbar anteckning |
-| `src/components/Optician/AnamnesisListItem.tsx` | Förtydligad knapp-hierarki, hover-lift, infotext, polerad Servit-badge |
-| `src/index.css` (vid behov) | Lägg till `@keyframes pop` om inte redan finns; säkerställ `shadow-elegant`-token |
-
-## 5. Acceptanskriterier
-
-1. Knapparna på körkortskortet har en tydlig primär/sekundär-relation (inte två likadana).
-2. Dialogen har gradient-header med stor ikon och visar patientens namn + bokningsdatum.
-3. Kundnummer-fältet är stort, monospace och har hjälptext.
-4. Bekräfta-knappen är gradient och får glow på hover.
-5. Allt fungerar lika bra på 375px mobil som på 1280px desktop.
-6. Inga regression i logik – samma data sparas och samma mejl skickas som idag.
+- Verifiera i preview att Servit-dialogen nu kräver utfall + visar valideringstoast.
+- Skicka ett test-mejl (Christian/Hugo som mottagare) i båda flödena och bekräfta:
+  - utfallet syns tydligt i mejlet,
+  - subjectet uppdateras,
+  - befintliga app-flödesmejl fortfarande fungerar (inget regression).
 
 ## Tekniska detaljer
 
-- Använder befintliga semantiska tokens (`primary`, `accent`, `muted`, `surface`) — inga hårdkodade färger
-- Inga nya beroenden, allt med Tailwind + shadcn
-- Patient-kortet får data via befintlig `entry`-prop (redan tillgänglig)
-- Kollapsbar anteckning byggs med enkel `useState`-toggle, inte Radix Collapsible (för enkelhet)
+**Filer som ändras:**
+
+| Fil | Ändring |
+|---|---|
+| `src/components/Optician/DrivingLicense/outcomeUtils.ts` | Ny — innehåller `OUTCOME_OPTIONS`, `OutcomeValue`, `OUTCOME_PREFIX`, `parseOutcomeFromNotes`, `combineNotesWithOutcome` |
+| `src/components/Optician/DrivingLicense/ExaminationSummary.tsx` | Ta bort lokala konstanter, importera från `outcomeUtils`, skicka `outcomeLabel` till edge-funktionen |
+| `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` | Lägg till outcome-state + `Select`-block, validera, kombinera notes via helper, skicka `outcomeLabel` till edge-funktionen |
+| `supabase/functions/notify-optician-driving-license/index.ts` | Acceptera `outcomeLabel` i payload, rendera utfalls-block + lägg till i subject |
+
+**Inga DB-migrationer behövs** — utfallet sparas fortsatt som prefix i `notes` (samma format som app-flödet) och `outcomeLabel` i mejlet är derived data.
+
+**Z-index:** Servit-dialogen ligger i en Dialog (`z-[1000]`), så `SelectContent` för utfallet får samma `z-[1100]` som befintlig optiker-Select i samma fil.
+
+**Backwards-compatibility:** Edge-funktionen behandlar `outcomeLabel` som optional — gamla anrop utan fältet fungerar oförändrat.

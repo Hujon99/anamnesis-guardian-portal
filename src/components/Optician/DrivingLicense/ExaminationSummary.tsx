@@ -22,6 +22,14 @@ import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { RecommendationEngine } from "./RecommendationEngine";
 import { useUserResolver } from "@/utils/userDisplayUtils";
 import { formatVisualAcuityDisplay } from "@/lib/number-utils";
+import {
+  OUTCOME_OPTIONS,
+  type OutcomeValue,
+  parseOutcomeFromNotes,
+  combineNotesWithOutcome,
+  getOutcomeLabel,
+} from "./outcomeUtils";
+
 interface ExaminationSummaryProps {
   examination: any;
   entry: AnamnesesEntry;
@@ -29,32 +37,6 @@ interface ExaminationSummaryProps {
   onComplete: () => void;
   isSaving: boolean;
 }
-// 4 explicita utfall enligt nytt arbetsflöde (assistentens bedömning).
-// Sparas som textprefix i existerande notes-fältet för att undvika DB-migration.
-const OUTCOME_OPTIONS = [
-  { value: 'approved_send', label: 'Godkänd – kan skickas' },
-  { value: 'approved_recommend_exam', label: 'Godkänd – rek. synundersökning' },
-  { value: 'optician_contact_first', label: 'Optiker ska kontakta innan inskick' },
-  { value: 'not_approved', label: 'Ej godkänd' },
-] as const;
-type OutcomeValue = typeof OUTCOME_OPTIONS[number]['value'];
-
-const OUTCOME_PREFIX = 'Utfall: ';
-
-const parseOutcomeFromNotes = (raw: string): { outcome: OutcomeValue | ''; rest: string } => {
-  if (!raw) return { outcome: '', rest: '' };
-  const lines = raw.split('\n');
-  const first = lines[0] ?? '';
-  if (first.startsWith(OUTCOME_PREFIX)) {
-    const label = first.slice(OUTCOME_PREFIX.length).trim();
-    const match = OUTCOME_OPTIONS.find(o => o.label === label);
-    return {
-      outcome: match ? match.value : '',
-      rest: lines.slice(1).join('\n').replace(/^\n/, ''),
-    };
-  }
-  return { outcome: '', rest: raw };
-};
 
 export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
   examination,
@@ -110,11 +92,8 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
       return;
     }
     
-    const outcomeLabel = OUTCOME_OPTIONS.find(o => o.value === outcome)?.label;
-    const combinedNotes = [
-      outcomeLabel ? `${OUTCOME_PREFIX}${outcomeLabel}` : '',
-      notes.trim(),
-    ].filter(Boolean).join('\n\n') || null;
+    const outcomeLabel = getOutcomeLabel(outcome);
+    const combinedNotes = combineNotesWithOutcome(outcome, notes);
 
     const updates = {
       examination_status: 'completed' as const,
@@ -140,6 +119,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
               opticianEmail: selectedOptician.email,
               appUrl: window.location.origin,
               completionMethod: 'app',
+              outcomeLabel,
             }
           }
         );

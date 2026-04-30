@@ -46,6 +46,7 @@ import {
   Plus,
   Calendar,
   Mail,
+  Gavel,
 } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { toast } from "@/hooks/use-toast";
@@ -54,6 +55,12 @@ import { useEntryMutations } from "@/hooks/useEntryMutations";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 import { useSafeOrganization as useOrganization } from "@/hooks/useSafeOrganization";
 import { useSafeUser as useUser } from "@/hooks/useSafeUser";
+import {
+  OUTCOME_OPTIONS,
+  type OutcomeValue,
+  combineNotesWithOutcome,
+  getOutcomeLabel,
+} from "./outcomeUtils";
 import { cn } from "@/lib/utils";
 
 interface ServitJournalDialogProps {
@@ -78,6 +85,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
   const [customerNumber, setCustomerNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedOpticianId, setSelectedOpticianId] = useState("");
+  const [outcome, setOutcome] = useState<OutcomeValue | "">("");
   const [isSaving, setIsSaving] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
@@ -91,6 +99,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
     setCustomerNumber("");
     setNotes("");
     setSelectedOpticianId("");
+    setOutcome("");
     setShowNotes(false);
   };
 
@@ -100,6 +109,14 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
       toast({
         title: "Kundnummer saknas",
         description: "Ange Servit-kundnummer för att fortsätta.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!outcome) {
+      toast({
+        title: "Bedömning saknas",
+        description: "Välj utfall (Godkänd, Ej godkänd m.m.) innan du tilldelar optiker.",
         variant: "destructive",
       });
       return;
@@ -144,13 +161,16 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
 
       if (fetchErr) throw fetchErr;
 
+      const outcomeLabel = getOutcomeLabel(outcome);
+      const combinedNotes = combineNotesWithOutcome(outcome, notes);
+
       const payload = {
         entry_id: entry.id,
         organization_id: organization.id,
         examination_status: "completed" as const,
         completion_method: "servit",
         servit_customer_number: trimmed,
-        notes: notes.trim() || null,
+        notes: combinedNotes,
         created_by: user?.id ?? null,
       };
 
@@ -179,6 +199,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
               appUrl: window.location.origin,
               completionMethod: "servit",
               servitCustomerNumber: trimmed,
+              outcomeLabel,
             },
           },
         );
@@ -319,6 +340,41 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             </div>
             <p className="text-xs text-muted-foreground pl-0.5">
               Numret som visas i Servit för denna patient.
+            </p>
+          </div>
+
+          {/* Bedömning av assistent — 4 explicita utfall */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="servit-outcome"
+              className="text-sm font-medium flex items-center gap-1.5"
+            >
+              <Gavel className="h-3.5 w-3.5 text-accent" />
+              Bedömning
+              <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={outcome}
+              onValueChange={(v) => setOutcome(v as OutcomeValue)}
+              disabled={isSaving}
+            >
+              <SelectTrigger
+                id="servit-outcome"
+                className="h-11"
+                aria-required="true"
+              >
+                <SelectValue placeholder="Välj utfall" />
+              </SelectTrigger>
+              <SelectContent className="z-[1100]">
+                {OUTCOME_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground pl-0.5">
+              Stöd för optikern. Slutligt beslut fattas i Servit.
             </p>
           </div>
 

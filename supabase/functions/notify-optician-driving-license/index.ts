@@ -28,7 +28,30 @@ interface EmailNotificationRequest {
   // ett kundnummer som ska visas i mejlet.
   completionMethod?: 'app' | 'servit';
   servitCustomerNumber?: string;
+  // Assistentens bedömning (ett av fyra utfall) — visas tydligt i mejlet
+  // så att optikern direkt vet om patienten är godkänd, behöver synundersökning,
+  // ska kontaktas innan inskick eller är ej godkänd.
+  outcomeLabel?: string;
 }
+
+// Färgkodning för utfall i mejlet (Blue Pulse — grön/gul/orange/röd).
+const getOutcomeStyling = (label?: string): { bg: string; border: string; text: string; icon: string } => {
+  if (!label) return { bg: '#f1f5f9', border: '#cbd5e1', text: '#334155', icon: 'ℹ️' };
+  const lower = label.toLowerCase();
+  if (lower.startsWith('godkänd – kan')) {
+    return { bg: '#ecfdf5', border: '#10b981', text: '#065f46', icon: '✅' };
+  }
+  if (lower.startsWith('godkänd – rek')) {
+    return { bg: '#fefce8', border: '#eab308', text: '#854d0e', icon: '⚠️' };
+  }
+  if (lower.startsWith('optiker ska kontakta')) {
+    return { bg: '#fff7ed', border: '#f97316', text: '#9a3412', icon: '📞' };
+  }
+  if (lower.startsWith('ej godkänd')) {
+    return { bg: '#fef2f2', border: '#ef4444', text: '#991b1b', icon: '⛔' };
+  }
+  return { bg: '#f1f5f9', border: '#cbd5e1', text: '#334155', icon: 'ℹ️' };
+};
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -42,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { entryId, opticianEmail, appUrl, completionMethod, servitCustomerNumber }: EmailNotificationRequest = await req.json();
+    const { entryId, opticianEmail, appUrl, completionMethod, servitCustomerNumber, outcomeLabel }: EmailNotificationRequest = await req.json();
     const method: 'app' | 'servit' = completionMethod === 'servit' ? 'servit' : 'app';
 
     console.log("Processing email notification for entry:", entryId);
@@ -160,9 +183,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Variant-specifik text
     const isServit = method === 'servit';
+    const outcomeSuffix = outcomeLabel ? ` – ${outcomeLabel}` : '';
     const subject = isServit
-      ? `Körkortsundersökning journalförd i Servit${servitCustomerNumber ? ` – kundnr ${servitCustomerNumber}` : ''}`
-      : "Ny körkortsundersökning tilldelad";
+      ? `Körkortsundersökning journalförd i Servit${servitCustomerNumber ? ` – kundnr ${servitCustomerNumber}` : ''}${outcomeSuffix}`
+      : `Ny körkortsundersökning tilldelad${outcomeSuffix}`;
 
     const headline = isServit
       ? "Journalförd i Servit – granska och skicka intyg"
@@ -179,6 +203,19 @@ const handler = async (req: Request): Promise<Response> => {
         <p><strong>Nästa steg:</strong> För in resultatet i Servit och skicka intyg till Transportstyrelsen.</p>
       `;
 
+    // Utfalls-block (assistentens bedömning) — färgkodat ovanför patientinfo.
+    const outcomeStyle = getOutcomeStyling(outcomeLabel);
+    const outcomeBlock = outcomeLabel
+      ? `
+        <div style="background-color: ${outcomeStyle.bg}; border-left: 4px solid ${outcomeStyle.border}; padding: 16px 20px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: ${outcomeStyle.text}; opacity: 0.8;">Assistentens bedömning</p>
+          <p style="margin: 0; font-size: 18px; font-weight: 600; color: ${outcomeStyle.text};">
+            ${outcomeStyle.icon} ${outcomeLabel}
+          </p>
+        </div>
+      `
+      : '';
+
     // Send email notification
     const emailResponse: any = await resend.emails.send({
       from: fromAddress,
@@ -191,6 +228,8 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Hej,</p>
 
           ${introBlock}
+
+          ${outcomeBlock}
 
           <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="margin: 0 0 10px 0; color: #1e40af;">Patientinformation</h3>

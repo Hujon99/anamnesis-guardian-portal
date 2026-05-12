@@ -136,6 +136,11 @@ const collectVisusFindings = (examination: any): string[] => {
     findings.push("Binokulär syn under 0,5 — under hård gräns för körkort");
   }
 
+  // ±8 D-flagga (gäller endast glasögon).
+  if (examination.uses_glasses && examination.prescription_over_8d) {
+    findings.push("Glasstyrka över ±8 D — Transportstyrelsen ska informeras");
+  }
+
   return findings;
 };
 
@@ -172,7 +177,7 @@ const computeSuggestion = (
       label: getOutcomeLabel("optician_contact_first"),
       tone: "contact",
       icon: Phone,
-      rationale: "Både anamnes och visus visar avvikelser — optiker bör ringa patient innan intyg skickas.",
+      rationale: `Skäl: ${[...anamnesis, ...visus].join(' · ')}`,
     };
   }
   if (anamnesis.length > 0) {
@@ -181,7 +186,7 @@ const computeSuggestion = (
       label: getOutcomeLabel("optician_contact_first"),
       tone: "contact",
       icon: Phone,
-      rationale: "Anamnesen innehåller faktorer som behöver bedömas av optiker.",
+      rationale: `Skäl: ${anamnesis.join(' · ')}`,
     };
   }
   if (visus.length > 0) {
@@ -190,7 +195,7 @@ const computeSuggestion = (
       label: getOutcomeLabel("approved_recommend_exam"),
       tone: "approved-warn",
       icon: Eye,
-      rationale: "Visus är under rekommenderat värde — boka synundersökning.",
+      rationale: `Skäl: ${visus.join(' · ')}`,
     };
   }
   return {

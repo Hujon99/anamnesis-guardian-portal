@@ -255,7 +255,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
         if (!isSaving) onOpenChange(o);
       }}
     >
-      <DialogContent className="max-w-5xl w-[95vw] p-0 overflow-hidden gap-0 max-h-[92vh] flex flex-col">
+      <DialogContent className="max-w-3xl w-[95vw] p-0 overflow-hidden gap-0 max-h-[92vh] flex flex-col">
         {/* Gradient header */}
         <div
           className="relative px-6 pt-7 pb-6 text-white"
@@ -284,9 +284,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
           )}
         </div>
 
-        <div className="flex-1 grid lg:grid-cols-2 overflow-hidden min-h-0">
-          {/* Vänster: formulärfält */}
-          <div className="px-6 py-5 space-y-5 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 min-h-0">
           {/* Patient context card */}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
             <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm flex-shrink-0">
@@ -311,7 +309,17 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             </div>
           </div>
 
-          {/* Customer number — hero field */}
+          {/* TOPP: anamnesen som klinisk dokumentation att föra in i ServeIT */}
+          <section className="rounded-xl border border-border/60 bg-muted/20 p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-3">
+              Anamnessvar — för in i ServeIT
+            </p>
+            <div className="max-h-[40vh] overflow-y-auto pr-1">
+              <FormAnswersDisplay entry={entry} hideNavigation />
+            </div>
+          </section>
+
+          {/* MITTEN: kundnummer + optiker + anteckning */}
           <div className="space-y-2">
             <Label
               htmlFor="servit-customer-number"
@@ -331,7 +339,6 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
                 onChange={(e) => setCustomerNumber(e.target.value)}
                 onKeyDown={handleNumberKeyDown}
                 placeholder="t.ex. 12345"
-                autoFocus
                 disabled={isSaving}
                 aria-required="true"
                 className={cn(
@@ -346,42 +353,6 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             </p>
           </div>
 
-          {/* Bedömning av assistent — 4 explicita utfall */}
-          <div className="space-y-2">
-            <Label
-              htmlFor="servit-outcome"
-              className="text-sm font-medium flex items-center gap-1.5"
-            >
-              <Gavel className="h-3.5 w-3.5 text-accent" />
-              Bedömning
-              <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={outcome}
-              onValueChange={(v) => setOutcome(v as OutcomeValue)}
-              disabled={isSaving}
-            >
-              <SelectTrigger
-                id="servit-outcome"
-                className="h-11"
-                aria-required="true"
-              >
-                <SelectValue placeholder="Välj utfall" />
-              </SelectTrigger>
-              <SelectContent className="z-[1100]">
-                {OUTCOME_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground pl-0.5">
-              Stöd för optikern. Slutligt beslut fattas i ServeIT.
-            </p>
-          </div>
-
-          {/* Optiker */}
           <div className="space-y-2">
             <Label
               htmlFor="servit-optician"
@@ -431,7 +402,6 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             )}
           </div>
 
-          {/* Collapsible notes */}
           {showNotes ? (
             <div className="space-y-2 animate-fade-in">
               <Label
@@ -465,15 +435,41 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
               Lägg till anteckning
             </button>
           )}
-          </div>
 
-          {/* Höger: anamnesen som stöd vid journalföring i ServeIT */}
-          <aside className="border-t lg:border-t-0 lg:border-l bg-muted/20 overflow-y-auto px-5 py-5">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-3">
-              Anamnessvar — för in i ServeIT
+          {/* BOTTEN: bedömning av assistent */}
+          <div className="space-y-2 pt-2 border-t border-border/60">
+            <Label
+              htmlFor="servit-outcome"
+              className="text-sm font-medium flex items-center gap-1.5"
+            >
+              <Gavel className="h-3.5 w-3.5 text-accent" />
+              Bedömning
+              <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={outcome}
+              onValueChange={(v) => setOutcome(v as OutcomeValue)}
+              disabled={isSaving}
+            >
+              <SelectTrigger
+                id="servit-outcome"
+                className="h-11"
+                aria-required="true"
+              >
+                <SelectValue placeholder="Välj utfall" />
+              </SelectTrigger>
+              <SelectContent className="z-[1100]">
+                {OUTCOME_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground pl-0.5">
+              Stöd för optikern. Slutligt beslut fattas i ServeIT.
             </p>
-            <FormAnswersDisplay entry={entry} hideNavigation />
-          </aside>
+          </div>
         </div>
 
         <DialogFooter className="px-6 pb-6 pt-2 flex-col-reverse sm:flex-row sm:justify-end gap-2">

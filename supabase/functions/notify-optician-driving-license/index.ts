@@ -63,6 +63,38 @@ const escapeHtml = (s: unknown): string => {
 // Filtrera bort personnummer-liknande nycklar/labels (GDPR-säkerhetsnät).
 const SENSITIVE_KEY_RE = /(personnummer|personal_?number|ssn|p[\s\-_]?nr)/i;
 
+// Systemmetadata som inte ska visas i optikermailet (oftast hamnar i "Övriga svar").
+const EXCLUDED_KEYS = new Set([
+  'consent_given',
+  'consent_timestamp',
+  'terms_version',
+  'privacy_policy_version',
+  'gdpr_method',
+  'gdpr_notes',
+  'gdpr_info_type',
+  'gdpr_confirmed_by',
+  'gdpr_confirmed_by_name',
+  'id_verification_completed',
+  'id_type',
+  'verified_at',
+  'verified_by',
+]);
+const EXCLUDED_KEY_PREFIXES = ['gdpr_', 'id_verification_', 'verified_'];
+
+const isExcludedKey = (key: string): boolean => {
+  if (EXCLUDED_KEYS.has(key)) return true;
+  return EXCLUDED_KEY_PREFIXES.some((p) => key.startsWith(p));
+};
+
+// Följdfråga som "Om ja, beskriv" / "Om nej, beskriv" — visas bara om besvarad.
+const FOLLOWUP_LABEL_RE = /^\s*om\s+(ja|nej)\b/i;
+
+const isAnswerEmpty = (value: unknown): boolean => {
+  if (value == null || value === '') return true;
+  if (Array.isArray(value) && value.length === 0) return true;
+  return false;
+};
+
 // Formatera ett enskilt svar (string, number, boolean, array, object).
 const formatAnswer = (value: unknown): string => {
   if (value == null || value === '') return '(ej besvarad)';

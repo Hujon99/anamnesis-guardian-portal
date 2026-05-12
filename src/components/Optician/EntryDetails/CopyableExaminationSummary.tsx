@@ -35,25 +35,19 @@ export const CopyableExaminationSummary: React.FC<CopyableExaminationSummaryProp
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
 
   const formatPrescription = () => {
-    const hasPrescription = examination.glasses_prescription_od_sph !== null || 
-                            examination.glasses_prescription_os_sph !== null;
-    if (!hasPrescription) return '';
-    
-    let text = '\nGLASÖGONSTYRKOR:\n';
-    
-    const formatEye = (label: string, sph: number | null, cyl: number | null, axis: number | null, add: number | null) => {
-      const parts: string[] = [];
-      if (sph !== null) parts.push(`Sfär: ${sph}`);
-      if (cyl !== null) parts.push(`Cyl: ${cyl}`);
-      if (axis !== null) parts.push(`Axel: ${axis}°`);
-      if (add !== null) parts.push(`Add: ${add}`);
-      return parts.length > 0 ? `${label}: ${parts.join(', ')}\n` : '';
-    };
-    
-    text += formatEye('OD', examination.glasses_prescription_od_sph, examination.glasses_prescription_od_cyl, examination.glasses_prescription_od_axis, examination.glasses_prescription_od_add);
-    text += formatEye('OS', examination.glasses_prescription_os_sph, examination.glasses_prescription_os_cyl, examination.glasses_prescription_os_axis, examination.glasses_prescription_os_add);
-    
-    return text;
+    if (!examination.uses_glasses && !examination.uses_contact_lenses) return '';
+    let label: string;
+    if (examination.uses_contact_lenses) {
+      label = 'Kontaktlinser';
+    } else {
+      const overEight = examination.glasses_prescription_od_sph !== null ||
+                        examination.glasses_prescription_os_sph !== null ||
+                        (examination as any).prescription_over_8d === true;
+      label = overEight
+        ? 'Glasögon – något av glasen har en styrka över ±8 dioptrier i den mest brytande meridianen'
+        : 'Glasögon – inget av glasen har en styrka över ±8 dioptrier i den mest brytande meridianen';
+    }
+    return `\nKORRIGERING:\n${label}\n`;
   };
 
   const formatForTrafikverket = () => {

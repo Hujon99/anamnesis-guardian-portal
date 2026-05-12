@@ -159,8 +159,8 @@ const computeSuggestion = (
 
   if (visusUnderHardLimit) {
     return {
-      value: "ej_godkand",
-      label: getOutcomeLabel("ej_godkand"),
+      value: "not_approved",
+      label: getOutcomeLabel("not_approved"),
       tone: "rejected",
       icon: Ban,
       rationale: "Binokulär syn under 0,5 — uppfyller inte synkraven.",
@@ -168,8 +168,8 @@ const computeSuggestion = (
   }
   if (anamnesis.length > 0 && visus.length > 0) {
     return {
-      value: "kontakta_innan_inskick",
-      label: getOutcomeLabel("kontakta_innan_inskick"),
+      value: "optician_contact_first",
+      label: getOutcomeLabel("optician_contact_first"),
       tone: "contact",
       icon: Phone,
       rationale: "Både anamnes och visus visar avvikelser — optiker bör ringa patient innan intyg skickas.",
@@ -177,8 +177,8 @@ const computeSuggestion = (
   }
   if (anamnesis.length > 0) {
     return {
-      value: "kontakta_innan_inskick",
-      label: getOutcomeLabel("kontakta_innan_inskick"),
+      value: "optician_contact_first",
+      label: getOutcomeLabel("optician_contact_first"),
       tone: "contact",
       icon: Phone,
       rationale: "Anamnesen innehåller faktorer som behöver bedömas av optiker.",
@@ -186,16 +186,16 @@ const computeSuggestion = (
   }
   if (visus.length > 0) {
     return {
-      value: "godkand_rek_synundersokning",
-      label: getOutcomeLabel("godkand_rek_synundersokning"),
+      value: "approved_recommend_exam",
+      label: getOutcomeLabel("approved_recommend_exam"),
       tone: "approved-warn",
       icon: Eye,
       rationale: "Visus är under rekommenderat värde — boka synundersökning.",
     };
   }
   return {
-    value: "godkand_kan_skickas",
-    label: getOutcomeLabel("godkand_kan_skickas"),
+    value: "approved_send",
+    label: getOutcomeLabel("approved_send"),
     tone: "approved",
     icon: CheckCircle,
     rationale: "Inga avvikelser identifierade — kan skickas direkt.",

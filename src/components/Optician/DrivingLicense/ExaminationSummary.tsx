@@ -195,8 +195,13 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                   <h5 className="font-medium text-sm flex items-center gap-2">
                     Med korrektion
                     <Badge variant="secondary" className="text-xs">
-                      {examination?.uses_glasses && examination?.uses_contact_lenses ? 'Glasögon + linser' : 
-                       examination?.uses_glasses ? 'Glasögon' : 'Linser'}
+                      {examination?.uses_contact_lenses
+                        ? 'Kontaktlinser'
+                        : examination?.uses_glasses
+                          ? (examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph || (examination as any)?.prescription_over_8d
+                              ? 'Glasögon (styrka över ±8 D)'
+                              : 'Glasögon')
+                          : 'Korrigering'}
                     </Badge>
                   </h5>
                   <p>Höger öga: <span className="font-mono">

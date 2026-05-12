@@ -61,6 +61,7 @@ import {
   combineNotesWithOutcome,
   getOutcomeLabel,
 } from "./outcomeUtils";
+import { FormAnswersDisplay } from "./FormAnswersDisplay";
 import { cn } from "@/lib/utils";
 
 interface ServitJournalDialogProps {

@@ -195,8 +195,13 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                   <h5 className="font-medium text-sm flex items-center gap-2">
                     Med korrektion
                     <Badge variant="secondary" className="text-xs">
-                      {examination?.uses_glasses && examination?.uses_contact_lenses ? 'Glasögon + linser' : 
-                       examination?.uses_glasses ? 'Glasögon' : 'Linser'}
+                      {examination?.uses_contact_lenses
+                        ? 'Kontaktlinser'
+                        : examination?.uses_glasses
+                          ? (examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph || (examination as any)?.prescription_over_8d
+                              ? 'Glasögon (styrka över ±8 D)'
+                              : 'Glasögon')
+                          : 'Korrigering'}
                     </Badge>
                   </h5>
                   <p>Höger öga: <span className="font-mono">
@@ -258,50 +263,18 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
           )}
         </div>
 
-        {/* Glasses prescription display for higher licenses */}
-        {(examination?.uses_glasses || examination?.uses_contact_lenses) && 
-         (examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph) && (
-          <div className="space-y-3">
-            <h4 className="font-medium">Glasögonstyrkor</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              {/* Right eye (OD) */}
-              <div className="space-y-2">
-                <h5 className="font-medium text-sm">Höger öga (OD)</h5>
-                <div className="space-y-1">
-                  {examination?.glasses_prescription_od_sph && (
-                    <p>Sfär: <span className="font-mono">{examination.glasses_prescription_od_sph}</span></p>
-                  )}
-                  {examination?.glasses_prescription_od_cyl && (
-                    <p>Cylinder: <span className="font-mono">{examination.glasses_prescription_od_cyl}</span></p>
-                  )}
-                  {examination?.glasses_prescription_od_axis && (
-                    <p>Axel: <span className="font-mono">{examination.glasses_prescription_od_axis}°</span></p>
-                  )}
-                  {examination?.glasses_prescription_od_add && (
-                    <p>Addition: <span className="font-mono">{examination.glasses_prescription_od_add}</span></p>
-                  )}
-                </div>
-              </div>
-
-              {/* Left eye (OS) */}
-              <div className="space-y-2">
-                <h5 className="font-medium text-sm">Vänster öga (OS)</h5>
-                <div className="space-y-1">
-                  {examination?.glasses_prescription_os_sph && (
-                    <p>Sfär: <span className="font-mono">{examination.glasses_prescription_os_sph}</span></p>
-                  )}
-                  {examination?.glasses_prescription_os_cyl && (
-                    <p>Cylinder: <span className="font-mono">{examination.glasses_prescription_os_cyl}</span></p>
-                  )}
-                  {examination?.glasses_prescription_os_axis && (
-                    <p>Axel: <span className="font-mono">{examination.glasses_prescription_os_axis}°</span></p>
-                  )}
-                  {examination?.glasses_prescription_os_add && (
-                    <p>Addition: <span className="font-mono">{examination.glasses_prescription_os_add}</span></p>
-                  )}
-                </div>
-              </div>
-            </div>
+        {/* Korrigeringskategori — exakta styrkor förs i ServeIT, inte här. */}
+        {(examination?.uses_glasses || examination?.uses_contact_lenses) && (
+          <div className="space-y-2">
+            <h4 className="font-medium">Korrigering</h4>
+            <p className="text-sm">
+              {examination?.uses_contact_lenses && 'Kontaktlinser'}
+              {examination?.uses_glasses && !examination?.uses_contact_lenses && (
+                examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph || (examination as any)?.prescription_over_8d
+                  ? 'Glasögon – något av glasen har en styrka över ±8 dioptrier i den mest brytande meridianen'
+                  : 'Glasögon – inget av glasen har en styrka över ±8 dioptrier i den mest brytande meridianen'
+              )}
+            </p>
           </div>
         )}
 

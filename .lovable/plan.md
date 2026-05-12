@@ -1,46 +1,60 @@
-Jag har kontrollerat nuläget i databasen och hittat orsaken:
+# Plan: Körkortsflödet – feedbackrunda
 
-- Daniel finns idag i `users` bara för organisationen `Optik Test`.
-- Christian och Hugo finns i `users` för `Niemis Optik Norrland`, därför syns de i optikerlistan och kan få mail.
-- Clerk-medlemskapet kan alltså vara rätt, men Supabase-raden som appen använder för optikerlistan saknas för Daniel i Niemis-organisationen.
-- Det finns dessutom en teknisk spärr i databasen: `users.clerk_user_id` är globalt unik, vilket gör att samma Clerk-användare inte kan finnas i flera organisationer samtidigt. Det behöver justeras korrekt, annars kommer Daniel inte kunna få en separat Supabase-rad i Niemis.
+Fyra konkreta justeringar baserat på Christians testning.
 
-Plan:
+## 1. Behörighetsval återställs vid visusmätning
 
-1. Uppdatera databasen så samma Clerk-användare kan finnas i flera organisationer
-   - Ta bort den globala unika spärren på `users.clerk_user_id`.
-   - Behåll/utgå från den befintliga unika regeln per organisation: `(organization_id, clerk_user_id)`.
-   - Justera foreign key för `anamnes_entries.optician_id` så den pekar på rätt optiker inom samma organisation via `(organization_id, optician_id)` -> `users(organization_id, clerk_user_id)`.
-   - Detta bevarar säkerheten: en optiker matchas fortfarande inom rätt organisation, inte globalt.
+**Problem:** I `VisualAcuityMeasurement.tsx` initieras `licenseCategory` med `useState(detectedLicenseCategory)`. `detectedLicenseCategory` är en `useMemo` som läser `entry?.answers`. Vid första render är `entry` ofta inte hydrerat → defaultar till `'lower'`. När `entry` sedan kommer in uppdateras memo-värdet, men `useState` kör bara init-värdet en gång → dropdown står kvar på "Lägre behörigheter".
 
-2. Lägg till Daniel i `Niemis Optik Norrland` i Supabase
-   - Skapa en ny `users`-rad för:
-     - email: `daniel@binokel.se`
-     - namn: Daniel Niemi
-     - Clerk user id: Daniels befintliga Clerk-id
-     - organization_id: `org_2vXhzuO3NxisIjVL4PoGRK7ZdxF` (`Niemis Optik Norrland`)
-     - role: `optician`
-   - Daniels befintliga admin-rad i `Optik Test` lämnas orörd.
+**Fix:**
+- Lägg till `useEffect` som synkar `licenseCategory` med `detectedLicenseCategory` så länge användaren inte aktivt har ändrat den (en `userOverridden`-flagga som sätts `true` i `onValueChange`).
+- Säkerställ också att en redan sparad `examination.notes` med `Behörighetstyp: …` läses tillbaka som ursprungsvärde (parse av första raden) — så att om man backar och går fram igen får man rätt val.
+- Utöka detektionen så den även matchar exakta etiketterna ("Högre behörigheter", "Taxiförarlegitimation") och inte bara enstaka bokstavskombinationer.
 
-3. Fixa synken från Clerk så problemet inte återkommer
-   - Uppdatera `useSyncClerkUsers` så den alltid söker och uppdaterar användare per aktiv organisation, inte bara per `clerk_user_id`.
-   - Detta gör att en användare kan vara medlem i flera organisationer utan att synken blandar ihop raderna.
-   - Uppdateringar ska använda både `organization_id` och `clerk_user_id`.
+## 2. Rekommendation vid kombinerad anamnes- + visusavvikelse
 
-4. Säkra att inloggning inte råkar skriva över roller
-   - Uppdatera `useEnsureUserRecord` så befintliga användares roll inte skrivs över till `optician` vid inloggning/org-byte.
-   - Vid ny rad kan rollen fortsatt sättas till `optician` som default.
-   - Vid befintlig rad uppdateras endast namn/e-post, inte roll eller organisation.
+**Problem:** `RecommendationEngine` listar visusvarningar tydligt men anamnesavvikelser (ögonsjukdom, dubbelseende, mörkerseende, mediciner som påverkar syn) bakas inte in i sammanfattningen, och föreslaget utfall framgår otydligt när båda triggar.
 
-5. Verifiera flödet efter ändringen
-   - Kontrollera att Daniel finns i `users` i `Niemis Optik Norrland`.
-   - Kontrollera att optikerlistan hämtar Daniel tillsammans med Christian/Hugo.
-   - Kontrollera att mailfunktionen kan slå upp Daniels e-post via `optician_id + organization_id`.
-   - Kontrollera att befintliga tilldelningar inte bryts av foreign key-ändringen.
+**Fix i `RecommendationEngine.tsx` + `WarningsDisplay.tsx`:**
+- Extrahera anamnesavvikelser från `entry.answers` (gula flaggor: ögonsjukdom = Ja, dubbelseende = Ja, mörkerseende-problem = Ja, mediciner som påverkar syn = Ja, övriga hälsofaktorer = Ja).
+- Visa två tydliga sektioner: **"Anamnesavvikelser"** och **"Visusavvikelser"** ovanför rekommendationen.
+- Beräkna föreslaget utfall från kombinerad bild:
+  - Visus under hård gräns → "Ej godkänd / hänvisa till optiker".
+  - Anamnesavvikelse + visus ok → "Optiker ska kontakta innan inskick".
+  - Anamnesavvikelse + visus avviker → "Optiker ska kontakta innan inskick" (starkare motivering).
+  - Inga avvikelser → "Godkänd – kan skickas".
+- Visa det föreslagna utfallet som en stor, färgkodad rad ("Rekommenderat utfall: …") direkt ovanför OUTCOME-väljaren, så assistenten ser kopplingen.
 
-Förväntat resultat:
+## 3. Rensa upp optikermailet
 
-- Daniel syns som valbar optiker i Niemis Optik Norrland.
-- Det går att tilldela körkortsärenden/anamneser till Daniel.
-- Mail till optiker kan skickas till `daniel@binokel.se` på samma sätt som för Christian och Hugo.
-- Daniels roll/adminstatus i andra organisationer påverkas inte.
+**Fix i `supabase/functions/notify-optician-driving-license/index.ts`:**
+- **Hoppa över ej besvarade följdfrågor:** I `buildAnswersBlock`, om en fråga är ett villkorligt fält (har `conditional`/`showIf` i schemat eller är "Om ja/nej, beskriv"-mönster) och svaret är tomt → utelämna raden helt.
+- Generell regel: visa aldrig "(ej besvarad)" för fält som matchar regex `/^(om (ja|nej)|if (yes|no))[,:]/i` eller har `type: 'text'/'textarea'` utan svar.
+- **Filtrera bort systemmetadata** ur "Övriga svar":
+  - Lägg `consent_given`, `terms_version`, `privacy_policy_version`, `consent_timestamp`, `gdpr_*`, `id_verification_*`, `verified_*` i en `EXCLUDED_KEYS`-set.
+  - Hela "Övriga svar"-sektionen utelämnas om den blir tom efter filtrering.
+- Behåll bedömnings-, patient- och anteckningsblocken som de är.
+
+## 4. Visa anamnesen även vid "Journalför i ServeIT"
+
+**Problem:** När man öppnar `ServitJournalDialog` ser optikern bara dialogen — anamnessvaren från det vanliga `ExaminationSummary`-flödet är inte synliga, så portalen tappar sitt värde som underlag medan man knappar in i ServeIT.
+
+**Fix:**
+- Bredda `ServitJournalDialog` till en två-kolumns layout (på `lg:` och uppåt):
+  - Vänster kolumn: befintliga input-fält (kundnummer, anteckning, optiker, utfall, CTA).
+  - Höger kolumn: en scrollbar `FormAnswersDisplay` med entryns anamnessvar + ev. AI-sammanfattning (samma komponent som används i app-spåret).
+- På mindre skärmar (< lg) staplas anamnesen under formulärfälten i samma dialog, fortfarande scrollbar.
+- Sätt `DialogContent` till `max-w-5xl` och `max-h-[90vh] overflow-hidden` med intern scroll i högra kolumnen, så optikern enkelt kan kopiera text samtidigt som ServeIT är öppet bredvid.
+
+## Tekniska detaljer
+
+**Filer som berörs:**
+- `src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx` — sync-effect + parse av sparad `Behörighetstyp` + bredare detektion.
+- `src/components/Optician/DrivingLicense/RecommendationEngine.tsx` — anamnes-extraktion + kombinerad utfallslogik.
+- `src/components/Optician/DrivingLicense/WarningsDisplay.tsx` — separata sektioner för anamnes vs visus.
+- `supabase/functions/notify-optician-driving-license/index.ts` — `EXCLUDED_KEYS`, conditional-filtrering, drop tomma "Om ja"-fält.
+- `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` — två-kolumns layout, importera och rendera `FormAnswersDisplay`.
+
+**Ingen DB-migration krävs.** Inga RLS-ändringar.
+
+**Verifiering:** Manuell genomgång av båda flödena (app + ServeIT) som assistent → optiker, samt skicka test-mail för att kontrollera att inga "(ej besvarad)"-rader eller systemfält syns i optikermailet.

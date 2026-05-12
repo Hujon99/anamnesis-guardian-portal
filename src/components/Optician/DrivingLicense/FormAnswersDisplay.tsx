@@ -19,12 +19,15 @@ import { MultipleLicenseCategoriesAlert } from "@/components/Optician/EntryDetai
 
 interface FormAnswersDisplayProps {
   entry: AnamnesesEntry;
-  onNext: () => void;
+  onNext?: () => void;
+  /** When true, hides the "Fortsätt till visusmätning" CTA and the empty-state nav buttons. */
+  hideNavigation?: boolean;
 }
 
 export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
   entry,
-  onNext
+  onNext,
+  hideNavigation = false,
 }) => {
   const answers = entry.answers as Record<string, any> || {};
   const hasAnswers = Object.keys(answers).length > 0;
@@ -174,15 +177,17 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
             </AlertDescription>
           </Alert>
 
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Skapa nytt formulär
-            </Button>
-            <Button onClick={onNext}>
-              Fortsätt utan formulär
-            </Button>
-          </div>
+          {!hideNavigation && (
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Skapa nytt formulär
+              </Button>
+              <Button onClick={onNext}>
+                Fortsätt utan formulär
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -319,11 +324,13 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
         )}
 
         {/* Navigation */}
-        <div className="flex justify-end">
-          <Button onClick={onNext}>
-            Fortsätt till visusmätning
-          </Button>
-        </div>
+        {!hideNavigation && (
+          <div className="flex justify-end">
+            <Button onClick={onNext}>
+              Fortsätt till visusmätning
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -82,33 +82,74 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     return false;
   }, [entry?.answers]);
 
-  // Try to detect license category from form answers
+  // Try to detect license category from previously saved notes OR form answers.
+  // Sparad notes har formatet "Behörighetstyp: <namn>\n..." (se handleSaveAndContinue).
+  // Det är källan med högst trovärdighet — användaren kan ha valt manuellt tidigare.
   const detectedLicenseCategory = React.useMemo((): LicenseCategory => {
-    if (!entry?.answers) return 'lower'; // Default to lower category
-    
-    const answers = entry.answers;
-    
-    // Look for license type information in form answers
-    for (const [key, value] of Object.entries(answers)) {
-      const keyLower = key.toLowerCase();
-      const valueLower = String(value).toLowerCase();
-      
-      // Check for higher category licenses
-      if (keyLower.includes('körkortstyp') || keyLower.includes('behörighet') || keyLower.includes('license')) {
-        if (valueLower.includes('c1') || valueLower.includes('ce') || valueLower.includes('d1') || 
-            valueLower.includes('de') || valueLower.includes('lastbil') || valueLower.includes('buss')) {
-          return 'higher';
+    // 1. Försök läsa från sparade notes först.
+    const notes = examination?.notes as string | undefined;
+    if (notes) {
+      const firstLine = notes.split('\n')[0] ?? '';
+      if (firstLine.startsWith('Behörighetstyp:')) {
+        const name = firstLine.replace('Behörighetstyp:', '').trim();
+        for (const [key, cat] of Object.entries(LICENSE_CATEGORIES)) {
+          if (cat.name === name) return key as LicenseCategory;
         }
-        if (valueLower.includes('taxi')) {
-          return 'taxi';
+        const lower = name.toLowerCase();
+        if (lower.includes('högre')) return 'higher';
+        if (lower.includes('taxi')) return 'taxi';
+        if (lower.includes('lägre')) return 'lower';
+      }
+    }
+
+    // 2. Annars, härled från anamnessvar.
+    if (!entry?.answers) return 'lower';
+    const answers = entry.answers as Record<string, unknown>;
+
+    for (const [key, rawValue] of Object.entries(answers)) {
+      const keyLower = key.toLowerCase();
+      const values: string[] = Array.isArray(rawValue)
+        ? rawValue.map((v) => String(v).toLowerCase())
+        : [String(rawValue).toLowerCase()];
+
+      if (
+        keyLower.includes('körkortstyp') ||
+        keyLower.includes('behörighet') ||
+        keyLower.includes('license')
+      ) {
+        for (const valueLower of values) {
+          if (valueLower.includes('taxi')) return 'taxi';
+          if (
+            valueLower.includes('högre') ||
+            valueLower.includes('c1') ||
+            valueLower.includes(' ce') ||
+            valueLower.startsWith('ce') ||
+            valueLower.includes('d1') ||
+            valueLower.includes(' de') ||
+            valueLower.startsWith('de') ||
+            valueLower.includes('lastbil') ||
+            valueLower.includes('buss')
+          ) {
+            return 'higher';
+          }
         }
       }
     }
-    
-    return 'lower'; // Default to lower category
-  }, [entry?.answers]);
+
+    return 'lower';
+  }, [entry?.answers, examination?.notes]);
 
   const [licenseCategory, setLicenseCategory] = useState<LicenseCategory>(detectedLicenseCategory);
+  // När användaren manuellt ändrar väljaren slutar vi auto-synca.
+  const [userOverridden, setUserOverridden] = useState(false);
+
+  // Synca när detekterat värde hinner uppdateras efter att entry/notes hydreras
+  // (annars fastnar dropdown på 'lower' eftersom useState bara kör init en gång).
+  useEffect(() => {
+    if (!userOverridden) {
+      setLicenseCategory(detectedLicenseCategory);
+    }
+  }, [detectedLicenseCategory, userOverridden]);
 
   // Härled initialt om patienten har styrke-värden registrerade (då är ±8 D-rutan på).
   const initialHasPrescription = Boolean(
@@ -281,7 +322,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
         {/* License category selection */}
         <div className="space-y-3">
           <Label htmlFor="license-category">Typ av körkortsbehörighet</Label>
-          <Select value={licenseCategory} onValueChange={(value: LicenseCategory) => setLicenseCategory(value)}>
+          <Select value={licenseCategory} onValueChange={(value: LicenseCategory) => { setUserOverridden(true); setLicenseCategory(value); }}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

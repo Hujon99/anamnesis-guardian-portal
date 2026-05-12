@@ -1,252 +1,319 @@
 /**
  * Automated recommendation engine for driving license examinations.
- * Analyzes examination results and patient answers to provide automated
- * recommendations for next steps: vision examination or optician assessment.
- * 
- * Recommendation Logic:
- * - Visual acuity < 1.0 → Recommend vision examination
- * - Double vision or night vision problems → Recommend vision examination  
- * - Other conditions (medicine, eye disease, surgery) → Optician assessment
+ *
+ * Bygger en sammanvägd bild av:
+ *   1. Anamnesavvikelser (ögonsjukdom, dubbelseende, mörkerseende, mediciner som
+ *      påverkar syn, övriga hälsofaktorer, m.m.)
+ *   2. Visusavvikelser (under gränsvärden för aktuell behörighet, bristande
+ *      korrektion, ±8 D glasstyrka).
+ *
+ * Två separata sektioner visas så assistenten ser exakt vad som triggat vad,
+ * och ett färgkodat "Rekommenderat utfall"-block föreslår direkt vilket
+ * OUTCOME som passar bäst (matchar värdena i `outcomeUtils.ts`).
  */
 
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Eye, 
-  UserCheck, 
-  AlertTriangle, 
-  CheckCircle, 
-  Calendar,
+import {
+  Eye,
+  AlertTriangle,
+  CheckCircle,
   Stethoscope,
-  Activity
+  Activity,
+  Phone,
+  Ban,
 } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatVisualAcuityDisplay } from "@/lib/number-utils";
+import { getOutcomeLabel, type OutcomeValue } from "./outcomeUtils";
 
 interface RecommendationEngineProps {
   examination: any;
   entry: AnamnesesEntry;
 }
 
-interface Recommendation {
-  type: 'vision_exam' | 'optician_assessment' | 'approved';
-  title: string;
-  description: string;
-  reasons: string[];
-  priority: 'high' | 'medium' | 'low';
+const isYes = (v: unknown): boolean => {
+  if (v === true) return true;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    return s === "ja" || s === "yes" || s === "true";
+  }
+  if (Array.isArray(v)) return v.some(isYes);
+  return false;
+};
+
+const ANAMNESIS_FLAG_KEYS: Array<{ keyMatch: RegExp; label: string }> = [
+  { keyMatch: /ögonsjukdom|eye_disease|ögonsjukdomar/i, label: "Ögonsjukdom rapporterad" },
+  { keyMatch: /ögonoperation|eye_surgery/i, label: "Genomgått ögonoperation" },
+  { keyMatch: /dubbelseende|double_vision/i, label: "Dubbelseende" },
+  { keyMatch: /mörkerseende|night_vision|nattblind/i, label: "Problem med mörkerseende" },
+  { keyMatch: /medicin.*(syn|ögon)|påverkar.*syn/i, label: "Mediciner som påverkar syn" },
+  { keyMatch: /diabetes/i, label: "Diabetes" },
+  { keyMatch: /epilepsi|epilepsy/i, label: "Epilepsi" },
+  { keyMatch: /hjärt|heart/i, label: "Hjärtproblem" },
+  { keyMatch: /^andra_faktorer|övriga_hälsofaktorer|andra_besvär/i, label: "Övriga hälsofaktorer" },
+];
+
+const collectAnamnesisFindings = (
+  answers: Record<string, unknown>,
+): string[] => {
+  const findings: string[] = [];
+  const seen = new Set<string>();
+
+  for (const [key, value] of Object.entries(answers)) {
+    for (const { keyMatch, label } of ANAMNESIS_FLAG_KEYS) {
+      if (keyMatch.test(key) && isYes(value) && !seen.has(label)) {
+        findings.push(label);
+        seen.add(label);
+      }
+    }
+    // Specialfall: andra_besvär_typ === "Problem med mörkerseendet"
+    if (
+      /andra_besvär_typ|other_complaints/i.test(key) &&
+      typeof value === "string" &&
+      value.toLowerCase().includes("mörker")
+    ) {
+      const label = "Problem med mörkerseende";
+      if (!seen.has(label)) {
+        findings.push(label);
+        seen.add(label);
+      }
+    }
+  }
+  return findings;
+};
+
+const collectVisusFindings = (examination: any): string[] => {
+  const findings: string[] = [];
+  if (!examination) return findings;
+
+  const useCorrection =
+    examination.uses_glasses || examination.uses_contact_lenses;
+
+  const both = useCorrection
+    ? examination.visual_acuity_with_correction_both ??
+      examination.visual_acuity_both_eyes
+    : examination.visual_acuity_both_eyes;
+  const right = useCorrection
+    ? examination.visual_acuity_with_correction_right ??
+      examination.visual_acuity_right_eye
+    : examination.visual_acuity_right_eye;
+  const left = useCorrection
+    ? examination.visual_acuity_with_correction_left ??
+      examination.visual_acuity_left_eye
+    : examination.visual_acuity_left_eye;
+
+  const toNum = (v: any): number | null => {
+    if (v == null || v === "") return null;
+    const n = parseFloat(String(v).replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const bothN = toNum(both);
+  const rightN = toNum(right);
+  const leftN = toNum(left);
+
+  if (bothN != null && bothN < 1.0) {
+    findings.push(
+      `Visus båda ögon ${formatVisualAcuityDisplay(bothN)} under 1,0`,
+    );
+  }
+  if (rightN != null && rightN < 1.0) {
+    findings.push(
+      `Visus höger öga ${formatVisualAcuityDisplay(rightN)} under 1,0`,
+    );
+  }
+  if (leftN != null && leftN < 1.0) {
+    findings.push(
+      `Visus vänster öga ${formatVisualAcuityDisplay(leftN)} under 1,0`,
+    );
+  }
+
+  // Hård gräns – under 0,5 binokulärt = ej godkänd för lägre behörigheter
+  if (bothN != null && bothN < 0.5) {
+    findings.push("Binokulär syn under 0,5 — under hård gräns för körkort");
+  }
+
+  return findings;
+};
+
+interface OutcomeSuggestion {
+  value: OutcomeValue;
+  label: string;
+  tone: "approved" | "approved-warn" | "contact" | "rejected";
   icon: React.ComponentType<any>;
+  rationale: string;
 }
+
+const computeSuggestion = (
+  anamnesis: string[],
+  visus: string[],
+  examination: any,
+): OutcomeSuggestion => {
+  const both = examination?.visual_acuity_with_correction_both ??
+    examination?.visual_acuity_both_eyes;
+  const bothN = both != null && both !== "" ? parseFloat(String(both).replace(",", ".")) : null;
+  const visusUnderHardLimit = bothN != null && bothN < 0.5;
+
+  if (visusUnderHardLimit) {
+    return {
+      value: "not_approved",
+      label: getOutcomeLabel("not_approved"),
+      tone: "rejected",
+      icon: Ban,
+      rationale: "Binokulär syn under 0,5 — uppfyller inte synkraven.",
+    };
+  }
+  if (anamnesis.length > 0 && visus.length > 0) {
+    return {
+      value: "optician_contact_first",
+      label: getOutcomeLabel("optician_contact_first"),
+      tone: "contact",
+      icon: Phone,
+      rationale: "Både anamnes och visus visar avvikelser — optiker bör ringa patient innan intyg skickas.",
+    };
+  }
+  if (anamnesis.length > 0) {
+    return {
+      value: "optician_contact_first",
+      label: getOutcomeLabel("optician_contact_first"),
+      tone: "contact",
+      icon: Phone,
+      rationale: "Anamnesen innehåller faktorer som behöver bedömas av optiker.",
+    };
+  }
+  if (visus.length > 0) {
+    return {
+      value: "approved_recommend_exam",
+      label: getOutcomeLabel("approved_recommend_exam"),
+      tone: "approved-warn",
+      icon: Eye,
+      rationale: "Visus är under rekommenderat värde — boka synundersökning.",
+    };
+  }
+  return {
+    value: "approved_send",
+    label: getOutcomeLabel("approved_send"),
+    tone: "approved",
+    icon: CheckCircle,
+    rationale: "Inga avvikelser identifierade — kan skickas direkt.",
+  };
+};
+
+const toneStyles: Record<OutcomeSuggestion["tone"], string> = {
+  approved: "bg-emerald-50 border-emerald-300 text-emerald-900",
+  "approved-warn": "bg-amber-50 border-amber-300 text-amber-900",
+  contact: "bg-orange-50 border-orange-300 text-orange-900",
+  rejected: "bg-red-50 border-red-300 text-red-900",
+};
 
 export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
   examination,
-  entry
+  entry,
 }) => {
-  const getRecommendation = (): Recommendation => {
-    const answers = entry.answers as Record<string, any> || {};
-    const reasons: string[] = [];
-    
-    // Check visual acuity - prioritize corrected vision if glasses/contacts are used
-    const useCorrection = examination?.uses_glasses || examination?.uses_contact_lenses;
-    
-    // Get visual acuity values for both eyes and individual eyes
-    const bothEyesVisus = useCorrection 
-      ? (examination?.visual_acuity_with_correction_both || examination?.visual_acuity_both_eyes)
-      : examination?.visual_acuity_both_eyes;
-      
-    const rightEyeVisus = useCorrection
-      ? (examination?.visual_acuity_with_correction_right || examination?.visual_acuity_right_eye)
-      : examination?.visual_acuity_right_eye;
-      
-    const leftEyeVisus = useCorrection
-      ? (examination?.visual_acuity_with_correction_left || examination?.visual_acuity_left_eye)
-      : examination?.visual_acuity_left_eye;
-    
-    // Convert comma to dot for parsing (Swedish number format) and check each eye
-    const bothEyesValue = bothEyesVisus ? parseFloat(String(bothEyesVisus).replace(',', '.')) : null;
-    const rightEyeValue = rightEyeVisus ? parseFloat(String(rightEyeVisus).replace(',', '.')) : null;
-    const leftEyeValue = leftEyeVisus ? parseFloat(String(leftEyeVisus).replace(',', '.')) : null;
-    
-    // Rule 1: Visual acuity < 1.0 in any eye → Vision examination
-    if (bothEyesValue && bothEyesValue < 1.0) {
-      reasons.push(`Visus båda ögon ${formatVisualAcuityDisplay(bothEyesValue)} är under gränsvärdet 1,0`);
-    }
-    
-    if (rightEyeValue && rightEyeValue < 1.0) {
-      reasons.push(`Visus höger öga ${formatVisualAcuityDisplay(rightEyeValue)} är under gränsvärdet 1,0`);
-    }
-    
-    if (leftEyeValue && leftEyeValue < 1.0) {
-      reasons.push(`Visus vänster öga ${formatVisualAcuityDisplay(leftEyeValue)} är under gränsvärdet 1,0`);
-    }
-    
-    // Rule 2: Double vision → Vision examination
-    if (answers.dubbelseende === "Ja") {
-      reasons.push("Dubbelseende rapporterat");
-    }
-    
-    // Rule 3: Night vision problems → Vision examination  
-    if (answers.andra_besvär_typ === "Problem med mörkerseendet") {
-      reasons.push("Problem med mörkerseende");
-    }
-    
-    // If any vision-related issues found, recommend vision exam
-    if (reasons.length > 0) {
-      return {
-        type: 'vision_exam',
-        title: 'Rekommenderar synundersökning',
-        description: 'Baserat på undersökningsresultaten rekommenderas en fullständig synundersökning hos legitimerad optiker.',
-        reasons,
-        priority: 'high',
-        icon: Eye
-      };
-    }
-    
-    // Rule 4: Other medical conditions → Optician assessment
-    const additionalReasons: string[] = [];
-    
-    if (answers.mediciner === "Ja") {
-      additionalReasons.push("Tar mediciner");
-    }
-    
-    if (answers.ögonsjukdomar_konstaterade === "Ja") {
-      additionalReasons.push("Konstaterade ögonsjukdomar");
-    }
-    
-    if (answers.ögonoperation_genomgått === "Ja") {
-      additionalReasons.push("Genomgått ögonoperation");
-    }
-    
-    // Check for other concerning conditions
-    if (answers.diabetes === "Ja" || answers.diabetes === true) {
-      additionalReasons.push("Diabetes");
-    }
-    
-    if (answers.hjärtproblem === "Ja" || answers.hjärtproblem === true) {
-      additionalReasons.push("Hjärtproblem");
-    }
-    
-    if (answers.epilepsi === "Ja" || answers.epilepsi === true) {
-      additionalReasons.push("Epilepsi");
-    }
-    
-    // If medical conditions found, recommend optician assessment
-    if (additionalReasons.length > 0) {
-      return {
-        type: 'optician_assessment',
-        title: 'Skicka till optiker för bedömning',
-        description: 'Medicinska tillstånd eller tidigare behandlingar kräver professionell bedömning av legitimerad optiker.',
-        reasons: additionalReasons,
-        priority: 'medium',
-        icon: UserCheck
-      };
-    }
-    
-    // No issues found - can be approved
-    return {
-      type: 'approved',
-      title: 'Kan godkännas',
-      description: 'Inga medicinska eller tekniska hinder för körkortsgodkännande identifierade.',
-      reasons: ['Inga avvikelser funna'],
-      priority: 'low',
-      icon: CheckCircle
-    };
-  };
+  const answers = (entry.answers as Record<string, unknown>) || {};
+  const anamnesisFindings = React.useMemo(
+    () => collectAnamnesisFindings(answers),
+    [answers],
+  );
+  const visusFindings = React.useMemo(
+    () => collectVisusFindings(examination),
+    [examination],
+  );
+  const suggestion = React.useMemo(
+    () => computeSuggestion(anamnesisFindings, visusFindings, examination),
+    [anamnesisFindings, visusFindings, examination],
+  );
 
-  const recommendation = getRecommendation();
-
-  const getBadgeVariant = (type: string) => {
-    switch (type) {
-      case 'vision_exam': return 'destructive';
-      case 'optician_assessment': return 'secondary';
-      case 'approved': return 'default';
-      default: return 'default';
-    }
-  };
-
-  const getAlertVariant = (type: string) => {
-    switch (type) {
-      case 'vision_exam': return 'destructive';
-      case 'optician_assessment': return 'default';
-      case 'approved': return 'default';
-      default: return 'default';
-    }
-  };
-
-  const RecommendationIcon = recommendation.icon;
+  const SuggestionIcon = suggestion.icon;
+  const totalFindings = anamnesisFindings.length + visusFindings.length;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Activity className="h-5 w-5" />
-          Automatisk rekommendation
-          <Badge variant={getBadgeVariant(recommendation.type)}>
-            {recommendation.priority === 'high' ? 'Hög prioritet' : 
-             recommendation.priority === 'medium' ? 'Medium prioritet' : 'Låg prioritet'}
+          Sammanställning & rekommendation
+          <Badge variant={totalFindings > 0 ? "destructive" : "default"}>
+            {totalFindings} avvikelse{totalFindings === 1 ? "" : "r"}
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert variant={getAlertVariant(recommendation.type)}>
-          <RecommendationIcon className="h-4 w-4" />
-          <AlertDescription>
-            <div className="space-y-3">
-              <div>
-                <p className="font-medium">{recommendation.title}</p>
-                <p className="text-sm mt-1">{recommendation.description}</p>
-              </div>
-              
-              {recommendation.reasons.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium mb-2">Identifierade faktorer:</p>
-                  <ul className="list-disc list-inside text-sm space-y-1">
-                    {recommendation.reasons.map((reason, index) => (
-                      <li key={index}>{reason}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {recommendation.type === 'vision_exam' && (
-                <div className="flex items-center gap-2 pt-2">
-                  <Calendar className="h-4 w-4" />
-                  <span className="text-sm font-medium">Åtgärd: Boka fullständig synundersökning</span>
-                </div>
-              )}
-              
-              {recommendation.type === 'optician_assessment' && (
-                <div className="flex items-center gap-2 pt-2">
-                  <Stethoscope className="h-4 w-4" />
-                  <span className="text-sm font-medium">Åtgärd: Konsultera legitimerad optiker</span>
-                </div>
-              )}
-              
-              {recommendation.type === 'approved' && (
-                <div className="flex items-center gap-2 pt-2">
-                  <CheckCircle className="h-4 w-4" />
-                  <span className="text-sm font-medium">Åtgärd: Kan fortsätta med normal process</span>
-                </div>
-              )}
-            </div>
-          </AlertDescription>
-        </Alert>
-
-        {/* Technical details for optician */}
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p><strong>Teknisk information:</strong></p>
-          <p>• Visus båda ögon: {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)}</p>
-          <p>• Visus höger öga: {formatVisualAcuityDisplay(examination?.visual_acuity_right_eye)}</p>
-          <p>• Visus vänster öga: {formatVisualAcuityDisplay(examination?.visual_acuity_left_eye)}</p>
-          {(examination?.uses_glasses || examination?.uses_contact_lenses) && (
-            <>
-              <p>• Visus båda ögon med korrektion: {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_both)}</p>
-              <p>• Visus höger öga med korrektion: {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_right)}</p>
-              <p>• Visus vänster öga med korrektion: {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_left)}</p>
-            </>
+        {/* Anamnesavvikelser */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <Stethoscope className="h-4 w-4 text-primary" />
+            Anamnesavvikelser
+          </h4>
+          {anamnesisFindings.length > 0 ? (
+            <ul className="list-disc list-inside text-sm space-y-1 pl-1">
+              {anamnesisFindings.map((f, i) => (
+                <li key={i}>{f}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground pl-1">
+              Inga anamnesavvikelser identifierade.
+            </p>
           )}
-          <p>• Rekommendationsmotor version: 1.1</p>
+        </div>
+
+        {/* Visusavvikelser */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <Eye className="h-4 w-4 text-primary" />
+            Visusavvikelser
+          </h4>
+          {visusFindings.length > 0 ? (
+            <ul className="list-disc list-inside text-sm space-y-1 pl-1">
+              {visusFindings.map((f, i) => (
+                <li key={i}>{f}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground pl-1">
+              Inga visusavvikelser identifierade.
+            </p>
+          )}
+        </div>
+
+        {/* Föreslaget utfall — färgkodat hero-block */}
+        <div
+          className={`rounded-lg border-2 p-4 space-y-2 ${toneStyles[suggestion.tone]}`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-2">
+            <SuggestionIcon className="h-5 w-5" />
+            <span className="text-xs font-semibold uppercase tracking-wide opacity-80">
+              Rekommenderat utfall
+            </span>
+          </div>
+          <p className="text-lg font-semibold leading-tight">
+            {suggestion.label}
+          </p>
+          <p className="text-sm opacity-90">{suggestion.rationale}</p>
+        </div>
+
+        {/* Teknisk info */}
+        <div className="text-xs text-muted-foreground space-y-1 border-t pt-3">
+          <p>
+            <strong>Visus utan korrektion:</strong> båda{" "}
+            {formatVisualAcuityDisplay(examination?.visual_acuity_both_eyes)} ·
+            höger {formatVisualAcuityDisplay(examination?.visual_acuity_right_eye)} ·
+            vänster {formatVisualAcuityDisplay(examination?.visual_acuity_left_eye)}
+          </p>
+          {(examination?.uses_glasses || examination?.uses_contact_lenses) && (
+            <p>
+              <strong>Med korrektion:</strong> båda{" "}
+              {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_both)} ·
+              höger {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_right)} ·
+              vänster {formatVisualAcuityDisplay(examination?.visual_acuity_with_correction_left)}
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

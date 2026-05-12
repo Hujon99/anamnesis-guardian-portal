@@ -1,60 +1,86 @@
-# Plan: Körkortsflödet – feedbackrunda
+# Plan: Körkortsflöde – nästa feedback-runda
 
-Fyra konkreta justeringar baserat på Christians testning.
+Smala, riktade ändringar som bygger vidare på befintliga komponenter (`VisualAcuityMeasurement`, `RecommendationEngine`, `ServitJournalDialog`, `notify-optician-driving-license`). Inga nya filer eller parallella system.
 
-## 1. Behörighetsval återställs vid visusmätning
+## 1. Behörighet ("Förlängning högre behörighet") tappas vid visussteget
 
-**Problem:** I `VisualAcuityMeasurement.tsx` initieras `licenseCategory` med `useState(detectedLicenseCategory)`. `detectedLicenseCategory` är en `useMemo` som läser `entry?.answers`. Vid första render är `entry` ofta inte hydrerat → defaultar till `'lower'`. När `entry` sedan kommer in uppdateras memo-värdet, men `useState` kör bara init-värdet en gång → dropdown står kvar på "Lägre behörigheter".
+**Återanvänds:** `VisualAcuityMeasurement.detectedLicenseCategory` (memo) + `userOverridden`-flagga som redan finns.
 
-**Fix:**
-- Lägg till `useEffect` som synkar `licenseCategory` med `detectedLicenseCategory` så länge användaren inte aktivt har ändrat den (en `userOverridden`-flagga som sätts `true` i `onValueChange`).
-- Säkerställ också att en redan sparad `examination.notes` med `Behörighetstyp: …` läses tillbaka som ursprungsvärde (parse av första raden) — så att om man backar och går fram igen får man rätt val.
-- Utöka detektionen så den även matchar exakta etiketterna ("Högre behörigheter", "Taxiförarlegitimation") och inte bara enstaka bokstavskombinationer.
+**Problem:** Detektionen matchar `"högre"`, `"c1"`, `"d1"` osv. men anamnesfrågan kan ha exakta etiketter som `"Förlängning högre behörighet"`, `"Förlängning lägre behörighet"`, `"Taxiförarlegitimation"`. Vid första render hinner `entry?.answers` inte alltid in → defaultar till `'lower'`. Sedan markerar användaren steget och `userOverridden` blir indirekt sant via re-mounts → låst på fel värde.
 
-## 2. Rekommendation vid kombinerad anamnes- + visusavvikelse
+**Fix i `VisualAcuityMeasurement.tsx`:**
 
-**Problem:** `RecommendationEngine` listar visusvarningar tydligt men anamnesavvikelser (ögonsjukdom, dubbelseende, mörkerseende, mediciner som påverkar syn) bakas inte in i sammanfattningen, och föreslaget utfall framgår otydligt när båda triggar.
+- Bredda detektionen: matcha hela frasen `"förlängning högre"` → `'higher'`, `"förlängning lägre"` → `'lower'`, `"taxi"` → `'taxi'`. Lägg in i `detectedLicenseCategory`-memo före befintliga regex-checks.
+- Vid uppstart: läs först `examination.notes` rad 1 (`Behörighetstyp: …`) → mappa exakt mot `LICENSE_CATEGORIES[*].name`. Det finns redan men har en bug: jämförelsen kräver exakt name-träff, annars faller den ner i lower-substring-check som missar `"Förlängning högre behörighet"`. Lägg till `förlängning högre`-substring i fallback.
+- `userOverridden` ska bara sättas i `onValueChange` (är redan så). Säkerställ att `useEffect` inte överskriver när detected ändras till samma värde (no-op skydd för att undvika onödig re-render).
 
-**Fix i `RecommendationEngine.tsx` + `WarningsDisplay.tsx`:**
-- Extrahera anamnesavvikelser från `entry.answers` (gula flaggor: ögonsjukdom = Ja, dubbelseende = Ja, mörkerseende-problem = Ja, mediciner som påverkar syn = Ja, övriga hälsofaktorer = Ja).
-- Visa två tydliga sektioner: **"Anamnesavvikelser"** och **"Visusavvikelser"** ovanför rekommendationen.
-- Beräkna föreslaget utfall från kombinerad bild:
-  - Visus under hård gräns → "Ej godkänd / hänvisa till optiker".
-  - Anamnesavvikelse + visus ok → "Optiker ska kontakta innan inskick".
-  - Anamnesavvikelse + visus avviker → "Optiker ska kontakta innan inskick" (starkare motivering).
-  - Inga avvikelser → "Godkänd – kan skickas".
-- Visa det föreslagna utfallet som en stor, färgkodad rad ("Rekommenderat utfall: …") direkt ovanför OUTCOME-väljaren, så assistenten ser kopplingen.
+**Resultat:** valt värde överlever varje fram-/tillbaka-navigering tills användaren manuellt byter.
 
-## 3. Rensa upp optikermailet
+## 2. Sammanvägd rekommendation: visus + anamnes + ±8 D
 
-**Fix i `supabase/functions/notify-optician-driving-license/index.ts`:**
-- **Hoppa över ej besvarade följdfrågor:** I `buildAnswersBlock`, om en fråga är ett villkorligt fält (har `conditional`/`showIf` i schemat eller är "Om ja/nej, beskriv"-mönster) och svaret är tomt → utelämna raden helt.
-- Generell regel: visa aldrig "(ej besvarad)" för fält som matchar regex `/^(om (ja|nej)|if (yes|no))[,:]/i` eller har `type: 'text'/'textarea'` utan svar.
-- **Filtrera bort systemmetadata** ur "Övriga svar":
-  - Lägg `consent_given`, `terms_version`, `privacy_policy_version`, `consent_timestamp`, `gdpr_*`, `id_verification_*`, `verified_*` i en `EXCLUDED_KEYS`-set.
-  - Hela "Övriga svar"-sektionen utelämnas om den blir tom efter filtrering.
-- Behåll bedömnings-, patient- och anteckningsblocken som de är.
+**Återanvänds:** `RecommendationEngine.tsx` har redan `collectAnamnesisFindings` + `collectVisusFindings` + `computeSuggestion` med hierarki.
 
-## 4. Visa anamnesen även vid "Journalför i ServeIT"
+**Saknas idag:**
 
-**Problem:** När man öppnar `ServitJournalDialog` ser optikern bara dialogen — anamnessvaren från det vanliga `ExaminationSummary`-flödet är inte synliga, så portalen tappar sitt värde som underlag medan man knappar in i ServeIT.
+- ±8 D-flaggan (`uses_glasses && prescription_over_8d` ⇒ nu `uses_glasses && prescription_over_8d` är ersatt av kategori `glasses_over_8d`) räknas inte som en avvikelse i visus-sektionen.
+- Vid kombinerade fynd visas rationale men inte en explicit punktlista (`Skäl: 1) … 2) …`).
 
 **Fix:**
-- Bredda `ServitJournalDialog` till en två-kolumns layout (på `lg:` och uppåt):
-  - Vänster kolumn: befintliga input-fält (kundnummer, anteckning, optiker, utfall, CTA).
-  - Höger kolumn: en scrollbar `FormAnswersDisplay` med entryns anamnessvar + ev. AI-sammanfattning (samma komponent som används i app-spåret).
-- På mindre skärmar (< lg) staplas anamnesen under formulärfälten i samma dialog, fortfarande scrollbar.
-- Sätt `DialogContent` till `max-w-5xl` och `max-h-[90vh] overflow-hidden` med intern scroll i högra kolumnen, så optikern enkelt kan kopiera text samtidigt som ServeIT är öppet bredvid.
 
-## Tekniska detaljer
+- `collectVisusFindings(examination)`: lägg till `if (examination.uses_glasses && examination.prescription_over_8d) findings.push("Glasstyrka över ±8 D – Transportstyrelsen ska informeras")`.
+- `computeSuggestion`: när hierarkin är `optician_contact_first` eller `approved_recommend_exam`, bygg `rationale` som en sammansatt sträng: `Skäl: ${[...anamnesis, ...visus].join(' · ')}`. Hierarki-regeln (visus < hård gräns ⇒ alltid `not_approved`) lämnas oförändrad.
+- Ingen ny komponent — befintligt färgkodat utfallsblock visar den utökade rationale.
 
-**Filer som berörs:**
-- `src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx` — sync-effect + parse av sparad `Behörighetstyp` + bredare detektion.
-- `src/components/Optician/DrivingLicense/RecommendationEngine.tsx` — anamnes-extraktion + kombinerad utfallslogik.
-- `src/components/Optician/DrivingLicense/WarningsDisplay.tsx` — separata sektioner för anamnes vs visus.
-- `supabase/functions/notify-optician-driving-license/index.ts` — `EXCLUDED_KEYS`, conditional-filtrering, drop tomma "Om ja"-fält.
-- `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` — två-kolumns layout, importera och rendera `FormAnswersDisplay`.
+## 3. ServeIT-dialogen: anamnesen överst, bedömning/knappar nederst
 
-**Ingen DB-migration krävs.** Inga RLS-ändringar.
+**Återanvänds:** `ServitJournalDialog` har redan två-kolumns layout med `FormAnswersDisplay` till höger.
 
-**Verifiering:** Manuell genomgång av båda flödena (app + ServeIT) som assistent → optiker, samt skicka test-mail för att kontrollera att inga "(ej besvarad)"-rader eller systemfält syns i optikermailet.
+**Fix i `ServitJournalDialog.tsx`:**
+
+- Byt från `lg:grid-cols-2` till en vertikal stack:
+  - **Topp:** patientkort + `<FormAnswersDisplay entry={entry} hideNavigation />` i en scroll-container med `max-h-[45vh] overflow-y-auto`.
+  - **Mitten:** kundnummer-fält, optiker-väljare, anteckning (collapsible).
+  - **Botten:** Bedömning (`Select` med `OUTCOME_OPTIONS`) följt av `DialogFooter` med Avbryt/Bekräfta.
+- Ta bort `aside`-grid-wrappern (rader 287, 470–476) och rör om JSX-ordningen. `DialogContent` minskar till `max-w-3xl` (en kolumn behöver inte 5xl).
+- Mobil: stacken funkar redan utan ändringar.
+
+## 4. Optikermail – verifiera städningen efter Christians exempel
+
+**Redan på plats i `supabase/functions/notify-optician-driving-license/index.ts`:**
+
+- `EXCLUDED_KEYS` + `EXCLUDED_KEY_PREFIXES` filtrerar `consent_*`, `terms_version`, `privacy_policy_version`, `gdpr_*`, `id_verification_*`, `verified_*`.
+- `isFollowup` + `isAnswerEmpty` hoppar över tomma "Om ja/nej, beskriv".
+
+**Komplettera:**
+
+- Lägg till `'created_at'`, `'updated_at'`, `'sent_at'`, `'expires_at'`, `'access_token'`, `'redacted_at'`, `'is_redacted'`, `'is_kiosk_mode'`, `'require_supervisor_code'`, `'booking_id'`, `'booking_date'`, `'first_name'`, `'patient_identifier'`, `'examination_type'`, `'optician_id'`, `'store_id'`, `'form_id'`, `'organization_id'`, `'created_by'`, `'created_by_name'`, `'is_magic_link'`, `'auto_deletion_timestamp'`, `'formatted_raw_data'`, `'ai_summary'`, `'scoring_result'`, `'personal_number'`, `'id_type'` i `EXCLUDED_KEYS` (skydd om något av dessa råkar lagras i `answers`-jsonb).
+- Filtrera bort UUID-värden i "Övriga svar": om `value` matchar regex `^[0-9a-f]{8}-…$` → hoppa.
+- Uppdatera följdfråge-regex till även `/^\s*(om\s+(ja|nej)|beskriv|specificera|annat)\b/i`.
+
+## 5. Optiker får "Access Denied" på dashboard
+
+**Undersökning som krävs innan kod skrivs:**
+
+- Läs `src/pages/Dashboard.tsx` + `ProtectedRoute`-användning för dashboard-routen i `src/App.tsx`. Verifiera om `requireRole={['admin','optician']}` används eller bara `admin`.
+- Kontrollera `useUserRole`/`useRobustUserRole` så att Supabase-rollen `'optician'` (default i `users.role`) returneras korrekt även när Clerk-orgrollen är `org:member`.
+- Spåra ev. `useSystemAdmin` eller `useIsAdmin`-guards som blockerar dashboard-vyn för opticians.
+
+**Sannolik fix (verifieras först):** justera ProtectedRoute-anropet i `App.tsx`/`Dashboard.tsx` till `requireRole={['admin','optician','member']}` eller ta bort onödig roll-restriktion. Inga RLS-ändringar behövs då dashboard-queries redan filtrerar på `org_id` via JWT.
+
+**Inga DB-migrationer planeras** — RLS-policies på `anamnes_entries`, `driving_license_examinations` m.fl. tillåter redan alla org-medlemmar.
+
+## Filer som kommer ändras
+
+- `src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx` — bredare behörighetsdetektion + parse-fallback.
+- `src/components/Optician/DrivingLicense/RecommendationEngine.tsx` — ±8 D i visusfynd + sammansatt rationale.
+- `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` — vertikal layout, anamnes överst.
+- `supabase/functions/notify-optician-driving-license/index.ts` — utökad EXCLUDED_KEYS + UUID-filter + bredare followup-regex.
+- `src/pages/Dashboard.tsx` eller `src/App.tsx` — justera ProtectedRoute-rollkrav (efter verifiering av exakt orsak).
+
+## Verifiering
+
+- Skapa entry med svar `"Förlängning högre behörighet"` → öppna körkortsflödet → klicka fram-tillbaka → behörigheten kvarstår.
+- Visus 0,3 binokulärt + diabetes "Ja" + glasögon >±8 D → utfall = `Ej godkänd / hänvisa till optiker`, rationale listar alla tre.
+- Öppna ServeIT-dialogen → anamnessvar syns överst, bedömning + Bekräfta-knapp underst.
+- Skicka testmail → inga `consent_*`, `terms_*`, UUID-rader eller tomma "Om nej, beskriv".
+- Logga in som optiker (icke-admin) → `/dashboard` öppnas utan "Behörighet saknas".

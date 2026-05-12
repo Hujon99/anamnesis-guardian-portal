@@ -78,16 +78,47 @@ const EXCLUDED_KEYS = new Set([
   'id_type',
   'verified_at',
   'verified_by',
+  'created_at',
+  'updated_at',
+  'sent_at',
+  'expires_at',
+  'access_token',
+  'redacted_at',
+  'is_redacted',
+  'is_kiosk_mode',
+  'require_supervisor_code',
+  'booking_id',
+  'booking_date',
+  'first_name',
+  'patient_identifier',
+  'examination_type',
+  'optician_id',
+  'store_id',
+  'form_id',
+  'organization_id',
+  'created_by',
+  'created_by_name',
+  'is_magic_link',
+  'auto_deletion_timestamp',
+  'formatted_raw_data',
+  'ai_summary',
+  'scoring_result',
+  'personal_number',
 ]);
-const EXCLUDED_KEY_PREFIXES = ['gdpr_', 'id_verification_', 'verified_'];
+const EXCLUDED_KEY_PREFIXES = ['gdpr_', 'id_verification_', 'verified_', '_'];
 
 const isExcludedKey = (key: string): boolean => {
   if (EXCLUDED_KEYS.has(key)) return true;
   return EXCLUDED_KEY_PREFIXES.some((p) => key.startsWith(p));
 };
 
-// Följdfråga som "Om ja, beskriv" / "Om nej, beskriv" — visas bara om besvarad.
-const FOLLOWUP_LABEL_RE = /^\s*om\s+(ja|nej)\b/i;
+// UUID-värden ska aldrig visas i mailet (interna referenser).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuidValue = (v: unknown): boolean =>
+  typeof v === 'string' && UUID_RE.test(v.trim());
+
+// Följdfråga som "Om ja, beskriv" / "Om nej, beskriv" / "Beskriv" / "Specificera" — visas bara om besvarad.
+const FOLLOWUP_LABEL_RE = /^\s*(om\s+(ja|nej)|beskriv|specificera|annat)\b/i;
 
 const isAnswerEmpty = (value: unknown): boolean => {
   if (value == null || value === '') return true;

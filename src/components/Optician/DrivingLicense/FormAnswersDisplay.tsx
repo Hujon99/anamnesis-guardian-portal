@@ -19,12 +19,15 @@ import { MultipleLicenseCategoriesAlert } from "@/components/Optician/EntryDetai
 
 interface FormAnswersDisplayProps {
   entry: AnamnesesEntry;
-  onNext: () => void;
+  onNext?: () => void;
+  /** When true, hides the "Fortsätt till visusmätning" CTA and the empty-state nav buttons. */
+  hideNavigation?: boolean;
 }
 
 export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
   entry,
-  onNext
+  onNext,
+  hideNavigation = false,
 }) => {
   const answers = entry.answers as Record<string, any> || {};
   const hasAnswers = Object.keys(answers).length > 0;

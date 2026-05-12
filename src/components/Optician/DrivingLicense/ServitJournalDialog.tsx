@@ -255,7 +255,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
         if (!isSaving) onOpenChange(o);
       }}
     >
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-5xl w-[95vw] p-0 overflow-hidden gap-0 max-h-[92vh] flex flex-col">
         {/* Gradient header */}
         <div
           className="relative px-6 pt-7 pb-6 text-white"

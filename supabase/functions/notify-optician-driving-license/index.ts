@@ -129,8 +129,13 @@ const buildAnswersBlock = (
         if (!q?.id || !q?.label) continue;
         if (q.type === 'info') continue; // informationstext, inte en fråga
         if (SENSITIVE_KEY_RE.test(q.id) || SENSITIVE_KEY_RE.test(q.label)) continue;
+        if (isExcludedKey(q.id)) { usedKeys.add(q.id); continue; }
         usedKeys.add(q.id);
         const value = (answers as Record<string, unknown>)[q.id];
+        const empty = isAnswerEmpty(value);
+        // Hoppa över ej besvarade följdfrågor (visad endast vid ja/nej-svar).
+        const isFollowup = Boolean(q.show_if) || FOLLOWUP_LABEL_RE.test(q.label);
+        if (empty && isFollowup) continue;
         rows.push({ q: q.label, a: formatAnswer(value) });
       }
       if (rows.length > 0) {
@@ -144,8 +149,10 @@ const buildAnswersBlock = (
   for (const [key, value] of Object.entries(answers)) {
     if (usedKeys.has(key)) continue;
     if (SENSITIVE_KEY_RE.test(key)) continue;
+    if (isExcludedKey(key)) continue;
     // Hoppa över interna metadata-fält
     if (key.startsWith('_') || key === 'metadata') continue;
+    if (isAnswerEmpty(value)) continue;
     extraRows.push({ q: key, a: formatAnswer(value) });
   }
   if (extraRows.length > 0) {

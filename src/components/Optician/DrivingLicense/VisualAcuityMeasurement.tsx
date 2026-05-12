@@ -322,7 +322,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
         {/* License category selection */}
         <div className="space-y-3">
           <Label htmlFor="license-category">Typ av körkortsbehörighet</Label>
-          <Select value={licenseCategory} onValueChange={(value: LicenseCategory) => setLicenseCategory(value)}>
+          <Select value={licenseCategory} onValueChange={(value: LicenseCategory) => { setUserOverridden(true); setLicenseCategory(value); }}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

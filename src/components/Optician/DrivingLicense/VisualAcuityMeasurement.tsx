@@ -425,32 +425,57 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
           </div>
         </div>
 
-        {/* Korrektion — separata rutor för glasögon resp. linser. Styrkor är
-            endast relevanta för glasögon (Christians feedback). */}
+        {/* Korrigering — radio-group enligt Transportstyrelsens enklare modell.
+            Inga exakta styrkor behövs; det räcker att markera kategori. */}
         <div className="space-y-4">
-          <h4 className="font-medium">Korrektion</h4>
+          <h4 className="font-medium">Korrigering av synskärpa genom</h4>
+          <RadioGroup
+            value={
+              measurements.uses_contact_lenses
+                ? 'contacts'
+                : measurements.uses_glasses
+                  ? (measurements.prescription_over_8d ? 'glasses_over_8d' : 'glasses_under_8d')
+                  : 'none'
+            }
+            onValueChange={(value) => {
+              setMeasurements(prev => ({
+                ...prev,
+                uses_glasses: value === 'glasses_under_8d' || value === 'glasses_over_8d',
+                uses_contact_lenses: value === 'contacts',
+                prescription_over_8d: value === 'glasses_over_8d',
+              }));
+            }}
+            className="space-y-2"
+          >
+            <div className="flex items-start space-x-2">
+              <RadioGroupItem value="none" id="corr-none" className="mt-1" />
+              <Label htmlFor="corr-none" className="cursor-pointer font-normal">
+                Ingen korrigering
+              </Label>
+            </div>
+            <div className="flex items-start space-x-2">
+              <RadioGroupItem value="glasses_under_8d" id="corr-glasses-under" className="mt-1" />
+              <Label htmlFor="corr-glasses-under" className="cursor-pointer font-normal">
+                Glasögon – inget glas har en styrka över ±8 dioptrier i den mest brytande meridianen
+              </Label>
+            </div>
+            <div className="flex items-start space-x-2">
+              <RadioGroupItem value="glasses_over_8d" id="corr-glasses-over" className="mt-1" />
+              <Label htmlFor="corr-glasses-over" className="cursor-pointer font-normal">
+                Glasögon – något av glasen har en styrka över ±8 dioptrier i den mest brytande meridianen
+              </Label>
+            </div>
+            <div className="flex items-start space-x-2">
+              <RadioGroupItem value="contacts" id="corr-contacts" className="mt-1" />
+              <Label htmlFor="corr-contacts" className="cursor-pointer font-normal">
+                Kontaktlinser
+              </Label>
+            </div>
+          </RadioGroup>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="uses-glasses"
-              checked={measurements.uses_glasses}
-              onCheckedChange={(checked) => handleInputChange('uses_glasses', Boolean(checked))}
-            />
-            <Label htmlFor="uses-glasses" className="cursor-pointer">Använder glasögon</Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="uses-contact-lenses"
-              checked={measurements.uses_contact_lenses}
-              onCheckedChange={(checked) => handleInputChange('uses_contact_lenses', Boolean(checked))}
-            />
-            <Label htmlFor="uses-contact-lenses" className="cursor-pointer">Använder kontaktlinser</Label>
-          </div>
-
-          {/* Measurements with correction */}
+          {/* Visus med korrektion — endast om något korrektionsalternativ är valt */}
           {(measurements.uses_glasses || measurements.uses_contact_lenses) && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-2">
               <h5 className="font-medium text-sm">Visus med korrektion</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -507,82 +532,6 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
             </div>
           )}
         </div>
-
-        {/* Glasögonstyrka — endast om "Använder glasögon" är ikryssat.
-            Linser registreras aldrig med styrka. */}
-        {measurements.uses_glasses && (
-          <div className="space-y-3 rounded-md border p-4">
-            <h4 className="font-medium">Glasögonstyrka</h4>
-            <p className="text-sm text-muted-foreground">
-              Fullständigt recept förs i ServeIT. Markera om någon styrka är ±8,00 D eller mer
-              för att registrera exakta värden här (krävs för info till Transportstyrelsen).
-            </p>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="prescription-over-8d"
-                checked={measurements.prescription_over_8d}
-                onCheckedChange={(checked) => handleInputChange('prescription_over_8d', Boolean(checked))}
-              />
-              <Label htmlFor="prescription-over-8d" className="cursor-pointer">
-                Överstiger ±8 dioptrier
-              </Label>
-            </div>
-
-            {measurements.prescription_over_8d && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                {(['od', 'os'] as const).map((eye) => (
-                  <div key={eye} className="space-y-2">
-                    <h5 className="font-medium text-sm">
-                      {eye === 'od' ? 'Höger öga (OD)' : 'Vänster öga (OS)'}
-                    </h5>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label htmlFor={`${eye}-sph`} className="text-xs">Sfär</Label>
-                        <Input
-                          id={`${eye}-sph`}
-                          inputMode="decimal"
-                          placeholder="t.ex. -8,50"
-                          value={(measurements as any)[`glasses_prescription_${eye}_sph`] ?? ''}
-                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_sph`, e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`${eye}-cyl`} className="text-xs">Cylinder</Label>
-                        <Input
-                          id={`${eye}-cyl`}
-                          inputMode="decimal"
-                          placeholder="t.ex. -1,25"
-                          value={(measurements as any)[`glasses_prescription_${eye}_cyl`] ?? ''}
-                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_cyl`, e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`${eye}-axis`} className="text-xs">Axel (°)</Label>
-                        <Input
-                          id={`${eye}-axis`}
-                          inputMode="numeric"
-                          placeholder="0–180"
-                          value={(measurements as any)[`glasses_prescription_${eye}_axis`] ?? ''}
-                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_axis`, e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`${eye}-add`} className="text-xs">Add (valfritt)</Label>
-                        <Input
-                          id={`${eye}-add`}
-                          inputMode="decimal"
-                          placeholder="t.ex. 2,00"
-                          value={(measurements as any)[`glasses_prescription_${eye}_add`] ?? ''}
-                          onChange={(e) => handleInputChange(`glasses_prescription_${eye}_add`, e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Warnings */}
         {warnings.length > 0 && (

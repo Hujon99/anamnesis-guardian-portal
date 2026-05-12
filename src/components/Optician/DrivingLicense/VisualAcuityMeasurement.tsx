@@ -84,6 +84,27 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
   // Sparad notes har formatet "Behörighetstyp: <namn>\n..." (se handleSaveAndContinue).
   // Det är källan med högst trovärdighet — användaren kan ha valt manuellt tidigare.
   const detectedLicenseCategory = React.useMemo((): LicenseCategory => {
+    // Hjälpare: mappa fri text till behörighetskategori.
+    const matchCategory = (raw: string): LicenseCategory | null => {
+      const v = raw.toLowerCase();
+      if (v.includes('taxi')) return 'taxi';
+      if (v.includes('förlängning högre') || v.includes('forlangning hogre')) return 'higher';
+      if (v.includes('förlängning lägre') || v.includes('forlangning lagre')) return 'lower';
+      if (
+        v.includes('högre') ||
+        v.includes('c1') ||
+        v.includes(' ce') ||
+        v.startsWith('ce') ||
+        v.includes('d1') ||
+        v.includes(' de') ||
+        v.startsWith('de') ||
+        v.includes('lastbil') ||
+        v.includes('buss')
+      ) return 'higher';
+      if (v.includes('lägre') || v.includes('am') || v.includes(' b ') || v.includes('moped')) return 'lower';
+      return null;
+    };
+
     // 1. Försök läsa från sparade notes först.
     const notes = examination?.notes as string | undefined;
     if (notes) {
@@ -93,10 +114,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
         for (const [key, cat] of Object.entries(LICENSE_CATEGORIES)) {
           if (cat.name === name) return key as LicenseCategory;
         }
-        const lower = name.toLowerCase();
-        if (lower.includes('högre')) return 'higher';
-        if (lower.includes('taxi')) return 'taxi';
-        if (lower.includes('lägre')) return 'lower';
+        const matched = matchCategory(name);
+        if (matched) return matched;
       }
     }
 
@@ -113,23 +132,12 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       if (
         keyLower.includes('körkortstyp') ||
         keyLower.includes('behörighet') ||
-        keyLower.includes('license')
+        keyLower.includes('license') ||
+        keyLower.includes('förlängning')
       ) {
         for (const valueLower of values) {
-          if (valueLower.includes('taxi')) return 'taxi';
-          if (
-            valueLower.includes('högre') ||
-            valueLower.includes('c1') ||
-            valueLower.includes(' ce') ||
-            valueLower.startsWith('ce') ||
-            valueLower.includes('d1') ||
-            valueLower.includes(' de') ||
-            valueLower.startsWith('de') ||
-            valueLower.includes('lastbil') ||
-            valueLower.includes('buss')
-          ) {
-            return 'higher';
-          }
+          const matched = matchCategory(valueLower);
+          if (matched) return matched;
         }
       }
     }

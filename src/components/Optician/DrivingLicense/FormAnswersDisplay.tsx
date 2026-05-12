@@ -177,15 +177,17 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
             </AlertDescription>
           </Alert>
 
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Skapa nytt formulär
-            </Button>
-            <Button onClick={onNext}>
-              Fortsätt utan formulär
-            </Button>
-          </div>
+          {!hideNavigation && (
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Skapa nytt formulär
+              </Button>
+              <Button onClick={onNext}>
+                Fortsätt utan formulär
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );

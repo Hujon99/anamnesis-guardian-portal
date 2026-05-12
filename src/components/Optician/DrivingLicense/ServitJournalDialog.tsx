@@ -284,7 +284,9 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
           )}
         </div>
 
-        <div className="px-6 py-5 space-y-5">
+        <div className="flex-1 grid lg:grid-cols-2 overflow-hidden min-h-0">
+          {/* Vänster: formulärfält */}
+          <div className="px-6 py-5 space-y-5 overflow-y-auto">
           {/* Patient context card */}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
             <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm flex-shrink-0">
@@ -463,6 +465,15 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
               Lägg till anteckning
             </button>
           )}
+          </div>
+
+          {/* Höger: anamnesen som stöd vid journalföring i ServeIT */}
+          <aside className="border-t lg:border-t-0 lg:border-l bg-muted/20 overflow-y-auto px-5 py-5">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-3">
+              Anamnessvar — för in i ServeIT
+            </p>
+            <FormAnswersDisplay entry={entry} hideNavigation />
+          </aside>
         </div>
 
         <DialogFooter className="px-6 pb-6 pt-2 flex-col-reverse sm:flex-row sm:justify-end gap-2">

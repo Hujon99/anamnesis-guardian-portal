@@ -184,6 +184,7 @@ const buildAnswersBlock = (
     // Hoppa över interna metadata-fält
     if (key.startsWith('_') || key === 'metadata') continue;
     if (isAnswerEmpty(value)) continue;
+    if (isUuidValue(value)) continue;
     extraRows.push({ q: key, a: formatAnswer(value) });
   }
   if (extraRows.length > 0) {

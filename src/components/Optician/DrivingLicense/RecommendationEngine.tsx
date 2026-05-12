@@ -136,6 +136,11 @@ const collectVisusFindings = (examination: any): string[] => {
     findings.push("Binokulär syn under 0,5 — under hård gräns för körkort");
   }
 
+  // ±8 D-flagga (gäller endast glasögon).
+  if (examination.uses_glasses && examination.prescription_over_8d) {
+    findings.push("Glasstyrka över ±8 D — Transportstyrelsen ska informeras");
+  }
+
   return findings;
 };
 

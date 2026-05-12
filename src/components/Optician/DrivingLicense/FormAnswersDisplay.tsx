@@ -324,11 +324,13 @@ export const FormAnswersDisplay: React.FC<FormAnswersDisplayProps> = ({
         )}
 
         {/* Navigation */}
-        <div className="flex justify-end">
-          <Button onClick={onNext}>
-            Fortsätt till visusmätning
-          </Button>
-        </div>
+        {!hideNavigation && (
+          <div className="flex justify-end">
+            <Button onClick={onNext}>
+              Fortsätt till visusmätning
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

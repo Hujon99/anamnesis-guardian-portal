@@ -53,6 +53,39 @@ export const parseLicenseCategoryFromNotes = (raw: string): string | undefined =
 };
 
 /**
+ * Mappar en sparad behörighetstext (från `Behörighetstyp:` i notes eller från
+ * formulärsvar) till det kliniska kravregelverk som ska tillämpas:
+ *   - 'lower'  → grupp I (≥ 0,5 binokulärt)
+ *   - 'higher' → grupp II/III + förlängning högre/tyngre (≥ 0,8 bästa, ≥ 0,1 sämsta)
+ *   - 'taxi'   → taxiförarlegitimation (≥ 0,8 binokulärt)
+ * Defaultar till 'lower' om inget matchar (säkrast minimikrav).
+ */
+export type RequirementGroup = 'lower' | 'higher' | 'taxi';
+
+export const getRequirementGroupFromCategoryName = (
+  name?: string,
+): RequirementGroup => {
+  if (!name) return 'lower';
+  const v = name.toLowerCase();
+  const normalized = v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (v.includes('taxi')) return 'taxi';
+  if (
+    (normalized.includes('forlangning') && (normalized.includes('hogre') || normalized.includes('tyngre'))) ||
+    normalized.includes('grupp ii') ||
+    normalized.includes('grupp iii') ||
+    normalized.includes('grupp 2') ||
+    normalized.includes('grupp 3') ||
+    normalized.includes('hogre behorighet') ||
+    v.includes('lastbil') ||
+    v.includes('buss') ||
+    v.includes('c1') ||
+    /(^|\s|,)c(,|\s|$)/i.test(name) ||
+    /(^|\s|,)d(,|\s|$)/i.test(name)
+  ) return 'higher';
+  return 'lower';
+};
+
+/**
  * Kombinerar valt utfall + fritext-anteckning till en notes-sträng som
  * kan sparas direkt i `driving_license_examinations.notes`.
  * Returnerar `null` om båda är tomma (matchar DB-fältets nullable-natur).

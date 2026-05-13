@@ -27,7 +27,13 @@ import {
 } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatVisualAcuityDisplay } from "@/lib/number-utils";
-import { getOutcomeLabel, type OutcomeValue } from "./outcomeUtils";
+import {
+  getOutcomeLabel,
+  parseLicenseCategoryFromNotes,
+  getRequirementGroupFromCategoryName,
+  type OutcomeValue,
+  type RequirementGroup,
+} from "./outcomeUtils";
 
 interface RecommendationEngineProps {
   examination: any;
@@ -85,8 +91,16 @@ const collectAnamnesisFindings = (
   return findings;
 };
 
-const collectVisusFindings = (examination: any): string[] => {
-  const findings: string[] = [];
+interface VisusFinding {
+  text: string;
+  hard: boolean;
+}
+
+const collectVisusFindings = (
+  examination: any,
+  requirementGroup: RequirementGroup,
+): VisusFinding[] => {
+  const findings: VisusFinding[] = [];
   if (!examination) return findings;
 
   const useCorrection =
@@ -115,30 +129,55 @@ const collectVisusFindings = (examination: any): string[] => {
   const rightN = toNum(right);
   const leftN = toNum(left);
 
-  if (bothN != null && bothN < 1.0) {
-    findings.push(
-      `Visus båda ögon ${formatVisualAcuityDisplay(bothN)} under 1,0`,
-    );
-  }
-  if (rightN != null && rightN < 1.0) {
-    findings.push(
-      `Visus höger öga ${formatVisualAcuityDisplay(rightN)} under 1,0`,
-    );
-  }
-  if (leftN != null && leftN < 1.0) {
-    findings.push(
-      `Visus vänster öga ${formatVisualAcuityDisplay(leftN)} under 1,0`,
-    );
+  if (requirementGroup === 'lower') {
+    if (bothN != null && bothN < 0.5) {
+      findings.push({
+        text: `Binokulär syn ${formatVisualAcuityDisplay(bothN)} under hård gräns 0,5 för grupp I`,
+        hard: true,
+      });
+    } else {
+      if (bothN != null && bothN < 1.0) {
+        findings.push({ text: `Visus båda ögon ${formatVisualAcuityDisplay(bothN)} under 1,0`, hard: false });
+      }
+      if (rightN != null && rightN < 1.0) {
+        findings.push({ text: `Visus höger öga ${formatVisualAcuityDisplay(rightN)} under 1,0`, hard: false });
+      }
+      if (leftN != null && leftN < 1.0) {
+        findings.push({ text: `Visus vänster öga ${formatVisualAcuityDisplay(leftN)} under 1,0`, hard: false });
+      }
+    }
+  } else if (requirementGroup === 'higher') {
+    // Bästa/sämsta öga från right/left, annars fall back till bothN för båda.
+    const eyes = [rightN, leftN].filter((n): n is number => n != null);
+    const bestEye = eyes.length > 0 ? Math.max(...eyes) : bothN;
+    const worstEye = eyes.length > 0 ? Math.min(...eyes) : bothN;
+    if (bestEye != null && bestEye < 0.8) {
+      findings.push({
+        text: `Bästa ögat ${formatVisualAcuityDisplay(bestEye)} under hård gräns 0,8 för högre behörighet`,
+        hard: true,
+      });
+    }
+    if (worstEye != null && worstEye < 0.1) {
+      findings.push({
+        text: `Sämsta ögat ${formatVisualAcuityDisplay(worstEye)} under hård gräns 0,1 för högre behörighet`,
+        hard: true,
+      });
+    }
+  } else if (requirementGroup === 'taxi') {
+    if (bothN != null && bothN < 0.8) {
+      findings.push({
+        text: `Binokulär syn ${formatVisualAcuityDisplay(bothN)} under hård gräns 0,8 för taxiförarlegitimation`,
+        hard: true,
+      });
+    }
   }
 
-  // Hård gräns – under 0,5 binokulärt = ej godkänd för lägre behörigheter
-  if (bothN != null && bothN < 0.5) {
-    findings.push("Binokulär syn under 0,5 — under hård gräns för körkort");
-  }
-
-  // ±8 D-flagga (gäller endast glasögon).
+  // ±8 D-flagga (gäller endast glasögon) — informationskrav, inte hård gräns.
   if (examination.uses_glasses && examination.prescription_over_8d) {
-    findings.push("Glasstyrka över ±8 D — Transportstyrelsen ska informeras");
+    findings.push({
+      text: "Glasstyrka över ±8 D — Transportstyrelsen ska informeras",
+      hard: false,
+    });
   }
 
   return findings;
@@ -154,30 +193,27 @@ interface OutcomeSuggestion {
 
 const computeSuggestion = (
   anamnesis: string[],
-  visus: string[],
-  examination: any,
+  visus: VisusFinding[],
 ): OutcomeSuggestion => {
-  const both = examination?.visual_acuity_with_correction_both ??
-    examination?.visual_acuity_both_eyes;
-  const bothN = both != null && both !== "" ? parseFloat(String(both).replace(",", ".")) : null;
-  const visusUnderHardLimit = bothN != null && bothN < 0.5;
+  const hardVisus = visus.filter((f) => f.hard).map((f) => f.text);
+  const visusTexts = visus.map((f) => f.text);
 
-  if (visusUnderHardLimit) {
+  if (hardVisus.length > 0) {
     return {
       value: "not_approved",
       label: getOutcomeLabel("not_approved"),
       tone: "rejected",
       icon: Ban,
-      rationale: "Binokulär syn under 0,5 — uppfyller inte synkraven.",
+      rationale: `Skäl: ${hardVisus.join(' · ')}`,
     };
   }
-  if (anamnesis.length > 0 && visus.length > 0) {
+  if (anamnesis.length > 0 && visusTexts.length > 0) {
     return {
       value: "optician_contact_first",
       label: getOutcomeLabel("optician_contact_first"),
       tone: "contact",
       icon: Phone,
-      rationale: `Skäl: ${[...anamnesis, ...visus].join(' · ')}`,
+      rationale: `Skäl: ${[...anamnesis, ...visusTexts].join(' · ')}`,
     };
   }
   if (anamnesis.length > 0) {
@@ -189,13 +225,13 @@ const computeSuggestion = (
       rationale: `Skäl: ${anamnesis.join(' · ')}`,
     };
   }
-  if (visus.length > 0) {
+  if (visusTexts.length > 0) {
     return {
       value: "approved_recommend_exam",
       label: getOutcomeLabel("approved_recommend_exam"),
       tone: "approved-warn",
       icon: Eye,
-      rationale: `Skäl: ${visus.join(' · ')}`,
+      rationale: `Skäl: ${visusTexts.join(' · ')}`,
     };
   }
   return {
@@ -219,17 +255,21 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
   entry,
 }) => {
   const answers = (entry.answers as Record<string, unknown>) || {};
+  const requirementGroup = React.useMemo<RequirementGroup>(
+    () => getRequirementGroupFromCategoryName(parseLicenseCategoryFromNotes(examination?.notes ?? '')),
+    [examination?.notes],
+  );
   const anamnesisFindings = React.useMemo(
     () => collectAnamnesisFindings(answers),
     [answers],
   );
   const visusFindings = React.useMemo(
-    () => collectVisusFindings(examination),
-    [examination],
+    () => collectVisusFindings(examination, requirementGroup),
+    [examination, requirementGroup],
   );
   const suggestion = React.useMemo(
-    () => computeSuggestion(anamnesisFindings, visusFindings, examination),
-    [anamnesisFindings, visusFindings, examination],
+    () => computeSuggestion(anamnesisFindings, visusFindings),
+    [anamnesisFindings, visusFindings],
   );
 
   const SuggestionIcon = suggestion.icon;
@@ -275,7 +315,7 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           {visusFindings.length > 0 ? (
             <ul className="list-disc list-inside text-sm space-y-1 pl-1">
               {visusFindings.map((f, i) => (
-                <li key={i}>{f}</li>
+                <li key={i} className={f.hard ? "text-destructive font-medium" : undefined}>{f.text}</li>
               ))}
             </ul>
           ) : (

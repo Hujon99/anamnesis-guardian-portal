@@ -1,70 +1,61 @@
-## Mål
+# Justering: ServeitTransferView vs kollegans spec
 
-Ersätt slutsteget i körkortsundersökningen (`ExaminationSummary`) med en ny **"ServeIT Data Support"-vy** som hjälper assistenten att manuellt mata in resultaten i ServeIT — utan att assistenten själv journalför.
+## Status mot spec
 
-## Återanvändning (inga parallella system)
+Det jag byggde följer kollegans instruktion **nästan helt**, men två saker måste rättas:
 
-- **Komponent**: bygg en ny `ServeitTransferView.tsx` i `src/components/Optician/DrivingLicense/` och anropa den från `DrivingLicenseExamination.tsx` i steg 4 istället för `ExaminationSummary`. `ExaminationSummary.tsx` lämnas kvar tills ingen referens finns kvar, sedan tas filen bort i samma PR.
-- **Återanvänds**: `useOpticians`, `useEntryMutations.assignOptician`, `useSupabaseClient`, `useSafeOrganization`, `useSafeUser`, `outcomeUtils` (`OUTCOME_OPTIONS`, `combineNotesWithOutcome`, `getOutcomeLabel`, `parseOutcomeFromNotes`), `formatVisualAcuityDisplay`, edge-funktion `notify-optician-driving-license`, befintlig toast (`@/hooks/use-toast`), Shadcn (`Card`, `Button`, `Input`, `Textarea`, `Label`, `Select`, `Alert`), Lucide-ikoner.
-- **Genvägen** från listan (`AnamnesisListItem` → `ServitJournalDialog`) lämnas orörd i denna iteration.
+| Spec-krav | Status |
+|---|---|
+| 7 sektioner i rätt ordning | ✅ |
+| Banner: "skapa i ServeIT", "INTE journalföra", "mail skickat" | ✅ (mailtext växlar efter klick — du valde behåll) |
+| Behörighet (intyget avser) | ✅ |
+| Underlag + datum | ✅ |
+| Identitet styrkt genom — visa "Körkort/Pass/ID-kort/..." | ❌ **Bug** — visar råa enum-strängen |
+| Synskärpa utan korrektion (H/V/B) | ✅ |
+| Synskärpa med korrektion (H/V/B) | ✅ |
+| Korrektion: glasögon/linser + **över eller under ±8 D** | ❌ **Otillräcklig** — visar bara "±8 dioptrier" när flaggan är på, säger inget annars |
+| Anamnesfrågor (ja/nej + kommentar, båda) | ✅ |
+| Bedömning + optiker + anteckning | ✅ (du valde behåll) |
 
-## Vy-struktur (en kolumn, allt synligt — inga tabs/accordion/modaler)
+## Vad som ska fixas
 
-Kompakt layout (`max-w-3xl mx-auto`, `space-y-4`, `text-sm`), optimerad för delad skärm.
+### 1. Identitet styrkt genom — fel enum-mapping (bug)
 
-1. **Banner** överst (`Alert` med `bg-primary/10 border-primary/30`, ikon `Mail`):
-   - "Mail har skickats till optikern." (visas först efter att assistenten klickat Markera som skapad — innan dess: "Mail skickas till optikern när du markerar nedan.")
-   - "Nästa steg: Assistenten ska skapa en körkortskoll i ServeIT och spara den."
-   - "Assistenten ska inte journalföra — det gör optikern." (fet)
+`ID_TYPE_LABELS` i `ServeitTransferView.tsx` använder nycklar som inte finns i databasen. Riktiga enum-värden för `id_verification_type`:
 
-2. **7 read-only sektioner** (komponent `ServeitField` återanvänds; varje fält har label, värde/`—`, copy-knapp `Copy`-ikon med `navigator.clipboard.writeText` + toast "Kopierat!"):
-   1. *Intyget avser* — härleds från `parseLicenseCategoryFromNotes` (annars `—`)
-   2. *Intyget är baserat på* — "Undersökning, {dagens datum sv-SE}"
-   3. *Identiteten styrkt genom* — `entry.id_type` mappad till svensk text (Körkort/Pass/ID-kort/Annat), annars `—`
-   4. *Synskärpa utan korrektion* — Höger / Vänster / Binokulärt från `examination.visual_acuity_right_eye / _left_eye / _both_eyes` via `formatVisualAcuityDisplay`
-   5. *Synskärpa med korrektion* — `visual_acuity_with_correction_right / _left / _both`
-   6. *Korrektion* — sammansatt sträng från `correction_type` + `uses_glasses`/`uses_contact_lenses` + `prescription_over_8d` ("Glasögon", "Kontaktlinser", "Styrka ±8 dioptrier")
-   7. *Anamnesfrågor* — två rader (Ja/Nej + kommentar) som extraheras ur `entry.answers` via befintliga nyckelmönster (eye_disease/vision_loss + other_medical). Saknas värde → `—`.
+```text
+swedish_license       -> "Körkort"
+swedish_id            -> "ID-kort"
+passport              -> "Pass"
+guardian_certificate  -> "Vårdnadshavares intyg"
+```
 
-   Tomma fält visas som `—` och kopierar tom sträng (per beslut).
+Idag står `drivers_license / national_id / bank_id / other` → faller alltid tillbaka på råsträngen. Assistenten ser t.ex. "swedish_license" istället för "Körkort".
 
-3. **Bedömning + Optiker + Anteckning** (behålls exakt enligt dagens `ServitJournalDialog`-form, oförändrad funktionalitet/sparlogik):
-   - `Select` för utfall (`OUTCOME_OPTIONS`, obligatoriskt)
-   - `Select` för ansvarig optiker (mejlmottagare, obligatoriskt)
-   - Valfri `Textarea` för anteckning
+### 2. Korrektion — explicit ±8 D-text för glasögon
 
-4. **Primary CTA** längst ner: **"Markera som skapad och sparad i ServeIT"**
-   - Validerar utfall + optiker.
-   - Uppdaterar/insertar i `driving_license_examinations`: `examination_status='completed'`, `completion_method='servit'`, `notes = combineNotesWithOutcome(outcome, notes)`. Inget nytt statusvärde behövs (`awaiting_serveit` finns inte i schemat och hade krävt migration som inte ingår i denna iteration — `completion_method='servit'` + status används som filter).
-   - Anropar `assignOptician` och edge-funktionen `notify-optician-driving-license` med `completionMethod:'servit'` (utan `servitCustomerNumber` eftersom det inte längre samlas in — fältet är optional i edge-funktionen).
-   - Visar success-toast + uppdaterad banner-text + kallar `onComplete()` (stänger modalen i `DrivingLicenseExamination`).
+Spec: *"över eller under +8 dioptrier (ej relevant för linser, endast glasögon)"*.
 
-## Ändringar i `DrivingLicenseExamination.tsx`
+Ny `buildCorrectionLabel`-logik:
 
-- Importera och rendera `ServeitTransferView` istället för `ExaminationSummary` i steg 4.
-- Stegtitel "Slutföra" → **"Skapa i ServeIT"** (`CheckCircle`-ikon kvar).
+- Inget alls använt → `—`
+- Endast linser → `"Kontaktlinser"`
+- Glasögon (+ ev. linser) → `"Glasögon — över ±8 D"` om `prescription_over_8d=true`, annars `"Glasögon — under ±8 D"`. Linser läggs efter med " + Kontaktlinser".
 
-## Recent Tests View — dashboardfilter
+Så assistenten alltid ser ±8 D-statusen tydligt när det är glasögon, aldrig för enbart linser.
 
-I dashboardens befintliga lista (`AnamnesisListItem`-grid; troligen filterkomponent intill `Dashboard.tsx` — identifieras vid implementation) läggs ett nytt chip/filter **"ServeIT pågående/klara"** som filtrerar `driving_license_status.examination.completion_method === 'servit'`. Återanvänder samma listitem och datakälla, ingen parallell vy.
+## Filer som ändras
 
-## Vad detta INTE gör
+- `src/components/Optician/DrivingLicense/ServeitTransferView.tsx`
+  - Byt nycklar i `ID_TYPE_LABELS` (rad 73–79).
+  - Skriv om `buildCorrectionLabel` (rad 87–94).
 
-- Ingen ny route/sida (vyn renderas inom befintlig `DrivingLicenseExamination`-modal).
-- Ingen schemaändring (inget nytt status-enum).
-- Ingen ändring av `ServitJournalDialog` (genvägen från listan).
-- Ingen ändring av edge-funktionen.
-- `ExaminationSummary.tsx` tas bort när inga referenser kvarstår.
+Inga andra filer berörs. Inga schema-ändringar. Inga ändringar i banner, sektionsordning, bedömning/optiker eller dashboard-filtret.
 
 ## Verifiering
 
-- TypeScript + lint utan nya fel.
-- Manuell QA: starta körkortsundersökning, gå igenom Legitimation → Anamnes → Visus → ServeIT-vyn. Kontrollera att alla 7 sektionerna visas i exakt ordning med korrekta labels, att tomma värden ger `—`, att copy-knappen kopierar och visar "Kopierat!"-toast, att Markera-knappen sparar `completion_method='servit'` + `examination_status='completed'`, mejl skickas, banner uppdateras.
-- Verifiera att dashboardens nya filter visar samma post.
-
-## Filer som ändras / skapas
-
-- `src/components/Optician/DrivingLicense/ServeitTransferView.tsx` *(ny)*
-- `src/components/Optician/DrivingLicense/DrivingLicenseExamination.tsx` *(byter komponent i steg 4 + stegtitel)*
-- `src/components/Optician/DrivingLicense/ExaminationSummary.tsx` *(tas bort)*
-- Dashboardfilter-fil för anamneslistan *(läggs till med nytt chip; exakt fil identifieras vid implementation, inget nytt parallellt system)*
+- Öppna en körkortskoll med `id_type='swedish_license'` → ska visa "Körkort".
+- Öppna en koll med `uses_glasses=true, prescription_over_8d=false` → "Glasögon — under ±8 D".
+- Med `prescription_over_8d=true` → "Glasögon — över ±8 D".
+- Endast linser → "Kontaktlinser" (inget ±8 D-text).
+- TypeScript + lint clean.

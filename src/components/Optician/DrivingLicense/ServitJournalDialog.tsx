@@ -309,7 +309,7 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             </div>
           </div>
 
-          {/* TOPP: anamnesen som klinisk dokumentation att föra in i ServeIT */}
+          {/* 1. Anamnesen som klinisk dokumentation att föra in i ServeIT */}
           <section className="rounded-xl border border-border/60 bg-muted/20 p-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-3">
               Anamnessvar — för in i ServeIT
@@ -319,125 +319,8 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             </div>
           </section>
 
-          {/* MITTEN: kundnummer + optiker + anteckning */}
+          {/* 2. Bedömning av assistent */}
           <div className="space-y-2">
-            <Label
-              htmlFor="servit-customer-number"
-              className="text-sm font-medium flex items-center gap-1.5"
-            >
-              <Hash className="h-3.5 w-3.5 text-accent" />
-              Kundnummer i ServeIT
-              <span className="text-destructive">*</span>
-            </Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 font-mono text-base pointer-events-none">
-                #
-              </span>
-              <Input
-                id="servit-customer-number"
-                value={customerNumber}
-                onChange={(e) => setCustomerNumber(e.target.value)}
-                onKeyDown={handleNumberKeyDown}
-                placeholder="t.ex. 12345"
-                disabled={isSaving}
-                aria-required="true"
-                className={cn(
-                  "h-12 pl-9 pr-3 text-lg font-mono tracking-wide transition-colors duration-150",
-                  customerNumber.trim() &&
-                    "border-accent/60 focus-visible:ring-accent/40",
-                )}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground pl-0.5">
-              Numret som visas i ServeIT för denna patient.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label
-              htmlFor="servit-optician"
-              className="text-sm font-medium flex items-center gap-1.5"
-            >
-              <UserRound className="h-3.5 w-3.5 text-accent" />
-              Ansvarig optiker
-              <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={selectedOpticianId}
-              onValueChange={setSelectedOpticianId}
-              disabled={loadingOpticians || isSaving}
-            >
-              <SelectTrigger
-                id="servit-optician"
-                className="h-11"
-                aria-required="true"
-              >
-                <SelectValue
-                  placeholder={
-                    loadingOpticians ? "Laddar optiker..." : "Välj optiker"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent className="z-[1100]">
-                {opticians.map((opt) => {
-                  const display = getOpticianDisplayName(opt);
-                  return (
-                    <SelectItem key={opt.id} value={opt.clerk_user_id}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-accent/15 text-accent flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
-                          {getInitials(display)}
-                        </div>
-                        <span className="truncate">{display}</span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            {selectedOpticianId && (
-              <p className="text-xs text-muted-foreground pl-0.5 inline-flex items-center gap-1">
-                <Mail className="h-3 w-3" />
-                Får mejl direkt vid bekräftelse.
-              </p>
-            )}
-          </div>
-
-          {showNotes ? (
-            <div className="space-y-2 animate-fade-in">
-              <Label
-                htmlFor="servit-notes"
-                className="text-sm font-medium flex items-center gap-1.5"
-              >
-                <StickyNote className="h-3.5 w-3.5 text-accent" />
-                Anteckningar
-                <span className="text-xs font-normal text-muted-foreground ml-1">
-                  (valfritt)
-                </span>
-              </Label>
-              <Textarea
-                id="servit-notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                placeholder="T.ex. förtydligande till optikern..."
-                disabled={isSaving}
-                className="resize-none"
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowNotes(true)}
-              disabled={isSaving}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors duration-150"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Lägg till anteckning
-            </button>
-          )}
-
-          {/* BOTTEN: bedömning av assistent */}
-          <div className="space-y-2 pt-2 border-t border-border/60">
             <Label
               htmlFor="servit-outcome"
               className="text-sm font-medium flex items-center gap-1.5"
@@ -469,6 +352,125 @@ export const ServitJournalDialog: React.FC<ServitJournalDialogProps> = ({
             <p className="text-xs text-muted-foreground pl-0.5">
               Stöd för optikern. Slutligt beslut fattas i ServeIT.
             </p>
+          </div>
+
+          {/* 3. Journalföring i ServeIT — kundnummer + optiker + anteckning */}
+          <div className="space-y-5 pt-4 border-t border-border/60">
+            <div className="space-y-2">
+              <Label
+                htmlFor="servit-customer-number"
+                className="text-sm font-medium flex items-center gap-1.5"
+              >
+                <Hash className="h-3.5 w-3.5 text-accent" />
+                Kundnummer i ServeIT
+                <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 font-mono text-base pointer-events-none">
+                  #
+                </span>
+                <Input
+                  id="servit-customer-number"
+                  value={customerNumber}
+                  onChange={(e) => setCustomerNumber(e.target.value)}
+                  onKeyDown={handleNumberKeyDown}
+                  placeholder="t.ex. 12345"
+                  disabled={isSaving}
+                  aria-required="true"
+                  className={cn(
+                    "h-12 pl-9 pr-3 text-lg font-mono tracking-wide transition-colors duration-150",
+                    customerNumber.trim() &&
+                      "border-accent/60 focus-visible:ring-accent/40",
+                  )}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground pl-0.5">
+                Numret som visas i ServeIT för denna patient.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="servit-optician"
+                className="text-sm font-medium flex items-center gap-1.5"
+              >
+                <UserRound className="h-3.5 w-3.5 text-accent" />
+                Ansvarig optiker
+                <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={selectedOpticianId}
+                onValueChange={setSelectedOpticianId}
+                disabled={loadingOpticians || isSaving}
+              >
+                <SelectTrigger
+                  id="servit-optician"
+                  className="h-11"
+                  aria-required="true"
+                >
+                  <SelectValue
+                    placeholder={
+                      loadingOpticians ? "Laddar optiker..." : "Välj optiker"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent className="z-[1100]">
+                  {opticians.map((opt) => {
+                    const display = getOpticianDisplayName(opt);
+                    return (
+                      <SelectItem key={opt.id} value={opt.clerk_user_id}>
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-accent/15 text-accent flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
+                            {getInitials(display)}
+                          </div>
+                          <span className="truncate">{display}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              {selectedOpticianId && (
+                <p className="text-xs text-muted-foreground pl-0.5 inline-flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  Får mejl direkt vid bekräftelse.
+                </p>
+              )}
+            </div>
+
+            {showNotes ? (
+              <div className="space-y-2 animate-fade-in">
+                <Label
+                  htmlFor="servit-notes"
+                  className="text-sm font-medium flex items-center gap-1.5"
+                >
+                  <StickyNote className="h-3.5 w-3.5 text-accent" />
+                  Anteckningar
+                  <span className="text-xs font-normal text-muted-foreground ml-1">
+                    (valfritt)
+                  </span>
+                </Label>
+                <Textarea
+                  id="servit-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder="T.ex. förtydligande till optikern..."
+                  disabled={isSaving}
+                  className="resize-none"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowNotes(true)}
+                disabled={isSaving}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors duration-150"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Lägg till anteckning
+              </button>
+            )}
           </div>
         </div>
 

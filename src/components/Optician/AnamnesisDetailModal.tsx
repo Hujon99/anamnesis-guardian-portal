@@ -82,8 +82,8 @@ export function AnamnesisDetailModal({
     assignOpticianMutation.isPending || 
     assignStoreMutation.isPending;
 
-  // Show loading state while checking permissions
-  if (isLoadingRole) {
+  // Show loading state while checking permissions (also while a retry is in flight)
+  if (isLoadingRole || (roleError && retryCount > 0 && retryCount < 3 && !canViewDetails)) {
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">

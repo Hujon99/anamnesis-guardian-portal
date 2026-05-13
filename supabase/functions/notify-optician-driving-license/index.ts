@@ -453,6 +453,7 @@ const handler = async (req: Request): Promise<Response> => {
       headline,
       '',
       outcomeLabel ? `Bedömning: ${outcomeLabel}` : '',
+      prescriptionOver8d ? 'VARNING: Glasögonstyrka över ±8 dioptrier — Transportstyrelsen ska informeras' : '',
       '',
       `Patient: ${entryData.first_name || 'Okänd patient'}`,
       customerNumber ? `Kundnummer: ${customerNumber}` : '',

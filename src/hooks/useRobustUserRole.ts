@@ -118,6 +118,7 @@ export const useRobustUserRole = () => {
     const role = await fetchSupabaseRole(1);
     setSupabaseRole(role);
     setCachedRole(role);
+    setHasResolved(true);
     setIsLoading(false);
   }, [fetchSupabaseRole, setCachedRole]);
 
@@ -127,12 +128,24 @@ export const useRobustUserRole = () => {
       const cachedRole = getCachedRole();
       if (cachedRole !== null) {
         setSupabaseRole(cachedRole);
+        setHasResolved(true);
         setIsLoading(false);
         return;
       }
 
-      if (!userId || !isReady) {
+      // If Clerk has finished loading and there's no user, we're done (signed out)
+      if (isAuthLoaded && !userId) {
+        setHasResolved(true);
         setIsLoading(false);
+        return;
+      }
+
+      // Wait until both Clerk auth and the Supabase client are ready before
+      // resolving the role. Otherwise we would prematurely report
+      // `isLoading=false` with `supabaseRole=null`, which causes
+      // gating components to flash "Åtkomst nekad" for opticians.
+      if (!userId || !isReady) {
+        setIsLoading(true);
         return;
       }
 
@@ -140,6 +153,7 @@ export const useRobustUserRole = () => {
       const role = await fetchSupabaseRole(1);
       setSupabaseRole(role);
       setCachedRole(role);
+      setHasResolved(true);
       setIsLoading(false);
     };
 
@@ -151,7 +165,7 @@ export const useRobustUserRole = () => {
         clearTimeout(retryTimeoutRef.current);
       }
     };
-  }, [userId, isReady, getCachedRole, fetchSupabaseRole, setCachedRole]);
+  }, [userId, isAuthLoaded, isReady, getCachedRole, fetchSupabaseRole, setCachedRole]);
 
   // Determine final roles
   // Admin: Use Clerk's org role as primary source (fast & reliable)
@@ -163,9 +177,13 @@ export const useRobustUserRole = () => {
   // Final role priority: Clerk admin > Supabase optician > Supabase member
   const role: UserRole | null = isAdmin ? 'admin' : supabaseRole;
 
+  // Treat as loading until we have actually resolved the role at least once,
+  // so consumers don't make access decisions on stale defaults.
+  const effectiveLoading = isLoading || (!hasResolved && !isClerkAdmin);
+
   return {
     role,
-    isLoading,
+    isLoading: effectiveLoading,
     isAdmin,
     isOptician,
     isMember,

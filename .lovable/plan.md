@@ -1,45 +1,54 @@
 ## Problem
 
-När en optiker öppnar ett ärende från dashboarden visar `AnamnesisDetailModal` "Åtkomst nekad", trots att personen är inloggad som optiker.
+I `ServitJournalDialog` (öppnas via "Journalför i ServeIT") känns ordningen ologisk för optikern. Önskat arbetsflöde är:
 
-## Rotorsak
-
-`useRobustUserRole` (källan till `isOptician`) har en lucka i sin laddningslogik:
-
-```ts
-if (!userId || !isReady) {
-  setIsLoading(false);   // ← markerar "klar" utan att ha hämtat rollen
-  return;
-}
-```
-
-`useSupabaseClient.isReady` är ofta `false` på första rendern (Clerk-token är inte färdig än). Då sätts `isLoading=false` med `supabaseRole=null`. Modalen läser då `canViewDetails = isAdmin || isOptician` = `false` och renderar "Åtkomst nekad" innan effekten hinner köra om när `isReady` blir `true`.
-
-För Clerk-administratörer döljs problemet eftersom `isAdmin` kommer direkt från Clerk membership. Optiker (rollen ligger bara i Supabase) är sårbara.
+1. Läs anamnesen / formuläret (underlag)
+2. Sätt bedömningen (utfall)
+3. Journalför (kundnummer, ansvarig optiker, anteckning, slutför)
 
 ## Lösning
 
-Inför ett explicit `hasResolvedRole`-tillstånd i `useRobustUserRole` så att `isLoading` förblir `true` ända tills vi faktiskt har försökt hämta rollen från Supabase minst en gång (eller kunnat läsa från cache). Modalen fortsätter visa sin "Verifierar behörigheter…"-skärm under tiden istället för att flasha "Åtkomst nekad".
+Justera ordningen på sektionerna i `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` (inom `<div className="flex-1 overflow-y-auto ...">`). Ingen logikförändring — endast omplacering av JSX-block.
 
-### Ändringar
+### Ny ordning
 
-**`src/hooks/useRobustUserRole.ts`**
-- Lägg till `const [hasResolved, setHasResolved] = useState(false)`.
-- I cache-träff: `setHasResolved(true)` innan `setIsLoading(false)`.
-- När `!userId || !isReady`: behåll `isLoading=true` (vänta på Clerk/Supabase) istället för att sätta `false`. Bara om Clerk-auth är färdiggladdad och `userId` är `null` (= utloggad) markera resolved.
-- Efter `fetchSupabaseRole`: alltid `setHasResolved(true)` innan `setIsLoading(false)`.
-- Returnera `isLoading: isLoading || !hasResolved` så modalen inte gör accessbeslut för tidigt.
+```text
+[Patientkort]  (oförändrat, högst upp)
 
-**`src/components/Optician/AnamnesisDetailModal.tsx`**
-- Inga funktionella ändringar behövs; den visar redan loader när `isLoadingRole` är `true`. För extra robusthet: visa loader även om `roleError` finns men `retryCount < MAX_RETRIES` (förhindrar flash av felmeddelande mitt i retry).
+1. Anamnessvar — för in i ServeIT
+   (FormAnswersDisplay i scrollbart kort)
+
+2. Bedömning av assistent  ← flyttas hit (just nu längst ner)
+   - Select med OUTCOME_OPTIONS
+   - Hjälptext "Stöd för optikern…"
+
+—— Avdelare ——  (border-t)
+
+3. Journalföring i ServeIT
+   - Kundnummer (obligatoriskt)
+   - Ansvarig optiker (obligatoriskt)
+   - "Lägg till anteckning"-toggle / Textarea
+
+[DialogFooter med Avbryt + Slutför]  (oförändrat)
+```
+
+### Konkret ändring
+
+I filen `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx`:
+
+- Behåll `Patient context card` (rad ~289) och `Anamnessvar`-sektionen (rad ~313) först.
+- Flytta `Bedömning`-blocket (nuvarande rad ~439–472) till direkt efter Anamnessvar.
+- Lägg en visuell avdelare (`border-t border-border/60 pt-4`) ovanför journalföringsblocken.
+- Lämna kvar Kundnummer → Optiker → Anteckning i den ordningen efter avdelaren.
+- Inga ändringar i `handleConfirm`, validering, state eller styling utöver placeringen.
+- Uppdatera filens topp-kommentar (steg 1 i flödet) så ordningen i texten matchar UI:t.
 
 ## Verifiering
 
-1. Logga in som optiker (t.ex. `christian@binokel.se`), öppna dashboarden, klicka på ett körkortsärende → modalen ska gå direkt från "Verifierar behörigheter…" till innehåll, aldrig "Åtkomst nekad".
-2. Logga in som admin → fortsatt direkt åtkomst (Clerk-membership).
-3. Logga in som `member` → "Åtkomst nekad" som tidigare.
+- Öppna ett körkortsärende → klicka "Journalför i ServeIT".
+- Bekräfta visuellt att sektionerna kommer i ordning: Patient → Anamnes → Bedömning → Kundnummer → Optiker → (Anteckning) → Slutför-knapp.
+- Skicka in en testpost och bekräfta att kundnummer + bedömning fortfarande sparas och mejl skickas (ingen funktionell regression).
 
 ## Filer
 
-- `src/hooks/useRobustUserRole.ts` (logikfix)
-- `src/components/Optician/AnamnesisDetailModal.tsx` (mindre robusthet i error-grenen)
+- `src/components/Optician/DrivingLicense/ServitJournalDialog.tsx` (endast omordning av JSX + kommentar)

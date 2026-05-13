@@ -95,69 +95,72 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     return false;
   }, [entry?.answers]);
 
-  // Try to detect license category from previously saved notes OR form answers.
-  // Sparad notes har formatet "Behörighetstyp: <namn>\n..." (se handleSaveAndContinue).
-  // Det är källan med högst trovärdighet — användaren kan ha valt manuellt tidigare.
+  // Try to detect the exact license option from previously saved notes OR form answers.
+  // Saved notes use "Behörighetstyp: <namn>\n..." and must preserve the user's original button label.
   const detectedLicenseCategory = React.useMemo((): LicenseCategory => {
-    // Hjälpare: mappa fri text till behörighetskategori.
+    // Hjälpare: mappa fri text till samma val som visas i patientformuläret.
     const matchCategory = (raw: string): LicenseCategory | null => {
       const v = raw.toLowerCase();
+      const normalized = v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (v.includes('taxi')) return 'taxi';
-      if (v.includes('förlängning högre') || v.includes('forlangning hogre')) return 'higher';
-      if (v.includes('förlängning lägre') || v.includes('forlangning lagre')) return 'lower';
+      if (v.includes('annan orsak')) return 'other';
       if (
-        v.includes('högre') ||
+        (normalized.includes('forlangning') && (normalized.includes('hogre') || normalized.includes('tyngre'))) ||
+        normalized.includes('forlangning av hogre')
+      ) return 'renewal_higher';
+      if (
+        normalized.includes('grupp ii') ||
+        normalized.includes('grupp 2') ||
+        normalized.includes('grupp iii') ||
+        normalized.includes('grupp 3') ||
+        normalized.includes('hogre behorighet') ||
         v.includes('c1') ||
-        v.includes(' ce') ||
-        v.startsWith('ce') ||
-        v.includes('d1') ||
-        v.includes(' de') ||
-        v.startsWith('de') ||
+        /(^|\s)c(,|\s|$)/i.test(raw) ||
+        /(^|\s)d(,|\s|$)/i.test(raw) ||
         v.includes('lastbil') ||
         v.includes('buss')
-      ) return 'higher';
-      if (v.includes('lägre') || v.includes('am') || v.includes(' b ') || v.includes('moped')) return 'lower';
+      ) return 'group2_3';
+      if (
+        normalized.includes('grupp i') ||
+        normalized.includes('lagre behorighet') ||
+        v.includes('am') ||
+        v.includes('moped') ||
+        v.includes('motorcykel') ||
+        v.includes('tungt släp') ||
+        /(^|\s)b(,|\s|$)/i.test(raw)
+      ) return 'group1';
       return null;
     };
 
     // 1. Försök läsa från sparade notes först.
-    const notes = examination?.notes as string | undefined;
-    if (notes) {
-      const firstLine = notes.split('\n')[0] ?? '';
-      if (firstLine.startsWith('Behörighetstyp:')) {
-        const name = firstLine.replace('Behörighetstyp:', '').trim();
-        for (const [key, cat] of Object.entries(LICENSE_CATEGORIES)) {
-          if (cat.name === name) return key as LicenseCategory;
-        }
-        const matched = matchCategory(name);
+    const savedName = parseLicenseCategoryFromNotes(examination?.notes ?? '');
+    if (savedName) {
+      for (const [key, cat] of Object.entries(LICENSE_CATEGORIES)) {
+        if (cat.name === savedName) return key as LicenseCategory;
+      }
+      const matched = matchCategory(savedName);
+      if (matched) return matched;
+    }
+
+    // 2. Annars, härled från anamnessvar.
+    if (!entry?.answers) return 'group1';
+    const answers = entry.answers as Record<string, unknown>;
+
+    const collectValues = (value: unknown): string[] => {
+      if (value == null) return [];
+      if (Array.isArray(value)) return value.flatMap(collectValues);
+      if (typeof value === 'object') return Object.values(value as Record<string, unknown>).flatMap(collectValues);
+      return [String(value)];
+    };
+
+    for (const rawValue of Object.values(answers)) {
+      for (const value of collectValues(rawValue)) {
+        const matched = matchCategory(value);
         if (matched) return matched;
       }
     }
 
-    // 2. Annars, härled från anamnessvar.
-    if (!entry?.answers) return 'lower';
-    const answers = entry.answers as Record<string, unknown>;
-
-    for (const [key, rawValue] of Object.entries(answers)) {
-      const keyLower = key.toLowerCase();
-      const values: string[] = Array.isArray(rawValue)
-        ? rawValue.map((v) => String(v).toLowerCase())
-        : [String(rawValue).toLowerCase()];
-
-      if (
-        keyLower.includes('körkortstyp') ||
-        keyLower.includes('behörighet') ||
-        keyLower.includes('license') ||
-        keyLower.includes('förlängning')
-      ) {
-        for (const valueLower of values) {
-          const matched = matchCategory(valueLower);
-          if (matched) return matched;
-        }
-      }
-    }
-
-    return 'lower';
+    return 'group1';
   }, [entry?.answers, examination?.notes]);
 
   const [licenseCategory, setLicenseCategory] = useState<LicenseCategory>(detectedLicenseCategory);

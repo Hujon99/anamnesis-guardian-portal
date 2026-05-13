@@ -319,6 +319,9 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           <h4 className="text-sm font-semibold flex items-center gap-2">
             <Stethoscope className="h-4 w-4 text-primary" />
             Anamnesavvikelser
+            <Badge variant={anamnesisFindings.length > 0 ? "destructive" : "secondary"}>
+              {anamnesisFindings.length}
+            </Badge>
           </h4>
           {anamnesisFindings.length > 0 ? (
             <ul className="list-disc list-inside text-sm space-y-1 pl-1">
@@ -338,6 +341,9 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           <h4 className="text-sm font-semibold flex items-center gap-2">
             <Eye className="h-4 w-4 text-primary" />
             Visusavvikelser
+            <Badge variant={visusFindings.length > 0 ? "destructive" : "secondary"}>
+              {visusFindings.length}
+            </Badge>
           </h4>
           {visusFindings.length > 0 ? (
             <ul className="list-disc list-inside text-sm space-y-1 pl-1">
@@ -367,7 +373,15 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           <p className="text-lg font-semibold leading-tight">
             {suggestion.label}
           </p>
-          <p className="text-sm opacity-90">{suggestion.rationale}</p>
+          {suggestion.rationale.startsWith('Skäl: ') ? (
+            <ul className="text-sm opacity-90 list-disc list-inside space-y-0.5">
+              {suggestion.rationale.slice(6).split(' · ').map((reason, i) => (
+                <li key={i}>{reason}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm opacity-90">{suggestion.rationale}</p>
+          )}
         </div>
 
         {/* Teknisk info */}

@@ -1,61 +1,49 @@
-# Justering: ServeitTransferView vs kollegans spec
+## Problem
 
-## Status mot spec
+Den tidigare slutskärmen `ExaminationSummary` innehöll `RecommendationEngine` — sammanställningen av anamnesavvikelser, visusavvikelser och **Rekommenderat utfall**. När steg 4 byttes till `ServeitTransferView` (för att spegla ServeIT-fältordningen) togs den bort. Resultat: rekommendationen visas idag endast i optikerns post-flow vy (`DrivingLicenseResults`), inte i sista steget assistenten ser innan "Markera som skapad i ServeIT".
 
-Det jag byggde följer kollegans instruktion **nästan helt**, men två saker måste rättas:
+Genomgång av flödet (`DrivingLicenseExamination.tsx` → steg 1–4):
 
-| Spec-krav | Status |
-|---|---|
-| 7 sektioner i rätt ordning | ✅ |
-| Banner: "skapa i ServeIT", "INTE journalföra", "mail skickat" | ✅ (mailtext växlar efter klick — du valde behåll) |
-| Behörighet (intyget avser) | ✅ |
-| Underlag + datum | ✅ |
-| Identitet styrkt genom — visa "Körkort/Pass/ID-kort/..." | ❌ **Bug** — visar råa enum-strängen |
-| Synskärpa utan korrektion (H/V/B) | ✅ |
-| Synskärpa med korrektion (H/V/B) | ✅ |
-| Korrektion: glasögon/linser + **över eller under ±8 D** | ❌ **Otillräcklig** — visar bara "±8 dioptrier" när flaggan är på, säger inget annars |
-| Anamnesfrågor (ja/nej + kommentar, båda) | ✅ |
-| Bedömning + optiker + anteckning | ✅ (du valde behåll) |
+| Steg | Komponent | Recommendation? |
+|---|---|---|
+| 1 Legitimation | `IdVerification` | nej |
+| 2 Formuläröversikt | `FormAnswersDisplay` | nej |
+| 3 Visusmätningar | `VisualAcuityMeasurement` | nej (bara `vision_below_limit`-flagga i sidopanel) |
+| 4 Skapa i ServeIT | `ServeitTransferView` | **saknas** ← buggen |
 
-## Vad som ska fixas
+`RecommendationEngine` är ren presentation: den deriverar sin output från `examination` + `entry.answers`, som båda redan finns i steg 4. Inga datakällor saknas — det är bara komponenten som inte renderas.
 
-### 1. Identitet styrkt genom — fel enum-mapping (bug)
+## Lösning
 
-`ID_TYPE_LABELS` i `ServeitTransferView.tsx` använder nycklar som inte finns i databasen. Riktiga enum-värden för `id_verification_type`:
+Återinför `RecommendationEngine` i `ServeitTransferView` som en **egen tydlig sektion längst ned**, ovanför Bedömning/Optiker/Anteckning, med rubriken som önskats:
 
-```text
-swedish_license       -> "Körkort"
-swedish_id            -> "ID-kort"
-passport              -> "Pass"
-guardian_certificate  -> "Vårdnadshavares intyg"
-```
+> **Rekommendation / sammanfattning till optiker**
 
-Idag står `drivers_license / national_id / bank_id / other` → faller alltid tillbaka på råsträngen. Assistenten ser t.ex. "swedish_license" istället för "Körkort".
+Synlig direkt utan klick (ingen accordion). De 7 ServeIT-sektionerna behåller sin ordning oförändrade ovanför, så att copy-flödet till ServeIT inte påverkas. Bedömning/Optiker/Anteckning ligger kvar under rekommendationen — där assistenten faktiskt agerar (väljer utfall, skickar mail).
 
-### 2. Korrektion — explicit ±8 D-text för glasögon
+Eventuella `examination.notes` (anteckning från tidigare steg, om sådan finns) visas redan implicit via `parseOutcomeFromNotes` som förifyller "Anteckning"-fältet, så det följer också med.
 
-Spec: *"över eller under +8 dioptrier (ej relevant för linser, endast glasögon)"*.
+### Filändring
 
-Ny `buildCorrectionLabel`-logik:
+`src/components/Optician/DrivingLicense/ServeitTransferView.tsx`
+- Importera `RecommendationEngine`.
+- Mellan de 7 ServeIT-sektionerna (efter `</div>` på rad 447) och `<Separator />` (rad 449), lägg in:
+  ```tsx
+  <section aria-labelledby="recommendation-heading" className="space-y-2">
+    <h3 id="recommendation-heading" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+      Rekommendation / sammanfattning till optiker
+    </h3>
+    <RecommendationEngine examination={examination} entry={entry} />
+  </section>
+  ```
 
-- Inget alls använt → `—`
-- Endast linser → `"Kontaktlinser"`
-- Glasögon (+ ev. linser) → `"Glasögon — över ±8 D"` om `prescription_over_8d=true`, annars `"Glasögon — under ±8 D"`. Linser läggs efter med " + Kontaktlinser".
-
-Så assistenten alltid ser ±8 D-statusen tydligt när det är glasögon, aldrig för enbart linser.
-
-## Filer som ändras
-
-- `src/components/Optician/DrivingLicense/ServeitTransferView.tsx`
-  - Byt nycklar i `ID_TYPE_LABELS` (rad 73–79).
-  - Skriv om `buildCorrectionLabel` (rad 87–94).
-
-Inga andra filer berörs. Inga schema-ändringar. Inga ändringar i banner, sektionsordning, bedömning/optiker eller dashboard-filtret.
+Inga ändringar i andra filer, inga schemaändringar, ingen ny logik. RecommendationEngine är redan testad och används i `DrivingLicenseResults`.
 
 ## Verifiering
 
-- Öppna en körkortskoll med `id_type='swedish_license'` → ska visa "Körkort".
-- Öppna en koll med `uses_glasses=true, prescription_over_8d=false` → "Glasögon — under ±8 D".
-- Med `prescription_over_8d=true` → "Glasögon — över ±8 D".
-- Endast linser → "Kontaktlinser" (inget ±8 D-text).
-- TypeScript + lint clean.
+1. Genomför körkortskoll i appen → fyll i steg 1–3.
+2. Landa på steg 4 ("Skapa i ServeIT").
+3. Kontrollera att de 7 ServeIT-sektionerna visas oförändrade högst upp.
+4. Scrolla ned → rubrik **"Rekommendation / sammanfattning till optiker"** ska vara synlig direkt, följt av RecommendationEngine-kortet (anamnesavvikelser, visusavvikelser, färgkodat "Rekommenderat utfall").
+5. Bedömning/Optiker/Anteckning ska finnas under rekommendationen.
+6. Klicka "Markera som skapad och sparad i ServeIT" → state och mail beter sig som förut.

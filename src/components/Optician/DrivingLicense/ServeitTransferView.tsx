@@ -59,6 +59,7 @@ import {
   getOutcomeLabel,
 } from "./outcomeUtils";
 import { cn } from "@/lib/utils";
+import { RecommendationEngine } from "./RecommendationEngine";
 
 interface ServeitTransferViewProps {
   examination: any;

@@ -59,6 +59,7 @@ import {
   getOutcomeLabel,
 } from "./outcomeUtils";
 import { cn } from "@/lib/utils";
+import { RecommendationEngine } from "./RecommendationEngine";
 
 interface ServeitTransferViewProps {
   examination: any;
@@ -445,6 +446,17 @@ export const ServeitTransferView: React.FC<ServeitTransferViewProps> = ({
             )}
           </section>
         </div>
+
+        {/* Rekommendation / sammanfattning till optiker — följer med från tidigare steg */}
+        <section aria-labelledby="recommendation-heading" className="space-y-2">
+          <h3
+            id="recommendation-heading"
+            className="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            Rekommendation / sammanfattning till optiker
+          </h3>
+          <RecommendationEngine examination={examination} entry={entry} />
+        </section>
 
         <Separator />
 

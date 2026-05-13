@@ -394,6 +394,12 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="margin:0; font-size:14px; color:#0f172a; white-space:pre-wrap;">${escapeHtml(assistantNote)}</p>
       </div>` : '';
 
+    const prescriptionBlock = prescriptionOver8d ? `
+      <div style="background-color:#fef3c7; border-left:4px solid #d97706; padding:14px 18px; border-radius:6px; margin:16px 0;">
+        <p style="margin:0 0 4px 0; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#92400e;">Glasstyrka</p>
+        <p style="margin:0; font-size:14px; color:#78350f; font-weight:600;">⚠️ Glasögonstyrka över ±8 dioptrier — Transportstyrelsen ska informeras</p>
+      </div>` : '';
+
     const bookingDateStr = entryData.booking_date
       ? new Date(entryData.booking_date).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
       : null;

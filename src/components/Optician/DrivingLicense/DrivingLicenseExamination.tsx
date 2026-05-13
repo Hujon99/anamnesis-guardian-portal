@@ -28,7 +28,7 @@ import { Database } from "@/integrations/supabase/types";
 import { FormAnswersDisplay } from "./FormAnswersDisplay";
 import { VisualAcuityMeasurement } from "./VisualAcuityMeasurement";
 import { IdVerification } from "./IdVerification";
-import { ExaminationSummary } from "./ExaminationSummary";
+import { ServeitTransferView } from "./ServeitTransferView";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 interface DrivingLicenseExaminationProps {

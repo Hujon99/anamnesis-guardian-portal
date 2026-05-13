@@ -59,7 +59,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
     { id: 1, title: "Legitimation", icon: IdCard },
     { id: 2, title: "Formuläröversikt", icon: FileText },
     { id: 3, title: "Visusmätningar", icon: Eye },
-    { id: 4, title: "Slutföra", icon: CheckCircle }
+    { id: 4, title: "Skapa i ServeIT", icon: CheckCircle }
   ];
 
   // Load existing examination or create new one

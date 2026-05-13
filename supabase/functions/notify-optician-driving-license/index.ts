@@ -308,10 +308,11 @@ const handler = async (req: Request): Promise<Response> => {
     // assistentens fritext-anteckning (utfallsraden filtreras bort).
     let assistantNote: string | null = null;
     let licenseCategory: string | null = null;
+    let prescriptionOver8d = false;
     {
       const { data: exam } = await supabase
         .from('driving_license_examinations')
-        .select('notes')
+        .select('notes, prescription_over_8d, uses_glasses')
         .eq('entry_id', entryId)
         .eq('organization_id', entryData.organization_id)
         .maybeSingle();
@@ -325,6 +326,7 @@ const handler = async (req: Request): Promise<Response> => {
         const trimmed = rest.trim();
         if (trimmed) assistantNote = trimmed;
       }
+      prescriptionOver8d = Boolean(exam?.prescription_over_8d && exam?.uses_glasses);
     }
 
     // Optiker-mejl

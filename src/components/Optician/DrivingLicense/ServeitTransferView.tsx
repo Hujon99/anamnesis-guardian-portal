@@ -71,11 +71,10 @@ interface ServeitTransferViewProps {
 const EMPTY = "—";
 
 const ID_TYPE_LABELS: Record<string, string> = {
-  drivers_license: "Körkort",
+  swedish_license: "Körkort",
+  swedish_id: "ID-kort",
   passport: "Pass",
-  national_id: "ID-kort",
-  bank_id: "BankID",
-  other: "Annat",
+  guardian_certificate: "Vårdnadshavares intyg",
 };
 
 const formatVisus = (value: any): string => {

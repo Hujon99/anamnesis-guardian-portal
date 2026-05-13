@@ -200,7 +200,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                       {examination?.uses_contact_lenses
                         ? 'Kontaktlinser'
                         : examination?.uses_glasses
-                          ? (examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph || (examination as any)?.prescription_over_8d
+                          ? ((examination as any)?.prescription_over_8d || examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph
                               ? 'Glasögon (styrka över ±8 D)'
                               : 'Glasögon')
                           : 'Korrigering'}

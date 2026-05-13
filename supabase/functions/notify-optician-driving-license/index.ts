@@ -432,6 +432,7 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="margin:0 0 12px 0;">Hej,</p>
         ${introBlock}
         ${outcomeBlock}
+        ${prescriptionBlock}
         ${patientBlock}
         ${noteBlock}
         ${answersHtml}

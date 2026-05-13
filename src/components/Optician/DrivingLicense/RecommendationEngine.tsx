@@ -56,38 +56,64 @@ const ANAMNESIS_FLAG_KEYS: Array<{ keyMatch: RegExp; label: string }> = [
   { keyMatch: /dubbelseende|double_vision/i, label: "Dubbelseende" },
   { keyMatch: /mörkerseende|night_vision|nattblind/i, label: "Problem med mörkerseende" },
   { keyMatch: /medicin.*(syn|ögon)|påverkar.*syn/i, label: "Mediciner som påverkar syn" },
-  { keyMatch: /diabetes/i, label: "Diabetes" },
-  { keyMatch: /epilepsi|epilepsy/i, label: "Epilepsi" },
-  { keyMatch: /hjärt|heart/i, label: "Hjärtproblem" },
+  { keyMatch: /^andra_sjukdomar$|^sjukdomar_mediciner$|^har_sjukdomar_mediciner$|^mediciner$/i, label: "Andra sjukdomar / medicinering" },
   { keyMatch: /^andra_faktorer|övriga_hälsofaktorer|andra_besvär/i, label: "Övriga hälsofaktorer" },
 ];
+
+// Matchas mot alla strängvärden (inkl. element i arrayer) — fångar t.ex.
+// "Diabetes typ II" som ligger inuti `andra_sjukdomar_lista`-arrayen.
+const ANAMNESIS_VALUE_FLAGS: Array<{ valueMatch: RegExp; label: string }> = [
+  { valueMatch: /diabet/i, label: "Diabetes" },
+  { valueMatch: /epilep/i, label: "Epilepsi" },
+  { valueMatch: /\bstroke\b|\btia\b/i, label: "Stroke/TIA" },
+  { valueMatch: /hjärt|hjart|hypertoni|blodtryck/i, label: "Hjärt-/kärlsjukdom" },
+  { valueMatch: /demens|alzheimer|kognitiv/i, label: "Demens / kognitiv svikt" },
+  { valueMatch: /parkinson|\bms\b|skleros|neurologisk/i, label: "Neurologisk sjukdom" },
+  { valueMatch: /sömnapn|somnapn|narkolep/i, label: "Sömnstörning (apné/narkolepsi)" },
+  { valueMatch: /psykos|bipolär|bipolar|schizofren/i, label: "Allvarlig psykisk sjukdom" },
+  { valueMatch: /alkohol|\bdrog|missbruk|beroende/i, label: "Missbruk/beroende" },
+  { valueMatch: /mörker/i, label: "Problem med mörkerseende" },
+];
+
+const walkValues = (value: unknown, cb: (s: string) => void): void => {
+  if (value == null) return;
+  if (typeof value === "string") {
+    cb(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) walkValues(item, cb);
+    return;
+  }
+  if (typeof value === "object") {
+    for (const v of Object.values(value as Record<string, unknown>)) walkValues(v, cb);
+  }
+};
 
 const collectAnamnesisFindings = (
   answers: Record<string, unknown>,
 ): string[] => {
   const findings: string[] = [];
   const seen = new Set<string>();
+  const add = (label: string) => {
+    if (!seen.has(label)) {
+      findings.push(label);
+      seen.add(label);
+    }
+  };
 
   for (const [key, value] of Object.entries(answers)) {
     for (const { keyMatch, label } of ANAMNESIS_FLAG_KEYS) {
-      if (keyMatch.test(key) && isYes(value) && !seen.has(label)) {
-        findings.push(label);
-        seen.add(label);
-      }
-    }
-    // Specialfall: andra_besvär_typ === "Problem med mörkerseendet"
-    if (
-      /andra_besvär_typ|other_complaints/i.test(key) &&
-      typeof value === "string" &&
-      value.toLowerCase().includes("mörker")
-    ) {
-      const label = "Problem med mörkerseende";
-      if (!seen.has(label)) {
-        findings.push(label);
-        seen.add(label);
-      }
+      if (keyMatch.test(key) && isYes(value)) add(label);
     }
   }
+
+  walkValues(answers, (str) => {
+    for (const { valueMatch, label } of ANAMNESIS_VALUE_FLAGS) {
+      if (valueMatch.test(str)) add(label);
+    }
+  });
+
   return findings;
 };
 

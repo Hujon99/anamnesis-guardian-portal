@@ -1,52 +1,46 @@
-# Fix: Anamnesavvikelser detekteras och visas alltid
+# Fix: ±8 D-flaggan persisteras och syns i mejl/sammanfattning
 
-## Problem
-1. `collectAnamnesisFindings` (`RecommendationEngine.tsx`) iterar bara över **nycklarna** i `entry.answers`. Diabetes och liknande sjukdomar lagras som **värden** i listor (`andra_sjukdomar_lista: ["Diabetes typ II", "Hypertoni …"]`) eller fritext (`har_sjukdomar_mediciner: "Diabetes"`). Inget keyMatch-regex träffar → fyndet syns inte.
-2. När visus bryter hård gräns returnerar `computeSuggestion` `not_approved` med rationale baserad **endast på hardVisus**. Anamnesfynden tappas i rekommendationsblocket även om de fortfarande listas i "Anamnesavvikelser"-sektionen ovanför — sammanfattningen i utfallsblocket säger då inget om diabetesen.
-3. Befintlig medicin-regex (`/medicin.*(syn|ögon)|påverkar.*syn/i`) träffar inte heller `mediciner: "Ja"` (generell medicinering är dock relevant för körkort, t.ex. sederande).
+## Rotorsak
+`prescription_over_8d` finns **inte som kolumn** i `driving_license_examinations`. Frontend sätter den i lokalt state och i `updates`-objektet i `handleSaveAndContinue`, men Supabase ignorerar okänd kolumn → flaggan sparas aldrig. Allt som idag visas baseras på att styrke-värdena (`glasses_prescription_od_sph` osv.) finns ifyllda. När optikerväljer "över ±8 D" utan att fylla i exakta styrkor förloras informationen helt.
+
+Email-funktionen (`notify-optician-driving-license`) läser dessutom inte alls examinationsraden för glasögon-/±8 D-status — bara `notes`.
 
 ## Ändringar
 
-Endast `src/components/Optician/DrivingLicense/RecommendationEngine.tsx`.
+### 1. DB-migration
+- Ny kolumn `prescription_over_8d boolean not null default false` på `driving_license_examinations`. Default false så befintliga rader är säkra.
 
-### 1. Bredda `collectAnamnesisFindings` till att scanna både nycklar och värden
+### 2. `src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx`
+- I `handleSaveAndContinue.updates`: lägg till `prescription_over_8d: measurements.uses_glasses && measurements.prescription_over_8d`.
+- `initialHasPrescription`: prioritera `examination?.prescription_over_8d` om satt; behåll dagens fallback (kollar styrke-fält) för bakåtkompatibilitet.
 
-- Behåll dagens `ANAMNESIS_FLAG_KEYS` för Ja/Nej-frågor.
-- Lägg till en ny tabell `ANAMNESIS_VALUE_FLAGS` med regex som matchas mot **alla strängvärden** (inkl. element i arrayer):
-  - `/diabet/i` → "Diabetes"
-  - `/epilep/i` → "Epilepsi"
-  - `/stroke|tia/i` → "Stroke/TIA"
-  - `/hjärt|hjart|kärl|karl|hypertoni|blodtryck/i` → "Hjärt-/kärlsjukdom"
-  - `/demens|alzheimer|kognitiv/i` → "Demens / kognitiv svikt"
-  - `/parkinson|ms\b|skleros|neurologisk/i` → "Neurologisk sjukdom"
-  - `/sömnapn|somnapn|narkolep/i` → "Sömnstörning (apné/narkolepsi)"
-  - `/psykos|bipolär|bipolar|schizofren/i` → "Allvarlig psykisk sjukdom"
-  - `/alkohol|drog|missbruk|beroende/i` → "Missbruk/beroende"
-- Ny helper `walkValues(value, cb)` som rekursivt går igenom strängar/arrayer/objekt och kallar `cb(strValue)` på varje strängvärde.
-- I `collectAnamnesisFindings`: efter befintlig key-loop, kör `walkValues` över hela `answers` och lägg till value-fynd i samma `findings`-array (`seen`-dedup).
-- Lägg också till key-regex `/^andra_sjukdomar$|^sjukdomar_mediciner$|^har_sjukdomar_mediciner$|^mediciner$/i` med label `"Andra sjukdomar / medicinering"` så att rena Ja-svar utan lista också flaggas.
+### 3. `src/components/Optician/DrivingLicense/ExaminationSummary.tsx`
+- Visa flaggan tydligt i sektionen "Korrigering": om `examination.prescription_over_8d === true` → röd `Alert` med `AlertTriangle`-ikon: "Glasstyrka över ±8 dioptrier — Transportstyrelsen ska informeras". Behåll dagens textbeskrivning som komplement.
+- Uppdatera badge-logiken (rad 200–207) så att `prescription_over_8d`-kolumnen är primär källa.
 
-### 2. Inkludera anamnesfynd i `not_approved`-rationale
+### 4. `supabase/functions/notify-optician-driving-license/index.ts`
+- Utöka `select` i `driving_license_examinations`-fetchen (~rad 313) till `'notes, prescription_over_8d, uses_glasses, uses_contact_lenses'`.
+- När `exam?.prescription_over_8d === true && exam?.uses_glasses`, rendera ett varnings-block direkt under `outcomeBlock`/`noteBlock`:
+  ```html
+  <div style="background:#fef3c7; border-left:4px solid #d97706; padding:14px 18px; border-radius:6px; margin:16px 0;">
+    <p style="margin:0 0 4px 0; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#92400e;">Glasstyrka</p>
+    <p style="margin:0; font-size:14px; color:#78350f; font-weight:600;">⚠️ Glasögonstyrka över ±8 dioptrier — Transportstyrelsen ska informeras</p>
+  </div>
+  ```
+- Lägg motsvarande rad i plain text-versionen ("VARNING: Glasögonstyrka över ±8 dioptrier — Transportstyrelsen ska informeras").
 
-I `computeSuggestion`, när `hardVisus.length > 0`:
-- Om `anamnesis.length > 0`, bygg rationale som `Skäl: ${[...hardVisus, ...anamnesis].join(' · ')}` istället för bara `hardVisus`.
-- Behåll `not_approved` som beslut (visus-hårdgräns är trumf).
-
-### 3. Tydligare rubriker i UI:t
-
-I `RecommendationEngine` JSX:
-- Sektionsrubrik "Anamnesavvikelser" får en `Badge` med antal (t.ex. `<Badge variant="secondary">{anamnesisFindings.length}</Badge>`) — speglar dagens visus-mönster.
-- Visus-sektionen får motsvarande badge.
-- I rekommendationsblocket: visa rationale som en `<ul>` med ett `<li>` per fynd (split på ` · `) istället för en lång konkatenerad mening, så det syns tydligt att flera avvikelser finns samtidigt.
+### 5. `src/components/Optician/DrivingLicense/RecommendationEngine.tsx`
+- Ingen ändring krävs — `collectVisusFindings` läser redan `examination.prescription_over_8d` korrekt så snart kolumnen finns och persisteras.
 
 ## Verifiering
-
-- Entry med `andra_sjukdomar_lista: ["Diabetes typ II"]` + visus 1,0 → "Anamnesavvikelser" listar **Diabetes**, utfall = `optician_contact_first`, rationale-listan visar `Diabetes`.
-- Entry med diabetes + visus 0,3 binokulärt (grupp I) → utfall = `not_approved`, rationale-listan visar både `Binokulär syn 0,3 …` och `Diabetes`.
-- Entry med `mediciner: "Ja"` utan diabetesnyckel → minst en anamnesavvikelse syns ("Andra sjukdomar / medicinering").
-- Entry utan några avvikelser → "Inga anamnesavvikelser identifierade" (oförändrat).
+- Markera "Glasögon – över ±8 D" i visussteget, spara → DB-rad har `prescription_over_8d=true`.
+- Öppna `ExaminationSummary` → röd varningsruta syns under Korrigering.
+- `RecommendationEngine` → "Visusavvikelser"-listan innehåller "Glasstyrka över ±8 D — Transportstyrelsen ska informeras".
+- Trigga optikermejl → orange/gult varnings-block syns under bedömningen + plain text-rad.
+- Avmarkera flaggan, spara → kolumnen blir false, blocket försvinner ur mejl och summary.
 
 ## Filer
-- `src/components/Optician/DrivingLicense/RecommendationEngine.tsx`
-
-Inga DB-ändringar, inga edge-function-ändringar.
+- ny migration `add_prescription_over_8d.sql`
+- `src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx`
+- `src/components/Optician/DrivingLicense/ExaminationSummary.tsx`
+- `supabase/functions/notify-optician-driving-license/index.ts`

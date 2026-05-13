@@ -507,6 +507,7 @@ export type Database = {
           organization_id: string
           passed_examination: boolean | null
           personal_number: string | null
+          prescription_over_8d: boolean
           requires_further_investigation: boolean | null
           requires_optician_visit: boolean | null
           servit_customer_number: string | null
@@ -555,6 +556,7 @@ export type Database = {
           organization_id: string
           passed_examination?: boolean | null
           personal_number?: string | null
+          prescription_over_8d?: boolean
           requires_further_investigation?: boolean | null
           requires_optician_visit?: boolean | null
           servit_customer_number?: string | null
@@ -603,6 +605,7 @@ export type Database = {
           organization_id?: string
           passed_examination?: boolean | null
           personal_number?: string | null
+          prescription_over_8d?: boolean
           requires_further_investigation?: boolean | null
           requires_optician_visit?: boolean | null
           servit_customer_number?: string | null

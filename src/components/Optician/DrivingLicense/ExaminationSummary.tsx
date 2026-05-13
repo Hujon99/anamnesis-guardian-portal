@@ -200,7 +200,7 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
                       {examination?.uses_contact_lenses
                         ? 'Kontaktlinser'
                         : examination?.uses_glasses
-                          ? (examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph || (examination as any)?.prescription_over_8d
+                          ? ((examination as any)?.prescription_over_8d || examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph
                               ? 'Glasögon (styrka över ±8 D)'
                               : 'Glasögon')
                           : 'Korrigering'}
@@ -272,11 +272,19 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
             <p className="text-sm">
               {examination?.uses_contact_lenses && 'Kontaktlinser'}
               {examination?.uses_glasses && !examination?.uses_contact_lenses && (
-                examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph || (examination as any)?.prescription_over_8d
+                (examination as any)?.prescription_over_8d || examination?.glasses_prescription_od_sph || examination?.glasses_prescription_os_sph
                   ? 'Glasögon – något av glasen har en styrka över ±8 dioptrier i den mest brytande meridianen'
                   : 'Glasögon – inget av glasen har en styrka över ±8 dioptrier i den mest brytande meridianen'
               )}
             </p>
+            {examination?.uses_glasses && (examination as any)?.prescription_over_8d && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Glasstyrka över ±8 dioptrier — Transportstyrelsen ska informeras
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         )}
 

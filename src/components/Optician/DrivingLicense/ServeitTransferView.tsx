@@ -84,11 +84,18 @@ const formatVisus = (value: any): string => {
 };
 
 const buildCorrectionLabel = (examination: any): string => {
+  const usesGlasses = !!examination?.uses_glasses;
+  const usesLenses = !!examination?.uses_contact_lenses;
+  if (!usesGlasses && !usesLenses) return EMPTY;
+
   const parts: string[] = [];
-  if (examination?.uses_glasses) parts.push("Glasögon");
-  if (examination?.uses_contact_lenses) parts.push("Kontaktlinser");
-  if (examination?.prescription_over_8d) parts.push("Styrka ±8 dioptrier");
-  if (parts.length === 0) return EMPTY;
+  if (usesGlasses) {
+    const dioptri = examination?.prescription_over_8d
+      ? "över ±8 D"
+      : "under ±8 D";
+    parts.push(`Glasögon — ${dioptri}`);
+  }
+  if (usesLenses) parts.push("Kontaktlinser");
   return parts.join(" + ");
 };
 

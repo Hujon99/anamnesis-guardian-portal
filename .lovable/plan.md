@@ -1,46 +1,45 @@
-# Fix: ±8 D-flaggan persisteras och syns i mejl/sammanfattning
+## Problem
+
+När en optiker öppnar ett ärende från dashboarden visar `AnamnesisDetailModal` "Åtkomst nekad", trots att personen är inloggad som optiker.
 
 ## Rotorsak
-`prescription_over_8d` finns **inte som kolumn** i `driving_license_examinations`. Frontend sätter den i lokalt state och i `updates`-objektet i `handleSaveAndContinue`, men Supabase ignorerar okänd kolumn → flaggan sparas aldrig. Allt som idag visas baseras på att styrke-värdena (`glasses_prescription_od_sph` osv.) finns ifyllda. När optikerväljer "över ±8 D" utan att fylla i exakta styrkor förloras informationen helt.
 
-Email-funktionen (`notify-optician-driving-license`) läser dessutom inte alls examinationsraden för glasögon-/±8 D-status — bara `notes`.
+`useRobustUserRole` (källan till `isOptician`) har en lucka i sin laddningslogik:
 
-## Ändringar
+```ts
+if (!userId || !isReady) {
+  setIsLoading(false);   // ← markerar "klar" utan att ha hämtat rollen
+  return;
+}
+```
 
-### 1. DB-migration
-- Ny kolumn `prescription_over_8d boolean not null default false` på `driving_license_examinations`. Default false så befintliga rader är säkra.
+`useSupabaseClient.isReady` är ofta `false` på första rendern (Clerk-token är inte färdig än). Då sätts `isLoading=false` med `supabaseRole=null`. Modalen läser då `canViewDetails = isAdmin || isOptician` = `false` och renderar "Åtkomst nekad" innan effekten hinner köra om när `isReady` blir `true`.
 
-### 2. `src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx`
-- I `handleSaveAndContinue.updates`: lägg till `prescription_over_8d: measurements.uses_glasses && measurements.prescription_over_8d`.
-- `initialHasPrescription`: prioritera `examination?.prescription_over_8d` om satt; behåll dagens fallback (kollar styrke-fält) för bakåtkompatibilitet.
+För Clerk-administratörer döljs problemet eftersom `isAdmin` kommer direkt från Clerk membership. Optiker (rollen ligger bara i Supabase) är sårbara.
 
-### 3. `src/components/Optician/DrivingLicense/ExaminationSummary.tsx`
-- Visa flaggan tydligt i sektionen "Korrigering": om `examination.prescription_over_8d === true` → röd `Alert` med `AlertTriangle`-ikon: "Glasstyrka över ±8 dioptrier — Transportstyrelsen ska informeras". Behåll dagens textbeskrivning som komplement.
-- Uppdatera badge-logiken (rad 200–207) så att `prescription_over_8d`-kolumnen är primär källa.
+## Lösning
 
-### 4. `supabase/functions/notify-optician-driving-license/index.ts`
-- Utöka `select` i `driving_license_examinations`-fetchen (~rad 313) till `'notes, prescription_over_8d, uses_glasses, uses_contact_lenses'`.
-- När `exam?.prescription_over_8d === true && exam?.uses_glasses`, rendera ett varnings-block direkt under `outcomeBlock`/`noteBlock`:
-  ```html
-  <div style="background:#fef3c7; border-left:4px solid #d97706; padding:14px 18px; border-radius:6px; margin:16px 0;">
-    <p style="margin:0 0 4px 0; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#92400e;">Glasstyrka</p>
-    <p style="margin:0; font-size:14px; color:#78350f; font-weight:600;">⚠️ Glasögonstyrka över ±8 dioptrier — Transportstyrelsen ska informeras</p>
-  </div>
-  ```
-- Lägg motsvarande rad i plain text-versionen ("VARNING: Glasögonstyrka över ±8 dioptrier — Transportstyrelsen ska informeras").
+Inför ett explicit `hasResolvedRole`-tillstånd i `useRobustUserRole` så att `isLoading` förblir `true` ända tills vi faktiskt har försökt hämta rollen från Supabase minst en gång (eller kunnat läsa från cache). Modalen fortsätter visa sin "Verifierar behörigheter…"-skärm under tiden istället för att flasha "Åtkomst nekad".
 
-### 5. `src/components/Optician/DrivingLicense/RecommendationEngine.tsx`
-- Ingen ändring krävs — `collectVisusFindings` läser redan `examination.prescription_over_8d` korrekt så snart kolumnen finns och persisteras.
+### Ändringar
+
+**`src/hooks/useRobustUserRole.ts`**
+- Lägg till `const [hasResolved, setHasResolved] = useState(false)`.
+- I cache-träff: `setHasResolved(true)` innan `setIsLoading(false)`.
+- När `!userId || !isReady`: behåll `isLoading=true` (vänta på Clerk/Supabase) istället för att sätta `false`. Bara om Clerk-auth är färdiggladdad och `userId` är `null` (= utloggad) markera resolved.
+- Efter `fetchSupabaseRole`: alltid `setHasResolved(true)` innan `setIsLoading(false)`.
+- Returnera `isLoading: isLoading || !hasResolved` så modalen inte gör accessbeslut för tidigt.
+
+**`src/components/Optician/AnamnesisDetailModal.tsx`**
+- Inga funktionella ändringar behövs; den visar redan loader när `isLoadingRole` är `true`. För extra robusthet: visa loader även om `roleError` finns men `retryCount < MAX_RETRIES` (förhindrar flash av felmeddelande mitt i retry).
 
 ## Verifiering
-- Markera "Glasögon – över ±8 D" i visussteget, spara → DB-rad har `prescription_over_8d=true`.
-- Öppna `ExaminationSummary` → röd varningsruta syns under Korrigering.
-- `RecommendationEngine` → "Visusavvikelser"-listan innehåller "Glasstyrka över ±8 D — Transportstyrelsen ska informeras".
-- Trigga optikermejl → orange/gult varnings-block syns under bedömningen + plain text-rad.
-- Avmarkera flaggan, spara → kolumnen blir false, blocket försvinner ur mejl och summary.
+
+1. Logga in som optiker (t.ex. `christian@binokel.se`), öppna dashboarden, klicka på ett körkortsärende → modalen ska gå direkt från "Verifierar behörigheter…" till innehåll, aldrig "Åtkomst nekad".
+2. Logga in som admin → fortsatt direkt åtkomst (Clerk-membership).
+3. Logga in som `member` → "Åtkomst nekad" som tidigare.
 
 ## Filer
-- ny migration `add_prescription_over_8d.sql`
-- `src/components/Optician/DrivingLicense/VisualAcuityMeasurement.tsx`
-- `src/components/Optician/DrivingLicense/ExaminationSummary.tsx`
-- `supabase/functions/notify-optician-driving-license/index.ts`
+
+- `src/hooks/useRobustUserRole.ts` (logikfix)
+- `src/components/Optician/AnamnesisDetailModal.tsx` (mindre robusthet i error-grenen)

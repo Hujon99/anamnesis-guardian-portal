@@ -23,10 +23,11 @@ const RETRY_DELAY = 1000; // 1 second
 export const useRobustUserRole = () => {
   const [supabaseRole, setSupabaseRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasResolved, setHasResolved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   
-  const { userId } = useAuth();
+  const { userId, isLoaded: isAuthLoaded } = useAuth();
   const { organization, membership } = useOrganization();
   const { supabase, isReady } = useSupabaseClient();
   

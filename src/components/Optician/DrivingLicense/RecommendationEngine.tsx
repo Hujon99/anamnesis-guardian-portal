@@ -255,17 +255,21 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
   entry,
 }) => {
   const answers = (entry.answers as Record<string, unknown>) || {};
+  const requirementGroup = React.useMemo<RequirementGroup>(
+    () => getRequirementGroupFromCategoryName(parseLicenseCategoryFromNotes(examination?.notes ?? '')),
+    [examination?.notes],
+  );
   const anamnesisFindings = React.useMemo(
     () => collectAnamnesisFindings(answers),
     [answers],
   );
   const visusFindings = React.useMemo(
-    () => collectVisusFindings(examination),
-    [examination],
+    () => collectVisusFindings(examination, requirementGroup),
+    [examination, requirementGroup],
   );
   const suggestion = React.useMemo(
-    () => computeSuggestion(anamnesisFindings, visusFindings, examination),
-    [anamnesisFindings, visusFindings, examination],
+    () => computeSuggestion(anamnesisFindings, visusFindings),
+    [anamnesisFindings, visusFindings],
   );
 
   const SuggestionIcon = suggestion.icon;

@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock, FileCheck, BookOpen, ChevronDown } from "lucide-react";
+import { CheckCircle, Clock, FileCheck, BookOpen, ChevronDown, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UnifiedStatusFilterProps {
@@ -22,6 +22,7 @@ const statusOptions = [
   { value: "pending", label: "Att granska", icon: FileCheck },
   { value: "ready", label: "Klara", icon: CheckCircle },
   { value: "journaled", label: "Journalförda", icon: BookOpen },
+  { value: "servit", label: "ServeIT pågående/klara", icon: ClipboardCheck },
 ];
 
 export function UnifiedStatusFilter({ statusFilter, onStatusFilterChange }: UnifiedStatusFilterProps) {

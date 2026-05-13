@@ -443,8 +443,13 @@ export const useAnamnesisList = () => {
       }
     }
     
-    // Filter by status
-    if (filters.statusFilter && entry.status !== filters.statusFilter) {
+    // Filter by status — special pseudo-status "servit" filtrerar på
+    // körkortskollar som markerats som skapade i ServeIT.
+    if (filters.statusFilter === "servit") {
+      if (entry.driving_license_status?.examination?.completion_method !== "servit") {
+        return false;
+      }
+    } else if (filters.statusFilter && entry.status !== filters.statusFilter) {
       return false;
     }
     

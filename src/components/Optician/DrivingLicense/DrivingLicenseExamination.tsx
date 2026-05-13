@@ -28,7 +28,7 @@ import { Database } from "@/integrations/supabase/types";
 import { FormAnswersDisplay } from "./FormAnswersDisplay";
 import { VisualAcuityMeasurement } from "./VisualAcuityMeasurement";
 import { IdVerification } from "./IdVerification";
-import { ExaminationSummary } from "./ExaminationSummary";
+import { ServeitTransferView } from "./ServeitTransferView";
 import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 interface DrivingLicenseExaminationProps {
@@ -59,7 +59,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
     { id: 1, title: "Legitimation", icon: IdCard },
     { id: 2, title: "Formuläröversikt", icon: FileText },
     { id: 3, title: "Visusmätningar", icon: Eye },
-    { id: 4, title: "Slutföra", icon: CheckCircle }
+    { id: 4, title: "Skapa i ServeIT", icon: CheckCircle }
   ];
 
   // Load existing examination or create new one
@@ -339,7 +339,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           )}
           
           {currentStep === 4 && (
-            <ExaminationSummary
+            <ServeitTransferView
               examination={effectiveExam}
               entry={entry}
               onSave={saveExamination}

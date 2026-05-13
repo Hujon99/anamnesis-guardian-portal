@@ -300,6 +300,7 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       visual_acuity_with_correction_left: toNumberOrNull(measurements.visual_acuity_with_correction_left),
       uses_glasses: Boolean(measurements.uses_glasses),
       uses_contact_lenses: Boolean(measurements.uses_contact_lenses),
+      prescription_over_8d: Boolean(measurements.uses_glasses && measurements.prescription_over_8d),
       vision_below_limit: warnings.length > 0,
       // Glasögonstyrkor (sparas alltid – nullas ut om rutan inte är ikryssad eller linser).
       glasses_prescription_od_sph: includePrescription ? toNumberOrNull(measurements.glasses_prescription_od_sph) : null,

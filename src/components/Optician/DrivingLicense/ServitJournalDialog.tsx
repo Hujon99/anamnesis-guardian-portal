@@ -5,13 +5,15 @@
  * "Journalförd direkt i ServeIT" – utan att gå igenom appens visus/ID-flöde.
  *
  * Flödet:
- *  1. Användaren anger ServeIT-kundnummer (obligatoriskt) och valfri anteckning.
- *  2. Användaren väljer ansvarig optiker som ska få notisen.
- *  3. Vi skapar/uppdaterar en rad i `driving_license_examinations` med
+ *  1. Användaren läser anamnessvar (FormAnswersDisplay) överst.
+ *  2. Användaren sätter bedömning (utfall).
+ *  3. Användaren anger ServeIT-kundnummer (obligatoriskt), väljer ansvarig
+ *     optiker och kan lägga till en valfri anteckning.
+ *  4. Vi skapar/uppdaterar en rad i `driving_license_examinations` med
  *     completion_method = 'servit', servit_customer_number = <input>,
  *     examination_status = 'completed'.
- *  4. Anamnes-posten tilldelas vald optiker via `useEntryMutations.assignOptician`.
- *  5. Edge-funktionen `notify-optician-driving-license` skickar mejl med
+ *  5. Anamnes-posten tilldelas vald optiker via `useEntryMutations.assignOptician`.
+ *  6. Edge-funktionen `notify-optician-driving-license` skickar mejl med
  *     ServeIT-varianten (innehåller kundnumret).
  *
  * Komplement till `ExaminationSummary.tsx` som hanterar app-spåret.

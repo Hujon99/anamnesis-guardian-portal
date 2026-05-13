@@ -27,7 +27,13 @@ import {
 } from "lucide-react";
 import { AnamnesesEntry } from "@/types/anamnesis";
 import { formatVisualAcuityDisplay } from "@/lib/number-utils";
-import { getOutcomeLabel, type OutcomeValue } from "./outcomeUtils";
+import {
+  getOutcomeLabel,
+  parseLicenseCategoryFromNotes,
+  getRequirementGroupFromCategoryName,
+  type OutcomeValue,
+  type RequirementGroup,
+} from "./outcomeUtils";
 
 interface RecommendationEngineProps {
   examination: any;

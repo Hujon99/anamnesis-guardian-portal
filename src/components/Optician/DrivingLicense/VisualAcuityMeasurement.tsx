@@ -228,8 +228,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     const effectiveRight = usesAnyCorrection && !isNaN(withCorrectionRight) ? withCorrectionRight : rightEye;
     const effectiveLeft = usesAnyCorrection && !isNaN(withCorrectionLeft) ? withCorrectionLeft : leftEye;
 
-    // Apply validation rules based on license category
-    switch (licenseCategory) {
+    // Apply validation rules based on the clinical requirement group while preserving the exact displayed label.
+    switch (LICENSE_CATEGORIES[licenseCategory].requirementGroup) {
       case 'lower':
         if (!isNaN(effectiveBoth) && effectiveBoth < 0.5) {
           newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,5 för lägre behörigheter");
@@ -378,9 +378,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
             <div className="space-y-2">
               <p className="font-medium">Mätinstruktioner:</p>
               <p className="text-sm">
-                {licenseCategory === 'lower' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,5 krävs."}
-                {licenseCategory === 'higher' && "Mät synskärpa för varje öga separat. Minst 0,8 i bästa ögat och 0,1 i sämsta ögat krävs."}
-                {licenseCategory === 'taxi' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,8 krävs för taxiförarlegitimation."}
+                {LICENSE_CATEGORIES[licenseCategory].requirementGroup === 'lower' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,5 krävs."}
+                {LICENSE_CATEGORIES[licenseCategory].requirementGroup === 'higher' && "Mät synskärpa för varje öga separat. Minst 0,8 i bästa ögat och 0,1 i sämsta ögat krävs."}
+                {LICENSE_CATEGORIES[licenseCategory].requirementGroup === 'taxi' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,8 krävs för taxiförarlegitimation."}
               </p>
               <p className="text-xs text-muted-foreground">
                 💡 VISUS-skala: 1,0 = normalsyn, 2,0 = exceptionellt bra syn. Minst 80% av tecknen måste läsas korrekt för varje värde.

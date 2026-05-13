@@ -284,6 +284,12 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
 
     // Styrkor sparas endast om patienten har glasögon OCH ±8 D-rutan är ikryssad.
     const includePrescription = measurements.uses_glasses && measurements.prescription_over_8d;
+    const cleanedExistingNotes = String(examination?.notes ?? '')
+      .split('\n')
+      .filter((line) => !line.startsWith(LICENSE_CATEGORY_PREFIX))
+      .join('\n')
+      .replace(/^\n+/, '')
+      .trim();
 
     const updates = {
       visual_acuity_both_eyes: toNumberOrNull(measurements.visual_acuity_both_eyes),
@@ -304,8 +310,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       glasses_prescription_os_cyl: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_cyl) : null,
       glasses_prescription_os_axis: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_axis) : null,
       glasses_prescription_os_add: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_add) : null,
-      // Append license category info into notes without overwriting any existing notes saved earlier
-      notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
+      // Store the exact license button label from the patient flow without duplicating old rows.
+      notes: `${LICENSE_CATEGORY_PREFIX}${LICENSE_CATEGORIES[licenseCategory].name}${cleanedExistingNotes ? `\n${cleanedExistingNotes}` : ''}`
     };
 
     try {

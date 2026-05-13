@@ -56,38 +56,64 @@ const ANAMNESIS_FLAG_KEYS: Array<{ keyMatch: RegExp; label: string }> = [
   { keyMatch: /dubbelseende|double_vision/i, label: "Dubbelseende" },
   { keyMatch: /mörkerseende|night_vision|nattblind/i, label: "Problem med mörkerseende" },
   { keyMatch: /medicin.*(syn|ögon)|påverkar.*syn/i, label: "Mediciner som påverkar syn" },
-  { keyMatch: /diabetes/i, label: "Diabetes" },
-  { keyMatch: /epilepsi|epilepsy/i, label: "Epilepsi" },
-  { keyMatch: /hjärt|heart/i, label: "Hjärtproblem" },
+  { keyMatch: /^andra_sjukdomar$|^sjukdomar_mediciner$|^har_sjukdomar_mediciner$|^mediciner$/i, label: "Andra sjukdomar / medicinering" },
   { keyMatch: /^andra_faktorer|övriga_hälsofaktorer|andra_besvär/i, label: "Övriga hälsofaktorer" },
 ];
+
+// Matchas mot alla strängvärden (inkl. element i arrayer) — fångar t.ex.
+// "Diabetes typ II" som ligger inuti `andra_sjukdomar_lista`-arrayen.
+const ANAMNESIS_VALUE_FLAGS: Array<{ valueMatch: RegExp; label: string }> = [
+  { valueMatch: /diabet/i, label: "Diabetes" },
+  { valueMatch: /epilep/i, label: "Epilepsi" },
+  { valueMatch: /\bstroke\b|\btia\b/i, label: "Stroke/TIA" },
+  { valueMatch: /hjärt|hjart|hypertoni|blodtryck/i, label: "Hjärt-/kärlsjukdom" },
+  { valueMatch: /demens|alzheimer|kognitiv/i, label: "Demens / kognitiv svikt" },
+  { valueMatch: /parkinson|\bms\b|skleros|neurologisk/i, label: "Neurologisk sjukdom" },
+  { valueMatch: /sömnapn|somnapn|narkolep/i, label: "Sömnstörning (apné/narkolepsi)" },
+  { valueMatch: /psykos|bipolär|bipolar|schizofren/i, label: "Allvarlig psykisk sjukdom" },
+  { valueMatch: /alkohol|\bdrog|missbruk|beroende/i, label: "Missbruk/beroende" },
+  { valueMatch: /mörker/i, label: "Problem med mörkerseende" },
+];
+
+const walkValues = (value: unknown, cb: (s: string) => void): void => {
+  if (value == null) return;
+  if (typeof value === "string") {
+    cb(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) walkValues(item, cb);
+    return;
+  }
+  if (typeof value === "object") {
+    for (const v of Object.values(value as Record<string, unknown>)) walkValues(v, cb);
+  }
+};
 
 const collectAnamnesisFindings = (
   answers: Record<string, unknown>,
 ): string[] => {
   const findings: string[] = [];
   const seen = new Set<string>();
+  const add = (label: string) => {
+    if (!seen.has(label)) {
+      findings.push(label);
+      seen.add(label);
+    }
+  };
 
   for (const [key, value] of Object.entries(answers)) {
     for (const { keyMatch, label } of ANAMNESIS_FLAG_KEYS) {
-      if (keyMatch.test(key) && isYes(value) && !seen.has(label)) {
-        findings.push(label);
-        seen.add(label);
-      }
-    }
-    // Specialfall: andra_besvär_typ === "Problem med mörkerseendet"
-    if (
-      /andra_besvär_typ|other_complaints/i.test(key) &&
-      typeof value === "string" &&
-      value.toLowerCase().includes("mörker")
-    ) {
-      const label = "Problem med mörkerseende";
-      if (!seen.has(label)) {
-        findings.push(label);
-        seen.add(label);
-      }
+      if (keyMatch.test(key) && isYes(value)) add(label);
     }
   }
+
+  walkValues(answers, (str) => {
+    for (const { valueMatch, label } of ANAMNESIS_VALUE_FLAGS) {
+      if (valueMatch.test(str)) add(label);
+    }
+  });
+
   return findings;
 };
 
@@ -199,12 +225,13 @@ const computeSuggestion = (
   const visusTexts = visus.map((f) => f.text);
 
   if (hardVisus.length > 0) {
+    const reasons = [...hardVisus, ...anamnesis];
     return {
       value: "not_approved",
       label: getOutcomeLabel("not_approved"),
       tone: "rejected",
       icon: Ban,
-      rationale: `Skäl: ${hardVisus.join(' · ')}`,
+      rationale: `Skäl: ${reasons.join(' · ')}`,
     };
   }
   if (anamnesis.length > 0 && visusTexts.length > 0) {
@@ -292,6 +319,9 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           <h4 className="text-sm font-semibold flex items-center gap-2">
             <Stethoscope className="h-4 w-4 text-primary" />
             Anamnesavvikelser
+            <Badge variant={anamnesisFindings.length > 0 ? "destructive" : "secondary"}>
+              {anamnesisFindings.length}
+            </Badge>
           </h4>
           {anamnesisFindings.length > 0 ? (
             <ul className="list-disc list-inside text-sm space-y-1 pl-1">
@@ -311,6 +341,9 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           <h4 className="text-sm font-semibold flex items-center gap-2">
             <Eye className="h-4 w-4 text-primary" />
             Visusavvikelser
+            <Badge variant={visusFindings.length > 0 ? "destructive" : "secondary"}>
+              {visusFindings.length}
+            </Badge>
           </h4>
           {visusFindings.length > 0 ? (
             <ul className="list-disc list-inside text-sm space-y-1 pl-1">
@@ -340,7 +373,15 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           <p className="text-lg font-semibold leading-tight">
             {suggestion.label}
           </p>
-          <p className="text-sm opacity-90">{suggestion.rationale}</p>
+          {suggestion.rationale.startsWith('Skäl: ') ? (
+            <ul className="text-sm opacity-90 list-disc list-inside space-y-0.5">
+              {suggestion.rationale.slice(6).split(' · ').map((reason, i) => (
+                <li key={i}>{reason}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm opacity-90">{suggestion.rationale}</p>
+          )}
         </div>
 
         {/* Teknisk info */}

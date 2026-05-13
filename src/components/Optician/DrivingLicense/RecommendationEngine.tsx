@@ -315,7 +315,7 @@ export const RecommendationEngine: React.FC<RecommendationEngineProps> = ({
           {visusFindings.length > 0 ? (
             <ul className="list-disc list-inside text-sm space-y-1 pl-1">
               {visusFindings.map((f, i) => (
-                <li key={i}>{f}</li>
+                <li key={i} className={f.hard ? "text-destructive font-medium" : undefined}>{f.text}</li>
               ))}
             </ul>
           ) : (

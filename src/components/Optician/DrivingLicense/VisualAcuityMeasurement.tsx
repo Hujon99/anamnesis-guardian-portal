@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Eye, AlertTriangle, Info } from "lucide-react";
 import { parseLocaleFloat } from "@/lib/number-utils";
 import { toast } from "@/hooks/use-toast";
+import { LICENSE_CATEGORY_PREFIX, parseLicenseCategoryFromNotes } from "./outcomeUtils";
 
 // VISUS scale values according to Swedish driving license examination standards
 // Updated based on optician feedback to include correct clinical values (1.1, 1.2, 1.6)
@@ -31,23 +32,37 @@ interface VisualAcuityMeasurementProps {
   isSaving: boolean;
 }
 
-// License category types for vision requirements
-type LicenseCategory = 'lower' | 'higher' | 'taxi';
+// License category types mirror the buttons in the patient form while keeping
+// the clinical validation grouped according to Transportstyrelsens requirements.
+type LicenseCategory = 'group1' | 'group2_3' | 'renewal_higher' | 'taxi' | 'other';
 
 const LICENSE_CATEGORIES = {
-  lower: {
-    name: 'Lägre behörigheter (AM, A1, A2, A, B, BE, traktor)',
+  group1: {
+    name: 'Körkortstillstånd grupp I (A, AM, B, BE ) moped, motorcykel, bil, tungt släp',
+    requirementGroup: 'lower',
     requirements: 'Minst 0,5 binokulart (båda ögonen) - med eller utan glasögon/linser'
   },
-  higher: {
-    name: 'Högre behörigheter (C1, C1E, C, CE, D1, D1E, D, DE)',
+  group2_3: {
+    name: 'Körkortstillstånd grupp II och III (C, D) Lastbil och buss',
+    requirementGroup: 'higher',
+    requirements: 'Minst 0,8 i bästa ögat och minst 0,1 i sämsta ögat'
+  },
+  renewal_higher: {
+    name: 'Förlängning av högre/tyngre behörighet',
+    requirementGroup: 'higher',
     requirements: 'Minst 0,8 i bästa ögat och minst 0,1 i sämsta ögat'
   },
   taxi: {
     name: 'Taxiförarlegitimation',
+    requirementGroup: 'taxi',
     requirements: 'Minst 0,8 binokulart'
+  },
+  other: {
+    name: 'Annan orsak',
+    requirementGroup: 'lower',
+    requirements: 'Minst 0,5 binokulart (båda ögonen) - med eller utan glasögon/linser'
   }
-};
+} satisfies Record<LicenseCategory, { name: string; requirementGroup: 'lower' | 'higher' | 'taxi'; requirements: string }>;
 
 export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = ({
   examination,
@@ -80,69 +95,72 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     return false;
   }, [entry?.answers]);
 
-  // Try to detect license category from previously saved notes OR form answers.
-  // Sparad notes har formatet "Behörighetstyp: <namn>\n..." (se handleSaveAndContinue).
-  // Det är källan med högst trovärdighet — användaren kan ha valt manuellt tidigare.
+  // Try to detect the exact license option from previously saved notes OR form answers.
+  // Saved notes use "Behörighetstyp: <namn>\n..." and must preserve the user's original button label.
   const detectedLicenseCategory = React.useMemo((): LicenseCategory => {
-    // Hjälpare: mappa fri text till behörighetskategori.
+    // Hjälpare: mappa fri text till samma val som visas i patientformuläret.
     const matchCategory = (raw: string): LicenseCategory | null => {
       const v = raw.toLowerCase();
+      const normalized = v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (v.includes('taxi')) return 'taxi';
-      if (v.includes('förlängning högre') || v.includes('forlangning hogre')) return 'higher';
-      if (v.includes('förlängning lägre') || v.includes('forlangning lagre')) return 'lower';
+      if (v.includes('annan orsak')) return 'other';
       if (
-        v.includes('högre') ||
+        (normalized.includes('forlangning') && (normalized.includes('hogre') || normalized.includes('tyngre'))) ||
+        normalized.includes('forlangning av hogre')
+      ) return 'renewal_higher';
+      if (
+        normalized.includes('grupp ii') ||
+        normalized.includes('grupp 2') ||
+        normalized.includes('grupp iii') ||
+        normalized.includes('grupp 3') ||
+        normalized.includes('hogre behorighet') ||
         v.includes('c1') ||
-        v.includes(' ce') ||
-        v.startsWith('ce') ||
-        v.includes('d1') ||
-        v.includes(' de') ||
-        v.startsWith('de') ||
+        /(^|\s)c(,|\s|$)/i.test(raw) ||
+        /(^|\s)d(,|\s|$)/i.test(raw) ||
         v.includes('lastbil') ||
         v.includes('buss')
-      ) return 'higher';
-      if (v.includes('lägre') || v.includes('am') || v.includes(' b ') || v.includes('moped')) return 'lower';
+      ) return 'group2_3';
+      if (
+        normalized.includes('grupp i') ||
+        normalized.includes('lagre behorighet') ||
+        v.includes('am') ||
+        v.includes('moped') ||
+        v.includes('motorcykel') ||
+        v.includes('tungt släp') ||
+        /(^|\s)b(,|\s|$)/i.test(raw)
+      ) return 'group1';
       return null;
     };
 
     // 1. Försök läsa från sparade notes först.
-    const notes = examination?.notes as string | undefined;
-    if (notes) {
-      const firstLine = notes.split('\n')[0] ?? '';
-      if (firstLine.startsWith('Behörighetstyp:')) {
-        const name = firstLine.replace('Behörighetstyp:', '').trim();
-        for (const [key, cat] of Object.entries(LICENSE_CATEGORIES)) {
-          if (cat.name === name) return key as LicenseCategory;
-        }
-        const matched = matchCategory(name);
+    const savedName = parseLicenseCategoryFromNotes(examination?.notes ?? '');
+    if (savedName) {
+      for (const [key, cat] of Object.entries(LICENSE_CATEGORIES)) {
+        if (cat.name === savedName) return key as LicenseCategory;
+      }
+      const matched = matchCategory(savedName);
+      if (matched) return matched;
+    }
+
+    // 2. Annars, härled från anamnessvar.
+    if (!entry?.answers) return 'group1';
+    const answers = entry.answers as Record<string, unknown>;
+
+    const collectValues = (value: unknown): string[] => {
+      if (value == null) return [];
+      if (Array.isArray(value)) return value.flatMap(collectValues);
+      if (typeof value === 'object') return Object.values(value as Record<string, unknown>).flatMap(collectValues);
+      return [String(value)];
+    };
+
+    for (const rawValue of Object.values(answers)) {
+      for (const value of collectValues(rawValue)) {
+        const matched = matchCategory(value);
         if (matched) return matched;
       }
     }
 
-    // 2. Annars, härled från anamnessvar.
-    if (!entry?.answers) return 'lower';
-    const answers = entry.answers as Record<string, unknown>;
-
-    for (const [key, rawValue] of Object.entries(answers)) {
-      const keyLower = key.toLowerCase();
-      const values: string[] = Array.isArray(rawValue)
-        ? rawValue.map((v) => String(v).toLowerCase())
-        : [String(rawValue).toLowerCase()];
-
-      if (
-        keyLower.includes('körkortstyp') ||
-        keyLower.includes('behörighet') ||
-        keyLower.includes('license') ||
-        keyLower.includes('förlängning')
-      ) {
-        for (const valueLower of values) {
-          const matched = matchCategory(valueLower);
-          if (matched) return matched;
-        }
-      }
-    }
-
-    return 'lower';
+    return 'group1';
   }, [entry?.answers, examination?.notes]);
 
   const [licenseCategory, setLicenseCategory] = useState<LicenseCategory>(detectedLicenseCategory);
@@ -210,8 +228,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
     const effectiveRight = usesAnyCorrection && !isNaN(withCorrectionRight) ? withCorrectionRight : rightEye;
     const effectiveLeft = usesAnyCorrection && !isNaN(withCorrectionLeft) ? withCorrectionLeft : leftEye;
 
-    // Apply validation rules based on license category
-    switch (licenseCategory) {
+    // Apply validation rules based on the clinical requirement group while preserving the exact displayed label.
+    switch (LICENSE_CATEGORIES[licenseCategory].requirementGroup) {
       case 'lower':
         if (!isNaN(effectiveBoth) && effectiveBoth < 0.5) {
           newWarnings.push("Visusvärde båda ögon är under gränsvärdet 0,5 för lägre behörigheter");
@@ -266,6 +284,12 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
 
     // Styrkor sparas endast om patienten har glasögon OCH ±8 D-rutan är ikryssad.
     const includePrescription = measurements.uses_glasses && measurements.prescription_over_8d;
+    const cleanedExistingNotes = String(examination?.notes ?? '')
+      .split('\n')
+      .filter((line) => !line.startsWith(LICENSE_CATEGORY_PREFIX))
+      .join('\n')
+      .replace(/^\n+/, '')
+      .trim();
 
     const updates = {
       visual_acuity_both_eyes: toNumberOrNull(measurements.visual_acuity_both_eyes),
@@ -286,8 +310,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
       glasses_prescription_os_cyl: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_cyl) : null,
       glasses_prescription_os_axis: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_axis) : null,
       glasses_prescription_os_add: includePrescription ? toNumberOrNull(measurements.glasses_prescription_os_add) : null,
-      // Append license category info into notes without overwriting any existing notes saved earlier
-      notes: `Behörighetstyp: ${LICENSE_CATEGORIES[licenseCategory].name}${examination?.notes ? `\n${examination.notes}` : ''}`
+      // Store the exact license button label from the patient flow without duplicating old rows.
+      notes: `${LICENSE_CATEGORY_PREFIX}${LICENSE_CATEGORIES[licenseCategory].name}${cleanedExistingNotes ? `\n${cleanedExistingNotes}` : ''}`
     };
 
     try {
@@ -360,9 +384,9 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
             <div className="space-y-2">
               <p className="font-medium">Mätinstruktioner:</p>
               <p className="text-sm">
-                {licenseCategory === 'lower' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,5 krävs."}
-                {licenseCategory === 'higher' && "Mät synskärpa för varje öga separat. Minst 0,8 i bästa ögat och 0,1 i sämsta ögat krävs."}
-                {licenseCategory === 'taxi' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,8 krävs för taxiförarlegitimation."}
+                {LICENSE_CATEGORIES[licenseCategory].requirementGroup === 'lower' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,5 krävs."}
+                {LICENSE_CATEGORIES[licenseCategory].requirementGroup === 'higher' && "Mät synskärpa för varje öga separat. Minst 0,8 i bästa ögat och 0,1 i sämsta ögat krävs."}
+                {LICENSE_CATEGORIES[licenseCategory].requirementGroup === 'taxi' && "Mät synskärpa för båda ögonen tillsammans. Minst 0,8 krävs för taxiförarlegitimation."}
               </p>
               <p className="text-xs text-muted-foreground">
                 💡 VISUS-skala: 1,0 = normalsyn, 2,0 = exceptionellt bra syn. Minst 80% av tecknen måste läsas korrekt för varje värde.

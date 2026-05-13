@@ -119,6 +119,7 @@ const isUuidValue = (v: unknown): boolean =>
 
 // Följdfråga som "Om ja, beskriv" / "Om nej, beskriv" / "Beskriv" / "Specificera" — visas bara om besvarad.
 const FOLLOWUP_LABEL_RE = /^\s*(om\s+(ja|nej)|beskriv|specificera|annat)\b/i;
+const LICENSE_CATEGORY_PREFIX = 'Behörighetstyp: ';
 
 const isAnswerEmpty = (value: unknown): boolean => {
   if (value == null || value === '') return true;
@@ -306,6 +307,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Hämta även driving_license_examinations.notes för att kunna visa
     // assistentens fritext-anteckning (utfallsraden filtreras bort).
     let assistantNote: string | null = null;
+    let licenseCategory: string | null = null;
     {
       const { data: exam } = await supabase
         .from('driving_license_examinations')
@@ -315,7 +317,11 @@ const handler = async (req: Request): Promise<Response> => {
         .maybeSingle();
       if (exam?.notes) {
         const lines = exam.notes.split('\n');
-        const rest = lines[0]?.startsWith('Utfall: ') ? lines.slice(1).join('\n').replace(/^\n/, '') : exam.notes;
+        licenseCategory = lines.find((line) => line.startsWith(LICENSE_CATEGORY_PREFIX))?.slice(LICENSE_CATEGORY_PREFIX.length).trim() || null;
+        const rest = lines
+          .filter((line) => !line.startsWith('Utfall: ') && !line.startsWith(LICENSE_CATEGORY_PREFIX))
+          .join('\n')
+          .replace(/^\n+/, '');
         const trimmed = rest.trim();
         if (trimmed) assistantNote = trimmed;
       }
@@ -396,6 +402,7 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="margin:4px 0;"><strong>Namn:</strong> ${escapeHtml(entryData.first_name || 'Okänd patient')}</p>
         ${customerNumber ? `<p style="margin:4px 0;"><strong>Kundnummer:</strong> <span style="font-family:monospace; background:#eff6ff; padding:1px 6px; border-radius:4px;">${escapeHtml(customerNumber)}</span></p>` : ''}
         <p style="margin:4px 0;"><strong>Undersökningstyp:</strong> ${escapeHtml(entryData.examination_type || 'Körkortsundersökning')}</p>
+        ${licenseCategory ? `<p style="margin:4px 0;"><strong>Behörighet:</strong> ${escapeHtml(licenseCategory)}</p>` : ''}
         ${bookingDateStr ? `<p style="margin:4px 0;"><strong>Bokningsdatum:</strong> ${escapeHtml(bookingDateStr)}</p>` : ''}
         ${storeData ? `<p style="margin:4px 0;"><strong>Butik:</strong> ${escapeHtml(storeData.name)}${storeData.address ? ` (${escapeHtml(storeData.address)})` : ''}</p>` : ''}
         <p style="margin:4px 0;"><strong>Organisation:</strong> ${escapeHtml(organizationName)}</p>

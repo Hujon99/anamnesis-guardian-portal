@@ -26,6 +26,7 @@ import {
   OUTCOME_OPTIONS,
   type OutcomeValue,
   parseOutcomeFromNotes,
+  parseLicenseCategoryFromNotes,
   combineNotesWithOutcome,
   getOutcomeLabel,
 } from "./outcomeUtils";
@@ -93,7 +94,8 @@ export const ExaminationSummary: React.FC<ExaminationSummaryProps> = ({
     }
     
     const outcomeLabel = getOutcomeLabel(outcome);
-    const combinedNotes = combineNotesWithOutcome(outcome, notes);
+    const licenseCategory = parseLicenseCategoryFromNotes(examination?.notes || '');
+    const combinedNotes = combineNotesWithOutcome(outcome, notes, licenseCategory);
 
     const updates = {
       examination_status: 'completed' as const,

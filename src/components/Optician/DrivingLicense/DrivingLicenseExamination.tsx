@@ -339,7 +339,7 @@ export const DrivingLicenseExamination: React.FC<DrivingLicenseExaminationProps>
           )}
           
           {currentStep === 4 && (
-            <ExaminationSummary
+            <ServeitTransferView
               examination={effectiveExam}
               entry={entry}
               onSave={saveExamination}

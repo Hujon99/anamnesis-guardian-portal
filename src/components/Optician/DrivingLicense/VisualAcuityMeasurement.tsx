@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Eye, AlertTriangle, Info } from "lucide-react";
 import { parseLocaleFloat } from "@/lib/number-utils";
 import { toast } from "@/hooks/use-toast";
+import { LICENSE_CATEGORY_PREFIX, parseLicenseCategoryFromNotes } from "./outcomeUtils";
 
 // VISUS scale values according to Swedish driving license examination standards
 // Updated based on optician feedback to include correct clinical values (1.1, 1.2, 1.6)
@@ -31,23 +32,37 @@ interface VisualAcuityMeasurementProps {
   isSaving: boolean;
 }
 
-// License category types for vision requirements
-type LicenseCategory = 'lower' | 'higher' | 'taxi';
+// License category types mirror the buttons in the patient form while keeping
+// the clinical validation grouped according to Transportstyrelsens requirements.
+type LicenseCategory = 'group1' | 'group2_3' | 'renewal_higher' | 'taxi' | 'other';
 
 const LICENSE_CATEGORIES = {
-  lower: {
-    name: 'Lägre behörigheter (AM, A1, A2, A, B, BE, traktor)',
+  group1: {
+    name: 'Körkortstillstånd grupp I (A, AM, B, BE ) moped, motorcykel, bil, tungt släp',
+    requirementGroup: 'lower',
     requirements: 'Minst 0,5 binokulart (båda ögonen) - med eller utan glasögon/linser'
   },
-  higher: {
-    name: 'Högre behörigheter (C1, C1E, C, CE, D1, D1E, D, DE)',
+  group2_3: {
+    name: 'Körkortstillstånd grupp II och III (C, D) Lastbil och buss',
+    requirementGroup: 'higher',
+    requirements: 'Minst 0,8 i bästa ögat och minst 0,1 i sämsta ögat'
+  },
+  renewal_higher: {
+    name: 'Förlängning av högre/tyngre behörighet',
+    requirementGroup: 'higher',
     requirements: 'Minst 0,8 i bästa ögat och minst 0,1 i sämsta ögat'
   },
   taxi: {
     name: 'Taxiförarlegitimation',
+    requirementGroup: 'taxi',
     requirements: 'Minst 0,8 binokulart'
+  },
+  other: {
+    name: 'Annan orsak',
+    requirementGroup: 'lower',
+    requirements: 'Minst 0,5 binokulart (båda ögonen) - med eller utan glasögon/linser'
   }
-};
+} satisfies Record<LicenseCategory, { name: string; requirementGroup: 'lower' | 'higher' | 'taxi'; requirements: string }>;
 
 export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = ({
   examination,

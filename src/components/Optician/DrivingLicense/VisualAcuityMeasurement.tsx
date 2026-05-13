@@ -176,7 +176,8 @@ export const VisualAcuityMeasurement: React.FC<VisualAcuityMeasurementProps> = (
   }, [detectedLicenseCategory, userOverridden]);
 
   // Härled initialt om patienten har styrke-värden registrerade (då är ±8 D-rutan på).
-  const initialHasPrescription = Boolean(
+  // Prioritera den persisterade kolumnen; falla tillbaka till om styrke-fält är ifyllda.
+  const initialHasPrescription = examination?.prescription_over_8d === true || Boolean(
     examination?.glasses_prescription_od_sph ||
     examination?.glasses_prescription_od_cyl ||
     examination?.glasses_prescription_os_sph ||

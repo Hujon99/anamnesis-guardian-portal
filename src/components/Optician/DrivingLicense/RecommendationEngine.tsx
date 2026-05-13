@@ -193,30 +193,27 @@ interface OutcomeSuggestion {
 
 const computeSuggestion = (
   anamnesis: string[],
-  visus: string[],
-  examination: any,
+  visus: VisusFinding[],
 ): OutcomeSuggestion => {
-  const both = examination?.visual_acuity_with_correction_both ??
-    examination?.visual_acuity_both_eyes;
-  const bothN = both != null && both !== "" ? parseFloat(String(both).replace(",", ".")) : null;
-  const visusUnderHardLimit = bothN != null && bothN < 0.5;
+  const hardVisus = visus.filter((f) => f.hard).map((f) => f.text);
+  const visusTexts = visus.map((f) => f.text);
 
-  if (visusUnderHardLimit) {
+  if (hardVisus.length > 0) {
     return {
       value: "not_approved",
       label: getOutcomeLabel("not_approved"),
       tone: "rejected",
       icon: Ban,
-      rationale: "Binokulär syn under 0,5 — uppfyller inte synkraven.",
+      rationale: `Skäl: ${hardVisus.join(' · ')}`,
     };
   }
-  if (anamnesis.length > 0 && visus.length > 0) {
+  if (anamnesis.length > 0 && visusTexts.length > 0) {
     return {
       value: "optician_contact_first",
       label: getOutcomeLabel("optician_contact_first"),
       tone: "contact",
       icon: Phone,
-      rationale: `Skäl: ${[...anamnesis, ...visus].join(' · ')}`,
+      rationale: `Skäl: ${[...anamnesis, ...visusTexts].join(' · ')}`,
     };
   }
   if (anamnesis.length > 0) {
@@ -228,13 +225,13 @@ const computeSuggestion = (
       rationale: `Skäl: ${anamnesis.join(' · ')}`,
     };
   }
-  if (visus.length > 0) {
+  if (visusTexts.length > 0) {
     return {
       value: "approved_recommend_exam",
       label: getOutcomeLabel("approved_recommend_exam"),
       tone: "approved-warn",
       icon: Eye,
-      rationale: `Skäl: ${visus.join(' · ')}`,
+      rationale: `Skäl: ${visusTexts.join(' · ')}`,
     };
   }
   return {

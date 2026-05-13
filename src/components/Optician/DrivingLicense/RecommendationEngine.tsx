@@ -225,12 +225,13 @@ const computeSuggestion = (
   const visusTexts = visus.map((f) => f.text);
 
   if (hardVisus.length > 0) {
+    const reasons = [...hardVisus, ...anamnesis];
     return {
       value: "not_approved",
       label: getOutcomeLabel("not_approved"),
       tone: "rejected",
       icon: Ban,
-      rationale: `Skäl: ${hardVisus.join(' · ')}`,
+      rationale: `Skäl: ${reasons.join(' · ')}`,
     };
   }
   if (anamnesis.length > 0 && visusTexts.length > 0) {

@@ -21,6 +21,7 @@ export const OUTCOME_OPTIONS = [
 export type OutcomeValue = typeof OUTCOME_OPTIONS[number]['value'];
 
 export const OUTCOME_PREFIX = 'Utfall: ';
+export const LICENSE_CATEGORY_PREFIX = 'Behörighetstyp: ';
 
 export const getOutcomeLabel = (value: OutcomeValue | '' | undefined): string | undefined => {
   if (!value) return undefined;
@@ -30,16 +31,25 @@ export const getOutcomeLabel = (value: OutcomeValue | '' | undefined): string | 
 export const parseOutcomeFromNotes = (raw: string): { outcome: OutcomeValue | ''; rest: string } => {
   if (!raw) return { outcome: '', rest: '' };
   const lines = raw.split('\n');
-  const first = lines[0] ?? '';
-  if (first.startsWith(OUTCOME_PREFIX)) {
-    const label = first.slice(OUTCOME_PREFIX.length).trim();
+  const outcomeLine = lines.find(line => line.startsWith(OUTCOME_PREFIX));
+  if (outcomeLine) {
+    const label = outcomeLine.slice(OUTCOME_PREFIX.length).trim();
     const match = OUTCOME_OPTIONS.find(o => o.label === label);
     return {
       outcome: match ? match.value : '',
-      rest: lines.slice(1).join('\n').replace(/^\n/, ''),
+      rest: lines.filter(line => !line.startsWith(OUTCOME_PREFIX) && !line.startsWith(LICENSE_CATEGORY_PREFIX)).join('\n').replace(/^\n+/, ''),
     };
   }
-  return { outcome: '', rest: raw };
+  return {
+    outcome: '',
+    rest: lines.filter(line => !line.startsWith(LICENSE_CATEGORY_PREFIX)).join('\n').replace(/^\n+/, ''),
+  };
+};
+
+export const parseLicenseCategoryFromNotes = (raw: string): string | undefined => {
+  if (!raw) return undefined;
+  const line = raw.split('\n').find((item) => item.startsWith(LICENSE_CATEGORY_PREFIX));
+  return line?.slice(LICENSE_CATEGORY_PREFIX.length).trim() || undefined;
 };
 
 /**
@@ -50,10 +60,12 @@ export const parseOutcomeFromNotes = (raw: string): { outcome: OutcomeValue | ''
 export const combineNotesWithOutcome = (
   outcome: OutcomeValue | '',
   freeText: string,
+  licenseCategory?: string,
 ): string | null => {
   const label = getOutcomeLabel(outcome);
   const combined = [
     label ? `${OUTCOME_PREFIX}${label}` : '',
+    licenseCategory ? `${LICENSE_CATEGORY_PREFIX}${licenseCategory}` : '',
     freeText.trim(),
   ].filter(Boolean).join('\n\n');
   return combined || null;

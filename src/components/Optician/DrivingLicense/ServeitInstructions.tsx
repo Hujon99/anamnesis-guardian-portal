@@ -69,34 +69,47 @@ const extractAnamnesAnswer = (
   keywords: string[],
 ): { ja: string; comment: string } => {
   const lowerKeywords = keywords.map((k) => k.toLowerCase());
-  let ja: any = undefined;
+  let ja: "Ja" | "Nej" | undefined = undefined;
+  let sawAnyMatch = false;
   const commentParts: string[] = [];
 
   for (const [key, value] of Object.entries(answers)) {
     const k = key.toLowerCase();
     if (!lowerKeywords.some((kw) => k.includes(kw))) continue;
+    sawAnyMatch = true;
 
     if (typeof value === "boolean") {
-      if (ja === undefined) ja = value ? "Ja" : "Nej";
+      if (value) ja = "Ja";
+      else if (ja === undefined) ja = "Nej";
     } else if (typeof value === "string") {
       const v = value.trim();
       if (!v) continue;
       const vl = v.toLowerCase();
       if (vl === "ja" || vl === "yes") {
-        if (ja === undefined) ja = "Ja";
+        ja = "Ja";
       } else if (vl === "nej" || vl === "no") {
-        if (ja === undefined) ja = "Nej";
+        if (ja !== "Ja") ja = "Nej";
       } else {
+        // Free-text answer implies "Ja" with a comment
+        ja = "Ja";
         commentParts.push(v);
       }
     } else if (Array.isArray(value)) {
       const flat = value.filter(Boolean).map((x) => String(x)).join(", ");
-      if (flat) commentParts.push(flat);
+      if (flat) {
+        ja = "Ja";
+        commentParts.push(flat);
+      }
     }
   }
 
+  // If the form contains answers but none of them indicated a problem
+  // in this category, the correct ServeIT answer is "Nej".
+  const hasAnyAnswers = Object.keys(answers).length > 0;
+  const finalJa = ja ?? (hasAnyAnswers || sawAnyMatch ? "Nej" : EMPTY);
+
   return {
-    ja: ja ?? EMPTY,
+    ja: finalJa,
     comment: commentParts.length ? commentParts.join("; ") : "",
   };
 };

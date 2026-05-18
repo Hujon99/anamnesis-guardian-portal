@@ -314,38 +314,42 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
         </CardContent>
       </Card>
 
-      {/* C. Vad gjordes/ska göras */}
-      {isServeit ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ClipboardCheck className="h-4 w-4" />
-              Så här journalförs den här i ServeIT
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ServeitInstructions
-              examination={examination}
-              entry={entry}
-              mode="review"
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <Alert className="border-emerald-500/30 bg-emerald-500/5">
-          <CheckCircle className="h-4 w-4 text-emerald-700" />
-          <AlertDescription>
-            <div className="space-y-0.5 text-sm">
-              <p className="font-semibold">Journalförd direkt i appen</p>
-              <p>
-                Den här körkortskollen är slutförd och journalförd i appen
+      {/* C. ServeIT-guide — visas alltid så att man kan gå tillbaka och hitta instruktionerna */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ClipboardCheck className="h-4 w-4" />
+            Så här journalför du den här i ServeIT
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {isServeit ? (
+            <Alert className="border-primary/30 bg-primary/5">
+              <ClipboardCheck className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                Den här körkortskollen ska journalföras i ServeIT — så här gör du
+                (eller så här gjordes det).
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert className="border-emerald-500/30 bg-emerald-500/5">
+              <CheckCircle className="h-4 w-4 text-emerald-700" />
+              <AlertDescription className="text-sm">
+                Den här körkortskollen är redan journalförd direkt i appen
                 {opticianName ? ` av ${opticianName}` : ""}
-                {journaledAtStr ? ` den ${journaledAtStr}` : ""}.
-              </p>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+                {journaledAtStr ? ` den ${journaledAtStr}` : ""}. Guiden nedan
+                finns kvar som referens om du vill journalföra den i ServeIT
+                också.
+              </AlertDescription>
+            </Alert>
+          )}
+          <ServeitInstructions
+            examination={examination}
+            entry={entry}
+            mode="review"
+          />
+        </CardContent>
+      </Card>
 
       {/* D. Tekniska detaljer — collapsible, default stängd */}
       {hasGlassesRx && (

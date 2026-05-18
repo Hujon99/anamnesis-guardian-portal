@@ -311,7 +311,7 @@ export const ServeitInstructions: React.FC<ServeitInstructionsProps> = ({
         "other_medical",
       ]),
     };
-  }, [answers, entry, examination]);
+  }, [entry?.id, entry?.id_type, examination?.id, examination?.updated_at]);
 
   return (
     <div className="space-y-5">

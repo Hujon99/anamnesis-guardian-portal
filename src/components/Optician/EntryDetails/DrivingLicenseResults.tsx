@@ -170,6 +170,23 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
 
   return (
     <div className="space-y-4 max-w-3xl">
+      {/* Banner när undersökningen aldrig blev klar */}
+      {!isCompleted && (
+        <Alert className="border-amber-500/40 bg-amber-500/5">
+          <Clock className="h-4 w-4 text-amber-700" />
+          <AlertDescription className="text-sm space-y-1">
+            <p className="font-semibold text-amber-800">
+              Undersökningen är inte slutförd
+            </p>
+            <p>
+              Körkortsundersökningen påbörjades men slutfördes aldrig — därför
+              saknas en del värden nedan. Öppna körkortsflödet från listan för
+              att fortsätta där du slutade.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* A. Status-banner */}
       <Card>
         <CardHeader className="pb-3">

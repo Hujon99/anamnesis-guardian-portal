@@ -145,6 +145,41 @@ const extractAnamnesAnswer = (
   };
 };
 
+/** Liten instruktionsrad ovanför värdena i varje ServeIT-sektion. */
+const StepHint: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p className="text-xs italic text-muted-foreground mb-1.5">
+    Så här gör du i ServeIT: {children}
+  </p>
+);
+
+/** Visuell representation av en ServeIT-checkruta. `checked` = ska bockas i. */
+const ServeitCheckbox: React.FC<{ checked: boolean; label: string }> = ({
+  checked,
+  label,
+}) => (
+  <div
+    className={cn(
+      "flex items-start gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
+      checked
+        ? "border-emerald-500/40 bg-emerald-500/10 text-foreground"
+        : "border-border/60 bg-background/40 text-muted-foreground",
+    )}
+  >
+    <span
+      className={cn(
+        "mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm border",
+        checked
+          ? "border-emerald-600 bg-emerald-600 text-white"
+          : "border-muted-foreground/40 bg-background",
+      )}
+      aria-hidden
+    >
+      {checked && <CheckCircle className="h-3 w-3" strokeWidth={3} />}
+    </span>
+    <span className={cn(checked && "font-medium")}>{label}</span>
+  </div>
+);
+
 interface FieldRowProps {
   label: string;
   value: string;

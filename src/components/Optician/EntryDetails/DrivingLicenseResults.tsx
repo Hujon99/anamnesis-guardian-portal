@@ -93,6 +93,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
 
   const completionMethod = (examination.completion_method as "servit" | "app") || "app";
   const isServeit = completionMethod === "servit";
+  const isCompleted = examination.examination_status === "completed";
   const outcome = parseOutcomeFromNotes(examination.notes || "").outcome;
   const outcomeLabel = outcome ? getOutcomeLabel(outcome) : null;
   const freeTextNotes = parseOutcomeFromNotes(examination.notes || "").rest;
@@ -116,6 +117,16 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
 
   const correction = buildCorrectionLabel(examination);
   const hasCorrection = examination.uses_glasses || examination.uses_contact_lenses;
+
+  // Indicates whether any meaningful examination data has been captured.
+  const hasAnyExamData =
+    examination.visual_acuity_right_eye !== null ||
+    examination.visual_acuity_left_eye !== null ||
+    examination.visual_acuity_both_eyes !== null ||
+    !!examination.notes ||
+    !!examination.uses_glasses ||
+    !!examination.uses_contact_lenses ||
+    !!entry.id_verification_completed;
 
   const hasGlassesRx =
     examination.glasses_prescription_od_sph !== null ||
@@ -159,6 +170,23 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
 
   return (
     <div className="space-y-4 max-w-3xl">
+      {/* Banner när undersökningen aldrig blev klar */}
+      {!isCompleted && (
+        <Alert className="border-amber-500/40 bg-amber-500/5">
+          <Clock className="h-4 w-4 text-amber-700" />
+          <AlertDescription className="text-sm space-y-1">
+            <p className="font-semibold text-amber-800">
+              Undersökningen är inte slutförd
+            </p>
+            <p>
+              Körkortsundersökningen påbörjades men slutfördes aldrig — därför
+              saknas en del värden nedan. Öppna körkortsflödet från listan för
+              att fortsätta där du slutade.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* A. Status-banner */}
       <Card>
         <CardHeader className="pb-3">
@@ -343,11 +371,18 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
               </AlertDescription>
             </Alert>
           )}
-          <ServeitInstructions
-            examination={examination}
-            entry={entry}
-            mode="review"
-          />
+          {hasAnyExamData ? (
+            <ServeitInstructions
+              examination={examination}
+              entry={entry}
+              mode="review"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              Inga undersökningsdata sparades, så det finns inget att fylla i
+              ServeIT med från den här posten.
+            </p>
+          )}
         </CardContent>
       </Card>
 

@@ -93,6 +93,7 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
 
   const completionMethod = (examination.completion_method as "servit" | "app") || "app";
   const isServeit = completionMethod === "servit";
+  const isCompleted = examination.examination_status === "completed";
   const outcome = parseOutcomeFromNotes(examination.notes || "").outcome;
   const outcomeLabel = outcome ? getOutcomeLabel(outcome) : null;
   const freeTextNotes = parseOutcomeFromNotes(examination.notes || "").rest;
@@ -116,6 +117,16 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
 
   const correction = buildCorrectionLabel(examination);
   const hasCorrection = examination.uses_glasses || examination.uses_contact_lenses;
+
+  // Indicates whether any meaningful examination data has been captured.
+  const hasAnyExamData =
+    examination.visual_acuity_right_eye !== null ||
+    examination.visual_acuity_left_eye !== null ||
+    examination.visual_acuity_both_eyes !== null ||
+    !!examination.notes ||
+    !!examination.uses_glasses ||
+    !!examination.uses_contact_lenses ||
+    !!entry.id_verification_completed;
 
   const hasGlassesRx =
     examination.glasses_prescription_od_sph !== null ||

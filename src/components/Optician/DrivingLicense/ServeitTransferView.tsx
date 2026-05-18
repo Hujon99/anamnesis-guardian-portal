@@ -60,6 +60,9 @@ import {
 } from "./outcomeUtils";
 import { cn } from "@/lib/utils";
 import { RecommendationEngine } from "./RecommendationEngine";
+import { Badge } from "@/components/ui/badge";
+import correctionExampleImg from "@/assets/serveit-correction-example.png";
+import anamnesisExampleImg from "@/assets/serveit-anamnesis-example.png";
 
 interface ServeitTransferViewProps {
   examination: any;

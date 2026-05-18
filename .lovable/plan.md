@@ -1,49 +1,66 @@
-## Problem
+# Pedagogisk ServeIT-guide i sista steget
 
-Den tidigare slutskärmen `ExaminationSummary` innehöll `RecommendationEngine` — sammanställningen av anamnesavvikelser, visusavvikelser och **Rekommenderat utfall**. När steg 4 byttes till `ServeitTransferView` (för att spegla ServeIT-fältordningen) togs den bort. Resultat: rekommendationen visas idag endast i optikerns post-flow vy (`DrivingLicenseResults`), inte i sista steget assistenten ser innan "Markera som skapad i ServeIT".
+## Mål
 
-Genomgång av flödet (`DrivingLicenseExamination.tsx` → steg 1–4):
+Sista steget i körkortsflödet (`ServeitTransferView`) ska fungera som en **steg-för-steg-guide** för en assistent som gör det här för första gången. Idag listar vyn bara värden — den ska istället tydligt instruera *"så här gör du i ServeIT"* för varje sektion, med kopierbara värden bredvid.
 
-| Steg | Komponent | Recommendation? |
-|---|---|---|
-| 1 Legitimation | `IdVerification` | nej |
-| 2 Formuläröversikt | `FormAnswersDisplay` | nej |
-| 3 Visusmätningar | `VisualAcuityMeasurement` | nej (bara `vision_below_limit`-flagga i sidopanel) |
-| 4 Skapa i ServeIT | `ServeitTransferView` | **saknas** ← buggen |
+## Vad som ändras (endast UI/copy i ServeitTransferView)
 
-`RecommendationEngine` är ren presentation: den deriverar sin output från `examination` + `entry.answers`, som båda redan finns i steg 4. Inga datakällor saknas — det är bara komponenten som inte renderas.
+### 1. Tydligare topp-instruktion
+Banner överst utökas med en kort onboarding-text:
+- "Öppna ServeIT och starta en ny körkortskoll med kundens personnummer."
+- "Följ stegen 1–7 nedan i ordning. För varje fält står det vad du ska klicka i eller skriva in i ServeIT."
+- Behåll: mail-statusen, "assistenten journalför inte".
 
-## Lösning
+### 2. Varje av de 7 sektionerna får en instruktionsrad
+Ovanför värdena i varje sektion läggs en kort "Så här gör du i ServeIT:"-mening i muted text. Exempel:
 
-Återinför `RecommendationEngine` i `ServeitTransferView` som en **egen tydlig sektion längst ned**, ovanför Bedömning/Optiker/Anteckning, med rubriken som önskats:
+- **1. Intyget avser** — "I ServeIT: bocka i behörigheten nedan i listan 'Intyget avser'."
+- **2. Intyget är baserat på** — "Välj 'Undersökning' och fyll i dagens datum."
+- **3. Identiteten styrkt genom** — "Välj legitimationstyp i listan 'Identiteten styrkt genom'."
+- **4. Synskärpa utan korrektion** — "Skriv in synskärpan i fälten Höger / Vänster / Binokulärt."
+- **5. Synskärpa med korrektion** — "Skriv in värdena i motsvarande fält. Lämna tomt om patienten inte använder korrektion."
+- **6. Korrektion** — "Bocka i rätt ruta enligt nedan." + visa hänvisning till bild (se 4).
+- **7. Anamnesfrågor** — "Klicka Ja eller Nej för varje fråga enligt patientens svar nedan. Om Ja: skriv in kommentaren i textfältet i ServeIT."
 
-> **Rekommendation / sammanfattning till optiker**
+Texten ska vara kort, en mening, i `text-xs text-muted-foreground italic` så den inte stör värdesammanställningen.
 
-Synlig direkt utan klick (ingen accordion). De 7 ServeIT-sektionerna behåller sin ordning oförändrade ovanför, så att copy-flödet till ServeIT inte påverkas. Bedömning/Optiker/Anteckning ligger kvar under rekommendationen — där assistenten faktiskt agerar (väljer utfall, skickar mail).
+### 3. Sektion 6 (Korrektion) — visa ServeIT-skärmbild + tydligt val
+Här gör användaren mest fel. Sektionen utökas:
+- Liten skärmbild från ServeIT (uppladdad `image-248.png`) sparas i `src/assets/serveit-correction-example.png` och visas inbäddad (max-w ~480px, rounded, border).
+- Under bilden: en "checklista" som speglar ServeIT-rutorna och visar vilken/vilka som ska bockas i baserat på patientdata:
+  - ☐ "Glasögon och inget av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen" — markeras visuellt som "bocka i" om `uses_glasses && !prescription_over_8d`
+  - ☐ "Glasögon och något av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen" — om `uses_glasses && prescription_over_8d`
+  - ☐ "Kontaktlinser" — om `uses_contact_lenses`
+- Aktiva rutor får grön check-ikon + `bg-accent/10`; inaktiva visas grå med tom ruta. Det ger en visuell "klicka exakt dessa rutor"-instruktion.
 
-Eventuella `examination.notes` (anteckning från tidigare steg, om sådan finns) visas redan implicit via `parseOutcomeFromNotes` som förifyller "Anteckning"-fältet, så det följer också med.
+### 4. Sektion 7 (Anamnesfrågor) — visa ServeIT-skärmbild + Ja/Nej-pill
+- Liten skärmbild (uppladdad `image-249.png`) sparas i `src/assets/serveit-anamnesis-example.png` och visas inbäddad.
+- Varje fråga visas som en rad med:
+  - frågetexten,
+  - en pill/badge som tydligt säger **JA** (grön) eller **NEJ** (grå) — så assistenten ser direkt vilken knapp i ServeIT som ska klickas,
+  - om Ja + kommentar: kommentaren visas under med "Skriv detta i ServeIT:s textfält" + Copy-knapp.
 
-### Filändring
+### 5. Allt övrigt lämnas orört
+- Rekommendation-sektionen (`RecommendationEngine`), Bedömning, Optiker-val, Anteckningar, mail-flödet, "Markera som skapad"-CTA — oförändrat.
+- Inga ändringar i andra filer, ingen ny logik, inga datamodell-ändringar.
 
-`src/components/Optician/DrivingLicense/ServeitTransferView.tsx`
-- Importera `RecommendationEngine`.
-- Mellan de 7 ServeIT-sektionerna (efter `</div>` på rad 447) och `<Separator />` (rad 449), lägg in:
-  ```tsx
-  <section aria-labelledby="recommendation-heading" className="space-y-2">
-    <h3 id="recommendation-heading" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-      Rekommendation / sammanfattning till optiker
-    </h3>
-    <RecommendationEngine examination={examination} entry={entry} />
-  </section>
-  ```
+## Filer
 
-Inga ändringar i andra filer, inga schemaändringar, ingen ny logik. RecommendationEngine är redan testad och används i `DrivingLicenseResults`.
+- **Redigera**: `src/components/Optician/DrivingLicense/ServeitTransferView.tsx` (utöka UI + copy, ingen ny businesslogik).
+- **Lägg till**: `src/assets/serveit-correction-example.png` (kopia av `user-uploads://image-248.png`).
+- **Lägg till**: `src/assets/serveit-anamnesis-example.png` (kopia av `user-uploads://image-249.png`).
+
+## Tekniska detaljer
+
+- Bilderna importeras som ES6-asset: `import correctionImg from "@/assets/serveit-correction-example.png"`.
+- Checklistan i sektion 6 byggs av samma `examination.uses_glasses / uses_contact_lenses / prescription_over_8d`-flaggor som redan används i `buildCorrectionLabel`. Befintliga värdesvariabeln visas kvar ovanför som "sammanfattning".
+- Ja/Nej-pill i sektion 7 använder `Badge`-komponenten med `variant`-mappning: Ja → grön (`bg-emerald-500/15 text-emerald-700`), Nej → neutral.
+- Alla nya färger via semantiska tokens / accept-mönster i index.css — inga rå hex.
+- Mobilen: bilderna `w-full max-w-md`, checklistan stackas naturligt.
 
 ## Verifiering
 
-1. Genomför körkortskoll i appen → fyll i steg 1–3.
-2. Landa på steg 4 ("Skapa i ServeIT").
-3. Kontrollera att de 7 ServeIT-sektionerna visas oförändrade högst upp.
-4. Scrolla ned → rubrik **"Rekommendation / sammanfattning till optiker"** ska vara synlig direkt, följt av RecommendationEngine-kortet (anamnesavvikelser, visusavvikelser, färgkodat "Rekommenderat utfall").
-5. Bedömning/Optiker/Anteckning ska finnas under rekommendationen.
-6. Klicka "Markera som skapad och sparad i ServeIT" → state och mail beter sig som förut.
+- Bygget passerar (TS strict).
+- Manuellt flödestest: kör hela körkortsflödet → steg 4 visar guide + bilder + korrekt ifyllda checkrutor + Ja/Nej-pills.
+- Inga regressioner i mail/spara-flödet (oförändrad kod).

@@ -1,29 +1,57 @@
 /**
- * This component displays completed driving license examination results
- * in the entry details modal. It shows a summary of the examination
- * results including visual acuity measurements, ID verification, and final decision.
+ * DrivingLicenseResults
+ *
+ * Pedagogisk återblicksvy för en redan slutförd körkortskoll. Visas i
+ * entry-detail-modalen (`ModalTabContent`) när optikern/assistenten öppnar
+ * en gammal undersökning inom 7-dagars retention.
+ *
+ * Vyn är medvetet ren: ingen rådata-flod, inga åtgärdsknappar för flödet.
+ * Innehåll:
+ *  1. Status-banner — bedömning + journalmetod (ServeIT eller appen) + datum
+ *  2. Sammanfattning av undersökningen (visus, korrektion, anamnessvar)
+ *  3. "Vad gjordes/ska göras" — om journalförd i ServeIT renderas samma
+ *     pedagogiska 7-stegsguide som i flödets sista steg (read-only via
+ *     `ServeitInstructions` mode="review"). Om journalförd direkt i appen
+ *     visas en bekräftelse + AI-sammanfattning.
+ *  4. Valfri collapsible "Tekniska detaljer" med glasstyrkor för optikerns
+ *     referens.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, XCircle, Eye, IdCard, Car, Calendar, Clock, FileText, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  CheckCircle,
+  XCircle,
+  Eye,
+  IdCard,
+  Car,
+  Calendar,
+  Clock,
+  FileText,
+  ChevronDown,
+  Sparkles,
+  ClipboardCheck,
+} from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 import { AnamnesesEntry } from "@/types/anamnesis";
-import { DrivingLicenseOpticianDecision } from "./DrivingLicenseOpticianDecision";
-import { CopyableExaminationSummary } from "./CopyableExaminationSummary";
-import { RecommendationEngine } from "../DrivingLicense/RecommendationEngine";
-import { useSupabaseClient } from "@/hooks/useSupabaseClient";
-import { useSafeUser as useUser } from "@/hooks/useSafeUser";
-import { useOpticians } from "@/hooks/useOpticians";
-import { toast } from "@/hooks/use-toast";
+import { ServeitInstructions } from "../DrivingLicense/ServeitInstructions";
+import { parseOutcomeFromNotes, getOutcomeLabel } from "../DrivingLicense/outcomeUtils";
+import { useOpticians, getOpticianDisplayName } from "@/hooks/useOpticians";
 import { useUserResolver } from "@/utils/userDisplayUtils";
 import { formatVisualAcuityDisplay } from "@/lib/number-utils";
+import { cn } from "@/lib/utils";
 
-type DrivingLicenseExamination = Database['public']['Tables']['driving_license_examinations']['Row'];
+type DrivingLicenseExamination =
+  Database["public"]["Tables"]["driving_license_examinations"]["Row"];
 
 interface DrivingLicenseResultsProps {
   examination: DrivingLicenseExamination;
@@ -33,412 +61,391 @@ interface DrivingLicenseResultsProps {
   onStatusUpdate?: (status: string) => Promise<void>;
 }
 
+const ID_TYPE_LABELS: Record<string, string> = {
+  swedish_license: "Körkort",
+  swedish_id: "ID-kort",
+  passport: "Pass",
+  guardian_certificate: "Vårdnadshavares intyg",
+};
+
+const formatVisus = (value: any): string => {
+  const f = formatVisualAcuityDisplay(value);
+  if (!f || f === "-" || f === "—") return "—";
+  return f;
+};
+
+const buildCorrectionLabel = (exam: DrivingLicenseExamination): string => {
+  const parts: string[] = [];
+  if (exam.uses_glasses) {
+    parts.push(`Glasögon (${exam.prescription_over_8d ? "över ±8 D" : "under ±8 D"})`);
+  }
+  if (exam.uses_contact_lenses) parts.push("Kontaktlinser");
+  return parts.length ? parts.join(" + ") : "Ingen korrektion";
+};
+
 export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
   examination,
   entry,
-  answers,
-  onDecisionUpdate,
-  onStatusUpdate
 }) => {
-  const { user } = useUser();
-  const { supabase } = useSupabaseClient();
   const { opticians = [] } = useOpticians();
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [localExamination, setLocalExamination] = useState(examination);
   const { resolveUserDisplay } = useUserResolver();
+  const [showTechnical, setShowTechnical] = useState(false);
 
-  // Update local state when examination prop changes
-  useEffect(() => {
-    setLocalExamination(examination);
-  }, [examination]);
-  const getDecisionBadge = () => {
-    if (localExamination.optician_decision === 'approved') {
-      return (
-        <Badge className="bg-green-100 text-green-800 border-green-200">
-          <CheckCircle className="h-3 w-3 mr-1" />
-          Godkänd
-        </Badge>
-      );
-    } else if (localExamination.optician_decision === 'requires_booking') {
-      return (
-        <Badge className="bg-amber-100 text-amber-800 border-amber-200">
-          <Calendar className="h-3 w-3 mr-1" />
-          Bokning krävs
-        </Badge>
-      );
-    } else if (localExamination.optician_decision === 'not_approved') {
-      return (
-        <Badge variant="destructive">
-          <XCircle className="h-3 w-3 mr-1" />
-          Ej godkänd
-        </Badge>
-      );
-    } else {
+  const completionMethod = (examination.completion_method as "servit" | "app") || "app";
+  const isServeit = completionMethod === "servit";
+  const outcome = parseOutcomeFromNotes(examination.notes || "").outcome;
+  const outcomeLabel = outcome ? getOutcomeLabel(outcome) : null;
+  const freeTextNotes = parseOutcomeFromNotes(examination.notes || "").rest;
+
+  const opticianName = (() => {
+    const id = entry.optician_id || examination.decided_by;
+    if (!id) return null;
+    const opt = opticians.find((o) => o.clerk_user_id === id);
+    return opt ? getOpticianDisplayName(opt) : resolveUserDisplay(id);
+  })();
+
+  const examDateStr = new Date(
+    examination.created_at || examination.updated_at,
+  ).toLocaleDateString("sv-SE");
+  const journaledAtStr = examination.updated_at
+    ? new Date(examination.updated_at).toLocaleString("sv-SE")
+    : "";
+
+  const idType = entry.id_type || examination.id_type;
+  const idLabel = idType ? ID_TYPE_LABELS[idType] || idType : "—";
+
+  const correction = buildCorrectionLabel(examination);
+  const hasCorrection = examination.uses_glasses || examination.uses_contact_lenses;
+
+  const hasGlassesRx =
+    examination.glasses_prescription_od_sph !== null ||
+    examination.glasses_prescription_os_sph !== null;
+
+  // Outcome → badge style
+  const outcomeBadge = () => {
+    if (!outcomeLabel) {
       return (
         <Badge variant="secondary">
           <Clock className="h-3 w-3 mr-1" />
-          Väntar på beslut
+          Ingen bedömning sparad
         </Badge>
       );
     }
-  };
-
-  const getCorrectionType = () => {
-    if (localExamination.uses_glasses && localExamination.uses_contact_lenses) {
-      return "glasögon och linser";
-    } else if (localExamination.uses_glasses) {
-      return "glasögon";
-    } else if (localExamination.uses_contact_lenses) {
-      return "linser";
-    }
-    return null;
-  };
-
-  const correctionType = getCorrectionType();
-
-  const getIdTypeInSwedish = (idType: string | null) => {
-    if (!idType) return '';
-    
-    const translations: Record<string, string> = {
-      'passport': 'Pass',
-      'driving_license': 'Körkort', 
-      'national_id': 'Nationellt ID',
-      'eu_id': 'EU-ID',
-      'other': 'Annat',
-      'swedish_license': 'Svenskt körkort',
-      'id_card': 'ID-kort'
-    };
-    
-    return translations[idType] || idType.replace('_', ' ');
-  };
-
-  const getUserName = (userId: string | null) => {
-    if (!userId) return 'Okänd användare';
-    const optician = opticians.find(opt => opt.clerk_user_id === userId);
-    return optician ? `${optician.first_name || ''} ${optician.last_name || ''}`.trim() || optician.display_name || 'Okänd användare' : 'Okänd användare';
-  };
-
-  const generateAISummary = async () => {
-    setIsGeneratingSummary(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-summary', {
-        body: {
-          entryId: entry.id
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "AI-sammanfattning genererad",
-        description: "Sammanfattningen har skapats och sparats."
-      });
-
-      // Don't trigger reload, just notify parent for potential state updates
-      onDecisionUpdate?.();
-    } catch (error: any) {
-      console.error('Error generating AI summary:', error);
-      toast({
-        title: "Kunde inte generera sammanfattning",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsGeneratingSummary(false);
-    }
+    const isApproved = outcome?.startsWith("approved");
+    const isNotApproved = outcome === "not_approved";
+    return (
+      <Badge
+        className={cn(
+          isApproved &&
+            "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 border-emerald-500/30",
+          isNotApproved &&
+            "bg-destructive/15 text-destructive hover:bg-destructive/15 border-destructive/30",
+          !isApproved && !isNotApproved &&
+            "bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 border-amber-500/30",
+        )}
+        variant="outline"
+      >
+        {isApproved ? (
+          <CheckCircle className="h-3 w-3 mr-1" />
+        ) : isNotApproved ? (
+          <XCircle className="h-3 w-3 mr-1" />
+        ) : (
+          <Calendar className="h-3 w-3 mr-1" />
+        )}
+        {outcomeLabel}
+      </Badge>
+    );
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-3xl">
+      {/* A. Status-banner */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Car className="h-5 w-5" />
-            Körkortsundersökning - Resultat
-            {getDecisionBadge()}
+            Körkortskoll — {entry.first_name || "patient"}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Patient info */}
-          <div className="space-y-2">
-            <h4 className="font-medium">Patientinformation</h4>
-            <div className="text-sm space-y-1">
-              <p>Namn: {entry.first_name}</p>
-              <p>Datum: {entry.booking_date ? new Date(entry.booking_date).toLocaleDateString('sv-SE') : 'Idag'}</p>
-              <p>Slutförd: {new Date(localExamination.updated_at).toLocaleString('sv-SE')}</p>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {outcomeBadge()}
+            <Badge
+              variant="outline"
+              className={cn(
+                isServeit
+                  ? "bg-primary/10 text-primary border-primary/30"
+                  : "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+              )}
+            >
+              {isServeit ? (
+                <ClipboardCheck className="h-3 w-3 mr-1" />
+              ) : (
+                <CheckCircle className="h-3 w-3 mr-1" />
+              )}
+              {isServeit ? "Ska journalföras i ServeIT" : "Journalförd i appen"}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-4 text-sm">
+            <p>
+              <span className="text-muted-foreground">Datum: </span>
+              {examDateStr}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Slutförd: </span>
+              {journaledAtStr}
+            </p>
+            {opticianName && (
+              <p className="sm:col-span-2">
+                <span className="text-muted-foreground">Ansvarig optiker: </span>
+                {opticianName}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* B. Sammanfattning */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4" />
+            Sammanfattning av undersökningen
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          {/* Legitimation */}
+          <div className="flex items-start gap-3">
+            <IdCard className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">Legitimation</p>
+              <p>
+                {idLabel}
+                {entry.id_verification_completed && (
+                  <span className="text-emerald-700 ml-2">✓ verifierad</span>
+                )}
+                {entry.personal_number && (
+                  <span className="font-mono ml-2">{entry.personal_number}</span>
+                )}
+              </p>
             </div>
           </div>
 
           <Separator />
 
-          {/* AI Summary */}
-          <div className="space-y-3">
-            <h4 className="font-medium flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              AI-sammanfattning av anamnes
-            </h4>
-            
-            {entry.ai_summary ? (
-              <div className="bg-muted p-4 rounded-md text-sm whitespace-pre-wrap">
-                {entry.ai_summary}
+          {/* Visus */}
+          <div className="flex items-start gap-3">
+            <Eye className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Synskärpa utan korrektion (H / V / B)
+                </p>
+                <p className="font-mono">
+                  {formatVisus(examination.visual_acuity_right_eye)} /{" "}
+                  {formatVisus(examination.visual_acuity_left_eye)} /{" "}
+                  {formatVisus(examination.visual_acuity_both_eyes)}
+                </p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <Alert>
-                  <FileText className="h-4 w-4" />
-                  <AlertDescription>
-                    Ingen AI-sammanfattning har genererats ännu för denna anamnes.
-                  </AlertDescription>
-                </Alert>
-                <Button
-                  onClick={generateAISummary}
-                  disabled={isGeneratingSummary}
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {isGeneratingSummary ? "Genererar..." : "Generera AI-sammanfattning"}
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Visual acuity summary */}
-          <div className="space-y-3">
-            <h4 className="font-medium flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              Visusmätningar
-            </h4>
-            <div className="grid grid-cols-1 gap-4 text-sm">
-              {correctionType ? (
-                <>
-                  {/* With correction values */}
-                  <div className="space-y-1">
-                    <h5 className="font-medium text-sm flex items-center gap-2">
-                      Med korrektion
-                      <Badge variant="secondary" className="text-xs">
-                        {correctionType}
-                      </Badge>
-                    </h5>
-                    <p>
-                      Båda ögon: <span className="font-mono">
-                        {formatVisualAcuityDisplay(localExamination.visual_acuity_with_correction_both)}
-                      </span>
-                    </p>
-                    <p>
-                      Höger öga: <span className="font-mono">
-                        {formatVisualAcuityDisplay(localExamination.visual_acuity_with_correction_right)}
-                      </span>
-                    </p>
-                    <p>
-                      Vänster öga: <span className="font-mono">
-                        {formatVisualAcuityDisplay(localExamination.visual_acuity_with_correction_left)}
-                      </span>
-                    </p>
-                  </div>
-                  
-                  {/* Without correction values */}
-                  <div className="space-y-1">
-                    <h5 className="font-medium text-sm">Utan korrektion</h5>
-                    <p>
-                      Båda ögon: <span className="font-mono">
-                        {formatVisualAcuityDisplay(localExamination.visual_acuity_both_eyes)}
-                      </span>
-                    </p>
-                    <p>
-                      Höger öga: <span className="font-mono">
-                        {formatVisualAcuityDisplay(localExamination.visual_acuity_right_eye)}
-                      </span>
-                    </p>
-                    <p>
-                      Vänster öga: <span className="font-mono">
-                        {formatVisualAcuityDisplay(localExamination.visual_acuity_left_eye)}
-                      </span>
-                    </p>
-                  </div>
-                </>
-              ) : (
-                /* Without correction only */
-                <div className="space-y-1">
-                  <h5 className="font-medium text-sm">Utan korrektion</h5>
-                  <p>
-                    Båda ögon: <span className="font-mono">
-                      {formatVisualAcuityDisplay(localExamination.visual_acuity_both_eyes)}
-                    </span>
+              {hasCorrection && (
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Synskärpa med korrektion (H / V / B)
                   </p>
-                  <p>
-                    Höger öga: <span className="font-mono">
-                      {formatVisualAcuityDisplay(localExamination.visual_acuity_right_eye)}
-                    </span>
-                  </p>
-                  <p>
-                    Vänster öga: <span className="font-mono">
-                      {formatVisualAcuityDisplay(localExamination.visual_acuity_left_eye)}
-                    </span>
+                  <p className="font-mono">
+                    {formatVisus(examination.visual_acuity_with_correction_right)} /{" "}
+                    {formatVisus(examination.visual_acuity_with_correction_left)} /{" "}
+                    {formatVisus(examination.visual_acuity_with_correction_both)}
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Glasses prescription for higher license categories */}
-            {(localExamination.uses_glasses || localExamination.uses_contact_lenses) && 
-             (localExamination.glasses_prescription_od_sph !== null || localExamination.glasses_prescription_os_sph !== null) && (
-              <div className="space-y-3 mt-4">
-                <h5 className="font-medium text-sm">Glasögonstyrkor</h5>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-1">
-                    <h6 className="font-medium text-xs text-muted-foreground">Höger öga (OD)</h6>
-                    {localExamination.glasses_prescription_od_sph !== null && (
-                      <p>Sfär: <span className="font-mono">{localExamination.glasses_prescription_od_sph}</span></p>
-                    )}
-                    {localExamination.glasses_prescription_od_cyl !== null && (
-                      <p>Cylinder: <span className="font-mono">{localExamination.glasses_prescription_od_cyl}</span></p>
-                    )}
-                    {localExamination.glasses_prescription_od_axis !== null && (
-                      <p>Axel: <span className="font-mono">{localExamination.glasses_prescription_od_axis}°</span></p>
-                    )}
-                    {localExamination.glasses_prescription_od_add !== null && (
-                      <p>Addition: <span className="font-mono">{localExamination.glasses_prescription_od_add}</span></p>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <h6 className="font-medium text-xs text-muted-foreground">Vänster öga (OS)</h6>
-                    {localExamination.glasses_prescription_os_sph !== null && (
-                      <p>Sfär: <span className="font-mono">{localExamination.glasses_prescription_os_sph}</span></p>
-                    )}
-                    {localExamination.glasses_prescription_os_cyl !== null && (
-                      <p>Cylinder: <span className="font-mono">{localExamination.glasses_prescription_os_cyl}</span></p>
-                    )}
-                    {localExamination.glasses_prescription_os_axis !== null && (
-                      <p>Axel: <span className="font-mono">{localExamination.glasses_prescription_os_axis}°</span></p>
-                    )}
-                    {localExamination.glasses_prescription_os_add !== null && (
-                      <p>Addition: <span className="font-mono">{localExamination.glasses_prescription_os_add}</span></p>
-                    )}
-                  </div>
-                </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Korrektion</p>
+                <p>{correction}</p>
               </div>
-            )}
-            
-            {localExamination.vision_below_limit ? (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Visusvärden är under gränsvärdet för körkort
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Visusvärden uppfyller kraven för körkort
-                </AlertDescription>
-              </Alert>
-            )}
+              {examination.vision_below_limit ? (
+                <Alert variant="destructive" className="py-2">
+                  <XCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Visusvärden under gränsen för körkort.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert className="py-2 border-emerald-500/30 bg-emerald-500/5">
+                  <CheckCircle className="h-4 w-4 text-emerald-700" />
+                  <AlertDescription className="text-xs">
+                    Visusvärden uppfyller kraven.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
           </div>
 
-          <Separator />
-
-          {/* ID verification summary */}
-          <div className="space-y-3">
-            <h4 className="font-medium flex items-center gap-2">
-              <IdCard className="h-4 w-4" />
-              Legitimationskontroll
-            </h4>
-            
-            {entry.id_verification_completed ? (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-1">
-                    <p className="font-medium">Legitimation verifierad</p>
-                    <div className="text-sm space-y-1">
-                      <p>Typ: <span className="font-medium">{getIdTypeInSwedish(entry.id_type)}</span></p>
-                      <p>Verifierad av: <span className="font-medium">{resolveUserDisplay(entry.verified_by)}</span></p>
-                      {entry.personal_number && (
-                        <p>Personnummer: <span className="font-mono font-medium">{entry.personal_number}</span></p>
-                      )}
-                      <p className="text-muted-foreground text-xs">
-                        {entry.verified_at && `Verifierad: ${new Date(entry.verified_at).toLocaleString('sv-SE')}`}
-                      </p>
-                    </div>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Legitimation ej verifierad
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          {/* Notes */}
-          {localExamination.notes && (
+          {/* Optikerns anteckning */}
+          {freeTextNotes && (
             <>
               <Separator />
-              <div className="space-y-2">
-                <h4 className="font-medium">Anteckningar</h4>
-                <p className="text-sm bg-muted p-3 rounded-md">
-                  {localExamination.notes}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Anteckning från assistent
+                </p>
+                <p className="whitespace-pre-wrap bg-muted/50 rounded-md px-3 py-2">
+                  {freeTextNotes}
                 </p>
               </div>
             </>
           )}
 
-          {/* Final status */}
-          <Alert>
-            <Clock className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between">
-                <span>Undersökning slutförd {new Date(localExamination.updated_at).toLocaleString('sv-SE')}</span>
-                {getDecisionBadge()}
+          {/* AI-sammanfattning (om finns) */}
+          {entry.ai_summary && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  AI-sammanfattning av anamnes
+                </p>
+                <div className="whitespace-pre-wrap bg-muted/50 rounded-md px-3 py-2">
+                  {entry.ai_summary}
+                </div>
               </div>
-            </AlertDescription>
-          </Alert>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {/* Recommendation Engine */}
-      <div className="mt-6">
-        <RecommendationEngine 
-          examination={localExamination}
-          entry={entry}
-        />
-      </div>
+      {/* C. Vad gjordes/ska göras */}
+      {isServeit ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardCheck className="h-4 w-4" />
+              Så här journalförs den här i ServeIT
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ServeitInstructions
+              examination={examination}
+              entry={entry}
+              mode="review"
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <Alert className="border-emerald-500/30 bg-emerald-500/5">
+          <CheckCircle className="h-4 w-4 text-emerald-700" />
+          <AlertDescription>
+            <div className="space-y-0.5 text-sm">
+              <p className="font-semibold">Journalförd direkt i appen</p>
+              <p>
+                Den här körkortskollen är slutförd och journalförd i appen
+                {opticianName ? ` av ${opticianName}` : ""}
+                {journaledAtStr ? ` den ${journaledAtStr}` : ""}.
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
-      {/* Optician Decision */}
-      <div className="mt-6">
-        <DrivingLicenseOpticianDecision
-          examination={localExamination}
-          entry={entry}
-          currentUserId={user?.id || ''}
-          onDecisionMade={(updatedExamination) => {
-            // Update local state immediately to show decision without reload
-            if (updatedExamination) {
-              setLocalExamination(updatedExamination);
-            }
-            // Still call parent callback for any additional updates
-            onDecisionUpdate?.();
-          }}
-          getUserName={getUserName}
-        />
-      </div>
-
-      {/* Export Section - Show immediately after decision */}
-      {localExamination.optician_decision && (
-        <div className="mt-6">
-          <CopyableExaminationSummary
-            examination={localExamination}
-            entry={entry}
-            answers={answers}
-            onStatusUpdate={onStatusUpdate}
-          />
-        </div>
+      {/* D. Tekniska detaljer — collapsible, default stängd */}
+      {hasGlassesRx && (
+        <Collapsible open={showTechnical} onOpenChange={setShowTechnical}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full justify-between">
+              <span className="text-xs text-muted-foreground">
+                Tekniska detaljer (glasstyrkor)
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  showTechnical && "rotate-180",
+                )}
+              />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <h6 className="font-medium text-xs text-muted-foreground">
+                      Höger öga (OD)
+                    </h6>
+                    {examination.glasses_prescription_od_sph !== null && (
+                      <p>
+                        Sfär:{" "}
+                        <span className="font-mono">
+                          {examination.glasses_prescription_od_sph}
+                        </span>
+                      </p>
+                    )}
+                    {examination.glasses_prescription_od_cyl !== null && (
+                      <p>
+                        Cylinder:{" "}
+                        <span className="font-mono">
+                          {examination.glasses_prescription_od_cyl}
+                        </span>
+                      </p>
+                    )}
+                    {examination.glasses_prescription_od_axis !== null && (
+                      <p>
+                        Axel:{" "}
+                        <span className="font-mono">
+                          {examination.glasses_prescription_od_axis}°
+                        </span>
+                      </p>
+                    )}
+                    {examination.glasses_prescription_od_add !== null && (
+                      <p>
+                        Addition:{" "}
+                        <span className="font-mono">
+                          {examination.glasses_prescription_od_add}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <h6 className="font-medium text-xs text-muted-foreground">
+                      Vänster öga (OS)
+                    </h6>
+                    {examination.glasses_prescription_os_sph !== null && (
+                      <p>
+                        Sfär:{" "}
+                        <span className="font-mono">
+                          {examination.glasses_prescription_os_sph}
+                        </span>
+                      </p>
+                    )}
+                    {examination.glasses_prescription_os_cyl !== null && (
+                      <p>
+                        Cylinder:{" "}
+                        <span className="font-mono">
+                          {examination.glasses_prescription_os_cyl}
+                        </span>
+                      </p>
+                    )}
+                    {examination.glasses_prescription_os_axis !== null && (
+                      <p>
+                        Axel:{" "}
+                        <span className="font-mono">
+                          {examination.glasses_prescription_os_axis}°
+                        </span>
+                      </p>
+                    )}
+                    {examination.glasses_prescription_os_add !== null && (
+                      <p>
+                        Addition:{" "}
+                        <span className="font-mono">
+                          {examination.glasses_prescription_os_add}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   );

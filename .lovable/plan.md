@@ -1,66 +1,80 @@
-# Pedagogisk ServeIT-guide i sista steget
+# Pedagogisk återblick på gamla körkortskollar
+
+## Problem
+
+När en optiker/assistent öppnar en gammal körkortskoll (inom 7-dagars retention) i entry-detail-modalen visas idag `DrivingLicenseResults` — en lång, teknisk vy full med rådata, glasstyrkor, "krumelurer" och tre olika kort (Resultat, Recommendation, OpticianDecision, CopyableExaminationSummary). Det är svårt att snabbt förstå *vad som hände* och *vad som ska göras*.
 
 ## Mål
 
-Sista steget i körkortsflödet (`ServeitTransferView`) ska fungera som en **steg-för-steg-guide** för en assistent som gör det här för första gången. Idag listar vyn bara värden — den ska istället tydligt instruera *"så här gör du i ServeIT"* för varje sektion, med kopierbara värden bredvid.
+När man öppnar en gammal körkortskoll ska man direkt se en **ren, pedagogisk sammanfattning**:
 
-## Vad som ändras (endast UI/copy i ServeitTransferView)
+1. **Vad har vi undersökt och vad blev resultatet** — en kort summary-sektion högst upp.
+2. **Vad ska/skulle göras härnäst** — tydlig instruktion baserat på `completion_method`:
+   - `servit` → "Så här journalförs den här i ServeIT" + samma 7-sektioners ServeIT-guide som i sista steget i flödet (read-only).
+   - `app` → "Den här är journalförd direkt i appen av optikern".
+3. **Inga rådata-block, inga åtgärds-knappar för flödet** (visningsläge).
 
-### 1. Tydligare topp-instruktion
-Banner överst utökas med en kort onboarding-text:
-- "Öppna ServeIT och starta en ny körkortskoll med kundens personnummer."
-- "Följ stegen 1–7 nedan i ordning. För varje fält står det vad du ska klicka i eller skriva in i ServeIT."
-- Behåll: mail-statusen, "assistenten journalför inte".
+## Vad ändras
 
-### 2. Varje av de 7 sektionerna får en instruktionsrad
-Ovanför värdena i varje sektion läggs en kort "Så här gör du i ServeIT:"-mening i muted text. Exempel:
+### Fil: `src/components/Optician/EntryDetails/DrivingLicenseResults.tsx` (omarbetas)
 
-- **1. Intyget avser** — "I ServeIT: bocka i behörigheten nedan i listan 'Intyget avser'."
-- **2. Intyget är baserat på** — "Välj 'Undersökning' och fyll i dagens datum."
-- **3. Identiteten styrkt genom** — "Välj legitimationstyp i listan 'Identiteten styrkt genom'."
-- **4. Synskärpa utan korrektion** — "Skriv in synskärpan i fälten Höger / Vänster / Binokulärt."
-- **5. Synskärpa med korrektion** — "Skriv in värdena i motsvarande fält. Lämna tomt om patienten inte använder korrektion."
-- **6. Korrektion** — "Bocka i rätt ruta enligt nedan." + visa hänvisning till bild (se 4).
-- **7. Anamnesfrågor** — "Klicka Ja eller Nej för varje fråga enligt patientens svar nedan. Om Ja: skriv in kommentaren i textfältet i ServeIT."
+Komponenten görs om till en ren visningsvy med tre tydliga sektioner i en kolumn:
 
-Texten ska vara kort, en mening, i `text-xs text-muted-foreground italic` så den inte stör värdesammanställningen.
+**A. Status-banner (överst)**
+- Stor badge: "Journalförd i ServeIT" eller "Journalförd direkt i appen" beroende på `completion_method`.
+- Datum (`updated_at`), patientnamn, bedömning från `parseOutcomeFromNotes(notes)` (Godkänd / Bokning krävs / etc.).
 
-### 3. Sektion 6 (Korrektion) — visa ServeIT-skärmbild + tydligt val
-Här gör användaren mest fel. Sektionen utökas:
-- Liten skärmbild från ServeIT (uppladdad `image-248.png`) sparas i `src/assets/serveit-correction-example.png` och visas inbäddad (max-w ~480px, rounded, border).
-- Under bilden: en "checklista" som speglar ServeIT-rutorna och visar vilken/vilka som ska bockas i baserat på patientdata:
-  - ☐ "Glasögon och inget av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen" — markeras visuellt som "bocka i" om `uses_glasses && !prescription_over_8d`
-  - ☐ "Glasögon och något av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen" — om `uses_glasses && prescription_over_8d`
-  - ☐ "Kontaktlinser" — om `uses_contact_lenses`
-- Aktiva rutor får grön check-ikon + `bg-accent/10`; inaktiva visas grå med tom ruta. Det ger en visuell "klicka exakt dessa rutor"-instruktion.
+**B. Sammanfattning av undersökningen** — kort, läsbar lista:
+- Behörighet (från notes)
+- Legitimationstyp + verifierad av + datum
+- Visus utan korrektion (H/V/B) — en rad
+- Visus med korrektion (H/V/B) — en rad om relevant
+- Korrektion (Glasögon ±8D / Kontaktlinser / Ingen)
+- Anamnesfrågor — Ja/Nej-pills (samma `AnamnesisRow`-stil som i ServeitTransferView)
+- Anteckning från optikern (om finns)
 
-### 4. Sektion 7 (Anamnesfrågor) — visa ServeIT-skärmbild + Ja/Nej-pill
-- Liten skärmbild (uppladdad `image-249.png`) sparas i `src/assets/serveit-anamnesis-example.png` och visas inbäddad.
-- Varje fråga visas som en rad med:
-  - frågetexten,
-  - en pill/badge som tydligt säger **JA** (grön) eller **NEJ** (grå) — så assistenten ser direkt vilken knapp i ServeIT som ska klickas,
-  - om Ja + kommentar: kommentaren visas under med "Skriv detta i ServeIT:s textfält" + Copy-knapp.
+**C. Pedagogisk "vad gjordes/ska göras"-sektion**
+- Om `completion_method === 'servit'`: rendera samma read-only ServeIT-guide som finns i `ServeitTransferView` — banner "Den här körkortskollen ska journalföras i ServeIT", de 7 numrerade sektionerna med "Så här gör du i ServeIT"-hint, ServeIT-skärmbilderna och de gröna checkrutorna. Inga Optiker-select, ingen Markera-knapp, ingen Anteckning-textarea.
+- Om `completion_method === 'app'`: enkel grön bekräftelse-Alert: "Journalförd direkt i appen av {optikernamn} den {datum}." + AI-sammanfattning (om finns) i ett muted block.
 
-### 5. Allt övrigt lämnas orört
-- Rekommendation-sektionen (`RecommendationEngine`), Bedömning, Optiker-val, Anteckningar, mail-flödet, "Markera som skapad"-CTA — oförändrat.
-- Inga ändringar i andra filer, ingen ny logik, inga datamodell-ändringar.
+**D. Bort tas / döljs i den nya vyn**
+- `RecommendationEngine`-kortet (recommendation visas inbakad i summary istället).
+- `DrivingLicenseOpticianDecision` (beslut redan fattat — visa bara resultatet som badge i toppen).
+- `CopyableExaminationSummary` (ersätts av den nya sammanfattningen).
+- Glasstyrkor-grid (Sfär/Cyl/Axel/Add) — flyttas till en collapsible "Visa tekniska detaljer" längst ned, default stängd, så den fortfarande är åtkomlig vid behov men inte stör.
+- AI-sammanfattnings-genereringsknappen tas bort i visningsläget. AI-summary visas om den finns; saknas den, visas inget block alls.
 
-## Filer
+### Teknisk uppdelning (refaktor)
 
-- **Redigera**: `src/components/Optician/DrivingLicense/ServeitTransferView.tsx` (utöka UI + copy, ingen ny businesslogik).
-- **Lägg till**: `src/assets/serveit-correction-example.png` (kopia av `user-uploads://image-248.png`).
-- **Lägg till**: `src/assets/serveit-anamnesis-example.png` (kopia av `user-uploads://image-249.png`).
+För att kunna återanvända ServeIT-guiden i båda vyerna utan duplicering bryts den ut:
+
+- Ny fil: `src/components/Optician/DrivingLicense/ServeitInstructions.tsx`
+  - Innehåller: instruktionsbanner, de 7 sektionerna, `StepHint`, `ServeitCheckbox`, `AnamnesisRow`, skärmbilderna.
+  - Props: `{ examination, entry, mode: 'guide' | 'review' }`
+    - `'guide'` = aktivt steg 4 (banner säger "Så här skapar du..."),
+    - `'review'` = återblick (banner säger "Den här körkortskollen journalfördes i ServeIT — så här gjordes det").
+- `ServeitTransferView.tsx` förenklas: importerar `ServeitInstructions` med `mode='guide'`, behåller bara Bedömning/Optiker-select/Anteckningar/CTA.
+- Nya `DrivingLicenseResults` använder `ServeitInstructions` med `mode='review'` när `completion_method === 'servit'`.
+
+### Filer
+
+- **Skapa**: `src/components/Optician/DrivingLicense/ServeitInstructions.tsx` (utbruten från `ServeitTransferView`).
+- **Redigera**: `src/components/Optician/DrivingLicense/ServeitTransferView.tsx` (använd nya komponenten — ingen funktionell ändring).
+- **Skriv om**: `src/components/Optician/EntryDetails/DrivingLicenseResults.tsx` (ny pedagogisk vy).
+- **Oförändrat**: `ModalTabContent.tsx` (samma prop-signatur).
+- **Inga databasändringar**, ingen ny logik, ingen ändring i flödet.
 
 ## Tekniska detaljer
 
-- Bilderna importeras som ES6-asset: `import correctionImg from "@/assets/serveit-correction-example.png"`.
-- Checklistan i sektion 6 byggs av samma `examination.uses_glasses / uses_contact_lenses / prescription_over_8d`-flaggor som redan används i `buildCorrectionLabel`. Befintliga värdesvariabeln visas kvar ovanför som "sammanfattning".
-- Ja/Nej-pill i sektion 7 använder `Badge`-komponenten med `variant`-mappning: Ja → grön (`bg-emerald-500/15 text-emerald-700`), Nej → neutral.
-- Alla nya färger via semantiska tokens / accept-mönster i index.css — inga rå hex.
-- Mobilen: bilderna `w-full max-w-md`, checklistan stackas naturligt.
+- 7-dagars retention är redan implementerad via `auto_deletion_timestamp` + RLS-policy "Organization members can view recent or non-sent entries" (status `<> sent` ELLER `created_at > now() - 2h`). Ingen ändring där.
+- `completion_method` finns redan som kolumn på `driving_license_examinations` (`'app' | 'servit'`).
+- Outcome parsas via befintlig `parseOutcomeFromNotes` från `outcomeUtils.ts`.
+- Optikernamn via `useOpticians` + `getOpticianDisplayName` (redan importerat).
+- Glasstyrkor-detaljer wrappas i shadcn `Collapsible` så de finns kvar för optikerns referens.
 
 ## Verifiering
 
 - Bygget passerar (TS strict).
-- Manuellt flödestest: kör hela körkortsflödet → steg 4 visar guide + bilder + korrekt ifyllda checkrutor + Ja/Nej-pills.
-- Inga regressioner i mail/spara-flödet (oförändrad kod).
+- Öppna en `servit`-journalförd entry → ren summary + ServeIT-guide visas, inga åtgärdsknappar.
+- Öppna en `app`-journalförd entry → ren summary + "journalförd i appen"-bekräftelse.
+- Aktivt steg 4 i flödet ser fortfarande likadant ut och fungerar som tidigare.

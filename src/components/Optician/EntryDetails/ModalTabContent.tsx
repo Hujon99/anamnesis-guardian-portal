@@ -68,10 +68,11 @@ export function ModalTabContent({
   
   // Check if this is a driving license examination
   const isDrivingLicenseExam = entry.examination_type?.toLowerCase() === 'körkortsundersökning';
-  // Use pre-loaded driving license status for better performance
+  // driving_license_status pre-loaded by the list-level bulk hook.
+  // undefined => still loading; null/missing examination => no protocol yet.
+  const drivingStatusLoaded = entry.driving_license_status !== undefined;
   const isDrivingLicenseCompleted = entry.driving_license_status?.isCompleted || false;
   const examination = entry.driving_license_status?.examination || null;
-  const isLoading = false; // No loading since data is pre-loaded
   const showDrivingLicenseTab = isDrivingLicenseExam;
 
   // Check if this is a CISS form

@@ -227,6 +227,71 @@ const FieldRow: React.FC<FieldRowProps> = ({ label, value, copyValue }) => {
   );
 };
 
+/** En anamnesfråga med tydlig Ja/Nej-pill + ev. kommentar att skriva i ServeIT. */
+const AnamnesisRow: React.FC<{
+  question: string;
+  answer: string;
+  comment?: string;
+}> = ({ question, answer, comment }) => {
+  const isYes = answer === "Ja";
+  const isNo = answer === "Nej";
+
+  const handleCopyComment = async () => {
+    if (!comment) return;
+    try {
+      await navigator.clipboard.writeText(comment);
+      toast({ title: "Kopierat!", description: "Kommentar" });
+    } catch {
+      toast({
+        title: "Kunde inte kopiera",
+        description: "Kopiera värdet manuellt.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="rounded-md border border-border/60 bg-background/40 px-3 py-2">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm flex-1">{question}</p>
+        <Badge
+          className={cn(
+            "flex-shrink-0 font-semibold",
+            isYes &&
+              "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 border-emerald-500/30",
+            isNo && "bg-muted text-muted-foreground hover:bg-muted border-border",
+            !isYes && !isNo &&
+              "bg-muted text-muted-foreground/60 hover:bg-muted border-border",
+          )}
+          variant="outline"
+        >
+          Klicka: {answer}
+        </Badge>
+      </div>
+      {isYes && comment && (
+        <div className="mt-2 flex items-start justify-between gap-2 rounded border border-dashed border-border/60 bg-muted/40 px-2 py-1.5">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground">
+              Skriv detta i ServeIT:s kommentarfält:
+            </p>
+            <p className="text-sm font-mono break-words">{comment}</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 flex-shrink-0"
+            onClick={handleCopyComment}
+            aria-label="Kopiera kommentar"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ServeitTransferView: React.FC<ServeitTransferViewProps> = ({
   examination,
   entry,

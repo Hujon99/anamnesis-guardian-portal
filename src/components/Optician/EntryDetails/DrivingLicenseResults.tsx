@@ -371,11 +371,18 @@ export const DrivingLicenseResults: React.FC<DrivingLicenseResultsProps> = ({
               </AlertDescription>
             </Alert>
           )}
-          <ServeitInstructions
-            examination={examination}
-            entry={entry}
-            mode="review"
-          />
+          {hasAnyExamData ? (
+            <ServeitInstructions
+              examination={examination}
+              entry={entry}
+              mode="review"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              Inga undersökningsdata sparades, så det finns inget att fylla i
+              ServeIT med från den här posten.
+            </p>
+          )}
         </CardContent>
       </Card>
 

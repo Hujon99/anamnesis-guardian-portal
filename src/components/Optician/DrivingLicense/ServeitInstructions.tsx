@@ -311,7 +311,14 @@ export const ServeitInstructions: React.FC<ServeitInstructionsProps> = ({
         "other_medical",
       ]),
     };
-  }, [entry?.id, entry?.id_type, examination?.id, examination?.updated_at]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    entry?.id,
+    entry?.id_type,
+    entry?.updated_at,
+    examination?.id,
+    examination?.updated_at,
+  ]);
 
   return (
     <div className="space-y-5">

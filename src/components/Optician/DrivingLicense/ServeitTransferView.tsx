@@ -392,18 +392,28 @@ export const ServeitTransferView: React.FC<ServeitTransferViewProps> = ({
         <Alert className="border-primary/40 bg-primary/5">
           <Mail className="h-4 w-4" />
           <AlertDescription>
-            <div className="space-y-1 text-sm">
-              <p>
+            <div className="space-y-1.5 text-sm">
+              <p className="font-semibold">
+                Så här skapar du körkortskollen i ServeIT
+              </p>
+              <ol className="list-decimal pl-5 space-y-0.5">
+                <li>
+                  Öppna ServeIT och starta en ny körkortskoll med kundens
+                  personnummer.
+                </li>
+                <li>
+                  Följ steg 1–7 nedan i ordning. Vid varje fält står det vad du
+                  ska klicka i eller skriva in.
+                </li>
+                <li>Spara körkortskollen i ServeIT när du är klar.</li>
+              </ol>
+              <p className="pt-1">
                 {emailSent
                   ? "Mail har skickats till optikern."
-                  : "Mail skickas till optikern när du markerar nedan."}
-              </p>
-              <p>
-                Nästa steg: Assistenten ska skapa en körkortskoll i ServeIT
-                och spara den.
+                  : "Mail skickas till optikern när du klickar på “Markera som skapad” längst ned."}
               </p>
               <p className="font-semibold">
-                Assistenten ska inte journalföra — det gör optikern.
+                Du som assistent ska inte journalföra — det gör optikern.
               </p>
             </div>
           </AlertDescription>
@@ -412,76 +422,138 @@ export const ServeitTransferView: React.FC<ServeitTransferViewProps> = ({
         {/* 2. Sju ServeIT-sektioner */}
         <div className="rounded-lg border border-border/60 bg-muted/20 divide-y divide-border/40">
           {/* 1. Intyget avser */}
-          <section className="px-4 py-2">
+          <section className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               1. Intyget avser
             </p>
+            <StepHint>
+              Bocka i behörigheten nedan i listan "Intyget avser".
+            </StepHint>
             <FieldRow label="Behörighet" value={sections.licenseCategory} />
           </section>
 
           {/* 2. Intyget är baserat på */}
-          <section className="px-4 py-2">
+          <section className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               2. Intyget är baserat på
             </p>
+            <StepHint>
+              Välj "Undersökning" och fyll i dagens datum.
+            </StepHint>
             <FieldRow label="Underlag" value={sections.basedOn} />
           </section>
 
           {/* 3. Identiteten styrkt genom */}
-          <section className="px-4 py-2">
+          <section className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               3. Identiteten styrkt genom
             </p>
+            <StepHint>
+              Välj legitimationstyp i listan "Identiteten styrkt genom".
+            </StepHint>
             <FieldRow label="Legitimationstyp" value={sections.idLabel} />
           </section>
 
           {/* 4. Synskärpa utan korrektion */}
-          <section className="px-4 py-2">
+          <section className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               4. Synskärpa utan korrektion
             </p>
+            <StepHint>
+              Skriv in synskärpan i fälten Höger / Vänster / Binokulärt.
+            </StepHint>
             <FieldRow label="Höger" value={sections.visusUtanH} />
             <FieldRow label="Vänster" value={sections.visusUtanV} />
             <FieldRow label="Binokulärt" value={sections.visusUtanB} />
           </section>
 
           {/* 5. Synskärpa med korrektion */}
-          <section className="px-4 py-2">
+          <section className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               5. Synskärpa med korrektion
             </p>
+            <StepHint>
+              Skriv in värdena i motsvarande fält. Lämna tomt om patienten inte
+              använder korrektion.
+            </StepHint>
             <FieldRow label="Höger" value={sections.visusMedH} />
             <FieldRow label="Vänster" value={sections.visusMedV} />
             <FieldRow label="Binokulärt" value={sections.visusMedB} />
           </section>
 
           {/* 6. Korrektion */}
-          <section className="px-4 py-2">
+          <section className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               6. Korrektion
             </p>
-            <FieldRow label="Typ" value={sections.correction} />
+            <StepHint>
+              Bocka i exakt de rutor som markeras med grönt nedan. Bilden visar
+              hur rutorna ser ut i ServeIT.
+            </StepHint>
+            <FieldRow label="Sammanfattning" value={sections.correction} />
+            <figure className="mt-2">
+              <img
+                src={correctionExampleImg}
+                alt="Skärmbild från ServeIT: korrektionsrutorna för glasögon och kontaktlinser"
+                className="w-full max-w-md rounded-md border border-border/60"
+                loading="lazy"
+              />
+              <figcaption className="text-xs text-muted-foreground mt-1">
+                Så ser sektionen ut i ServeIT.
+              </figcaption>
+            </figure>
+            <div className="mt-3 space-y-1.5">
+              <ServeitCheckbox
+                checked={
+                  !!examination?.uses_glasses && !examination?.prescription_over_8d
+                }
+                label="Glasögon och inget av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen"
+              />
+              <ServeitCheckbox
+                checked={
+                  !!examination?.uses_glasses && !!examination?.prescription_over_8d
+                }
+                label="Glasögon och något av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen"
+              />
+              <ServeitCheckbox
+                checked={!!examination?.uses_contact_lenses}
+                label="Kontaktlinser"
+              />
+            </div>
           </section>
 
           {/* 7. Anamnesfrågor */}
-          <section className="px-4 py-2">
+          <section className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               7. Anamnesfrågor
             </p>
-            <FieldRow
-              label="Ögonsjukdom eller synnedsättning?"
-              value={sections.eye.ja}
-            />
-            {sections.eye.comment && (
-              <FieldRow label="Kommentar" value={sections.eye.comment} />
-            )}
-            <FieldRow
-              label="Annan sjukdomshistorik eller andra omständigheter?"
-              value={sections.other.ja}
-            />
-            {sections.other.comment && (
-              <FieldRow label="Kommentar" value={sections.other.comment} />
-            )}
+            <StepHint>
+              Klicka Ja eller Nej för varje fråga enligt patientens svar nedan.
+              Om Ja: skriv in kommentaren i textfältet i ServeIT.
+            </StepHint>
+            <figure className="mt-2 mb-3">
+              <img
+                src={anamnesisExampleImg}
+                alt="Skärmbild från ServeIT: anamnesfrågor med Ja/Nej-knappar"
+                className="w-full max-w-md rounded-md border border-border/60"
+                loading="lazy"
+              />
+              <figcaption className="text-xs text-muted-foreground mt-1">
+                Så ser anamnesfrågorna ut i ServeIT.
+              </figcaption>
+            </figure>
+            <div className="space-y-3">
+              <AnamnesisRow
+                question="a) Finns uppgift om ögonsjukdom eller synnedsättning?"
+                answer={sections.eye.ja}
+                comment={sections.eye.comment}
+              />
+              <AnamnesisRow
+                question="b) Finns uppgift om annan sjukdomshistorik eller andra omständigheter?"
+                answer={sections.other.ja}
+                comment={sections.other.comment}
+              />
+            </div>
           </section>
         </div>
 

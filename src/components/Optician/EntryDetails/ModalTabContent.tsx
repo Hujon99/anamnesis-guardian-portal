@@ -210,9 +210,9 @@ export function ModalTabContent({
               </div>
             )}
             
-            {isLoading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            {!drivingStatusLoaded ? (
+              <div className="p-8 text-center" role="status" aria-live="polite">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
                 <p className="text-muted-foreground">Laddar körkortsdata...</p>
               </div>
             ) : examination ? (
@@ -221,14 +221,17 @@ export function ModalTabContent({
                 entry={entry}
                 answers={answers}
                 onDecisionUpdate={() => {
-                  // Update entry data without reloading page
                   onEntryUpdate?.();
                 }}
                 onStatusUpdate={onStatusUpdate}
               />
             ) : (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">Ingen körkortsdata tillgänglig</p>
+              <div className="p-8 text-center space-y-2">
+                <p className="font-medium">Inget körkortsprotokoll ännu</p>
+                <p className="text-sm text-muted-foreground">
+                  Den här patienten har inte påbörjat någon körkortsundersökning
+                  i appen. Starta från listan när du är redo.
+                </p>
               </div>
             )}
           </div>

@@ -421,42 +421,64 @@ export const ServeitInstructions: React.FC<ServeitInstructionsProps> = ({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
             6. Korrektion
           </p>
-          <StepHint>
-            Bocka i exakt de rutor som markeras med grönt nedan. Bilden visar
-            hur rutorna ser ut i ServeIT.
-          </StepHint>
-          <FieldRow label="Sammanfattning" value={sections.correction} />
-          <figure className="mt-2">
-            <img
-              src={correctionExampleImg}
-              alt="Skärmbild från ServeIT: korrektionsrutorna för glasögon och kontaktlinser"
-              className="w-full max-w-md rounded-md border border-border/60"
-              loading="lazy"
-            />
-            <figcaption className="text-xs text-muted-foreground mt-1">
-              Så ser sektionen ut i ServeIT.
-            </figcaption>
-          </figure>
-          <div className="mt-3 space-y-1.5">
-            <ServeitCheckbox
-              checked={
-                !!examination?.uses_glasses &&
-                !examination?.prescription_over_8d
-              }
-              label="Glasögon och inget av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen"
-            />
-            <ServeitCheckbox
-              checked={
-                !!examination?.uses_glasses &&
-                !!examination?.prescription_over_8d
-              }
-              label="Glasögon och något av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen"
-            />
-            <ServeitCheckbox
-              checked={!!examination?.uses_contact_lenses}
-              label="Kontaktlinser"
-            />
-          </div>
+          {(() => {
+            const usesGlasses = !!examination?.uses_glasses;
+            const usesLenses = !!examination?.uses_contact_lenses;
+            const noCorrection = !usesGlasses && !usesLenses;
+
+            return (
+              <>
+                <StepHint>
+                  {noCorrection
+                    ? "Du behöver inte bocka i något här — patienten använder varken glasögon eller kontaktlinser."
+                    : "Bocka i exakt de rutor som markeras med grönt nedan. Bilden visar hur rutorna ser ut i ServeIT."}
+                </StepHint>
+                <FieldRow label="Sammanfattning" value={sections.correction} />
+                <figure className="mt-2">
+                  <img
+                    src={correctionExampleImg}
+                    alt="Skärmbild från ServeIT: korrektionsrutorna för glasögon och kontaktlinser"
+                    className="w-full max-w-md rounded-md border border-border/60"
+                    loading="lazy"
+                  />
+                  <figcaption className="text-xs text-muted-foreground mt-1">
+                    Så ser sektionen ut i ServeIT.
+                  </figcaption>
+                </figure>
+
+                {noCorrection ? (
+                  <div className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm">
+                    <p className="font-medium text-foreground">
+                      Lämna alla rutor tomma.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Patienten har angett att hen varken använder glasögon
+                      eller kontaktlinser, så ingen ruta ska bockas i här.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-3 space-y-1.5">
+                    <ServeitCheckbox
+                      checked={
+                        usesGlasses && !examination?.prescription_over_8d
+                      }
+                      label="Glasögon och inget av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen"
+                    />
+                    <ServeitCheckbox
+                      checked={
+                        usesGlasses && !!examination?.prescription_over_8d
+                      }
+                      label="Glasögon och något av glasen har en styrka över plus 8 dioptrier i den mest brytande meridianen"
+                    />
+                    <ServeitCheckbox
+                      checked={usesLenses}
+                      label="Kontaktlinser"
+                    />
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </section>
 
         <section className="px-4 py-3">

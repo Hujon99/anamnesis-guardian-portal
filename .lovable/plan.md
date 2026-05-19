@@ -1,50 +1,37 @@
-# Rensa upp körkort-återblicksvyn — snabb, robust, ingen död kod
+# Soft-flagga visus < 1,0 vid högre behörighet
 
-## Vad användaren upplever
+## Vad användaren upptäckte
 
-När man (assistent eller optiker) öppnar en journalförd körkortskoll i listan visas **bara en liten "Verifierad behörighet"-rad** och resten av vyn känns som att den hänger. Vi har också flera filer som beskriver samma sak (duplicerad/död kod) — det gör det svårt att underhålla.
+Testfall: **Förlängning högre behörighet** med glasögon, korrigerad visus H 0,9 / V 0,9 / binokulärt 1,0.
 
-## Vad vi har grävt fram
+- Personen klarar minimikraven (bästa ≥ 0,8, sämsta ≥ 0,1) → körkortet kan godkännas.
+- Men eftersom **något öga ligger under 1,0** vill vi ändå **rekommendera synundersökning**.
+- Idag säger motorn "Godkänd – kan skickas" (helt grönt). Det är fel signal.
 
-1. **Död kod som inte används av någon** — riskerar att förvirra framtida ändringar:
-   - `src/components/Optician/EntryDetails/DrivingLicenseOpticianDecision.tsx` (gamla beslutskortet, ersatt av nya `DrivingLicenseResults`)
-   - `src/components/Optician/EntryDetails/CopyableExaminationSummary.tsx` (gamla kopiera-sammanfattning, ersatt av `ServeitInstructions`)
-2. **Orphan-läge: examination_status='in_progress' men entry.status='journaled'** — händer när användaren startar "Genomför i appen", går framåt men inte slutför visus-stegen. `DrivingLicenseResults` ritar då en nästan tom vy ("—" överallt), vilket ser ut som att den laddar.
-3. **Body-renderingen tar tid** för att `ServeitInstructions` alltid mountar och kör `extractAnamnesAnswer` på hela `answers`-objektet på varje render — fixas med stabil memoisering och en kort skeleton i körkort-tabben tills `entry.driving_license_status` faktiskt finns.
-4. **Behörighet** — RLS tillåter både assistent och optiker att läsa `driving_license_examinations` per organisation. Ingen UI-koll i den nya vyn gatar bort assistenter. Vi behåller det så.
+Förväntat utfall: **"Godkänd – rek. synundersökning"** (gult).
 
-## Ändringar
+Detta ska gälla **oavsett** om personen använder glasögon/linser eller inte — så länge gruppen är `higher`.
 
-### Filer som tas bort (död kod)
+## Ändring
 
-- `src/components/Optician/EntryDetails/DrivingLicenseOpticianDecision.tsx`
-- `src/components/Optician/EntryDetails/CopyableExaminationSummary.tsx`
+Endast i `src/components/Optician/DrivingLicense/RecommendationEngine.tsx` → `collectVisusFindings` för `requirementGroup === 'higher'`:
 
-### `src/components/Optician/EntryDetails/DrivingLicenseResults.tsx`
+Lägg till **mjuka** visusfynd (`hard: false`) när ett enskilt öga (höger eller vänster) ligger under 1,0 — utöver de befintliga hårda gränserna (bästa < 0,8, sämsta < 0,1).
 
-- Lägg till en tydlig **"Ofullständig undersökning"-banner** högst upp när `examination.examination_status !== 'completed'` — då har "Genomför i appen" startats men aldrig slutförts. Texten förklarar exakt vad som hänt och länkar tillbaka till körkortsflödet ("Fortsätt undersökningen") så användaren förstår varför vyn ser tom ut.
-- Behåll övriga sektioner men endast rendera ServeIT-guiden om `examination` har minst grunddata (legitimation eller visus). Saknas allt visas i stället en kort "Inga undersökningsdata sparades" — inte en halvtom guide.
-- Säkerställ att inga åtgärdsknappar visas (det här är ren visningsvy oavsett roll).
+- Hårda gränser → fortsätter ge "Ej godkänd" (rött).
+- Nya mjuka fynd ensamma + ingen anamnesavvikelse → `computeSuggestion` returnerar redan "Godkänd – rek. synundersökning" (gult). Ingen ändring i `computeSuggestion` behövs.
+- Mjuka fynd + anamnesavvikelse → fortsätter ge "Optiker ska kontakta" (orange). Oförändrad logik.
 
-### `src/components/Optician/EntryDetails/ModalTabContent.tsx`
+Texten för det mjuka fyndet blir t.ex.: `Visus höger öga 0,9 under 1,0 (rekommendera synundersökning vid högre behörighet)`.
 
-- I körkort-tabben: om `entry.driving_license_status` är `undefined` (bulk-fetchen är inte färdig) — visa skeleton i max 1 sekund i stället för att försöka rendera. Idag är `isLoading` hårdkodad till `false`, vilket gör att vyn renderas med tom data och känns "stuck".
-- Om `entry.driving_license_status?.examination` saknas helt visas en informativ tom-state ("Inget körkortsprotokoll har sparats för den här patienten ännu.") — inte den nuvarande tysta "Ingen körkortsdata tillgänglig"-raden.
-
-### `src/components/Optician/DrivingLicense/ServeitInstructions.tsx`
-
-- Stabilisera `useMemo`-deps: idag triggas omräkning på varje `answers`/`entry`/`examination`-referensbyte. Memoisera på primitiva nycklar (entry.id + examination.id + examination.updated_at) så att tunga `extractAnamnesAnswer`-passet bara körs när det faktiskt ändras.
-- Inga funktionella ändringar i layouten.
-
-## Tekniska detaljer
-
-- Inga DB-migrationer. RLS-policyn `Organization members can view driving license examinations` är redan korrekt (org-baserad, ingen roll-filtrering).
-- TypeScript-strict bibehålls.
-- Inga ändringar i `DrivingLicenseExamination`-flödet (steg 1–4) eller `ServitJournalDialog`-genvägen — de fungerar.
+Binokulär `< 1,0` lägger vi **inte** till som soft för `higher` — det är inte ett kliniskt krav, och en sämre binokulär utan att något öga är under 1,0 bör inte kunna hända i praktiken.
 
 ## Verifiering
 
-- Öppna en journalförd körkortskoll (app eller ServeIT) → ren sammanfattning + ServeIT-guide visas snabbt, ingen "stuck"-känsla.
-- Öppna ett "in_progress"-fall (orphan) → tydlig banner förklarar att undersökningen inte är klar, ingen halvtom guide.
-- Som assistent och som optiker: samma vy, ingen åtgärdsknapp.
-- Inga referenser till de borttagna komponenterna i hela `src/`.
+| Scenario (higher) | Förväntat |
+|---|---|
+| H 1,0 / V 1,0 / bino 1,0, ingen anamnes | Godkänd – kan skickas (grön) |
+| H 0,9 / V 0,9 / bino 1,0, ingen anamnes | Godkänd – rek. synundersökning (gul) ✅ ny |
+| H 0,7 / V 1,0, ingen anamnes | Ej godkänd (röd) — bästa < 0,8 |
+| H 0,9 / V 0,9, anamnesavvikelse | Optiker ska kontakta (orange) |
+| Grupp I, H 0,9 / V 0,9 / bino 1,0 | Oförändrat (befintliga regler gäller) |

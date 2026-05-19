@@ -189,6 +189,20 @@ const collectVisusFindings = (
         hard: true,
       });
     }
+    // Mjuk flagga: om något öga är under 1,0 (även om minimikraven uppfylls)
+    // ska vi rekommendera synundersökning vid högre behörighet.
+    if (rightN != null && rightN < 1.0) {
+      findings.push({
+        text: `Visus höger öga ${formatVisualAcuityDisplay(rightN)} under 1,0 (rekommendera synundersökning vid högre behörighet)`,
+        hard: false,
+      });
+    }
+    if (leftN != null && leftN < 1.0) {
+      findings.push({
+        text: `Visus vänster öga ${formatVisualAcuityDisplay(leftN)} under 1,0 (rekommendera synundersökning vid högre behörighet)`,
+        hard: false,
+      });
+    }
   } else if (requirementGroup === 'taxi') {
     if (bothN != null && bothN < 0.8) {
       findings.push({
